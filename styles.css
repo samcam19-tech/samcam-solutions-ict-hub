@@ -10,7 +10,7 @@ body {
   color: #333;
 }
 
-/* ORIGINAL HEADER STYLING */
+/* 1. TOP HEADER BANNER STYLING */
 header.hero-banner {
   background-color: #0d3b66;
   color: #ffffff;
@@ -52,7 +52,7 @@ header.hero-banner {
   opacity: 0.95;
 }
 
-/* COVER PHOTO BACKGROUND SECTION */
+/* 2. COVER PHOTO BACKGROUND SECTION */
 .cover-hero {
   background-image: url('images/banner-bg.png');
   background-size: cover;
@@ -63,19 +63,19 @@ header.hero-banner {
   position: relative;
 }
 
-/* OVERLAY CONTAINER OVER THE COVER PHOTO */
+/* OVERLAY ON TOP OF THE COVER PHOTO */
 .cover-overlay {
   width: 100%;
   height: 100%;
   min-height: 280px;
-  background: rgba(0, 0, 0, 0.45); /* Dark shading so controls pop against the image */
+  background: rgba(0, 0, 0, 0.45); /* Dark shade so the controls stand out */
   padding: 2.5rem 1rem;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* FILTER BOX FLOATING ON TOP OF COVER PHOTO */
+/* FILTER CONTROL BOX FLOATING ON TOP OF THE COVER PHOTO */
 .controls-overlay {
   max-width: 1100px;
   width: 100%;
@@ -128,7 +128,7 @@ header.hero-banner {
   box-shadow: 0 2px 6px rgba(13, 59, 102, 0.3);
 }
 
-/* MAIN CONTENT GRID */
+/* 3. MAIN CONTENT GRID */
 .container {
   max-width: 1200px;
   margin: 2rem auto;
@@ -152,7 +152,7 @@ header.hero-banner {
   justify-content: space-between;
 }
 
-/* BADGES / TAGS FOR S.1 - S.6 */
+/* TAGS & BUTTONS INSIDE CARDS */
 .tag {
   display: inline-block;
   font-size: 0.75rem;
@@ -163,8 +163,8 @@ header.hero-banner {
   text-transform: uppercase;
 }
 
-.tag-olevel { background: #e0f2fe; color: #0369a1; } /* S.1 - S.4 */
-.tag-alevel { background: #fef3c7; color: #b45309; } /* S.5 - S.6 */
+.tag-olevel { background: #e0f2fe; color: #0369a1; }
+.tag-alevel { background: #fef3c7; color: #b45309; }
 .tag-cat    { background: #f3f4f6; color: #374151; }
 
 .card h3 {
@@ -203,7 +203,7 @@ header.hero-banner {
   background-color: #1d4ed8;
 }
 
-/* MOBILE RESPONSIVENESS */
+/* 4. MOBILE RESPONSIVENESS */
 @media (max-width: 768px) {
   .cover-hero, 
   .cover-overlay {
