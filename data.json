@@ -1,0 +1,39 @@
+[
+  {
+    "id": 1,
+    "class": "S4",
+    "category": "Notes",
+    "title": "O LEVEL FULL NOTES",
+    "description": "Comprehensive notes covering basic data types and system components.",
+    "fileUrl": "uploads/ICT NOTES.pdf",
+    "date": "2026-08-05"
+  },
+  {
+    "id": 2,
+    "class": "S4",
+    "category": "Question Paper",
+    "title": "Wakissha UCE ICT 2 MOCK 2026",
+    "description": "Wakissha UCE ICT 2 MOCK 2026",
+    "fileUrl": "uploads/Wakissha UCE ICT 2 MOCK 2026.pdf",
+    "date": "2026-08-05"
+  },
+  {
+    "id": 3,
+    "class": "S4",
+    "category": "S.4 INTERNAL MOCK PP1",
+    "title": "S.4 INTERNAL MOCK PP1",
+    "description": "S.4 INTERNAL MOCK PP1",
+    "fileUrl": "uploads/S.4 INTERNAL MOCK PP1.pdf",
+    "date": "2026-08-05"
+  },
+  {
+    "id": 4,
+    "class": "S4",
+    "category": "S.4 INTERNAL MOCK PP2",
+    "title": "S.4 INTERNAL MOCK PP2",
+    "description": "S.4 INTERNAL MOCK PP2",
+    "fileUrl": "uploads/S.4 INTERNAL MOCK PP2.pdf",
+    "date": "2026-08-05"
+  }
+
+]

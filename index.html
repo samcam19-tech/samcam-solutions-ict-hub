@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SAMCAM SOLUTIONS ICT HUB</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <header>
+    <h1>SAMCAM SOLUTIONS ICT HUB</h1>
+    <p>Academic Resource Portal for S.4 & S.6 ICT Studies</p>
+  </header>
+
+  <main class="container">
+    <section class="controls">
+      <div class="filter-group">
+        <label>Class:</label>
+        <button class="btn filter-btn active" onclick="filterClass('ALL')">All</button>
+        <button class="btn filter-btn" onclick="filterClass('S4')">Senior 4</button>
+        <button class="btn filter-btn" onclick="filterClass('S6')">Senior 6</button>
+      </div>
+
+      <div class="filter-group">
+        <label>Category:</label>
+        <button class="btn cat-btn active" onclick="filterCategory('ALL')">All</button>
+        <button class="btn cat-btn" onclick="filterCategory('Notes')">Notes</button>
+        <button class="btn cat-btn" onclick="filterCategory('Question Paper')">Question Papers</button>
+        <button class="btn cat-btn" onclick="filterCategory('Marking Guide')">Marking Guides</button>
+      </div>
+    </section>
+
+    <section id="resource-grid" class="grid"></section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>
