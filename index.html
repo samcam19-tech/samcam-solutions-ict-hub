@@ -3,62 +3,92 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SAMCAM SOLUTIONS ICT HUB</title>
+  <title>SAMCAM SOLUTIONS | ICT Academic Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
-  <!-- HEADER BANNER WITH LOGO -->
-  <header class="hero-banner">
-    <div class="banner-overlay">
-      <div class="header-content">
-        <img src="images/logo.png" alt="Samcam Solutions Logo" class="site-logo">
-        <div class="header-text">
-          <h1>SAMCAM SOLUTIONS ICT HUB</h1>
-          <p>Academic Resource Portal for S.1 to S.6 ICT Studies</p>
+  <!-- TOP NAVIGATION BAR -->
+  <nav class="navbar">
+    <div class="nav-container">
+      <div class="brand">
+        <img src="images/logo.png" alt="Samcam Solutions Logo" class="brand-logo">
+        <div class="brand-text">
+          <span class="brand-title">SAMCAM HUB</span>
+          <span class="brand-tagline">ICT Academic Excellence</span>
         </div>
+      </div>
+      <div class="nav-actions">
+        <span class="badge-accent"><i class="fa-solid fa-graduation-cap"></i> S.1 – S.6 Curriculum</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- HERO COVER SECTION -->
+  <header class="cover-hero">
+    <div class="cover-overlay">
+      <div class="hero-content">
+        <h1 class="hero-title">Master Secondary ICT Education</h1>
+        <p class="hero-subtitle">Access verified notes, practical scenarios, UNEB-style question papers, and official marking guides instantly.</p>
+        
+        <!-- INTEGRATED SEARCH & CONTROLS -->
+        <div class="controls-card">
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="searchInput" placeholder="Search by topic, paper code, or keyword..." onkeyup="searchResources()">
+          </div>
+
+          <div class="filter-section">
+            <!-- CLASS SELECTION -->
+            <div class="filter-row">
+              <span class="filter-label"><i class="fa-solid fa-layer-group"></i> Class</span>
+              <div class="segmented-control">
+                <button class="segment-btn active" onclick="filterClass('ALL', this)">All</button>
+                <button class="segment-btn" onclick="filterClass('S1', this)">S.1</button>
+                <button class="segment-btn" onclick="filterClass('S2', this)">S.2</button>
+                <button class="segment-btn" onclick="filterClass('S3', this)">S.3</button>
+                <button class="segment-btn" onclick="filterClass('S4', this)">S.4</button>
+                <button class="segment-btn" onclick="filterClass('S5', this)">S.5</button>
+                <button class="segment-btn" onclick="filterClass('S6', this)">S.6</button>
+              </div>
+            </div>
+
+            <!-- CATEGORY SELECTION -->
+            <div class="filter-row">
+              <span class="filter-label"><i class="fa-solid fa-folder-open"></i> Resource</span>
+              <div class="segmented-control">
+                <button class="segment-btn active" onclick="filterCategory('ALL', this)">All Types</button>
+                <button class="segment-btn" onclick="filterCategory('Notes', this)">Notes</button>
+                <button class="segment-btn" onclick="filterCategory('Question Paper', this)">Question Papers</button>
+                <button class="segment-btn" onclick="filterCategory('Marking Guide', this)">Marking Guides</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </header>
 
-  <!-- COVER PHOTO SECTION WITH CLASS & CATEGORY ON TOP -->
-  <section class="cover-hero">
-    <div class="cover-overlay">
-      <div class="controls-overlay">
-        
-        <!-- CLASS FILTERS FOR S.1 THROUGH S.6 -->
-        <div class="filter-group">
-          <label>Class:</label>
-          <div class="button-wrap">
-            <button class="btn filter-btn active" onclick="filterClass('ALL')">All</button>
-            <button class="btn filter-btn" onclick="filterClass('S1')">S.1</button>
-            <button class="btn filter-btn" onclick="filterClass('S2')">S.2</button>
-            <button class="btn filter-btn" onclick="filterClass('S3')">S.3</button>
-            <button class="btn filter-btn" onclick="filterClass('S4')">S.4</button>
-            <button class="btn filter-btn" onclick="filterClass('S5')">S.5</button>
-            <button class="btn filter-btn" onclick="filterClass('S6')">S.6</button>
-          </div>
-        </div>
-
-        <!-- CATEGORY FILTERS -->
-        <div class="filter-group">
-          <label>Category:</label>
-          <div class="button-wrap">
-            <button class="btn cat-btn active" onclick="filterCategory('ALL')">All</button>
-            <button class="btn cat-btn" onclick="filterCategory('Notes')">Notes</button>
-            <button class="btn cat-btn" onclick="filterCategory('Question Paper')">Question Papers</button>
-            <button class="btn cat-btn" onclick="filterCategory('Marking Guide')">Marking Guides</button>
-          </div>
-        </div>
-
-      </div>
+  <!-- MAIN RESOURCE DISPLAY -->
+  <main class="main-content">
+    <div class="content-header">
+      <h2 class="section-title">Resource Library</h2>
+      <span id="resource-count" class="count-badge">Showing All Resources</span>
     </div>
-  </section>
-
-  <!-- RESOURCE GRID CONTAINER -->
-  <main class="container">
-    <section id="resource-grid" class="grid"></section>
+    
+    <section id="resource-grid" class="resource-grid">
+      <!-- Dynamic resource cards injected via JavaScript -->
+    </section>
   </main>
+
+  <footer class="portal-footer">
+    <p>&copy; 2026 SAMCAM SOLUTIONS. Empowering ICT Education for Lower & Upper Secondary Frameworks.</p>
+  </footer>
 
   <script src="app.js"></script>
 </body>
