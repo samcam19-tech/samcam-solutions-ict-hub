@@ -28,26 +28,62 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 });
 
-// FILTER BY CLASS (S.1 - S.6)
+// HELPER: Detect file type and return appropriate Icon + Label + CSS class
+function getFileTypeInfo(item) {
+  let ext = '';
+
+  if (item.fileType) {
+    ext = item.fileType.toLowerCase().trim().replace('.', '');
+  } else if (item.fileUrl) {
+    // Extract extension from file URL (e.g. "path/to/file.docx" -> "docx")
+    const cleanUrl = item.fileUrl.split('?')[0].split('#')[0];
+    ext = cleanUrl.substring(cleanUrl.lastIndexOf('.') + 1).toLowerCase();
+  }
+
+  switch (ext) {
+    case 'pdf':
+      return { label: 'PDF', icon: 'fa-file-pdf', tagClass: 'tag-pdf' };
+    case 'doc':
+    case 'docx':
+      return { label: 'WORD', icon: 'fa-file-word', tagClass: 'tag-word' };
+    case 'xls':
+    case 'xlsx':
+    case 'csv':
+      return { label: 'EXCEL', icon: 'fa-file-excel', tagClass: 'tag-excel' };
+    case 'ppt':
+    case 'pptx':
+      return { label: 'POWERPOINT', icon: 'fa-file-powerpoint', tagClass: 'tag-powerpoint' };
+    case 'zip':
+    case 'rar':
+    case '7z':
+      return { label: 'ZIP ARCHIVE', icon: 'fa-file-zipper', tagClass: 'tag-archive' };
+    case 'accdb':
+    case 'mdb':
+      return { label: 'ACCESS DB', icon: 'fa-database', tagClass: 'tag-db' };
+    case 'html':
+    case 'htm':
+      return { label: 'HTML', icon: 'fa-code', tagClass: 'tag-code' };
+    default:
+      return { label: ext ? ext.toUpperCase() : 'FILE', icon: 'fa-file-lines', tagClass: 'tag-default' };
+  }
+}
+
 function filterClass(cls, btnElement) {
   currentClass = cls;
   updateActiveButtons('.filter-row:nth-child(1) .segment-btn', btnElement);
   renderCards();
 }
 
-// FILTER BY CATEGORY (Notes, Question Papers, Marking Guides)
 function filterCategory(cat, btnElement) {
   currentCategory = cat;
   updateActiveButtons('.filter-row:nth-child(2) .segment-btn', btnElement);
   renderCards();
 }
 
-// REAL-TIME SEARCH TRIGGER
 function searchResources() {
   renderCards();
 }
 
-// TOGGLE ACTIVE STATE ON SEGMENTED BUTTONS
 function updateActiveButtons(selector, targetBtn) {
   const element = targetBtn || event?.target;
   if (!element) return;
@@ -56,7 +92,6 @@ function updateActiveButtons(selector, targetBtn) {
   element.classList.add('active');
 }
 
-// RENDER ELEVATED CARDS & UPDATE COUNTER
 function renderCards() {
   const container = document.getElementById('resource-grid');
   const countBadge = document.getElementById('resource-count');
@@ -66,7 +101,6 @@ function renderCards() {
   if (!container) return;
   container.innerHTML = '';
 
-  // FILTER LOGIC
   const filtered = allResources.filter(item => {
     const matchesClass = currentClass === 'ALL' || item.class === currentClass;
     const matchesCat = currentCategory === 'ALL' || item.category === currentCategory;
@@ -80,12 +114,10 @@ function renderCards() {
     return matchesClass && matchesCat && matchesSearch;
   });
 
-  // UPDATE COUNTER BADGE
   if (countBadge) {
     countBadge.textContent = `Showing ${filtered.length} ${filtered.length === 1 ? 'Resource' : 'Resources'}`;
   }
 
-  // EMPTY STATE DISPLAY
   if (filtered.length === 0) {
     container.innerHTML = `
       <div style="grid-column: 1/-1; text-align: center; color: #64748b; padding: 3.5rem 1rem;">
@@ -96,15 +128,12 @@ function renderCards() {
     return;
   }
 
-  // RENDER CARDS
   filtered.forEach(item => {
-    // Badge styling: S1-S4 (Blue O-Level), S5-S6 (Amber A-Level)
     const isALevel = item.class === 'S5' || item.class === 'S6';
     const classTagStyle = isALevel ? 'tag-alevel' : 'tag-olevel';
     
-    // File format icon indicator
-    const fileType = item.fileType || 'PDF';
-    const fileIcon = fileType.toLowerCase().includes('doc') ? 'fa-file-word' : 'fa-file-pdf';
+    // Dynamically retrieve file format info
+    const fileInfo = getFileTypeInfo(item);
 
     const card = document.createElement('article');
     card.className = 'card';
@@ -113,6 +142,7 @@ function renderCards() {
         <div class="card-tags">
           <span class="tag ${classTagStyle}">${item.class}</span>
           <span class="tag tag-cat">${item.category}</span>
+          <span class="tag ${fileInfo.tagClass}">${fileInfo.label}</span>
         </div>
         <h3 class="card-title">${item.title}</h3>
         <p class="card-description">${item.description || ''}</p>
@@ -120,7 +150,7 @@ function renderCards() {
 
       <div class="card-footer">
         <span class="file-meta">
-          <i class="fa-regular ${fileIcon}"></i> ${fileType}
+          <i class="fa-regular ${fileInfo.icon}"></i> ${fileInfo.label}
         </span>
         <a href="${item.fileUrl || item.downloadUrl || '#'}" target="_blank" class="download-btn" ${item.fileUrl ? 'download' : ''}>
           <i class="fa-solid fa-download"></i> Download
