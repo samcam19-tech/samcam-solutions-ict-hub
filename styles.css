@@ -52,39 +52,45 @@ header.hero-banner {
   opacity: 0.95;
 }
 
-/* COVER PHOTO WITH OVERLAID CONTROLS */
+/* COVER PHOTO BACKGROUND WITH CONTROLS DIRECTLY ON TOP */
 .cover-hero {
   background-image: url('images/banner-bg.png');
   background-size: cover;
   background-position: center;
-  position: relative;
-  min-height: 280px;
-  display: flex;
-  align-items: center;
-}
-
-.cover-overlay {
+  background-repeat: no-repeat;
   width: 100%;
-  height: 100%;
-  background: rgba(13, 59, 102, 0.65); /* Dark tint to ensure buttons remain easy to read */
-  padding: 2rem 1rem;
+  min-height: 320px;
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.controls-overlay {
-  max-width: 1200px;
+/* OVERLAY CONTAINER ON TOP OF THE BACKGROUND IMAGE */
+.cover-overlay {
   width: 100%;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 1.5rem;
-  border-radius: 8px;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(4px);
+  height: 100%;
+  min-height: 320px;
+  background: rgba(0, 0, 0, 0.45); /* Dark shade so the background photo is visible but buttons stand out */
+  padding: 2.5rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* FILTER BOX FLOATING ON TOP OF THE COVER IMAGE */
+.controls-overlay {
+  max-width: 1100px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.92); /* Glass effect floating on the image */
+  padding: 1.5rem 1.8rem;
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(6px); /* Blurs the cover photo slightly behind the control panel */
 }
 
 .filter-group {
-  margin-bottom: 0.8rem;
+  margin-bottom: 1rem;
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -98,7 +104,7 @@ header.hero-banner {
   font-weight: bold;
   min-width: 80px;
   color: #0d3b66;
-  font-size: 0.95rem;
+  font-size: 1rem;
 }
 
 .button-wrap {
@@ -108,22 +114,23 @@ header.hero-banner {
 }
 
 .btn {
-  padding: 0.5rem 1rem;
+  padding: 0.55rem 1.1rem;
   border: 1px solid #0d3b66;
   background: #ffffff;
   color: #0d3b66;
-  border-radius: 4px;
+  border-radius: 5px;
   cursor: pointer;
   font-weight: 600;
-  transition: all 0.2s ease;
+  transition: all 0.2s ease-in-out;
 }
 
 .btn.active, .btn:hover {
   background: #0d3b66;
   color: #ffffff;
+  box-shadow: 0 2px 6px rgba(13, 59, 102, 0.3);
 }
 
-/* MAIN CONTAINER & FULL SPACE GRID */
+/* MAIN CONTENT GRID */
 .container {
   max-width: 1200px;
   margin: 2rem auto;
@@ -158,8 +165,8 @@ header.hero-banner {
   text-transform: uppercase;
 }
 
-.tag-olevel { background: #e0f2fe; color: #0369a1; }
-.tag-alevel { background: #fef3c7; color: #b45309; }
+.tag-olevel { background: #e0f2fe; color: #0369a1; } /* S.1 - S.4 */
+.tag-alevel { background: #fef3c7; color: #b45309; } /* S.5 - S.6 */
 .tag-cat    { background: #f3f4f6; color: #374151; }
 
 .card h3 {
@@ -198,9 +205,9 @@ header.hero-banner {
   background-color: #1d4ed8;
 }
 
-/* RESPONSIVE DESIGN FOR SMALLER SCREENS */
+/* MOBILE RESPONSIVENESS */
 @media (max-width: 768px) {
-  .cover-hero {
+  .cover-hero, .cover-overlay {
     min-height: auto;
   }
   .filter-group {
