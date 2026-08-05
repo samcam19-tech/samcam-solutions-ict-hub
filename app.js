@@ -40,17 +40,21 @@ function renderCards() {
   });
 
   if (filtered.length === 0) {
-    container.innerHTML = '<p>No materials available for the selected criteria.</p>';
+    container.innerHTML = '<p style="grid-column: 1/-1; text-align: center; color: #666; padding: 2rem;">No materials available for the selected criteria.</p>';
     return;
   }
 
   filtered.forEach(item => {
+    // Determine badge color: S1-S4 get blue (O-Level), S5-S6 get amber (A-Level)
+    const isALevel = item.class === 'S5' || item.class === 'S6';
+    const classTagStyle = isALevel ? 'tag-alevel' : 'tag-olevel';
+
     const card = document.createElement('div');
     card.className = 'card';
     card.innerHTML = `
       <div>
         <div>
-          <span class="tag ${item.class === 'S4' ? 'tag-s4' : 'tag-s6'}">${item.class}</span>
+          <span class="tag ${classTagStyle}">${item.class}</span>
           <span class="tag tag-cat">${item.category}</span>
         </div>
         <h3>${item.title}</h3>
