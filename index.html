@@ -8,7 +8,7 @@
 </head>
 <body>
 
-  <!-- HEADER WITH BANNER & LOGO -->
+  <!-- HEADER WITH LOGO & TITLE -->
   <header class="hero-banner">
     <div class="banner-overlay">
       <div class="header-content">
@@ -21,35 +21,40 @@
     </div>
   </header>
 
-  <!-- COVER IMAGE BELOW HEADER -->
-  <section class="cover-image-container">
-    <img src="images/banner-bg.png" alt="ICT Hub Cover Banner" class="cover-image">
+  <!-- COVER BANNER WITH OVERLAID FILTERS -->
+  <section class="cover-hero">
+    <div class="cover-overlay">
+      <div class="controls-overlay">
+        <!-- CLASS FILTERS FOR S1 THROUGH S6 -->
+        <div class="filter-group">
+          <label>Class:</label>
+          <div class="button-wrap">
+            <button class="btn filter-btn active" onclick="filterClass('ALL')">All</button>
+            <button class="btn filter-btn" onclick="filterClass('S1')">S.1</button>
+            <button class="btn filter-btn" onclick="filterClass('S2')">S.2</button>
+            <button class="btn filter-btn" onclick="filterClass('S3')">S.3</button>
+            <button class="btn filter-btn" onclick="filterClass('S4')">S.4</button>
+            <button class="btn filter-btn" onclick="filterClass('S5')">S.5</button>
+            <button class="btn filter-btn" onclick="filterClass('S6')">S.6</button>
+          </div>
+        </div>
+
+        <!-- CATEGORY FILTERS -->
+        <div class="filter-group">
+          <label>Category:</label>
+          <div class="button-wrap">
+            <button class="btn cat-btn active" onclick="filterCategory('ALL')">All</button>
+            <button class="btn cat-btn" onclick="filterCategory('Notes')">Notes</button>
+            <button class="btn cat-btn" onclick="filterCategory('Question Paper')">Question Papers</button>
+            <button class="btn cat-btn" onclick="filterCategory('Marking Guide')">Marking Guides</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </section>
 
+  <!-- RESOURCE GRID CONTAINER -->
   <main class="container">
-    <section class="controls">
-      <!-- CLASS FILTERS FOR S1 THROUGH S6 -->
-      <div class="filter-group">
-        <label>Class:</label>
-        <button class="btn filter-btn active" onclick="filterClass('ALL')">All</button>
-        <button class="btn filter-btn" onclick="filterClass('S1')">S.1</button>
-        <button class="btn filter-btn" onclick="filterClass('S2')">S.2</button>
-        <button class="btn filter-btn" onclick="filterClass('S3')">S.3</button>
-        <button class="btn filter-btn" onclick="filterClass('S4')">S.4</button>
-        <button class="btn filter-btn" onclick="filterClass('S5')">S.5</button>
-        <button class="btn filter-btn" onclick="filterClass('S6')">S.6</button>
-      </div>
-
-      <!-- CATEGORY FILTERS -->
-      <div class="filter-group">
-        <label>Category:</label>
-        <button class="btn cat-btn active" onclick="filterCategory('ALL')">All</button>
-        <button class="btn cat-btn" onclick="filterCategory('Notes')">Notes</button>
-        <button class="btn cat-btn" onclick="filterCategory('Question Paper')">Question Papers</button>
-        <button class="btn cat-btn" onclick="filterCategory('Marking Guide')">Marking Guides</button>
-      </div>
-    </section>
-
     <section id="resource-grid" class="grid"></section>
   </main>
 
