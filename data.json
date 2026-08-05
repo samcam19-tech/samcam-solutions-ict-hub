@@ -34,6 +34,15 @@
     "description": "S.4 INTERNAL MOCK PP2",
     "fileUrl": "uploads/S.4 INTERNAL MOCK PP2.pdf",
     "date": "2026-08-05"
+  },
+  {
+    "id": 5,
+    "class": "S5",
+    "category": "Notes",
+    "title": "COMPUTER HARDWARE",
+    "description": "Full notes for A level Computer Hradware topic",
+    "fileUrl": "uploads/COMPUTER HARDWARE.pptx",
+    "date": "2026-08-05"
   }
 
 ]
