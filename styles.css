@@ -10,20 +10,15 @@ body {
   color: #333;
 }
 
-/* BANNER & HEADER STYLING */
+/* HEADER STYLING */
 header.hero-banner {
-  background-image: url('images/banner-bg.jpg'); /* Your background banner image */
-  background-size: cover;
-  background-position: center;
-  background-repeat: no-repeat;
-  position: relative;
+  background-color: #0d3b66;
   color: #ffffff;
+  position: relative;
 }
 
-/* Dark blue overlay so logo and text are clearly visible over any image */
 .banner-overlay {
-  background: rgba(13, 59, 102, 0.85); 
-  padding: 2.5rem 1rem;
+  padding: 2rem 1rem;
 }
 
 .header-content {
@@ -39,8 +34,8 @@ header.hero-banner {
 
 /* LOGO STYLING */
 .site-logo {
-  width: 90px;
-  height: 90px;
+  width: 80px;
+  height: 80px;
   object-fit: contain;
   border-radius: 50%;
   background: #ffffff;
@@ -59,6 +54,22 @@ header.hero-banner {
   opacity: 0.95;
 }
 
+/* COVER IMAGE BELOW HEADER */
+.cover-image-container {
+  width: 100%;
+  max-height: 350px;
+  overflow: hidden;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+.cover-image {
+  width: 100%;
+  height: 100%;
+  max-height: 350px;
+  object-fit: cover;
+  display: block;
+}
+
 /* MAIN CONTAINER & CONTROLS */
 .container {
   max-width: 1100px;
@@ -71,7 +82,7 @@ header.hero-banner {
   padding: 1.2rem;
   border-radius: 8px;
   margin-bottom: 2rem;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
 }
 
 .filter-group {
@@ -114,7 +125,7 @@ header.hero-banner {
   padding: 1.5rem;
   border-radius: 8px;
   border-top: 4px solid #0d3b66;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -132,8 +143,8 @@ header.hero-banner {
 }
 
 .tag-olevel { background: #e0f2fe; color: #0369a1; } /* Blue for S.1 - S.4 */
-.tag-alevel { background: #fef3c7; color: #b45309; } /* Gold/Amber for S.5 - S.6 */
-.tag-cat    { background: #f3f4f6; color: #374151; } /* Category tag */
+.tag-alevel { background: #fef3c7; color: #b45309; } /* Gold for S.5 - S.6 */
+.tag-cat    { background: #f3f4f6; color: #374151; }
 
 .card h3 {
   margin: 0.8rem 0 0.4rem;
@@ -173,10 +184,13 @@ header.hero-banner {
     gap: 0.8rem;
   }
   .site-logo {
-    width: 75px;
-    height: 75px;
+    width: 65px;
+    height: 65px;
   }
   .header-text h1 {
-    font-size: 1.6rem;
+    font-size: 1.5rem;
+  }
+  .cover-image-container, .cover-image {
+    max-height: 200px;
   }
 }
