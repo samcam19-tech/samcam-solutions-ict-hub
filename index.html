@@ -8,20 +8,34 @@
 </head>
 <body>
 
-  <header>
-    <h1>SAMCAM SOLUTIONS ICT HUB</h1>
-    <p>Academic Resource Portal for S.1 & S.6 ICT Studies</p>
+  <!-- HEADER WITH BANNER & LOGO -->
+  <header class="hero-banner">
+    <div class="banner-overlay">
+      <div class="header-content">
+        <img src="images/logo.png" alt="Samcam Solutions Logo" class="site-logo">
+        <div class="header-text">
+          <h1>SAMCAM SOLUTIONS ICT HUB</h1>
+          <p>Academic Resource Portal for S.1 to S.6 ICT Studies</p>
+        </div>
+      </div>
+    </div>
   </header>
 
   <main class="container">
     <section class="controls">
+      <!-- CLASS FILTERS FOR S1 THROUGH S6 -->
       <div class="filter-group">
         <label>Class:</label>
         <button class="btn filter-btn active" onclick="filterClass('ALL')">All</button>
-        <button class="btn filter-btn" onclick="filterClass('S4')">Senior 4</button>
-        <button class="btn filter-btn" onclick="filterClass('S6')">Senior 6</button>
+        <button class="btn filter-btn" onclick="filterClass('S1')">S.1</button>
+        <button class="btn filter-btn" onclick="filterClass('S2')">S.2</button>
+        <button class="btn filter-btn" onclick="filterClass('S3')">S.3</button>
+        <button class="btn filter-btn" onclick="filterClass('S4')">S.4</button>
+        <button class="btn filter-btn" onclick="filterClass('S5')">S.5</button>
+        <button class="btn filter-btn" onclick="filterClass('S6')">S.6</button>
       </div>
 
+      <!-- CATEGORY FILTERS -->
       <div class="filter-group">
         <label>Category:</label>
         <button class="btn cat-btn active" onclick="filterCategory('ALL')">All</button>
