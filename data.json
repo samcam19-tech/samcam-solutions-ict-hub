@@ -43,6 +43,15 @@
     "description": "Full notes for A level Computer Hardware topic",
     "fileUrl": "uploads/COMPUTER HARDWARE.pptx",
     "date": "2026-08-05"
+  },
+  {
+    "id": 6,
+    "class": "S5",
+    "category": "Notes",
+    "title": "INTRODUCTION TO ICT",
+    "description": "Full notes for A level Introduction to ICT topic",
+    "fileUrl": "uploads/S.5 INTRODUCTION TO ICT NOTES.pptx",
+    "date": "2026-08-05"
   }
 
 ]
