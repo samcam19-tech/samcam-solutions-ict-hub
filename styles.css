@@ -14,15 +14,14 @@ body {
 header.hero-banner {
   background-color: #0d3b66;
   color: #ffffff;
-  position: relative;
 }
 
 .banner-overlay {
-  padding: 2rem 1rem;
+  padding: 1.8rem 1rem;
 }
 
 .header-content {
-  max-width: 1100px;
+  max-width: 1200px;
   margin: 0 auto;
   display: flex;
   align-items: center;
@@ -32,10 +31,9 @@ header.hero-banner {
   text-align: center;
 }
 
-/* LOGO STYLING */
 .site-logo {
-  width: 80px;
-  height: 80px;
+  width: 75px;
+  height: 75px;
   object-fit: contain;
   border-radius: 50%;
   background: #ffffff;
@@ -49,53 +47,64 @@ header.hero-banner {
 }
 
 .header-text p {
-  margin-top: 0.4rem;
-  font-size: 1.1rem;
+  margin-top: 0.3rem;
+  font-size: 1.05rem;
   opacity: 0.95;
 }
 
-/* COVER IMAGE BELOW HEADER */
-.cover-image-container {
-  width: 100%;
-  max-height: 350px;
-  overflow: hidden;
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+/* COVER PHOTO WITH OVERLAID CONTROLS */
+.cover-hero {
+  background-image: url('images/banner-bg.png');
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  min-height: 280px;
+  display: flex;
+  align-items: center;
 }
 
-.cover-image {
+.cover-overlay {
   width: 100%;
   height: 100%;
-  max-height: 350px;
-  object-fit: cover;
-  display: block;
+  background: rgba(13, 59, 102, 0.65); /* Dark tint to ensure buttons remain easy to read */
+  padding: 2rem 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* MAIN CONTAINER & CONTROLS */
-.container {
-  max-width: 1100px;
-  margin: 2rem auto;
-  padding: 0 1rem;
-}
-
-.controls {
-  background: #ffffff;
-  padding: 1.2rem;
+.controls-overlay {
+  max-width: 1200px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 1.5rem;
   border-radius: 8px;
-  margin-bottom: 2rem;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(4px);
 }
 
 .filter-group {
   margin-bottom: 0.8rem;
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.filter-group:last-child {
+  margin-bottom: 0;
 }
 
 .filter-group label {
   font-weight: bold;
   min-width: 80px;
+  color: #0d3b66;
+  font-size: 0.95rem;
+}
+
+.button-wrap {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .btn {
@@ -105,7 +114,8 @@ header.hero-banner {
   color: #0d3b66;
   border-radius: 4px;
   cursor: pointer;
-  transition: background-color 0.2s, color 0.2s;
+  font-weight: 600;
+  transition: all 0.2s ease;
 }
 
 .btn.active, .btn:hover {
@@ -113,10 +123,16 @@ header.hero-banner {
   color: #ffffff;
 }
 
-/* RESOURCE GRID & CARDS */
+/* MAIN CONTAINER & FULL SPACE GRID */
+.container {
+  max-width: 1200px;
+  margin: 2rem auto;
+  padding: 0 1rem;
+}
+
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 1.5rem;
 }
 
@@ -125,7 +141,7 @@ header.hero-banner {
   padding: 1.5rem;
   border-radius: 8px;
   border-top: 4px solid #0d3b66;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -142,25 +158,29 @@ header.hero-banner {
   text-transform: uppercase;
 }
 
-.tag-olevel { background: #e0f2fe; color: #0369a1; } /* Blue for S.1 - S.4 */
-.tag-alevel { background: #fef3c7; color: #b45309; } /* Gold for S.5 - S.6 */
+.tag-olevel { background: #e0f2fe; color: #0369a1; }
+.tag-alevel { background: #fef3c7; color: #b45309; }
 .tag-cat    { background: #f3f4f6; color: #374151; }
 
 .card h3 {
   margin: 0.8rem 0 0.4rem;
   font-size: 1.15rem;
+  color: #1e293b;
 }
 
 .card p {
   font-size: 0.9rem;
-  color: #666;
+  color: #64748b;
   margin-bottom: 1.2rem;
+  line-height: 1.4;
 }
 
 .card-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 0.8rem;
 }
 
 .download-link {
@@ -170,6 +190,7 @@ header.hero-banner {
   padding: 0.5rem 1rem;
   border-radius: 4px;
   font-size: 0.85rem;
+  font-weight: 600;
   transition: background-color 0.2s;
 }
 
@@ -177,20 +198,28 @@ header.hero-banner {
   background-color: #1d4ed8;
 }
 
-/* RESPONSIVE DESIGN FOR PHONES */
+/* RESPONSIVE DESIGN FOR SMALLER SCREENS */
+@media (max-width: 768px) {
+  .cover-hero {
+    min-height: auto;
+  }
+  .filter-group {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
+  }
+}
+
 @media (max-width: 600px) {
   .header-content {
     flex-direction: column;
     gap: 0.8rem;
   }
   .site-logo {
-    width: 65px;
-    height: 65px;
+    width: 60px;
+    height: 60px;
   }
   .header-text h1 {
     font-size: 1.5rem;
-  }
-  .cover-image-container, .cover-image {
-    max-height: 200px;
   }
 }
