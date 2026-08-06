@@ -67,6 +67,9 @@
     .student-table th, .student-table td { padding: 0.6rem; border: 1px solid #cbd5e1; text-align: left; }
     .student-table th { background: #f8fafc; font-weight: 600; color: #334155; }
     .student-table input, .student-table select { width: 100%; padding: 0.3rem; font-size: 0.85rem; border: 1px solid #cbd5e1; border-radius: 4px; }
+    
+    .modal-top-bar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+    .btn-icon-only { padding: 0.4rem 0.6rem; border-radius: 6px; font-size: 0.9rem; cursor: pointer; border: none; color: white; display: inline-flex; align-items: center; justify-content: center; }
   </style>
 </head>
 <body>
@@ -152,7 +155,7 @@
               </div>
               <div class="form-group">
                 <label>Username</label>
-                <input type="text" id="regUsername" placeholder="e.g. john_s4" required>
+                <input type="text" id="regUsername" placeholder="e.g. okello_s4" required>
               </div>
               <div class="form-group">
                 <label>Password</label>
@@ -166,7 +169,7 @@
             <!-- Bulk Excel/CSV Import -->
             <div>
               <h4 style="margin-bottom: 0.5rem; color: #1e293b;"><i class="fa-solid fa-file-excel"></i> Bulk Import Class Data</h4>
-              <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.8rem;">Upload an Excel or CSV file containing student names. First names will become usernames, and strong unique passwords will be generated automatically.</p>
+              <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.8rem;">Upload an Excel or CSV file containing student names. Last names will become usernames, and strong unique passwords will be generated automatically.</p>
               
               <div class="form-group">
                 <label>Target Class for Import</label>
@@ -270,9 +273,15 @@
         <h3><i class="fa-solid fa-users-gear"></i> Manage Registered Students</h3>
         <button onclick="closeStudentModal()" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <div style="margin-bottom: 1rem;">
-        <input type="text" id="studentSearchInput" placeholder="Search by name, class, or username..." onkeyup="renderStudentModalTable()" style="padding: 0.5rem; width: 100%; border: 1px solid #cbd5e1; border-radius: 6px;">
+      
+      <!-- Top Modal Toolbar: Search + Delete All -->
+      <div class="modal-top-bar">
+        <input type="text" id="studentSearchInput" placeholder="Search by name, class, or username..." onkeyup="renderStudentModalTable()" style="padding: 0.5rem; flex: 1; min-width: 200px; border: 1px solid #cbd5e1; border-radius: 6px;">
+        <button onclick="deleteAllStudents()" class="btn-action btn-danger">
+          <i class="fa-solid fa-trash-can"></i> Delete All Students
+        </button>
       </div>
+
       <div style="overflow-x: auto;">
         <table class="student-table">
           <thead>
@@ -337,7 +346,7 @@
       const passVal = document.getElementById('loginPassword').value.trim();
       const errEl = document.getElementById('loginError');
 
-      const users = JSON.parse(localStorage.getItem('portal_users'));
+      const users = JSON.parse(localStorage.getItem('portal_users')) || [];
       const foundUser = users.find(u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal);
 
       if (foundUser) {
@@ -359,14 +368,14 @@
     // TEACHER: REGISTER SINGLE STUDENT
     function handleRegisterStudent(e) {
       e.preventDefault();
-      if (currentUser.role !== 'Teacher') return;
+      if (!currentUser || currentUser.role !== 'Teacher') return;
 
       const fullName = document.getElementById('regFullName').value.trim();
       const studentClass = document.getElementById('regClass').value;
       const username = document.getElementById('regUsername').value.trim();
       const password = document.getElementById('regPassword').value.trim();
 
-      const users = JSON.parse(localStorage.getItem('portal_users'));
+      const users = JSON.parse(localStorage.getItem('portal_users')) || [];
 
       if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
         alert('Username already exists! Please choose another.');
@@ -398,9 +407,9 @@
       return pwd;
     }
 
-    // TEACHER: BULK IMPORT STUDENTS FROM EXCEL/CSV
+    // TEACHER: BULK IMPORT STUDENTS FROM EXCEL/CSV (USES LAST NAME FOR USERNAME)
     function handleBulkImport() {
-      if (currentUser.role !== 'Teacher') return;
+      if (!currentUser || currentUser.role !== 'Teacher') return;
 
       const fileInput = document.getElementById('bulkStudentFile');
       const targetClass = document.getElementById('bulkClass').value;
@@ -424,7 +433,7 @@
           blankrows: false 
         });
 
-        const users = JSON.parse(localStorage.getItem('portal_users'));
+        const users = JSON.parse(localStorage.getItem('portal_users')) || [];
         let addedCount = 0;
 
         jsonRows.forEach((row, index) => {
@@ -451,7 +460,8 @@
           }
 
           if (rawName && isNaN(rawName)) {
-            const nameParts = rawName.split(/\s+/);
+            const nameParts = rawName.trim().split(/\s+/);
+            // Takes the LAST name from the full name
             let lastName = nameParts[nameParts.length - 1].toLowerCase().replace(/[^a-z0-9]/g, '');
             if (!lastName) lastName = "student";
 
@@ -488,7 +498,7 @@
 
     // TEACHER: DOWNLOAD CSV OF CREDENTIALS
     function downloadStudentCSV() {
-      const users = JSON.parse(localStorage.getItem('portal_users'));
+      const users = JSON.parse(localStorage.getItem('portal_users')) || [];
       const students = users.filter(u => u.role === 'Student');
 
       if (students.length === 0) {
@@ -522,6 +532,7 @@
       editingUsername = null;
     }
 
+    // RENDER TABLE WITH ICON-ONLY ACTIONS
     function renderStudentModalTable() {
       const tbody = document.getElementById('studentModalTableBody');
       const searchFilter = document.getElementById('studentSearchInput').value.toLowerCase().trim();
@@ -556,9 +567,9 @@
               </td>
               <td><input type="text" id="editUsername" value="${s.username}"></td>
               <td><input type="text" id="editPassword" value="${s.password}"></td>
-              <td style="display:flex; gap:0.3rem;">
-                <button onclick="saveStudentEdit('${s.username}')" class="btn-action btn-upload" style="padding:0.2rem 0.5rem;"><i class="fa-solid fa-check"></i> Save</button>
-                <button onclick="cancelStudentEdit()" class="btn-action btn-secondary" style="padding:0.2rem 0.5rem;"><i class="fa-solid fa-xmark"></i></button>
+              <td style="display:flex; gap:0.4rem;">
+                <button onclick="saveStudentEdit('${s.username}')" class="btn-icon-only btn-upload" title="Save"><i class="fa-solid fa-check"></i></button>
+                <button onclick="cancelStudentEdit()" class="btn-icon-only btn-secondary" title="Cancel"><i class="fa-solid fa-xmark"></i></button>
               </td>
             </tr>
           `;
@@ -571,9 +582,9 @@
             <td>${s.class}</td>
             <td><code>${s.username}</code></td>
             <td><code>${s.password}</code></td>
-            <td style="display:flex; gap:0.3rem;">
-              <button onclick="enableStudentEdit('${s.username}')" class="btn-action btn-edit" style="padding:0.2rem 0.5rem;"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-              <button onclick="deleteStudent('${s.username}')" class="btn-action btn-danger" style="padding:0.2rem 0.5rem;"><i class="fa-solid fa-trash"></i> Delete</button>
+            <td style="display:flex; gap:0.4rem;">
+              <button onclick="enableStudentEdit('${s.username}')" class="btn-icon-only btn-edit" title="Edit Student"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button onclick="deleteStudent('${s.username}')" class="btn-icon-only btn-danger" title="Delete Student"><i class="fa-solid fa-trash"></i></button>
             </td>
           </tr>
         `;
@@ -631,10 +642,29 @@
       renderStudentModalTable();
     }
 
+    // DELETE ALL STUDENTS BUTTON FUNCTION
+    function deleteAllStudents() {
+      let users = JSON.parse(localStorage.getItem('portal_users')) || [];
+      const studentCount = users.filter(u => u.role === 'Student').length;
+
+      if (studentCount === 0) {
+        alert('No registered student records to delete.');
+        return;
+      }
+
+      if (confirm(`WARNING: Are you sure you want to delete ALL ${studentCount} registered student account(s)? This action cannot be undone.`)) {
+        // Keep non-student accounts (teachers/admin)
+        users = users.filter(u => u.role !== 'Student');
+        localStorage.setItem('portal_users', JSON.stringify(users));
+        renderStudentModalTable();
+        alert('All student accounts have been successfully deleted.');
+      }
+    }
+
     // TEACHER: CREATE ASSESSMENT
     function handleCreateAssessment(e) {
       e.preventDefault();
-      if (currentUser.role !== 'Teacher') return;
+      if (!currentUser || currentUser.role !== 'Teacher') return;
 
       const title = document.getElementById('testTitle').value;
       const targetClass = document.getElementById('targetClass').value;
@@ -643,7 +673,7 @@
       const fileInput = document.getElementById('testFile');
       const fileName = fileInput.files[0] ? fileInput.files[0].name : "assessment.pdf";
 
-      const resources = JSON.parse(localStorage.getItem('portal_resources'));
+      const resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
 
       const newAssessment = {
         "id": Date.now(),
@@ -669,7 +699,7 @@
       if (!fileInput.files.length) return;
       
       const fileName = fileInput.files[0].name;
-      const submissions = JSON.parse(localStorage.getItem('portal_submissions'));
+      const submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
 
       const newSubmission = {
         id: Date.now(),
@@ -731,8 +761,8 @@
     // RENDER ASSESSMENTS
     function renderAssessments() {
       const container = document.getElementById('assessmentsContainer');
-      const resources = JSON.parse(localStorage.getItem('portal_resources'));
-      const submissions = JSON.parse(localStorage.getItem('portal_submissions'));
+      const resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
+      const submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
       const now = new Date();
 
       let assessments = resources.filter(r => r.category === "Question Paper");
@@ -745,49 +775,35 @@
         return;
       }
 
-      container.innerHTML = assessments.map(item => {
-        const hasDeadline = !!item.deadline;
-        const deadlineDate = hasDeadline ? new Date(item.deadline) : null;
-        const isExpired = hasDeadline && (now > deadlineDate);
-
-        const mySubmission = currentUser.role === 'Student' 
-          ? submissions.find(s => s.testId === item.id && s.studentName === currentUser.fullName)
-          : null;
+      container.innerHTML = assessments.map(a => {
+        const deadlineDate = new Date(a.deadline);
+        const isExpired = now > deadlineDate;
+        const studentSub = currentUser.role === 'Student' ? submissions.find(s => s.testId === a.id && s.studentName === currentUser.fullName) : null;
 
         return `
           <div class="test-card">
             <div class="test-header">
-              <span class="test-title">[${item.class}] ${item.title}</span>
-              ${hasDeadline ? `
-                <span class="deadline-badge ${isExpired ? 'deadline-expired' : 'deadline-active'}">
-                  ${isExpired ? 'Expired' : 'Active'}
-                </span>
-              ` : ''}
+              <span class="test-title">${a.title} <small style="color:#64748b;">(${a.class})</small></span>
+              <span class="deadline-badge ${isExpired ? 'deadline-expired' : 'deadline-active'}">
+                ${isExpired ? 'Expired' : 'Active until: ' + deadlineDate.toLocaleString()}
+              </span>
             </div>
-            <p style="font-size: 0.85rem; color: #475569; margin: 0.4rem 0;">${item.description}</p>
-            ${hasDeadline ? `
-              <p style="font-size: 0.8rem; color: #64748b;">
-                <i class="fa-regular fa-clock"></i> Deadline: ${deadlineDate.toLocaleString()}
-              </p>
-            ` : ''}
-
+            <p style="font-size:0.85rem; color:#475569; margin:0.5rem 0;">${a.description || 'No description provided.'}</p>
             <div class="test-actions">
-              <a href="${item.fileUrl}" download class="btn-action btn-download">
-                <i class="fa-solid fa-download"></i> Download Questions
-              </a>
-
+              <a href="${a.fileUrl}" download class="btn-action btn-download"><i class="fa-solid fa-file-arrow-down"></i> Download Paper</a>
+              
               ${currentUser.role === 'Student' ? `
-                ${mySubmission ? `
-                  <span style="color:#15803d; font-weight:600; font-size:0.85rem;">
-                    <i class="fa-solid fa-circle-check"></i> Submitted (${mySubmission.fileName})
-                  </span>
-                ` : isExpired ? `
-                  <button class="btn-action btn-disabled" disabled><i class="fa-solid fa-lock"></i> Closed</button>
+                ${studentSub ? `
+                  <span style="color:#16a34a; font-size:0.85rem; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Submitted (${studentSub.fileName})</span>
                 ` : `
-                  <label class="btn-action btn-upload" style="cursor:pointer;">
-                    <i class="fa-solid fa-file-arrow-up"></i> Submit Attempt
-                    <input type="file" style="display:none;" onchange="handleStudentSubmission(${item.id}, '${item.title}', this)">
-                  </label>
+                  ${isExpired ? `
+                    <button disabled class="btn-action btn-disabled"><i class="fa-solid fa-lock"></i> Deadline Passed</button>
+                  ` : `
+                    <label class="btn-action btn-upload">
+                      <i class="fa-solid fa-file-arrow-up"></i> Upload Answer
+                      <input type="file" style="display:none;" onchange="handleStudentSubmission(${a.id}, '${a.title.replace(/'/g, "\\'")}', this)">
+                    </label>
+                  `}
                 `}
               ` : ''}
             </div>
@@ -796,34 +812,33 @@
       }).join('');
     }
 
-    // RENDER SUBMISSIONS
+    // RENDER SUBMISSIONS FOR TEACHER
     function renderSubmissions() {
       const container = document.getElementById('submissionsContainer');
-      const submissions = JSON.parse(localStorage.getItem('portal_submissions'));
+      const submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
 
       if (submissions.length === 0) {
-        container.innerHTML = '<p style="color:#64748b; font-size:0.9rem;">No student attempts submitted yet.</p>';
+        container.innerHTML = '<p style="color:#64748b; font-size:0.85rem;">No student work submitted yet.</p>';
         return;
       }
 
       container.innerHTML = submissions.map(sub => `
         <div class="sub-item">
           <div>
-            <strong>${sub.studentName} (${sub.studentClass})</strong>
-            <br>
-            <small style="color:#475569;">${sub.testTitle}</small>
-            <br>
-            <small style="color:#64748b;"><i class="fa-regular fa-clock"></i> ${sub.submittedAt}</small>
+            <strong>${sub.studentName}</strong> <small>(${sub.studentClass})</small><br>
+            <span style="color:#64748b;">${sub.testTitle}</span>
           </div>
-          <a href="${sub.fileUrl}" download class="btn-action btn-download" style="padding:0.3rem 0.6rem;">
-            <i class="fa-solid fa-download"></i> ${sub.fileName}
+          <a href="${sub.fileUrl}" download class="btn-action btn-download" style="padding:0.3rem 0.6rem; font-size:0.75rem;">
+            <i class="fa-solid fa-download"></i> Get File
           </a>
         </div>
       `).join('');
     }
 
-    // Run initial state update
-    updatePortalUI();
+    // Initial load check
+    document.addEventListener("DOMContentLoaded", () => {
+      updatePortalUI();
+    });
   </script>
 </body>
 </html>
