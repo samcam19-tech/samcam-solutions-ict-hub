@@ -49,8 +49,10 @@
     .btn-download { background: #0284c7; color: white; }
     .btn-upload { background: #16a34a; color: white; }
     .btn-disabled { background: #94a3b8; color: white; cursor: not-allowed; }
+    .btn-secondary { background: #475569; color: white; }
 
-    .sub-item { font-size: 0.85rem; padding: 0.5rem; background: #f1f5f9; border-radius: 6px; margin-top: 0.5rem; display: flex; justify-content: space-between; align-items: center; }
+    .sub-item, .student-item { font-size: 0.85rem; padding: 0.6rem; background: #f1f5f9; border-radius: 6px; margin-top: 0.5rem; display: flex; justify-content: space-between; align-items: center; }
+    .error-msg { color: #dc2626; font-size: 0.85rem; margin-top: 0.5rem; display: none; }
   </style>
 </head>
 <body>
@@ -75,35 +77,34 @@
 
   <div class="portal-container">
     
-    <!-- LOGIN PANEL (Shown when logged out) -->
+    <!-- AUTHENTICATED LOGIN PANEL -->
     <div id="loginSection" class="card-box" style="max-width: 450px; margin: 2rem auto;">
       <h3><i class="fa-solid fa-right-to-bracket"></i> Portal Sign In</h3>
       <form onsubmit="handleLogin(event)">
         <div class="form-group">
-          <label>Full Name / Identifier</label>
-          <input type="text" id="loginName" placeholder="e.g. Mr. Okello or Student S4-012" required>
+          <label>Username</label>
+          <input type="text" id="loginUsername" placeholder="Enter username..." required>
         </div>
         <div class="form-group">
-          <label>Select Your Role</label>
-          <select id="loginRole" required>
-            <option value="Student">Student (View & Submit Tests)</option>
-            <option value="Teacher">Teacher (Upload & Publish Tests)</option>
-          </select>
+          <label>Password</label>
+          <input type="password" id="loginPassword" placeholder="Enter password..." required>
         </div>
-        <button type="submit" class="btn-submit">Sign In to Assessment Portal</button>
+        <div id="loginError" class="error-msg">Invalid username or password!</div>
+        <button type="submit" class="btn-submit" style="margin-top: 1rem;">Sign In</button>
       </form>
     </div>
 
-    <!-- MAIN PORTAL DASHBOARD (Shown when logged in) -->
+    <!-- MAIN PORTAL DASHBOARD -->
     <div id="dashboardSection" style="display: none;">
       
-      <!-- User Info Header -->
+      <!-- User Info Banner -->
       <div class="auth-banner">
         <div class="user-info">
           <i class="fa-solid fa-user-circle fa-xl"></i>
           <div>
             <span id="userNameDisplay">User</span>
             <span id="userRoleDisplay" class="role-badge">Role</span>
+            <small id="userClassDisplay" style="color:#64748b; font-weight:normal; margin-left:5px;"></small>
           </div>
         </div>
         <button onclick="handleLogout()" class="btn-logout"><i class="fa-solid fa-power-off"></i> Sign Out</button>
@@ -111,42 +112,78 @@
 
       <div class="portal-grid">
         
-        <!-- TEACHER ONLY PANEL: PUBLISH ASSESSMENTS -->
-        <div id="teacherUploadPanel" class="card-box">
-          <h3><i class="fa-solid fa-upload"></i> Publish New Assessment</h3>
-          <form id="assessmentForm" onsubmit="handleCreateAssessment(event)">
-            <div class="form-group">
-              <label>Assessment Title</label>
-              <input type="text" id="testTitle" placeholder="e.g. Wakissha UCE ICT 2 MOCK 2026" required>
-            </div>
-            <div class="form-group">
-              <label>Class</label>
-              <select id="targetClass" required>
-                <option value="S1">S.1</option>
-                <option value="S2">S.2</option>
-                <option value="S3">S.3</option>
-                <option value="S4" selected>S.4</option>
-                <option value="S5">S.5</option>
-                <option value="S6">S.6</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Description</label>
-              <textarea id="testDesc" rows="2" placeholder="Brief instructions for learners..."></textarea>
-            </div>
-            <div class="form-group">
-              <label>Submission Deadline</label>
-              <input type="datetime-local" id="testDeadline" required>
-            </div>
-            <div class="form-group">
-              <label>Assessment File (PDF/DOCX)</label>
-              <input type="file" id="testFile" required>
-            </div>
-            <button type="submit" class="btn-submit"><i class="fa-solid fa-cloud-arrow-up"></i> Save & Append to JSON</button>
-          </form>
+        <!-- TEACHER CONTROL PANELS -->
+        <div id="teacherControls" style="display:none;">
+          
+          <!-- REGISTER STUDENT FORM -->
+          <div class="card-box">
+            <h3><i class="fa-solid fa-user-plus"></i> Register Student</h3>
+            <form onsubmit="handleRegisterStudent(event)">
+              <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" id="regFullName" placeholder="e.g. John Okello" required>
+              </div>
+              <div class="form-group">
+                <label>Class</label>
+                <select id="regClass" required>
+                  <option value="S1">S.1</option>
+                  <option value="S2">S.2</option>
+                  <option value="S3">S.3</option>
+                  <option value="S4" selected>S.4</option>
+                  <option value="S5">S.5</option>
+                  <option value="S6">S.6</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Username</label>
+                <input type="text" id="regUsername" placeholder="e.g. john_s4" required>
+              </div>
+              <div class="form-group">
+                <label>Password</label>
+                <input type="text" id="regPassword" placeholder="Assign password..." required>
+              </div>
+              <button type="submit" class="btn-submit"><i class="fa-solid fa-user-check"></i> Register Account</button>
+            </form>
+          </div>
+
+          <!-- PUBLISH ASSESSMENT FORM -->
+          <div class="card-box">
+            <h3><i class="fa-solid fa-upload"></i> Publish New Assessment</h3>
+            <form id="assessmentForm" onsubmit="handleCreateAssessment(event)">
+              <div class="form-group">
+                <label>Assessment Title</label>
+                <input type="text" id="testTitle" placeholder="e.g. Wakissha UCE ICT 2 MOCK 2026" required>
+              </div>
+              <div class="form-group">
+                <label>Target Class</label>
+                <select id="targetClass" required>
+                  <option value="S1">S.1</option>
+                  <option value="S2">S.2</option>
+                  <option value="S3">S.3</option>
+                  <option value="S4" selected>S.4</option>
+                  <option value="S5">S.5</option>
+                  <option value="S6">S.6</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Description</label>
+                <textarea id="testDesc" rows="2" placeholder="Instructions for learners..."></textarea>
+              </div>
+              <div class="form-group">
+                <label>Submission Deadline</label>
+                <input type="datetime-local" id="testDeadline" required>
+              </div>
+              <div class="form-group">
+                <label>Assessment File (PDF/DOCX)</label>
+                <input type="file" id="testFile" required>
+              </div>
+              <button type="submit" class="btn-submit"><i class="fa-solid fa-cloud-arrow-up"></i> Publish Assessment</button>
+            </form>
+          </div>
+
         </div>
 
-        <!-- STUDENT / COMMON PANEL: AVAILABLE ASSESSMENTS -->
+        <!-- RIGHT COLUMN: ASSESSMENTS LIST -->
         <div class="card-box" id="assessmentsViewPanel">
           <h3><i class="fa-solid fa-list-check"></i> Active Assessments</h3>
           <div id="assessmentsContainer"></div>
@@ -154,10 +191,26 @@
 
       </div>
 
-      <!-- TEACHER ONLY: VIEW SUBMITTED WORK -->
-      <div id="teacherSubmissionsPanel" class="card-box" style="display:none;">
-        <h3><i class="fa-solid fa-folder-closed"></i> Received Student Submissions</h3>
-        <div id="submissionsContainer"></div>
+      <!-- TEACHER ONLY: REGISTERED STUDENTS & SUBMISSIONS LISTS -->
+      <div id="teacherReports" style="display:none;" class="portal-grid">
+        
+        <!-- STUDENT DIRECTORY -->
+        <div class="card-box">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+            <h3 style="margin:0;"><i class="fa-solid fa-users"></i> Registered Students</h3>
+            <button onclick="downloadStudentCSV()" class="btn-action btn-secondary">
+              <i class="fa-solid fa-file-csv"></i> Download CSV
+            </button>
+          </div>
+          <div id="studentListContainer"></div>
+        </div>
+
+        <!-- SUBMITTED WORK -->
+        <div class="card-box">
+          <h3><i class="fa-solid fa-folder-closed"></i> Student Submissions</h3>
+          <div id="submissionsContainer"></div>
+        </div>
+
       </div>
 
     </div>
@@ -165,30 +218,32 @@
   </div>
 
   <script>
-    // Initial Base Data JSON Structure
+    // Root teacher account
+    const rootTeacher = {
+      username: "admin",
+      password: "admin",
+      fullName: "Root Teacher / Admin",
+      role: "Teacher"
+    };
+
+    // Base JSON for initial resources
     const initialJSON = [
       {
         "id": 1,
         "class": "S4",
-        "category": "Notes",
-        "title": "O LEVEL FULL NOTES",
-        "description": "Comprehensive notes covering basic data types and system components.",
-        "fileUrl": "uploads/ICT NOTES.pdf",
-        "date": "2026-08-05"
-      },
-      {
-        "id": 2,
-        "class": "S4",
         "category": "Question Paper",
         "title": "Wakissha UCE ICT 2 MOCK 2026",
-        "description": "Wakissha UCE ICT 2 MOCK 2026",
+        "description": "Full practical paper instructions.",
         "fileUrl": "uploads/Wakissha UCE ICT 2 MOCK 2026.pdf",
         "date": "2026-08-05",
-        "deadline": "2026-08-15T23:59"
+        "deadline": "2026-08-20T23:59"
       }
     ];
 
-    // Initialize Local Storage Databases if absent
+    // Initialize LocalStorage structures
+    if (!localStorage.getItem('portal_users')) {
+      localStorage.setItem('portal_users', JSON.stringify([rootTeacher]));
+    }
     if (!localStorage.getItem('portal_resources')) {
       localStorage.setItem('portal_resources', JSON.stringify(initialJSON));
     }
@@ -196,63 +251,92 @@
       localStorage.setItem('portal_submissions', JSON.stringify([]));
     }
 
-    let currentUser = JSON.parse(localStorage.getItem('portal_user')) || null;
+    let currentUser = JSON.parse(localStorage.getItem('portal_session')) || null;
 
-    // LOGIN / LOGOUT HANDLERS
+    // LOGIN & LOGOUT HANDLERS
     function handleLogin(e) {
       e.preventDefault();
-      const name = document.getElementById('loginName').value;
-      const role = document.getElementById('loginRole').value;
-      
-      currentUser = { name, role };
-      localStorage.setItem('portal_user', JSON.stringify(currentUser));
-      updatePortalUI();
+      const userVal = document.getElementById('loginUsername').value.trim();
+      const passVal = document.getElementById('loginPassword').value.trim();
+      const errEl = document.getElementById('loginError');
+
+      const users = JSON.parse(localStorage.getItem('portal_users'));
+      const foundUser = users.find(u => u.username === userVal && u.password === passVal);
+
+      if (foundUser) {
+        errEl.style.display = 'none';
+        currentUser = foundUser;
+        localStorage.setItem('portal_session', JSON.stringify(currentUser));
+        updatePortalUI();
+      } else {
+        errEl.style.display = 'block';
+      }
     }
 
     function handleLogout() {
-      localStorage.removeItem('portal_user');
+      localStorage.removeItem('portal_session');
       currentUser = null;
       updatePortalUI();
     }
 
-    // UPDATE UI BASED ON ROLE
-    function updatePortalUI() {
-      const loginSec = document.getElementById('loginSection');
-      const dashSec = document.getElementById('dashboardSection');
-      const teacherPanel = document.getElementById('teacherUploadPanel');
-      const teacherSubPanel = document.getElementById('teacherSubmissionsPanel');
-      const viewPanel = document.getElementById('assessmentsViewPanel');
+    // TEACHER: REGISTER STUDENT
+    function handleRegisterStudent(e) {
+      e.preventDefault();
+      if (currentUser.role !== 'Teacher') return;
 
-      if (!currentUser) {
-        loginSec.style.display = 'block';
-        dashSec.style.display = 'none';
+      const fullName = document.getElementById('regFullName').value.trim();
+      const studentClass = document.getElementById('regClass').value;
+      const username = document.getElementById('regUsername').value.trim();
+      const password = document.getElementById('regPassword').value.trim();
+
+      const users = JSON.parse(localStorage.getItem('portal_users'));
+
+      if (users.some(u => u.username === username)) {
+        alert('Username already exists! Please choose another.');
         return;
       }
 
-      loginSec.style.display = 'none';
-      dashSec.style.display = 'block';
+      const newStudent = {
+        fullName,
+        class: studentClass,
+        username,
+        password,
+        role: "Student"
+      };
 
-      document.getElementById('userNameDisplay').textContent = currentUser.name;
-      const roleBadge = document.getElementById('userRoleDisplay');
-      roleBadge.textContent = currentUser.role;
-      roleBadge.className = `role-badge role-${currentUser.role.toLowerCase()}`;
+      users.push(newStudent);
+      localStorage.setItem('portal_users', JSON.stringify(users));
 
-      if (currentUser.role === 'Teacher') {
-        teacherPanel.style.display = 'block';
-        teacherSubPanel.style.display = 'block';
-        viewPanel.parentElement.style.gridTemplateColumns = '1fr 2fr';
-        renderSubmissions();
-      } else {
-        // Students cannot upload new assessments
-        teacherPanel.style.display = 'none';
-        teacherSubPanel.style.display = 'none';
-        viewPanel.parentElement.style.gridTemplateColumns = '1fr';
-      }
-
-      renderAssessments();
+      alert(`Student ${fullName} registered for ${studentClass}!`);
+      e.target.reset();
+      renderStudentList();
     }
 
-    // TEACHER: ADD ASSESSMENT TO JSON
+    // TEACHER: DOWNLOAD CSV OF CREDENTIALS
+    function downloadStudentCSV() {
+      const users = JSON.parse(localStorage.getItem('portal_users'));
+      const students = users.filter(u => u.role === 'Student');
+
+      if (students.length === 0) {
+        alert('No registered students to export.');
+        return;
+      }
+
+      let csvContent = "data:text/csv;charset=utf-8,Full Name,Class,Username,Password\n";
+      students.forEach(s => {
+        csvContent += `"${s.fullName}","${s.class}","${s.username}","${s.password}"\n`;
+      });
+
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", "Registered_Students_Credentials.csv");
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // TEACHER: CREATE ASSESSMENT
     function handleCreateAssessment(e) {
       e.preventDefault();
       if (currentUser.role !== 'Teacher') return;
@@ -266,7 +350,6 @@
 
       const resources = JSON.parse(localStorage.getItem('portal_resources'));
 
-      // Format matching your exact JSON structure
       const newAssessment = {
         "id": Date.now(),
         "class": targetClass,
@@ -281,12 +364,12 @@
       resources.push(newAssessment);
       localStorage.setItem('portal_resources', JSON.stringify(resources));
 
-      alert('Assessment added to JSON repository!');
+      alert('Assessment successfully created!');
       document.getElementById('assessmentForm').reset();
       renderAssessments();
     }
 
-    // STUDENT: SUBMIT WORK
+    // STUDENT: SUBMIT ATTEMPT
     function handleStudentSubmission(testId, testTitle, fileInput) {
       if (!fileInput.files.length) return;
       
@@ -297,7 +380,8 @@
         id: Date.now(),
         testId: testId,
         testTitle: testTitle,
-        studentName: currentUser.name,
+        studentName: currentUser.fullName,
+        studentClass: currentUser.class,
         fileName: fileName,
         fileUrl: "uploads/submissions/" + fileName,
         submittedAt: new Date().toLocaleString()
@@ -306,23 +390,65 @@
       submissions.push(newSubmission);
       localStorage.setItem('portal_submissions', JSON.stringify(submissions));
 
-      alert(`Submission uploaded successfully for: ${testTitle}`);
+      alert(`Submitted work for: ${testTitle}`);
       renderAssessments();
       if (currentUser.role === 'Teacher') renderSubmissions();
     }
 
-    // RENDER ASSESSMENTS FROM JSON
+    // DYNAMIC UI UPDATE
+    function updatePortalUI() {
+      const loginSec = document.getElementById('loginSection');
+      const dashSec = document.getElementById('dashboardSection');
+      const teacherControls = document.getElementById('teacherControls');
+      const teacherReports = document.getElementById('teacherReports');
+      const viewPanel = document.getElementById('assessmentsViewPanel');
+
+      if (!currentUser) {
+        loginSec.style.display = 'block';
+        dashSec.style.display = 'none';
+        return;
+      }
+
+      loginSec.style.display = 'none';
+      dashSec.style.display = 'block';
+
+      document.getElementById('userNameDisplay').textContent = currentUser.fullName;
+      const roleBadge = document.getElementById('userRoleDisplay');
+      roleBadge.textContent = currentUser.role;
+      roleBadge.className = `role-badge role-${currentUser.role.toLowerCase()}`;
+      
+      document.getElementById('userClassDisplay').textContent = currentUser.class ? `(${currentUser.class})` : '';
+
+      if (currentUser.role === 'Teacher') {
+        teacherControls.style.display = 'block';
+        teacherReports.style.display = 'grid';
+        viewPanel.parentElement.style.gridTemplateColumns = '1fr 2fr';
+        renderStudentList();
+        renderSubmissions();
+      } else {
+        teacherControls.style.display = 'none';
+        teacherReports.style.display = 'none';
+        viewPanel.parentElement.style.gridTemplateColumns = '1fr';
+      }
+
+      renderAssessments();
+    }
+
+    // RENDER ASSESSMENTS
     function renderAssessments() {
       const container = document.getElementById('assessmentsContainer');
       const resources = JSON.parse(localStorage.getItem('portal_resources'));
       const submissions = JSON.parse(localStorage.getItem('portal_submissions'));
-      
-      // Filter for item categories containing deadlines/assessments
-      const assessments = resources.filter(r => r.category === "Question Paper");
       const now = new Date();
 
+      // Students see assessments matching their registered class; teachers see all
+      let assessments = resources.filter(r => r.category === "Question Paper");
+      if (currentUser.role === 'Student') {
+        assessments = assessments.filter(a => a.class === currentUser.class);
+      }
+
       if (assessments.length === 0) {
-        container.innerHTML = '<p style="color:#64748b;">No active assessments found.</p>';
+        container.innerHTML = `<p style="color:#64748b;">No active assessments found ${currentUser.role === 'Student' ? 'for ' + currentUser.class : ''}.</p>`;
         return;
       }
 
@@ -331,9 +457,8 @@
         const deadlineDate = hasDeadline ? new Date(item.deadline) : null;
         const isExpired = hasDeadline && (now > deadlineDate);
 
-        // Check if current student has submitted
         const mySubmission = currentUser.role === 'Student' 
-          ? submissions.find(s => s.testId === item.id && s.studentName === currentUser.name)
+          ? submissions.find(s => s.testId === item.id && s.studentName === currentUser.fullName)
           : null;
 
         return `
@@ -378,7 +503,29 @@
       }).join('');
     }
 
-    // RENDER SUBMISSIONS FOR TEACHER
+    // RENDER REGISTERED STUDENTS LIST
+    function renderStudentList() {
+      const container = document.getElementById('studentListContainer');
+      const users = JSON.parse(localStorage.getItem('portal_users'));
+      const students = users.filter(u => u.role === 'Student');
+
+      if (students.length === 0) {
+        container.innerHTML = '<p style="color:#64748b; font-size:0.9rem;">No students registered yet.</p>';
+        return;
+      }
+
+      container.innerHTML = students.map(s => `
+        <div class="student-item">
+          <div>
+            <strong>${s.fullName}</strong> <span class="role-badge role-student">${s.class}</span>
+            <br>
+            <small style="color:#64748b;">User: <code>${s.username}</code> | Pass: <code>${s.password}</code></small>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // RENDER SUBMISSIONS
     function renderSubmissions() {
       const container = document.getElementById('submissionsContainer');
       const submissions = JSON.parse(localStorage.getItem('portal_submissions'));
@@ -391,7 +538,9 @@
       container.innerHTML = submissions.map(sub => `
         <div class="sub-item">
           <div>
-            <strong>${sub.studentName}</strong> submitted <em>${sub.testTitle}</em>
+            <strong>${sub.studentName} (${sub.studentClass})</strong>
+            <br>
+            <small style="color:#475569;">${sub.testTitle}</small>
             <br>
             <small style="color:#64748b;"><i class="fa-regular fa-clock"></i> ${sub.submittedAt}</small>
           </div>
@@ -402,7 +551,7 @@
       `).join('');
     }
 
-    // Run on startup
+    // Run initial state update
     updatePortalUI();
   </script>
 </body>
