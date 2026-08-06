@@ -1,7 +1,8 @@
 /* ==========================================================================
-   ASSESSMENT PORTAL ENGINE (app.js)
+   SAMCAM SOLUTIONS - ASSESSMENT PORTAL ENGINE (script.js)
    ========================================================================== */
 
+// Shared Portal State
 let currentUser = null;
 let editingUsername = null;
 
@@ -13,8 +14,8 @@ const rootTeacher = {
   role: "Teacher"
 };
 
-// Default Seed Assessments
-const initialJSON = [
+// Default Seed Assessment
+const initialAssessments = [
   {
     "id": 1,
     "class": "S4",
@@ -28,15 +29,15 @@ const initialJSON = [
 ];
 
 /* ==========================================================================
-   INITIALIZATION & PERSISTENCE
+   INITIALIZATION & SESSION PERSISTENCE
    ========================================================================== */
 document.addEventListener("DOMContentLoaded", () => {
-  // Seed initial local storage state
+  // Initialize LocalStorage defaults if empty
   if (!localStorage.getItem('portal_users')) {
     localStorage.setItem('portal_users', JSON.stringify([rootTeacher]));
   }
   if (!localStorage.getItem('portal_resources')) {
-    localStorage.setItem('portal_resources', JSON.stringify(initialJSON));
+    localStorage.setItem('portal_resources', JSON.stringify(initialAssessments));
   }
   if (!localStorage.getItem('portal_submissions')) {
     localStorage.setItem('portal_submissions', JSON.stringify([]));
@@ -44,11 +45,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Restore Active User Session
   currentUser = JSON.parse(localStorage.getItem('portal_session')) || null;
+
+  // Render Initial View
   updatePortalUI();
 });
 
 /* ==========================================================================
-   AUTHENTICATION MODULE
+   1. AUTHENTICATION MODULE
    ========================================================================== */
 function handleLogin(e) {
   e.preventDefault();
@@ -76,7 +79,7 @@ function handleLogout() {
 }
 
 /* ==========================================================================
-   SINGLE & BULK STUDENT REGISTRATION
+   2. STUDENT REGISTRATION & BULK IMPORT
    ========================================================================== */
 function handleRegisterStudent(e) {
   e.preventDefault();
@@ -103,12 +106,12 @@ function handleRegisterStudent(e) {
   });
 
   localStorage.setItem('portal_users', JSON.stringify(users));
-  alert(`Student "${fullName}" successfully registered for ${studentClass}!`);
+  alert(`Student "${fullName}" registered successfully for ${studentClass}!`);
   e.target.reset();
 }
 
 function generateStrongPassword() {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
   let pwd = "";
   for (let i = 0; i < 8; i++) {
     pwd += chars.charAt(Math.floor(Math.random() * chars.length));
@@ -133,14 +136,9 @@ function handleBulkImport() {
   reader.onload = function(e) {
     try {
       const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+      const workbook = XLSX.read(data, { type: 'array' });
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-
-      const jsonRows = XLSX.utils.sheet_to_json(firstSheet, {
-        header: 1,
-        defval: "",
-        blankrows: false
-      });
+      const jsonRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "", blankrows: false });
 
       const users = JSON.parse(localStorage.getItem('portal_users')) || [];
       let addedCount = 0;
@@ -159,15 +157,12 @@ function handleBulkImport() {
 
         if (!rawName && row[0]) rawName = String(row[0]).trim();
 
-        // Skip CSV/Excel header row if present
+        // Skip headers
         if (index === 0 && (
           rawName.toLowerCase().includes('name') ||
           rawName.toLowerCase().includes('student') ||
-          rawName.toLowerCase().includes('s/n') ||
-          rawName.toLowerCase().includes('no.')
-        )) {
-          return;
-        }
+          rawName.toLowerCase().includes('s/n')
+        )) return;
 
         if (rawName && isNaN(rawName)) {
           const nameParts = rawName.trim().split(/\s+/);
@@ -200,7 +195,7 @@ function handleBulkImport() {
       fileInput.value = '';
     } catch (err) {
       console.error(err);
-      alert('Error parsing file. Please verify it is a valid Excel or CSV spreadsheet.');
+      alert('Error parsing file. Please verify it is a valid Excel or CSV file.');
     }
   };
 
@@ -231,7 +226,7 @@ function downloadStudentCSV() {
 }
 
 /* ==========================================================================
-   STUDENT MANAGEMENT MODAL CONTROLS
+   3. STUDENT MANAGEMENT MODAL CONTROLS
    ========================================================================== */
 function openStudentModal() {
   const modal = document.getElementById('studentModal');
@@ -332,7 +327,7 @@ function saveStudentEdit(oldUsername) {
   let users = JSON.parse(localStorage.getItem('portal_users')) || [];
 
   if (newUsername.toLowerCase() !== oldUsername.toLowerCase() && users.some(u => u.username.toLowerCase() === newUsername.toLowerCase())) {
-    alert('The username specified is already taken.');
+    alert('Username is already taken.');
     return;
   }
 
@@ -350,7 +345,7 @@ function saveStudentEdit(oldUsername) {
 }
 
 function deleteStudent(username) {
-  if (!confirm(`Are you sure you want to delete student account "${username}"?`)) return;
+  if (!confirm(`Are you sure you want to delete student "${username}"?`)) return;
 
   let users = JSON.parse(localStorage.getItem('portal_users')) || [];
   users = users.filter(u => u.username !== username);
@@ -364,20 +359,20 @@ function deleteAllStudents() {
   const studentCount = users.filter(u => u.role === 'Student').length;
 
   if (studentCount === 0) {
-    alert('No student records available to delete.');
+    alert('No student accounts to delete.');
     return;
   }
 
-  if (confirm(`WARNING: Are you sure you want to delete ALL ${studentCount} registered student accounts?`)) {
+  if (confirm(`WARNING: Are you sure you want to delete ALL ${studentCount} registered students?`)) {
     users = users.filter(u => u.role !== 'Student');
     localStorage.setItem('portal_users', JSON.stringify(users));
     renderStudentModalTable();
-    alert('All student accounts have been permanently deleted.');
+    alert('All student accounts deleted.');
   }
 }
 
 /* ==========================================================================
-   ASSESSMENT & SUBMISSION LOGIC
+   4. ASSESSMENT & SUBMISSION ENGINE
    ========================================================================== */
 function handleCreateAssessment(e) {
   e.preventDefault();
@@ -437,7 +432,7 @@ function handleStudentSubmission(testId, testTitle, fileInput) {
 }
 
 /* ==========================================================================
-   UI STATE & REPORT RENDERING
+   5. PORTAL UI RENDERERS
    ========================================================================== */
 function updatePortalUI() {
   const loginSec = document.getElementById('loginSection');
