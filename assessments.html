@@ -267,9 +267,15 @@
   <div id="studentModal" class="modal-overlay">
     <div class="modal-content">
       <div class="modal-header">
-        <h3><i class="fa-solid fa-users-gear"></i> Manage Registered Students</h3>
-        <button onclick="closeStudentModal()" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
-      </div>
+  <h3><i class="fa-solid fa-users-gear"></i> Manage Registered Students</h3>
+  <div style="display: flex; align-items: center; gap: 0.75rem;">
+    <!-- Delete All Students Action Button -->
+    <button onclick="deleteAllStudents()" class="btn-action btn-danger" title="Delete All Students">
+      <i class="fa-solid fa-trash-can"></i> Delete All Students
+    </button>
+    <button onclick="closeStudentModal()" class="modal-close" title="Close Modal"><i class="fa-solid fa-xmark"></i></button>
+  </div>
+</div>
       <div style="margin-bottom: 1rem;">
         <input type="text" id="studentSearchInput" placeholder="Search by name, class, or username..." onkeyup="renderStudentModalTable()" style="padding: 0.5rem; width: 100%; border: 1px solid #cbd5e1; border-radius: 6px;">
       </div>
@@ -580,6 +586,27 @@
       }).join('');
     }
 
+    // Render row in default view state (Icon-only buttons)
+return `
+  <tr>
+    <td style="text-align:center;">${index + 1}</td>
+    <td><strong>${s.fullName}</strong></td>
+    <td>${s.class}</td>
+    <td><code>${s.username}</code></td>
+    <td><code>${s.password}</code></td>
+    <td style="text-align:center;">
+      <div style="display:inline-flex; gap:0.4rem;">
+        <button onclick="enableStudentEdit('${s.username}')" class="btn-action btn-edit" title="Edit Student" style="padding:0.35rem 0.55rem;">
+          <i class="fa-solid fa-pen-to-square"></i>
+        </button>
+        <button onclick="deleteStudent('${s.username}')" class="btn-action btn-danger" title="Delete Student" style="padding:0.35rem 0.55rem;">
+          <i class="fa-solid fa-trash"></i>
+        </button>
+      </div>
+    </td>
+  </tr>
+`;
+
     function enableStudentEdit(username) {
       editingUsername = username;
       renderStudentModalTable();
@@ -589,6 +616,26 @@
       editingUsername = null;
       renderStudentModalTable();
     }
+
+    function deleteAllStudents() {
+  let users = JSON.parse(localStorage.getItem('portal_users')) || [];
+  const studentCount = users.filter(u => u.role === 'Student').length;
+
+  if (studentCount === 0) {
+    alert('There are no registered students to delete.');
+    return;
+  }
+
+  if (!confirm(`WARNING: Are you sure you want to permanently delete ALL ${studentCount} registered student accounts? This action cannot be undone.`)) {
+    return;
+  }
+
+  // Preserve teacher and administrative accounts
+  users = users.filter(u => u.role !== 'Student');
+  localStorage.setItem('portal_users', JSON.stringify(users));
+  renderStudentModalTable();
+  alert('All student accounts have been successfully deleted.');
+}
 
     function saveStudentEdit(oldUsername) {
       const newFullName = document.getElementById('editFullName').value.trim();
