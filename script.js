@@ -32,10 +32,13 @@ const initialAssessments = [
    INITIALIZATION & SESSION PERSISTENCE
    ========================================================================== */
 document.addEventListener("DOMContentLoaded", () => {
-  // Initialize LocalStorage defaults if empty
-  if (!localStorage.getItem('portal_users')) {
-    localStorage.setItem('portal_users', JSON.stringify([rootTeacher]));
+  // Ensure default root teacher exists in LocalStorage
+  let users = JSON.parse(localStorage.getItem('portal_users')) || [];
+  if (!users.some(u => u.username.toLowerCase() === rootTeacher.username.toLowerCase())) {
+    users.unshift(rootTeacher);
+    localStorage.setItem('portal_users', JSON.stringify(users));
   }
+
   if (!localStorage.getItem('portal_resources')) {
     localStorage.setItem('portal_resources', JSON.stringify(initialAssessments));
   }
@@ -53,7 +56,7 @@ document.addEventListener("DOMContentLoaded", () => {
 /* ==========================================================================
    1. AUTHENTICATION MODULE
    ========================================================================== */
-function handleLogin(e) {
+window.handleLogin = function(e) {
   e.preventDefault();
   const userVal = document.getElementById('loginUsername').value.trim();
   const passVal = document.getElementById('loginPassword').value.trim();
@@ -70,18 +73,18 @@ function handleLogin(e) {
   } else {
     if (errEl) errEl.style.display = 'block';
   }
-}
+};
 
-function handleLogout() {
+window.handleLogout = function() {
   localStorage.removeItem('portal_session');
   currentUser = null;
   updatePortalUI();
-}
+};
 
 /* ==========================================================================
    2. STUDENT REGISTRATION & BULK IMPORT
    ========================================================================== */
-function handleRegisterStudent(e) {
+window.handleRegisterStudent = function(e) {
   e.preventDefault();
   if (!currentUser || currentUser.role !== 'Teacher') return;
 
@@ -108,7 +111,7 @@ function handleRegisterStudent(e) {
   localStorage.setItem('portal_users', JSON.stringify(users));
   alert(`Student "${fullName}" registered successfully for ${studentClass}!`);
   e.target.reset();
-}
+};
 
 function generateStrongPassword() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
@@ -119,7 +122,7 @@ function generateStrongPassword() {
   return pwd;
 }
 
-function handleBulkImport() {
+window.handleBulkImport = function() {
   if (!currentUser || currentUser.role !== 'Teacher') return;
 
   const fileInput = document.getElementById('bulkStudentFile');
@@ -200,9 +203,9 @@ function handleBulkImport() {
   };
 
   reader.readAsArrayBuffer(file);
-}
+};
 
-function downloadStudentCSV() {
+window.downloadStudentCSV = function() {
   const users = JSON.parse(localStorage.getItem('portal_users')) || [];
   const students = users.filter(u => u.role === 'Student');
 
@@ -223,25 +226,25 @@ function downloadStudentCSV() {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
-}
+};
 
 /* ==========================================================================
    3. STUDENT MANAGEMENT MODAL CONTROLS
    ========================================================================== */
-function openStudentModal() {
+window.openStudentModal = function() {
   const modal = document.getElementById('studentModal');
   if (modal) modal.style.display = 'flex';
   editingUsername = null;
   renderStudentModalTable();
-}
+};
 
-function closeStudentModal() {
+window.closeStudentModal = function() {
   const modal = document.getElementById('studentModal');
   if (modal) modal.style.display = 'none';
   editingUsername = null;
-}
+};
 
-function renderStudentModalTable() {
+window.renderStudentModalTable = function() {
   const tbody = document.getElementById('studentModalTableBody');
   const searchInput = document.getElementById('studentSearchInput');
   const searchFilter = searchInput ? searchInput.value.toLowerCase().trim() : '';
@@ -301,19 +304,19 @@ function renderStudentModalTable() {
       </tr>
     `;
   }).join('');
-}
+};
 
-function enableStudentEdit(username) {
+window.enableStudentEdit = function(username) {
   editingUsername = username;
   renderStudentModalTable();
-}
+};
 
-function cancelStudentEdit() {
+window.cancelStudentEdit = function() {
   editingUsername = null;
   renderStudentModalTable();
-}
+};
 
-function saveStudentEdit(oldUsername) {
+window.saveStudentEdit = function(oldUsername) {
   const newFullName = document.getElementById('editFullName').value.trim();
   const newClass = document.getElementById('editClass').value;
   const newUsername = document.getElementById('editUsername').value.trim();
@@ -342,9 +345,9 @@ function saveStudentEdit(oldUsername) {
     editingUsername = null;
     renderStudentModalTable();
   }
-}
+};
 
-function deleteStudent(username) {
+window.deleteStudent = function(username) {
   if (!confirm(`Are you sure you want to delete student "${username}"?`)) return;
 
   let users = JSON.parse(localStorage.getItem('portal_users')) || [];
@@ -352,9 +355,9 @@ function deleteStudent(username) {
 
   localStorage.setItem('portal_users', JSON.stringify(users));
   renderStudentModalTable();
-}
+};
 
-function deleteAllStudents() {
+window.deleteAllStudents = function() {
   let users = JSON.parse(localStorage.getItem('portal_users')) || [];
   const studentCount = users.filter(u => u.role === 'Student').length;
 
@@ -369,12 +372,12 @@ function deleteAllStudents() {
     renderStudentModalTable();
     alert('All student accounts deleted.');
   }
-}
+};
 
 /* ==========================================================================
    4. ASSESSMENT & SUBMISSION ENGINE
    ========================================================================== */
-function handleCreateAssessment(e) {
+window.handleCreateAssessment = function(e) {
   e.preventDefault();
   if (!currentUser || currentUser.role !== 'Teacher') return;
 
@@ -404,9 +407,9 @@ function handleCreateAssessment(e) {
   alert('Assessment published successfully!');
   e.target.reset();
   renderAssessments();
-}
+};
 
-function handleStudentSubmission(testId, testTitle, fileInput) {
+window.handleStudentSubmission = function(testId, testTitle, fileInput) {
   if (!fileInput || !fileInput.files.length) return;
 
   const fileName = fileInput.files[0].name;
@@ -429,7 +432,7 @@ function handleStudentSubmission(testId, testTitle, fileInput) {
   alert(`Submitted answer file for: ${testTitle}`);
   renderAssessments();
   if (currentUser.role === 'Teacher') renderSubmissions();
-}
+};
 
 /* ==========================================================================
    5. PORTAL UI RENDERERS
@@ -504,7 +507,7 @@ function renderAssessments() {
     const deadlineDate = new Date(a.deadline);
     const isExpired = now > deadlineDate;
     const studentSub = (currentUser && currentUser.role === 'Student') ? submissions.find(s => s.testId === a.id && s.studentName === currentUser.fullName) : null;
-    const escapedTitle = a.title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    const safeTitle = encodeURIComponent(a.title);
 
     return `
       <div class="test-card">
@@ -527,7 +530,7 @@ function renderAssessments() {
               ` : `
                 <label class="btn-action btn-upload">
                   <i class="fa-solid fa-file-arrow-up"></i> Upload Answer
-                  <input type="file" style="display:none;" onchange="handleStudentSubmission(${a.id}, '${escapedTitle}', this)">
+                  <input type="file" style="display:none;" onchange="handleStudentSubmission(${a.id}, decodeURIComponent('${safeTitle}'), this)">
                 </label>
               `}
             `}
