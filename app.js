@@ -210,25 +210,46 @@ function renderCards() {
 /* ==========================================================================
    AUTHENTICATION & SESSION MANAGEMENT
    ========================================================================== */
-function handleLogin(e) {
-  e.preventDefault();
-  const userVal = document.getElementById('loginUsername').value.trim();
-  const passVal = document.getElementById('loginPassword').value.trim();
-  const errEl = document.getElementById('loginError');
+function handleLogin(event) {
+  event.preventDefault();
+  
+  // 1. Trim whitespace and convert username to lowercase for matching
+  const usernameInput = document.getElementById('loginUsername').value.trim().toLowerCase();
+  const passwordInput = document.getElementById('loginPassword').value.trim();
+  const errorElement = document.getElementById('loginError');
 
-  const users = JSON.parse(localStorage.getItem('portal_users')) || [];
-  const foundUser = users.find(u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal);
+  // Retrieve saved students from localStorage
+  const students = JSON.parse(localStorage.getItem('students')) || [];
 
-  if (foundUser) {
-    if (errEl) errEl.style.display = 'none';
-    currentUser = foundUser;
-    localStorage.setItem('portal_session', JSON.stringify(currentUser));
-    updatePortalUI();
+  // 2. Check for Teacher / Admin hardcoded credentials first
+  if (usernameInput === 'admin' && passwordInput === 'admin123') {
+    // Handle teacher login...
+    return;
+  }
+
+  // 3. Find matching student record (case-insensitive username check)
+  const studentMatch = students.find(s => 
+    s.username.toLowerCase() === usernameInput && s.password === passwordInput
+  );
+
+  if (studentMatch) {
+    errorElement.style.display = 'none';
+    
+    // Save current session
+    localStorage.setItem('currentUser', JSON.stringify({
+      name: studentMatch.fullName,
+      role: 'student',
+      studentClass: studentMatch.class
+    }));
+
+    // Update UI & show dashboard
+    showDashboard(studentMatch);
   } else {
-    if (errEl) errEl.style.display = 'block';
+    // Show error message
+    errorElement.innerText = "Invalid username or password!";
+    errorElement.style.display = 'block';
   }
 }
-
 function handleLogout() {
   localStorage.removeItem('portal_session');
   currentUser = null;
