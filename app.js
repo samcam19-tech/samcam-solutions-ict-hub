@@ -213,39 +213,48 @@ function renderCards() {
 function handleLogin(event) {
   event.preventDefault();
   
-  // 1. Trim whitespace and convert username to lowercase for matching
   const usernameInput = document.getElementById('loginUsername').value.trim().toLowerCase();
   const passwordInput = document.getElementById('loginPassword').value.trim();
   const errorElement = document.getElementById('loginError');
 
-  // Retrieve saved students from localStorage
-  const students = JSON.parse(localStorage.getItem('students')) || [];
+  // FIX 1: Read from 'portal_users' instead of 'students'
+  const users = JSON.parse(localStorage.getItem('portal_users')) || [];
 
-  // 2. Check for Teacher / Admin hardcoded credentials first
+  // Check for Teacher / Admin hardcoded credentials
   if (usernameInput === 'admin' && passwordInput === 'admin123') {
-    // Handle teacher login...
+    errorElement.style.display = 'none';
+    
+    const adminUser = {
+      name: 'Administrator',
+      role: 'Teacher', // FIX 2: Capitalized to match guard clauses in registration
+      studentClass: 'ALL'
+    };
+
+    localStorage.setItem('currentUser', JSON.stringify(adminUser));
+    
+    if (typeof showDashboard === 'function') showDashboard(adminUser);
     return;
   }
 
-  // 3. Find matching student record (case-insensitive username check)
-  const studentMatch = students.find(s => 
-    s.username.toLowerCase() === usernameInput && s.password === passwordInput
+  // Find matching user (handles string types cleanly)
+  const userMatch = users.find(u => 
+    String(u.username || '').toLowerCase() === usernameInput && 
+    String(u.password || '') === passwordInput
   );
 
-  if (studentMatch) {
+  if (userMatch) {
     errorElement.style.display = 'none';
     
-    // Save current session
-    localStorage.setItem('currentUser', JSON.stringify({
-      name: studentMatch.fullName,
-      role: 'student',
-      studentClass: studentMatch.class
-    }));
+    const sessionUser = {
+      name: userMatch.fullName,
+      role: userMatch.role || 'Student', // Capitalized 'Student'
+      studentClass: userMatch.class
+    };
 
-    // Update UI & show dashboard
-    showDashboard(studentMatch);
+    localStorage.setItem('currentUser', JSON.stringify(sessionUser));
+
+    if (typeof showDashboard === 'function') showDashboard(sessionUser);
   } else {
-    // Show error message
     errorElement.innerText = "Invalid username or password!";
     errorElement.style.display = 'block';
   }
