@@ -87,6 +87,24 @@ body {
   border: 1px solid #bfdbfe;
 }
 
+.nav-portal-btn {
+  background-color: #2563eb;
+  color: #ffffff;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.nav-portal-btn:hover {
+  background-color: #1d4ed8;
+}
+
 /* HERO & COVER BACKGROUND */
 .cover-hero {
   background: linear-gradient(135deg, rgba(15, 23, 42, 0.88), rgba(30, 41, 59, 0.82)), url('images/banner-bg.png');
