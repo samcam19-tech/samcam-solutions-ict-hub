@@ -212,19 +212,23 @@ function renderCards() {
 /* ==========================================================================
    AUTHENTICATION & SESSION MANAGEMENT
    ========================================================================== */
-function handleLogin(event) {
-  event.preventDefault();
+// 1. LOGIN HANDLER
+function handleLogin(e) {
+  // STRICT PREVENT DEFAULT TO STOP PAGE REFRESH
+  if (e && typeof e.preventDefault === 'function') {
+    e.preventDefault();
+  }
 
   const usernameInput = document.getElementById('loginUsername')?.value.trim().toLowerCase() || '';
   const passwordInput = document.getElementById('loginPassword')?.value.trim() || '';
   const errorElement = document.getElementById('loginError');
 
-  // Load registered users safely
+  // Load registered users from localStorage
   const users = JSON.parse(localStorage.getItem('portal_users')) || [];
 
   let matchedUser = null;
 
-  // 1. Check Admin Credentials
+  // Check Teacher Account
   if (usernameInput === 'admin' && passwordInput === 'admin123') {
     matchedUser = {
       fullName: 'Administrator',
@@ -232,7 +236,7 @@ function handleLogin(event) {
       class: 'ALL'
     };
   } else {
-    // 2. Check Registered Student Credentials
+    // Check Student Accounts
     const found = users.find(u => 
       String(u.username || '').trim().toLowerCase() === usernameInput && 
       String(u.password || '').trim() === passwordInput
@@ -247,38 +251,45 @@ function handleLogin(event) {
     }
   }
 
-  // 3. Handle Login Failure
   if (!matchedUser) {
     if (errorElement) {
       errorElement.innerText = "Invalid username or password!";
       errorElement.style.display = 'block';
     }
-    return;
+    return false;
   }
 
-  // 4. Handle Login Success
+  // Save authenticated session
   if (errorElement) errorElement.style.display = 'none';
-
-  // Update global session variable & LocalStorage
   currentUser = matchedUser;
   localStorage.setItem('currentUser', JSON.stringify(currentUser));
 
-  // Safely Toggle Views
+  // Render Portal Views
+  renderPortalDashboard();
+  return false;
+}
+
+// 2. PORTAL RENDER ENGINE
+function renderPortalDashboard() {
+  if (!currentUser) return;
+
   const loginSec = document.getElementById('loginSection');
   const dashSec = document.getElementById('dashboardSection');
-  
+
+  // Toggle Containers
   if (loginSec) loginSec.style.display = 'none';
   if (dashSec) dashSec.style.display = 'block';
 
-  // Safely Toggle Teacher Panels
   const isTeacher = currentUser.role === 'Teacher';
+
+  // Toggle Role-Based Controls
   const teacherCtrl = document.getElementById('teacherControls');
   const teacherRpt = document.getElementById('teacherReports');
 
   if (teacherCtrl) teacherCtrl.style.display = isTeacher ? 'block' : 'none';
-  if (teacherRpt) teacherRpt.style.display = isTeacher ? 'grid' : 'none';
+  if (teacherRpt) teacherRpt.style.display = isTeacher ? 'flex' : 'none';
 
-  // Safely Update Text Displays
+  // Populate User Display
   const nameDisp = document.getElementById('userNameDisplay');
   const roleDisp = document.getElementById('userRoleDisplay');
   const classDisp = document.getElementById('userClassDisplay');
@@ -292,19 +303,26 @@ function handleLogin(event) {
     classDisp.innerText = isTeacher ? '' : `(${currentUser.class})`;
   }
 
-  // Safely Trigger Dashboard Rendering if function exists
-  try {
-    if (typeof renderAssessments === 'function') renderAssessments();
-  } catch (err) {
-    console.error("Login succeeded, but renderAssessments failed:", err);
+  // Render Assessment Records safely
+  if (typeof renderAssessments === 'function') {
+    renderAssessments();
   }
 }
 
+// 3. LOGOUT HANDLER
 function handleLogout() {
-  localStorage.removeItem('portal_session');
+  localStorage.removeItem('currentUser');
   currentUser = null;
-  updatePortalUI();
+  window.location.reload();
 }
+
+// 4. AUTO-LOAD DASHBOARD ON PAGE REFRESH
+document.addEventListener('DOMContentLoaded', () => {
+  if (currentUser) {
+    renderPortalDashboard();
+  }
+});
+
 
 /* ==========================================================================
    STUDENT REGISTRATION & IMPORT FUNCTIONS
