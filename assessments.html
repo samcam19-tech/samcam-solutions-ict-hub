@@ -52,9 +52,21 @@
     .btn-upload { background: #16a34a; color: white; }
     .btn-disabled { background: #94a3b8; color: white; cursor: not-allowed; }
     .btn-secondary { background: #475569; color: white; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-edit { background: #eab308; color: white; }
 
     .sub-item, .student-item { font-size: 0.85rem; padding: 0.6rem; background: #f1f5f9; border-radius: 6px; margin-top: 0.5rem; display: flex; justify-content: space-between; align-items: center; }
     .error-msg { color: #dc2626; font-size: 0.85rem; margin-top: 0.5rem; display: none; }
+
+    /* Modal Overlay and Content Styles */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 1000; justify-content: center; align-items: center; }
+    .modal-content { background: #ffffff; border-radius: 12px; width: 95%; max-width: 900px; max-height: 85vh; overflow-y: auto; padding: 1.5rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2); position: relative; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #e2e8f0; padding-bottom: 1rem; margin-bottom: 1rem; }
+    .modal-close { background: transparent; border: none; font-size: 1.25rem; cursor: pointer; color: #64748b; }
+    .student-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .student-table th, .student-table td { padding: 0.6rem; border: 1px solid #cbd5e1; text-align: left; }
+    .student-table th { background: #f8fafc; font-weight: 600; color: #334155; }
+    .student-table input, .student-table select { width: 100%; padding: 0.3rem; font-size: 0.85rem; border: 1px solid #cbd5e1; border-radius: 4px; }
   </style>
 </head>
 <body>
@@ -223,14 +235,19 @@
       <!-- TEACHER ONLY: EXPORT DATA & SUBMISSIONS -->
       <div id="teacherReports" style="display:none;" class="portal-grid">
         
-        <!-- EXPORT CREDENTIALS (DETAILS HIDDEN) -->
+        <!-- EXPORT CREDENTIALS (WITH VIEW/EDIT/DELETE LINK) -->
         <div class="card-box">
           <div style="display:flex; flex-direction:column; gap:0.8rem; align-items:flex-start;">
             <h3 style="margin:0;"><i class="fa-solid fa-users"></i> Registered Student Credentials</h3>
-            <p style="font-size: 0.85rem; color: #64748b; margin:0;">Download full class registration records including generated usernames and passwords.</p>
-            <button onclick="downloadStudentCSV()" class="btn-action btn-secondary">
-              <i class="fa-solid fa-file-csv"></i> Download CSV
-            </button>
+            <p style="font-size: 0.85rem; color: #64748b; margin:0;">Download full class registration records or manage individual student accounts.</p>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+              <button onclick="downloadStudentCSV()" class="btn-action btn-secondary">
+                <i class="fa-solid fa-file-csv"></i> Download CSV
+              </button>
+              <a href="javascript:void(0)" onclick="openStudentModal()" class="btn-action btn-download" style="text-decoration:none;">
+                <i class="fa-solid fa-user-gear"></i> Manage Registered Students
+              </a>
+            </div>
           </div>
         </div>
 
@@ -244,6 +261,36 @@
 
     </div>
 
+  </div>
+
+  <!-- MODAL FOR VIEWING, EDITING & DELETING REGISTERED STUDENTS -->
+  <div id="studentModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-users-gear"></i> Manage Registered Students</h3>
+        <button onclick="closeStudentModal()" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <input type="text" id="studentSearchInput" placeholder="Search by name, class, or username..." onkeyup="renderStudentModalTable()" style="padding: 0.5rem; width: 100%; border: 1px solid #cbd5e1; border-radius: 6px;">
+      </div>
+      <div style="overflow-x: auto;">
+        <table class="student-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Full Name</th>
+              <th>Class</th>
+              <th>Username</th>
+              <th>Password</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="studentModalTableBody">
+            <!-- Student records render dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -281,6 +328,7 @@
     }
 
     let currentUser = JSON.parse(localStorage.getItem('portal_session')) || null;
+    let editingUsername = null;
 
     // LOGIN & LOGOUT HANDLERS
     function handleLogin(e) {
@@ -351,101 +399,92 @@
     }
 
     // TEACHER: BULK IMPORT STUDENTS FROM EXCEL/CSV
-    // TEACHER: BULK IMPORT STUDENTS FROM EXCEL/CSV (FIXED FOR ALL ROWS & COLUMNS)
-function handleBulkImport() {
-  if (currentUser.role !== 'Teacher') return;
+    function handleBulkImport() {
+      if (currentUser.role !== 'Teacher') return;
 
-  const fileInput = document.getElementById('bulkStudentFile');
-  const targetClass = document.getElementById('bulkClass').value;
+      const fileInput = document.getElementById('bulkStudentFile');
+      const targetClass = document.getElementById('bulkClass').value;
 
-  if (!fileInput.files.length) {
-    alert('Please select an Excel or CSV file to import.');
-    return;
-  }
-
-  const file = fileInput.files[0];
-  const reader = new FileReader();
-
-  reader.onload = function(e) {
-    const data = new Uint8Array(e.target.result);
-    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
-    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    
-    // Parse ALL rows, ignoring empty padding and ensuring full grid reading
-    const jsonRows = XLSX.utils.sheet_to_json(firstSheet, { 
-      header: 1, 
-      defval: "", 
-      blankrows: false 
-    });
-
-    const users = JSON.parse(localStorage.getItem('portal_users'));
-    let addedCount = 0;
-
-    jsonRows.forEach((row, index) => {
-      if (!row || row.length === 0) return;
-
-      // Scan across row cells to find the name (handles cases where Col A is S/N or ID)
-      let rawName = "";
-      for (let col = 0; col < row.length; col++) {
-        let val = String(row[col] || '').trim();
-        // Identify text values that are not pure numbers or index counts
-        if (val && isNaN(val) && val.length > 1) {
-          rawName = val;
-          break;
-        }
-      }
-
-      // Fallback to first column if no non-numeric text was identified
-      if (!rawName && row[0]) rawName = String(row[0]).trim();
-
-      // Skip header row if detected on the first line
-      if (index === 0 && (
-        rawName.toLowerCase().includes('name') || 
-        rawName.toLowerCase().includes('student') || 
-        rawName.toLowerCase().includes('s/n') || 
-        rawName.toLowerCase().includes('no.')
-      )) {
+      if (!fileInput.files.length) {
+        alert('Please select an Excel or CSV file to import.');
         return;
       }
 
-      // Process valid student name
-      if (rawName && isNaN(rawName)) {
-        // Extract LAST name for username
-        const nameParts = rawName.split(/\s+/);
-        let lastName = nameParts[nameParts.length - 1].toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (!lastName) lastName = "student";
+      const file = fileInput.files[0];
+      const reader = new FileReader();
 
-        // Handle username duplication
-        let baseUsername = lastName;
-        let finalUsername = baseUsername;
-        let counter = 1;
-
-        while (users.some(u => u.username.toLowerCase() === finalUsername.toLowerCase())) {
-          finalUsername = `${baseUsername}${counter}`;
-          counter++;
-        }
-
-        const generatedPassword = generateStrongPassword();
-
-        users.push({
-          fullName: rawName,
-          class: targetClass,
-          username: finalUsername,
-          password: generatedPassword,
-          role: "Student"
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        
+        const jsonRows = XLSX.utils.sheet_to_json(firstSheet, { 
+          header: 1, 
+          defval: "", 
+          blankrows: false 
         });
 
-        addedCount++;
-      }
-    });
+        const users = JSON.parse(localStorage.getItem('portal_users'));
+        let addedCount = 0;
 
-    localStorage.setItem('portal_users', JSON.stringify(users));
-    alert(`Successfully imported ${addedCount} student account(s) for ${targetClass}! Click "Download CSV" to retrieve credentials.`);
-    fileInput.value = '';
-  };
+        jsonRows.forEach((row, index) => {
+          if (!row || row.length === 0) return;
 
-  reader.readAsArrayBuffer(file);
-}
+          let rawName = "";
+          for (let col = 0; col < row.length; col++) {
+            let val = String(row[col] || '').trim();
+            if (val && isNaN(val) && val.length > 1) {
+              rawName = val;
+              break;
+            }
+          }
+
+          if (!rawName && row[0]) rawName = String(row[0]).trim();
+
+          if (index === 0 && (
+            rawName.toLowerCase().includes('name') || 
+            rawName.toLowerCase().includes('student') || 
+            rawName.toLowerCase().includes('s/n') || 
+            rawName.toLowerCase().includes('no.')
+          )) {
+            return;
+          }
+
+          if (rawName && isNaN(rawName)) {
+            const nameParts = rawName.split(/\s+/);
+            let lastName = nameParts[nameParts.length - 1].toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (!lastName) lastName = "student";
+
+            let baseUsername = lastName;
+            let finalUsername = baseUsername;
+            let counter = 1;
+
+            while (users.some(u => u.username.toLowerCase() === finalUsername.toLowerCase())) {
+              finalUsername = `${baseUsername}${counter}`;
+              counter++;
+            }
+
+            const generatedPassword = generateStrongPassword();
+
+            users.push({
+              fullName: rawName,
+              class: targetClass,
+              username: finalUsername,
+              password: generatedPassword,
+              role: "Student"
+            });
+
+            addedCount++;
+          }
+        });
+
+        localStorage.setItem('portal_users', JSON.stringify(users));
+        alert(`Successfully imported ${addedCount} student account(s) for ${targetClass}! Click "Download CSV" to retrieve credentials.`);
+        fileInput.value = '';
+      };
+
+      reader.readAsArrayBuffer(file);
+    }
 
     // TEACHER: DOWNLOAD CSV OF CREDENTIALS
     function downloadStudentCSV() {
@@ -469,6 +508,127 @@ function handleBulkImport() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+    }
+
+    // MODAL CONTROL FUNCTIONS FOR MANAGING STUDENTS
+    function openStudentModal() {
+      document.getElementById('studentModal').style.display = 'flex';
+      editingUsername = null;
+      renderStudentModalTable();
+    }
+
+    function closeStudentModal() {
+      document.getElementById('studentModal').style.display = 'none';
+      editingUsername = null;
+    }
+
+    function renderStudentModalTable() {
+      const tbody = document.getElementById('studentModalTableBody');
+      const searchFilter = document.getElementById('studentSearchInput').value.toLowerCase().trim();
+      const users = JSON.parse(localStorage.getItem('portal_users')) || [];
+      const students = users.filter(u => u.role === 'Student' && (
+        u.fullName.toLowerCase().includes(searchFilter) ||
+        u.class.toLowerCase().includes(searchFilter) ||
+        u.username.toLowerCase().includes(searchFilter)
+      ));
+
+      if (students.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#64748b;">No student accounts found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = students.map((s, index) => {
+        const isEditing = editingUsername === s.username;
+        if (isEditing) {
+          return `
+            <tr>
+              <td>${index + 1}</td>
+              <td><input type="text" id="editFullName" value="${s.fullName}"></td>
+              <td>
+                <select id="editClass">
+                  <option value="S1" ${s.class === 'S1' ? 'selected' : ''}>S.1</option>
+                  <option value="S2" ${s.class === 'S2' ? 'selected' : ''}>S.2</option>
+                  <option value="S3" ${s.class === 'S3' ? 'selected' : ''}>S.3</option>
+                  <option value="S4" ${s.class === 'S4' ? 'selected' : ''}>S.4</option>
+                  <option value="S5" ${s.class === 'S5' ? 'selected' : ''}>S.5</option>
+                  <option value="S6" ${s.class === 'S6' ? 'selected' : ''}>S.6</option>
+                </select>
+              </td>
+              <td><input type="text" id="editUsername" value="${s.username}"></td>
+              <td><input type="text" id="editPassword" value="${s.password}"></td>
+              <td style="display:flex; gap:0.3rem;">
+                <button onclick="saveStudentEdit('${s.username}')" class="btn-action btn-upload" style="padding:0.2rem 0.5rem;"><i class="fa-solid fa-check"></i> Save</button>
+                <button onclick="cancelStudentEdit()" class="btn-action btn-secondary" style="padding:0.2rem 0.5rem;"><i class="fa-solid fa-xmark"></i></button>
+              </td>
+            </tr>
+          `;
+        }
+
+        return `
+          <tr>
+            <td>${index + 1}</td>
+            <td><strong>${s.fullName}</strong></td>
+            <td>${s.class}</td>
+            <td><code>${s.username}</code></td>
+            <td><code>${s.password}</code></td>
+            <td style="display:flex; gap:0.3rem;">
+              <button onclick="enableStudentEdit('${s.username}')" class="btn-action btn-edit" style="padding:0.2rem 0.5rem;"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+              <button onclick="deleteStudent('${s.username}')" class="btn-action btn-danger" style="padding:0.2rem 0.5rem;"><i class="fa-solid fa-trash"></i> Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function enableStudentEdit(username) {
+      editingUsername = username;
+      renderStudentModalTable();
+    }
+
+    function cancelStudentEdit() {
+      editingUsername = null;
+      renderStudentModalTable();
+    }
+
+    function saveStudentEdit(oldUsername) {
+      const newFullName = document.getElementById('editFullName').value.trim();
+      const newClass = document.getElementById('editClass').value;
+      const newUsername = document.getElementById('editUsername').value.trim();
+      const newPassword = document.getElementById('editPassword').value.trim();
+
+      if (!newFullName || !newUsername || !newPassword) {
+        alert('All fields are required.');
+        return;
+      }
+
+      let users = JSON.parse(localStorage.getItem('portal_users')) || [];
+
+      if (newUsername.toLowerCase() !== oldUsername.toLowerCase() && users.some(u => u.username.toLowerCase() === newUsername.toLowerCase())) {
+        alert('The new username is already taken. Please enter a unique username.');
+        return;
+      }
+
+      const userIndex = users.findIndex(u => u.username === oldUsername);
+      if (userIndex !== -1) {
+        users[userIndex].fullName = newFullName;
+        users[userIndex].class = newClass;
+        users[userIndex].username = newUsername;
+        users[userIndex].password = newPassword;
+
+        localStorage.setItem('portal_users', JSON.stringify(users));
+        editingUsername = null;
+        renderStudentModalTable();
+      }
+    }
+
+    function deleteStudent(username) {
+      if (!confirm(`Are you sure you want to delete the account for "${username}"?`)) return;
+
+      let users = JSON.parse(localStorage.getItem('portal_users')) || [];
+      users = users.filter(u => u.username !== username);
+
+      localStorage.setItem('portal_users', JSON.stringify(users));
+      renderStudentModalTable();
     }
 
     // TEACHER: CREATE ASSESSMENT
