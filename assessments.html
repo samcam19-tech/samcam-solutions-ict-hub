@@ -351,76 +351,101 @@
     }
 
     // TEACHER: BULK IMPORT STUDENTS FROM EXCEL/CSV
-    function handleBulkImport() {
-      if (currentUser.role !== 'Teacher') return;
+    // TEACHER: BULK IMPORT STUDENTS FROM EXCEL/CSV (FIXED FOR ALL ROWS & COLUMNS)
+function handleBulkImport() {
+  if (currentUser.role !== 'Teacher') return;
 
-      const fileInput = document.getElementById('bulkStudentFile');
-      const targetClass = document.getElementById('bulkClass').value;
+  const fileInput = document.getElementById('bulkStudentFile');
+  const targetClass = document.getElementById('bulkClass').value;
 
-      if (!fileInput.files.length) {
-        alert('Please select an Excel or CSV file to import.');
+  if (!fileInput.files.length) {
+    alert('Please select an Excel or CSV file to import.');
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+
+  reader.onload = function(e) {
+    const data = new Uint8Array(e.target.result);
+    const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+    
+    // Parse ALL rows, ignoring empty padding and ensuring full grid reading
+    const jsonRows = XLSX.utils.sheet_to_json(firstSheet, { 
+      header: 1, 
+      defval: "", 
+      blankrows: false 
+    });
+
+    const users = JSON.parse(localStorage.getItem('portal_users'));
+    let addedCount = 0;
+
+    jsonRows.forEach((row, index) => {
+      if (!row || row.length === 0) return;
+
+      // Scan across row cells to find the name (handles cases where Col A is S/N or ID)
+      let rawName = "";
+      for (let col = 0; col < row.length; col++) {
+        let val = String(row[col] || '').trim();
+        // Identify text values that are not pure numbers or index counts
+        if (val && isNaN(val) && val.length > 1) {
+          rawName = val;
+          break;
+        }
+      }
+
+      // Fallback to first column if no non-numeric text was identified
+      if (!rawName && row[0]) rawName = String(row[0]).trim();
+
+      // Skip header row if detected on the first line
+      if (index === 0 && (
+        rawName.toLowerCase().includes('name') || 
+        rawName.toLowerCase().includes('student') || 
+        rawName.toLowerCase().includes('s/n') || 
+        rawName.toLowerCase().includes('no.')
+      )) {
         return;
       }
 
-      const file = fileInput.files[0];
-      const reader = new FileReader();
+      // Process valid student name
+      if (rawName && isNaN(rawName)) {
+        // Extract LAST name for username
+        const nameParts = rawName.split(/\s+/);
+        let lastName = nameParts[nameParts.length - 1].toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (!lastName) lastName = "student";
 
-      reader.onload = function(e) {
-        const data = new Uint8Array(e.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const jsonRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+        // Handle username duplication
+        let baseUsername = lastName;
+        let finalUsername = baseUsername;
+        let counter = 1;
 
-        const users = JSON.parse(localStorage.getItem('portal_users'));
-        let addedCount = 0;
+        while (users.some(u => u.username.toLowerCase() === finalUsername.toLowerCase())) {
+          finalUsername = `${baseUsername}${counter}`;
+          counter++;
+        }
 
-        jsonRows.forEach((row, index) => {
-          if (!row || row.length === 0) return;
+        const generatedPassword = generateStrongPassword();
 
-          let rawName = row[0] ? String(row[0]).trim() : '';
-          
-          // Skip header rows if present
-          if (index === 0 && (rawName.toLowerCase().includes('name') || rawName.toLowerCase().includes('student'))) {
-            return;
-          }
-
-          if (rawName) {
-            // Extract first name for base username
-            const nameParts = rawName.split(/\s+/);
-            let firstName = nameParts[0].toLowerCase().replace(/[^a-z0-9]/g, '');
-            if (!firstName) firstName = "student";
-
-            // Ensure unique username
-            let baseUsername = firstName;
-            let finalUsername = baseUsername;
-            let counter = 1;
-
-            while (users.some(u => u.username.toLowerCase() === finalUsername.toLowerCase())) {
-              finalUsername = `${baseUsername}${counter}`;
-              counter++;
-            }
-
-            const generatedPassword = generateStrongPassword();
-
-            users.push({
-              fullName: rawName,
-              class: targetClass,
-              username: finalUsername,
-              password: generatedPassword,
-              role: "Student"
-            });
-
-            addedCount++;
-          }
+        users.push({
+          fullName: rawName,
+          class: targetClass,
+          username: finalUsername,
+          password: generatedPassword,
+          role: "Student"
         });
 
-        localStorage.setItem('portal_users', JSON.stringify(users));
-        alert(`Successfully imported ${addedCount} student account(s) for ${targetClass}! Click "Download CSV" to retrieve credentials.`);
-        fileInput.value = '';
-      };
+        addedCount++;
+      }
+    });
 
-      reader.readAsArrayBuffer(file);
-    }
+    localStorage.setItem('portal_users', JSON.stringify(users));
+    alert(`Successfully imported ${addedCount} student account(s) for ${targetClass}! Click "Download CSV" to retrieve credentials.`);
+    fileInput.value = '';
+  };
+
+  reader.readAsArrayBuffer(file);
+}
 
     // TEACHER: DOWNLOAD CSV OF CREDENTIALS
     function downloadStudentCSV() {
