@@ -1,13 +1,12 @@
 /* ==========================================================================
-   GLOBAL VARIABLES & PORTAL INITIALIZATION
+   GLOBAL VARIABLES & INITIALIZATION
    ========================================================================== */
 let allResources = [];
 let currentClass = 'ALL';
 let currentCategory = 'ALL';
-// Ensure currentUser is accessible globally
-let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
+let editingUsername = null;
 
-// Root teacher account
+// Default Root Admin/Teacher Account
 const rootTeacher = {
   username: "admin",
   password: "admin",
@@ -15,7 +14,7 @@ const rootTeacher = {
   role: "Teacher"
 };
 
-// Base JSON for initial resources
+// Initial Seed Resources
 const initialJSON = [
   {
     "id": 1,
@@ -29,7 +28,7 @@ const initialJSON = [
   }
 ];
 
-// Initialize LocalStorage structures
+// Initialize Storage Repositories
 if (!localStorage.getItem('portal_users')) {
   localStorage.setItem('portal_users', JSON.stringify([rootTeacher]));
 }
@@ -41,45 +40,53 @@ if (!localStorage.getItem('portal_submissions')) {
 }
 
 let currentUser = JSON.parse(localStorage.getItem('portal_session')) || null;
-let editingUsername = null;
 
 /* ==========================================================================
-   DOM LOAD & EVENT INITIALIZATIONS
+   DOM LOAD & EVENT INITIALIZATION
    ========================================================================== */
 document.addEventListener("DOMContentLoaded", () => {
-  // 1. Fetch resource data from JSON (if grid exists on page)
-  const resourceGrid = document.getElementById('resource-grid');
-  if (resourceGrid) {
-    fetch('data.json')
-      .then(response => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then(data => {
-        allResources = data;
-        renderCards();
-      })
-      .catch(error => {
-        console.error("Error loading resources:", error);
-        resourceGrid.innerHTML = `
+  // Fetch resource data from external data.json
+  fetch('data.json')
+    .then(response => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      return response.json();
+    })
+    .then(data => {
+      allResources = data;
+      renderCards();
+    })
+    .catch(error => {
+      console.error("Error loading resources:", error);
+      const container = document.getElementById('resource-grid');
+      if (container) {
+        container.innerHTML = `
           <div style="grid-column: 1/-1; text-align: center; color: #ef4444; padding: 2.5rem; background: #fef2f2; border-radius: 12px; border: 1px solid #fecaca;">
             <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
             <p style="font-weight: 600;">Failed to load resource data.</p>
             <p style="font-size: 0.85rem; color: #991b1b;">Please check if data.json exists or is properly formatted.</p>
           </div>`;
-      });
-  }
+      }
+    });
 
-  // 2. Initialize Assessment Portal UI
+  // Attach login & assessment creation event listeners if elements exist
+  const loginForm = document.getElementById('loginForm');
+  if (loginForm) loginForm.addEventListener('submit', handleLogin);
+
+  const regForm = document.getElementById('registerStudentForm');
+  if (regForm) regForm.addEventListener('submit', handleRegisterStudent);
+
+  const assessmentForm = document.getElementById('assessmentForm');
+  if (assessmentForm) assessmentForm.addEventListener('submit', handleCreateAssessment);
+
+  // Initialize Portal Dashboard UI State
   updatePortalUI();
 });
 
 /* ==========================================================================
-   RESOURCE GRID & FILTERING LOGIC
+   RESOURCE GRID & SEARCH LOGIC
    ========================================================================== */
-// HELPER: Detect file type and return appropriate Icon + Label + CSS class
 function getFileTypeInfo(item) {
   let ext = '';
 
@@ -135,9 +142,9 @@ function searchResources() {
 }
 
 function updateActiveButtons(selector, targetBtn) {
-  const element = targetBtn || (window.event ? window.event.target : null);
+  const element = targetBtn || window.event?.target;
   if (!element) return;
-  
+
   document.querySelectorAll(selector).forEach(btn => btn.classList.remove('active'));
   element.classList.add('active');
 }
@@ -154,7 +161,7 @@ function renderCards() {
   const filtered = allResources.filter(item => {
     const matchesClass = currentClass === 'ALL' || item.class === currentClass;
     const matchesCat = currentCategory === 'ALL' || item.category === currentCategory;
-    
+
     const titleMatch = (item.title || '').toLowerCase().includes(query);
     const descMatch = (item.description || '').toLowerCase().includes(query);
     const classMatch = (item.class || '').toLowerCase().includes(query);
@@ -173,7 +180,7 @@ function renderCards() {
       <div style="grid-column: 1/-1; text-align: center; color: #64748b; padding: 3.5rem 1rem;">
         <i class="fa-solid fa-folder-open" style="font-size: 2.5rem; color: #cbd5e1; margin-bottom: 0.75rem;"></i>
         <h3 style="font-size: 1.1rem; color: #0f172a; font-weight: 700;">No resources found</h3>
-        <p style="font-size: 0.9rem;">Try adjusting your search query or switching your class/category filters.</p>
+        <p style="font-size: 0.9rem;">Try adjusting your search query or switching your filters.</p>
       </div>`;
     return;
   }
@@ -212,120 +219,33 @@ function renderCards() {
 /* ==========================================================================
    AUTHENTICATION & SESSION MANAGEMENT
    ========================================================================== */
-// 1. LOGIN HANDLER
 function handleLogin(e) {
-  // STRICT PREVENT DEFAULT TO STOP PAGE REFRESH
-  if (e && typeof e.preventDefault === 'function') {
-    e.preventDefault();
-  }
+  e.preventDefault();
+  const userVal = document.getElementById('loginUsername').value.trim();
+  const passVal = document.getElementById('loginPassword').value.trim();
+  const errEl = document.getElementById('loginError');
 
-  const usernameInput = document.getElementById('loginUsername')?.value.trim().toLowerCase() || '';
-  const passwordInput = document.getElementById('loginPassword')?.value.trim() || '';
-  const errorElement = document.getElementById('loginError');
-
-  // Load registered users from localStorage
   const users = JSON.parse(localStorage.getItem('portal_users')) || [];
+  const foundUser = users.find(u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal);
 
-  let matchedUser = null;
-
-  // Check Teacher Account
-  if (usernameInput === 'admin' && passwordInput === 'admin123') {
-    matchedUser = {
-      fullName: 'Administrator',
-      role: 'Teacher',
-      class: 'ALL'
-    };
+  if (foundUser) {
+    if (errEl) errEl.style.display = 'none';
+    currentUser = foundUser;
+    localStorage.setItem('portal_session', JSON.stringify(currentUser));
+    updatePortalUI();
   } else {
-    // Check Student Accounts
-    const found = users.find(u => 
-      String(u.username || '').trim().toLowerCase() === usernameInput && 
-      String(u.password || '').trim() === passwordInput
-    );
-
-    if (found) {
-      matchedUser = {
-        fullName: found.fullName,
-        role: found.role || 'Student',
-        class: found.class
-      };
-    }
-  }
-
-  if (!matchedUser) {
-    if (errorElement) {
-      errorElement.innerText = "Invalid username or password!";
-      errorElement.style.display = 'block';
-    }
-    return false;
-  }
-
-  // Save authenticated session
-  if (errorElement) errorElement.style.display = 'none';
-  currentUser = matchedUser;
-  localStorage.setItem('currentUser', JSON.stringify(currentUser));
-
-  // Render Portal Views
-  renderPortalDashboard();
-  return false;
-}
-
-// 2. PORTAL RENDER ENGINE
-function renderPortalDashboard() {
-  if (!currentUser) return;
-
-  const loginSec = document.getElementById('loginSection');
-  const dashSec = document.getElementById('dashboardSection');
-
-  // Toggle Containers
-  if (loginSec) loginSec.style.display = 'none';
-  if (dashSec) dashSec.style.display = 'block';
-
-  const isTeacher = currentUser.role === 'Teacher';
-
-  // Toggle Role-Based Controls
-  const teacherCtrl = document.getElementById('teacherControls');
-  const teacherRpt = document.getElementById('teacherReports');
-
-  if (teacherCtrl) teacherCtrl.style.display = isTeacher ? 'block' : 'none';
-  if (teacherRpt) teacherRpt.style.display = isTeacher ? 'flex' : 'none';
-
-  // Populate User Display
-  const nameDisp = document.getElementById('userNameDisplay');
-  const roleDisp = document.getElementById('userRoleDisplay');
-  const classDisp = document.getElementById('userClassDisplay');
-
-  if (nameDisp) nameDisp.innerText = currentUser.fullName;
-  if (roleDisp) {
-    roleDisp.innerText = currentUser.role;
-    roleDisp.className = `role-badge ${isTeacher ? 'role-teacher' : 'role-student'}`;
-  }
-  if (classDisp) {
-    classDisp.innerText = isTeacher ? '' : `(${currentUser.class})`;
-  }
-
-  // Render Assessment Records safely
-  if (typeof renderAssessments === 'function') {
-    renderAssessments();
+    if (errEl) errEl.style.display = 'block';
   }
 }
 
-// 3. LOGOUT HANDLER
 function handleLogout() {
-  localStorage.removeItem('currentUser');
+  localStorage.removeItem('portal_session');
   currentUser = null;
-  window.location.reload();
+  updatePortalUI();
 }
-
-// 4. AUTO-LOAD DASHBOARD ON PAGE REFRESH
-document.addEventListener('DOMContentLoaded', () => {
-  if (currentUser) {
-    renderPortalDashboard();
-  }
-});
-
 
 /* ==========================================================================
-   STUDENT REGISTRATION & IMPORT FUNCTIONS
+   STUDENT ROSTER & BULK IMPORT CONTROLS
    ========================================================================== */
 function handleRegisterStudent(e) {
   e.preventDefault();
@@ -373,7 +293,7 @@ function handleBulkImport() {
   const fileInput = document.getElementById('bulkStudentFile');
   const targetClass = document.getElementById('bulkClass').value;
 
-  if (!fileInput.files.length) {
+  if (!fileInput || !fileInput.files.length) {
     alert('Please select an Excel or CSV file to import.');
     return;
   }
@@ -385,11 +305,11 @@ function handleBulkImport() {
     const data = new Uint8Array(e.target.result);
     const workbook = XLSX.read(data, { type: 'array', cellDates: true });
     const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-    
-    const jsonRows = XLSX.utils.sheet_to_json(firstSheet, { 
-      header: 1, 
-      defval: "", 
-      blankrows: false 
+
+    const jsonRows = XLSX.utils.sheet_to_json(firstSheet, {
+      header: 1,
+      defval: "",
+      blankrows: false
     });
 
     const users = JSON.parse(localStorage.getItem('portal_users')) || [];
@@ -410,9 +330,9 @@ function handleBulkImport() {
       if (!rawName && row[0]) rawName = String(row[0]).trim();
 
       if (index === 0 && (
-        rawName.toLowerCase().includes('name') || 
-        rawName.toLowerCase().includes('student') || 
-        rawName.toLowerCase().includes('s/n') || 
+        rawName.toLowerCase().includes('name') ||
+        rawName.toLowerCase().includes('student') ||
+        rawName.toLowerCase().includes('s/n') ||
         rawName.toLowerCase().includes('no.')
       )) {
         return;
@@ -478,7 +398,7 @@ function downloadStudentCSV() {
 }
 
 /* ==========================================================================
-   STUDENT MANAGEMENT MODAL & EDIT CONTROLS
+   STUDENT MODAL & EDIT CONTROLS
    ========================================================================== */
 function openStudentModal() {
   const modal = document.getElementById('studentModal');
@@ -495,10 +415,11 @@ function closeStudentModal() {
 
 function renderStudentModalTable() {
   const tbody = document.getElementById('studentModalTableBody');
-  if (!tbody) return;
-
   const searchInput = document.getElementById('studentSearchInput');
   const searchFilter = searchInput ? searchInput.value.toLowerCase().trim() : '';
+
+  if (!tbody) return;
+
   const users = JSON.parse(localStorage.getItem('portal_users')) || [];
   const students = users.filter(u => u.role === 'Student' && (
     u.fullName.toLowerCase().includes(searchFilter) ||
@@ -578,7 +499,7 @@ function saveStudentEdit(oldUsername) {
   let users = JSON.parse(localStorage.getItem('portal_users')) || [];
 
   if (newUsername.toLowerCase() !== oldUsername.toLowerCase() && users.some(u => u.username.toLowerCase() === newUsername.toLowerCase())) {
-    alert('The new username is already taken. Please enter a unique username.');
+    alert('The new username is already taken.');
     return;
   }
 
@@ -614,11 +535,11 @@ function deleteAllStudents() {
     return;
   }
 
-  if (confirm(`WARNING: Are you sure you want to delete ALL ${studentCount} registered student account(s)? This action cannot be undone.`)) {
+  if (confirm(`WARNING: Are you sure you want to delete ALL ${studentCount} registered student account(s)?`)) {
     users = users.filter(u => u.role !== 'Student');
     localStorage.setItem('portal_users', JSON.stringify(users));
     renderStudentModalTable();
-    alert('All student accounts have been successfully deleted.');
+    alert('All student accounts have been deleted.');
   }
 }
 
@@ -634,7 +555,7 @@ function handleCreateAssessment(e) {
   const description = document.getElementById('testDesc').value;
   const deadline = document.getElementById('testDeadline').value;
   const fileInput = document.getElementById('testFile');
-  const fileName = fileInput.files[0] ? fileInput.files[0].name : "assessment.pdf";
+  const fileName = (fileInput && fileInput.files[0]) ? fileInput.files[0].name : "assessment.pdf";
 
   const resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
 
@@ -653,13 +574,13 @@ function handleCreateAssessment(e) {
   localStorage.setItem('portal_resources', JSON.stringify(resources));
 
   alert('Assessment successfully created!');
-  document.getElementById('assessmentForm').reset();
+  e.target.reset();
   renderAssessments();
 }
 
 function handleStudentSubmission(testId, testTitle, fileInput) {
-  if (!fileInput.files.length) return;
-  
+  if (!fileInput || !fileInput.files.length) return;
+
   const fileName = fileInput.files[0].name;
   const submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
 
@@ -703,19 +624,17 @@ function updatePortalUI() {
   loginSec.style.display = 'none';
   dashSec.style.display = 'block';
 
-  const userNameDisplay = document.getElementById('userNameDisplay');
-  if (userNameDisplay) userNameDisplay.textContent = currentUser.fullName;
+  const nameDisp = document.getElementById('userNameDisplay');
+  if (nameDisp) nameDisp.textContent = currentUser.fullName;
 
   const roleBadge = document.getElementById('userRoleDisplay');
   if (roleBadge) {
     roleBadge.textContent = currentUser.role;
     roleBadge.className = `role-badge role-${currentUser.role.toLowerCase()}`;
   }
-  
-  const userClassDisplay = document.getElementById('userClassDisplay');
-  if (userClassDisplay) {
-    userClassDisplay.textContent = currentUser.class ? `(${currentUser.class})` : '';
-  }
+
+  const classDisp = document.getElementById('userClassDisplay');
+  if (classDisp) classDisp.textContent = currentUser.class ? `(${currentUser.class})` : '';
 
   if (currentUser.role === 'Teacher') {
     if (teacherControls) teacherControls.style.display = 'block';
@@ -757,6 +676,7 @@ function renderAssessments() {
     const deadlineDate = new Date(a.deadline);
     const isExpired = now > deadlineDate;
     const studentSub = (currentUser && currentUser.role === 'Student') ? submissions.find(s => s.testId === a.id && s.studentName === currentUser.fullName) : null;
+    const escapedTitle = a.title.replace(/'/g, "\\'").replace(/"/g, '&quot;');
 
     return `
       <div class="test-card">
@@ -769,7 +689,7 @@ function renderAssessments() {
         <p style="font-size:0.85rem; color:#475569; margin:0.5rem 0;">${a.description || 'No description provided.'}</p>
         <div class="test-actions">
           <a href="${a.fileUrl}" download class="btn-action btn-download"><i class="fa-solid fa-file-arrow-down"></i> Download Paper</a>
-          
+
           ${(currentUser && currentUser.role === 'Student') ? `
             ${studentSub ? `
               <span style="color:#16a34a; font-size:0.85rem; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Submitted (${studentSub.fileName})</span>
@@ -779,7 +699,7 @@ function renderAssessments() {
               ` : `
                 <label class="btn-action btn-upload">
                   <i class="fa-solid fa-file-arrow-up"></i> Upload Answer
-                  <input type="file" style="display:none;" onchange="handleStudentSubmission(${a.id}, '${a.title.replace(/'/g, "\\'")}', this)">
+                  <input type="file" style="display:none;" onchange="handleStudentSubmission(${a.id}, '${escapedTitle}', this)">
                 </label>
               `}
             `}
