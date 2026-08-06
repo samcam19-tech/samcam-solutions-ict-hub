@@ -9,6 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="styles.css">
+  <!-- SheetJS Library for Excel Import -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <style>
     .portal-container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
     .portal-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; }
@@ -115,9 +117,11 @@
         <!-- TEACHER CONTROL PANELS -->
         <div id="teacherControls" style="display:none;">
           
-          <!-- REGISTER STUDENT FORM -->
+          <!-- REGISTER STUDENT FORM (SINGLE & BULK IMPORT) -->
           <div class="card-box">
-            <h3><i class="fa-solid fa-user-plus"></i> Register Student</h3>
+            <h3><i class="fa-solid fa-user-plus"></i> Register Student(s)</h3>
+            
+            <!-- Single Registration -->
             <form onsubmit="handleRegisterStudent(event)">
               <div class="form-group">
                 <label>Full Name</label>
@@ -144,6 +148,31 @@
               </div>
               <button type="submit" class="btn-submit"><i class="fa-solid fa-user-check"></i> Register Account</button>
             </form>
+
+            <hr style="margin: 1.5rem 0; border: none; border-top: 1px dashed #cbd5e1;">
+
+            <!-- Bulk Excel/CSV Import -->
+            <div>
+              <h4 style="margin-bottom: 0.5rem; color: #1e293b;"><i class="fa-solid fa-file-excel"></i> Bulk Import Class Data</h4>
+              <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.8rem;">Upload an Excel or CSV file containing student names. First names will become usernames, and strong unique passwords will be generated automatically.</p>
+              
+              <div class="form-group">
+                <label>Target Class for Import</label>
+                <select id="bulkClass" required>
+                  <option value="S1">S.1</option>
+                  <option value="S2">S.2</option>
+                  <option value="S3">S.3</option>
+                  <option value="S4" selected>S.4</option>
+                  <option value="S5">S.5</option>
+                  <option value="S6">S.6</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Excel/CSV File</label>
+                <input type="file" id="bulkStudentFile" accept=".xlsx, .xls, .csv">
+              </div>
+              <button type="button" onclick="handleBulkImport()" class="btn-submit" style="background: #059669;"><i class="fa-solid fa-file-import"></i> Import & Generate Credentials</button>
+            </div>
           </div>
 
           <!-- PUBLISH ASSESSMENT FORM -->
@@ -191,18 +220,18 @@
 
       </div>
 
-      <!-- TEACHER ONLY: REGISTERED STUDENTS & SUBMISSIONS LISTS -->
+      <!-- TEACHER ONLY: EXPORT DATA & SUBMISSIONS -->
       <div id="teacherReports" style="display:none;" class="portal-grid">
         
-        <!-- STUDENT DIRECTORY -->
+        <!-- EXPORT CREDENTIALS (DETAILS HIDDEN) -->
         <div class="card-box">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-            <h3 style="margin:0;"><i class="fa-solid fa-users"></i> Registered Students</h3>
+          <div style="display:flex; flex-direction:column; gap:0.8rem; align-items:flex-start;">
+            <h3 style="margin:0;"><i class="fa-solid fa-users"></i> Registered Student Credentials</h3>
+            <p style="font-size: 0.85rem; color: #64748b; margin:0;">Download full class registration records including generated usernames and passwords.</p>
             <button onclick="downloadStudentCSV()" class="btn-action btn-secondary">
               <i class="fa-solid fa-file-csv"></i> Download CSV
             </button>
           </div>
-          <div id="studentListContainer"></div>
         </div>
 
         <!-- SUBMITTED WORK -->
@@ -261,7 +290,7 @@
       const errEl = document.getElementById('loginError');
 
       const users = JSON.parse(localStorage.getItem('portal_users'));
-      const foundUser = users.find(u => u.username === userVal && u.password === passVal);
+      const foundUser = users.find(u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal);
 
       if (foundUser) {
         errEl.style.display = 'none';
@@ -279,7 +308,7 @@
       updatePortalUI();
     }
 
-    // TEACHER: REGISTER STUDENT
+    // TEACHER: REGISTER SINGLE STUDENT
     function handleRegisterStudent(e) {
       e.preventDefault();
       if (currentUser.role !== 'Teacher') return;
@@ -291,7 +320,7 @@
 
       const users = JSON.parse(localStorage.getItem('portal_users'));
 
-      if (users.some(u => u.username === username)) {
+      if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
         alert('Username already exists! Please choose another.');
         return;
       }
@@ -309,7 +338,88 @@
 
       alert(`Student ${fullName} registered for ${studentClass}!`);
       e.target.reset();
-      renderStudentList();
+    }
+
+    // STRONG PASSWORD GENERATOR FUNCTION
+    function generateStrongPassword() {
+      const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%";
+      let pwd = "";
+      for (let i = 0; i < 8; i++) {
+        pwd += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return pwd;
+    }
+
+    // TEACHER: BULK IMPORT STUDENTS FROM EXCEL/CSV
+    function handleBulkImport() {
+      if (currentUser.role !== 'Teacher') return;
+
+      const fileInput = document.getElementById('bulkStudentFile');
+      const targetClass = document.getElementById('bulkClass').value;
+
+      if (!fileInput.files.length) {
+        alert('Please select an Excel or CSV file to import.');
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = function(e) {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1 });
+
+        const users = JSON.parse(localStorage.getItem('portal_users'));
+        let addedCount = 0;
+
+        jsonRows.forEach((row, index) => {
+          if (!row || row.length === 0) return;
+
+          let rawName = row[0] ? String(row[0]).trim() : '';
+          
+          // Skip header rows if present
+          if (index === 0 && (rawName.toLowerCase().includes('name') || rawName.toLowerCase().includes('student'))) {
+            return;
+          }
+
+          if (rawName) {
+            // Extract first name for base username
+            const nameParts = rawName.split(/\s+/);
+            let firstName = nameParts[0].toLowerCase().replace(/[^a-z0-9]/g, '');
+            if (!firstName) firstName = "student";
+
+            // Ensure unique username
+            let baseUsername = firstName;
+            let finalUsername = baseUsername;
+            let counter = 1;
+
+            while (users.some(u => u.username.toLowerCase() === finalUsername.toLowerCase())) {
+              finalUsername = `${baseUsername}${counter}`;
+              counter++;
+            }
+
+            const generatedPassword = generateStrongPassword();
+
+            users.push({
+              fullName: rawName,
+              class: targetClass,
+              username: finalUsername,
+              password: generatedPassword,
+              role: "Student"
+            });
+
+            addedCount++;
+          }
+        });
+
+        localStorage.setItem('portal_users', JSON.stringify(users));
+        alert(`Successfully imported ${addedCount} student account(s) for ${targetClass}! Click "Download CSV" to retrieve credentials.`);
+        fileInput.value = '';
+      };
+
+      reader.readAsArrayBuffer(file);
     }
 
     // TEACHER: DOWNLOAD CSV OF CREDENTIALS
@@ -423,7 +533,6 @@
         teacherControls.style.display = 'block';
         teacherReports.style.display = 'grid';
         viewPanel.parentElement.style.gridTemplateColumns = '1fr 2fr';
-        renderStudentList();
         renderSubmissions();
       } else {
         teacherControls.style.display = 'none';
@@ -441,7 +550,6 @@
       const submissions = JSON.parse(localStorage.getItem('portal_submissions'));
       const now = new Date();
 
-      // Students see assessments matching their registered class; teachers see all
       let assessments = resources.filter(r => r.category === "Question Paper");
       if (currentUser.role === 'Student') {
         assessments = assessments.filter(a => a.class === currentUser.class);
@@ -501,28 +609,6 @@
           </div>
         `;
       }).join('');
-    }
-
-    // RENDER REGISTERED STUDENTS LIST
-    function renderStudentList() {
-      const container = document.getElementById('studentListContainer');
-      const users = JSON.parse(localStorage.getItem('portal_users'));
-      const students = users.filter(u => u.role === 'Student');
-
-      if (students.length === 0) {
-        container.innerHTML = '<p style="color:#64748b; font-size:0.9rem;">No students registered yet.</p>';
-        return;
-      }
-
-      container.innerHTML = students.map(s => `
-        <div class="student-item">
-          <div>
-            <strong>${s.fullName}</strong> <span class="role-badge role-student">${s.class}</span>
-            <br>
-            <small style="color:#64748b;">User: <code>${s.username}</code> | Pass: <code>${s.password}</code></small>
-          </div>
-        </div>
-      `).join('');
     }
 
     // RENDER SUBMISSIONS
