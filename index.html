@@ -1,31 +1,48 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SAMCAM SOLUTIONS | ICT Academic Portal</title>
+  <meta name="description" content="SAMCAM SOLUTIONS - Premier ICT Academic Resource Hub for O-Level & A-Level Secondary Curriculum (S.1 - S.6).">
+  <title>SAMCAM SOLUTIONS | ICT Academic Portal & Resource Hub</title>
+  
+  <!-- Preconnect & External Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Font Awesome Icons & CSS -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
 
   <!-- TOP NAVIGATION BAR -->
-  <nav class="navbar">
+  <nav class="navbar" role="navigation" aria-label="Main Navigation">
     <div class="nav-container">
       <div class="brand">
-        <img src="images/logo.png" alt="Samcam Solutions Logo" class="brand-logo">
+        <img src="images/logo.png" alt="Samcam Solutions Logo" class="brand-logo" onerror="this.style.display='none'">
         <div class="brand-text">
-          <span class="brand-title">SAMCAM SOLUTION ICT RESOURCE HUB</span>
-          <span class="brand-tagline">Innovative Insights In Action</span>
+          <span class="brand-title">SAMCAM SOLUTIONS</span>
+          <span class="brand-tagline">Innovative ICT Insights In Action</span>
         </div>
       </div>
+
       <div class="nav-actions">
-        <!-- LINK TO ASSESSMENT PORTAL -->
-        <a href="assessments.html" class="nav-portal-btn"><i class="fa-solid fa-file-pen"></i> Assessment Portal</a>
-        <span class="badge-accent"><i class="fa-solid fa-graduation-cap"></i> S.1 – S.6 Curriculum</span>
+        <!-- Theme Toggle Button -->
+        <button id="themeToggleBtn" class="btn-icon" aria-label="Toggle Dark/Light Mode" title="Toggle Theme">
+          <i class="fa-solid fa-moon"></i>
+        </button>
+
+        <!-- Link to Assessment Portal -->
+        <a href="assessments.html" class="nav-portal-btn">
+          <i class="fa-solid fa-file-pen"></i> 
+          <span>Assessment Portal</span>
+        </a>
+        
+        <span class="badge-accent desktop-only">
+          <i class="fa-solid fa-graduation-cap"></i> S.1 – S.6 Curriculum
+        </span>
       </div>
     </div>
   </nav>
@@ -34,39 +51,46 @@
   <header class="cover-hero">
     <div class="cover-overlay">
       <div class="hero-content">
+        <div class="hero-badge">
+          <i class="fa-solid fa-circle-check"></i> Updated for 2026 Secondary ICT Frameworks
+        </div>
         <h1 class="hero-title">Master Secondary ICT Education</h1>
-        <p class="hero-subtitle">Access verified notes, practical scenarios, UNEB-style question papers, and official marking guides instantly.</p>
+        <p class="hero-subtitle">Instantly access verified notes, practical scenarios, Excel/Access support data files, UNEB-style mock papers, and official marking guides.</p>
         
         <!-- INTEGRATED SEARCH & CONTROLS -->
         <div class="controls-card">
           <div class="search-box">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" id="searchInput" placeholder="Search by topic, paper code, or keyword..." onkeyup="searchResources()">
+            <input type="text" id="searchInput" placeholder="Search by topic, paper code, file format, or keyword..." oninput="handleSearchInput(event)">
+            <button id="clearSearchBtn" class="clear-search-btn" onclick="clearSearch()" style="display: none;" aria-label="Clear Search">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
           </div>
 
           <div class="filter-section">
             <!-- CLASS SELECTION -->
             <div class="filter-row">
               <span class="filter-label"><i class="fa-solid fa-layer-group"></i> Class</span>
-              <div class="segmented-control">
-                <button class="segment-btn active" onclick="filterClass('ALL', this)">All</button>
-                <button class="segment-btn" onclick="filterClass('S1', this)">S.1</button>
-                <button class="segment-btn" onclick="filterClass('S2', this)">S.2</button>
-                <button class="segment-btn" onclick="filterClass('S3', this)">S.3</button>
-                <button class="segment-btn" onclick="filterClass('S4', this)">S.4</button>
-                <button class="segment-btn" onclick="filterClass('S5', this)">S.5</button>
-                <button class="segment-btn" onclick="filterClass('S6', this)">S.6</button>
+              <div class="segmented-control" id="classFilterGroup">
+                <button class="segment-btn active" onclick="filterClass('ALL', event)">All</button>
+                <button class="segment-btn" onclick="filterClass('S1', event)">S.1</button>
+                <button class="segment-btn" onclick="filterClass('S2', event)">S.2</button>
+                <button class="segment-btn" onclick="filterClass('S3', event)">S.3</button>
+                <button class="segment-btn" onclick="filterClass('S4', event)">S.4</button>
+                <button class="segment-btn" onclick="filterClass('S5', event)">S.5</button>
+                <button class="segment-btn" onclick="filterClass('S6', event)">S.6</button>
               </div>
             </div>
 
             <!-- CATEGORY SELECTION -->
             <div class="filter-row">
               <span class="filter-label"><i class="fa-solid fa-folder-open"></i> Resource</span>
-              <div class="segmented-control">
-                <button class="segment-btn active" onclick="filterCategory('ALL', this)">All Types</button>
-                <button class="segment-btn" onclick="filterCategory('Notes', this)">Notes</button>
-                <button class="segment-btn" onclick="filterCategory('Question Paper', this)">Question Papers</button>
-                <button class="segment-btn" onclick="filterCategory('Marking Guide', this)">Marking Guides</button>
+              <div class="segmented-control" id="categoryFilterGroup">
+                <button class="segment-btn active" onclick="filterCategory('ALL', event)">All Types</button>
+                <button class="segment-btn" onclick="filterCategory('Notes', event)">Notes</button>
+                <button class="segment-btn" onclick="filterCategory('Question Paper', event)">Question Papers</button>
+                <button class="segment-btn" onclick="filterCategory('Support File', event)">Support Files</button>
+                <button class="segment-btn" onclick="filterCategory('Marking Guide', event)">Marking Guides</button>
               </div>
             </div>
           </div>
@@ -76,22 +100,82 @@
     </div>
   </header>
 
+  <!-- QUICK STATS BANNER -->
+  <section class="stats-banner">
+    <div class="stats-container">
+      <div class="stat-item">
+        <i class="fa-solid fa-book-bookmark"></i>
+        <div>
+          <strong id="statTotal">0</strong>
+          <span>Total Materials</span>
+        </div>
+      </div>
+      <div class="stat-item">
+        <i class="fa-solid fa-file-code"></i>
+        <div>
+          <strong id="statSupport">0</strong>
+          <span>Support Data Files</span>
+        </div>
+      </div>
+      <div class="stat-item">
+        <i class="fa-solid fa-award"></i>
+        <div>
+          <strong id="statPapers">0</strong>
+          <span>Question Papers</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- MAIN RESOURCE DISPLAY -->
   <main class="main-content">
     <div class="content-header">
-      <h2 class="section-title">Resource Library</h2>
+      <div>
+        <h2 class="section-title">Resource Library</h2>
+        <p class="section-subtitle">Download syllabus-aligned notes, databases, spreadsheets, and assessment material.</p>
+      </div>
       <span id="resource-count" class="count-badge">Showing All Resources</span>
     </div>
     
-    <section id="resource-grid" class="resource-grid">
-      <!-- Dynamic elevated resource cards injected via JavaScript -->
+    <!-- DYNAMIC CARDS GRID -->
+    <section id="resource-grid" class="resource-grid" aria-live="polite">
+      <!-- Injected dynamically via script.js -->
     </section>
   </main>
 
+  <!-- QUICK PREVIEW MODAL -->
+  <div id="previewModal" class="modal-overlay" onclick="closePreviewModal(event)" style="display: none;">
+    <div class="modal-card">
+      <button class="modal-close-btn" onclick="closePreviewModalDirect()" aria-label="Close Modal"><i class="fa-solid fa-xmark"></i></button>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
+  <!-- FLOATING BACK TO TOP BUTTON -->
+  <button id="backToTopBtn" class="back-to-top" onclick="scrollToTop()" aria-label="Back to Top" title="Back to Top">
+    <i class="fa-solid fa-arrow-up"></i>
+  </button>
+
+  <!-- PORTAL FOOTER -->
   <footer class="portal-footer">
-    <p>&copy; 2026 SAMCAM SOLUTIONS. Empowering ICT Education for Lower & Upper Secondary Frameworks.</p>
+    <div class="footer-container">
+      <div class="footer-brand">
+        <h3>SAMCAM SOLUTIONS</h3>
+        <p>Empowering Secondary School ICT Education through scenario-based learning, practical databases, and structured curriculum assessments.</p>
+      </div>
+      <div class="footer-links">
+        <h4>Quick Links</h4>
+        <ul>
+          <li><a href="assessments.html"><i class="fa-solid fa-chevron-right"></i> Assessment Portal</a></li>
+          <li><a href="#resource-grid"><i class="fa-solid fa-chevron-right"></i> Resource Library</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>&copy; 2026 SAMCAM SOLUTIONS. Empowering ICT Education for Lower & Upper Secondary Frameworks.</p>
+    </div>
   </footer>
 
-  <script src="app.js"></script>
+  <script src="script.js"></script>
 </body>
 </html>
