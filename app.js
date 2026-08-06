@@ -42,21 +42,33 @@ function getFileTypeIcon(url) {
   }
 }
 
-function filterClass(cls) {
+// Pass 'event' or 'this' explicitly from HTML onclick
+function filterClass(cls, btnElement) {
   currentClass = cls;
-  updateActiveButtons('.filter-btn', event.target);
+  updateActiveButtons('#class-filter-container .segment-btn', btnElement);
   renderCards();
 }
 
-function filterCategory(cat) {
+function filterCategory(cat, btnElement) {
   currentCategory = cat;
-  updateActiveButtons('.cat-btn', event.target);
+  updateActiveButtons('#category-filter-container .segment-btn', btnElement);
   renderCards();
 }
 
 function updateActiveButtons(selector, targetBtn) {
-  document.querySelectorAll(selector).forEach(btn => btn.classList.remove('active'));
-  targetBtn.classList.add('active');
+  if (!targetBtn) return;
+  
+  // Ensures we select the button even if an <i> or <span> inside was clicked
+  const button = targetBtn.closest('.segment-btn') || targetBtn;
+  
+  // Target the specific segmented control group
+  const parentContainer = button.closest('.segmented-control');
+  const buttonsGroup = parentContainer 
+    ? parentContainer.querySelectorAll('.segment-btn') 
+    : document.querySelectorAll(selector);
+
+  buttonsGroup.forEach(btn => btn.classList.remove('active'));
+  button.classList.add('active');
 }
 
 function renderCards() {
