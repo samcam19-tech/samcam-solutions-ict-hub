@@ -4,6 +4,8 @@
 let allResources = [];
 let currentClass = 'ALL';
 let currentCategory = 'ALL';
+// Ensure currentUser is accessible globally
+let currentUser = JSON.parse(localStorage.getItem('currentUser')) || null;
 
 // Root teacher account
 const rootTeacher = {
@@ -217,48 +219,105 @@ function handleLogin(event) {
   const passwordInput = document.getElementById('loginPassword').value.trim();
   const errorElement = document.getElementById('loginError');
 
-  // FIX 1: Read from 'portal_users' instead of 'students'
+  // Read saved users from 'portal_users'
   const users = JSON.parse(localStorage.getItem('portal_users')) || [];
 
-  // Check for Teacher / Admin hardcoded credentials
+  // 1. HARDCODED TEACHER / ADMIN ACCOUNT
   if (usernameInput === 'admin' && passwordInput === 'admin123') {
-    errorElement.style.display = 'none';
+    if (errorElement) errorElement.style.display = 'none';
     
-    const adminUser = {
-      name: 'Administrator',
-      role: 'Teacher', // FIX 2: Capitalized to match guard clauses in registration
-      studentClass: 'ALL'
+    currentUser = {
+      fullName: 'Administrator',
+      role: 'Teacher',
+      class: 'ALL'
     };
 
-    localStorage.setItem('currentUser', JSON.stringify(adminUser));
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
     
-    if (typeof showDashboard === 'function') showDashboard(adminUser);
+    // Hide login box & show dashboard
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('dashboardSection').style.display = 'block';
+
+    // Show/Hide Teacher Panels
+    if (document.getElementById('teacherControls')) document.getElementById('teacherControls').style.display = 'block';
+    if (document.getElementById('teacherReports')) document.getElementById('teacherReports').style.display = 'grid';
+
+    // Update UI Displays
+    if (document.getElementById('userNameDisplay')) document.getElementById('userNameDisplay').innerText = currentUser.fullName;
+    if (document.getElementById('userRoleDisplay')) {
+      document.getElementById('userRoleDisplay').innerText = currentUser.role;
+      document.getElementById('userRoleDisplay').className = 'role-badge role-teacher';
+    }
+    if (document.getElementById('userClassDisplay')) document.getElementById('userClassDisplay').innerText = '';
+
+    if (typeof renderAssessments === 'function') renderAssessments();
     return;
   }
 
-  // Find matching user (handles string types cleanly)
-  const userMatch = users.find(u => 
-    String(u.username || '').toLowerCase() === usernameInput && 
-    String(u.password || '') === passwordInput
+  // 2. STUDENT LOG IN
+  const studentMatch = users.find(u => 
+    String(u.username || '').trim().toLowerCase() === usernameInput && 
+    String(u.password || '').trim() === passwordInput
   );
 
-  if (userMatch) {
-    errorElement.style.display = 'none';
+  if (studentMatch) {
+    if (errorElement) errorElement.style.display = 'none';
     
-    const sessionUser = {
-      name: userMatch.fullName,
-      role: userMatch.role || 'Student', // Capitalized 'Student'
-      studentClass: userMatch.class
+    currentUser = {
+      fullName: studentMatch.fullName,
+      role: studentMatch.role || 'Student',
+      class: studentMatch.class
     };
 
-    localStorage.setItem('currentUser', JSON.stringify(sessionUser));
+    localStorage.setItem('currentUser', JSON.stringify(currentUser));
 
-    if (typeof showDashboard === 'function') showDashboard(sessionUser);
+    // Hide login box & show dashboard
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('dashboardSection').style.display = 'block';
+
+    // Hide Teacher-only Controls for Students
+    if (document.getElementById('teacherControls')) document.getElementById('teacherControls').style.display = 'none';
+    if (document.getElementById('teacherReports')) document.getElementById('teacherReports').style.display = 'none';
+
+    // Update UI Displays
+    if (document.getElementById('userNameDisplay')) document.getElementById('userNameDisplay').innerText = currentUser.fullName;
+    if (document.getElementById('userRoleDisplay')) {
+      document.getElementById('userRoleDisplay').innerText = currentUser.role;
+      document.getElementById('userRoleDisplay').className = 'role-badge role-student';
+    }
+    if (document.getElementById('userClassDisplay')) document.getElementById('userClassDisplay').innerText = `(${currentUser.class})`;
+
+    if (typeof renderAssessments === 'function') renderAssessments();
   } else {
-    errorElement.innerText = "Invalid username or password!";
-    errorElement.style.display = 'block';
+    if (errorElement) {
+      errorElement.innerText = "Invalid username or password!";
+      errorElement.style.display = 'block';
+    }
   }
 }
+
+// 3. AUTO-LOGIN ON PAGE REFRESH
+window.addEventListener('DOMContentLoaded', () => {
+  if (currentUser) {
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('dashboardSection').style.display = 'block';
+
+    const isTeacher = currentUser.role === 'Teacher';
+    if (document.getElementById('teacherControls')) document.getElementById('teacherControls').style.display = isTeacher ? 'block' : 'none';
+    if (document.getElementById('teacherReports')) document.getElementById('teacherReports').style.display = isTeacher ? 'grid' : 'none';
+
+    if (document.getElementById('userNameDisplay')) document.getElementById('userNameDisplay').innerText = currentUser.fullName;
+    if (document.getElementById('userRoleDisplay')) {
+      document.getElementById('userRoleDisplay').innerText = currentUser.role;
+      document.getElementById('userRoleDisplay').className = `role-badge ${isTeacher ? 'role-teacher' : 'role-student'}`;
+    }
+    if (document.getElementById('userClassDisplay')) {
+      document.getElementById('userClassDisplay').innerText = isTeacher ? '' : `(${currentUser.class})`;
+    }
+
+    if (typeof renderAssessments === 'function') renderAssessments();
+  }
+});
 function handleLogout() {
   localStorage.removeItem('portal_session');
   currentUser = null;
