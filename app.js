@@ -214,110 +214,92 @@ function renderCards() {
    ========================================================================== */
 function handleLogin(event) {
   event.preventDefault();
-  
-  const usernameInput = document.getElementById('loginUsername').value.trim().toLowerCase();
-  const passwordInput = document.getElementById('loginPassword').value.trim();
+
+  const usernameInput = document.getElementById('loginUsername')?.value.trim().toLowerCase() || '';
+  const passwordInput = document.getElementById('loginPassword')?.value.trim() || '';
   const errorElement = document.getElementById('loginError');
 
-  // Read saved users from 'portal_users'
+  // Load registered users safely
   const users = JSON.parse(localStorage.getItem('portal_users')) || [];
 
-  // 1. HARDCODED TEACHER / ADMIN ACCOUNT
+  let matchedUser = null;
+
+  // 1. Check Admin Credentials
   if (usernameInput === 'admin' && passwordInput === 'admin123') {
-    if (errorElement) errorElement.style.display = 'none';
-    
-    currentUser = {
+    matchedUser = {
       fullName: 'Administrator',
       role: 'Teacher',
       class: 'ALL'
     };
+  } else {
+    // 2. Check Registered Student Credentials
+    const found = users.find(u => 
+      String(u.username || '').trim().toLowerCase() === usernameInput && 
+      String(u.password || '').trim() === passwordInput
+    );
 
-    localStorage.setItem('currentUser', JSON.stringify(currentUser));
-    
-    // Hide login box & show dashboard
-    document.getElementById('loginSection').style.display = 'none';
-    document.getElementById('dashboardSection').style.display = 'block';
-
-    // Show/Hide Teacher Panels
-    if (document.getElementById('teacherControls')) document.getElementById('teacherControls').style.display = 'block';
-    if (document.getElementById('teacherReports')) document.getElementById('teacherReports').style.display = 'grid';
-
-    // Update UI Displays
-    if (document.getElementById('userNameDisplay')) document.getElementById('userNameDisplay').innerText = currentUser.fullName;
-    if (document.getElementById('userRoleDisplay')) {
-      document.getElementById('userRoleDisplay').innerText = currentUser.role;
-      document.getElementById('userRoleDisplay').className = 'role-badge role-teacher';
+    if (found) {
+      matchedUser = {
+        fullName: found.fullName,
+        role: found.role || 'Student',
+        class: found.class
+      };
     }
-    if (document.getElementById('userClassDisplay')) document.getElementById('userClassDisplay').innerText = '';
-
-    if (typeof renderAssessments === 'function') renderAssessments();
-    return;
   }
 
-  // 2. STUDENT LOG IN
-  const studentMatch = users.find(u => 
-    String(u.username || '').trim().toLowerCase() === usernameInput && 
-    String(u.password || '').trim() === passwordInput
-  );
-
-  if (studentMatch) {
-    if (errorElement) errorElement.style.display = 'none';
-    
-    currentUser = {
-      fullName: studentMatch.fullName,
-      role: studentMatch.role || 'Student',
-      class: studentMatch.class
-    };
-
-    localStorage.setItem('currentUser', JSON.stringify(currentUser));
-
-    // Hide login box & show dashboard
-    document.getElementById('loginSection').style.display = 'none';
-    document.getElementById('dashboardSection').style.display = 'block';
-
-    // Hide Teacher-only Controls for Students
-    if (document.getElementById('teacherControls')) document.getElementById('teacherControls').style.display = 'none';
-    if (document.getElementById('teacherReports')) document.getElementById('teacherReports').style.display = 'none';
-
-    // Update UI Displays
-    if (document.getElementById('userNameDisplay')) document.getElementById('userNameDisplay').innerText = currentUser.fullName;
-    if (document.getElementById('userRoleDisplay')) {
-      document.getElementById('userRoleDisplay').innerText = currentUser.role;
-      document.getElementById('userRoleDisplay').className = 'role-badge role-student';
-    }
-    if (document.getElementById('userClassDisplay')) document.getElementById('userClassDisplay').innerText = `(${currentUser.class})`;
-
-    if (typeof renderAssessments === 'function') renderAssessments();
-  } else {
+  // 3. Handle Login Failure
+  if (!matchedUser) {
     if (errorElement) {
       errorElement.innerText = "Invalid username or password!";
       errorElement.style.display = 'block';
     }
+    return;
+  }
+
+  // 4. Handle Login Success
+  if (errorElement) errorElement.style.display = 'none';
+
+  // Update global session variable & LocalStorage
+  currentUser = matchedUser;
+  localStorage.setItem('currentUser', JSON.stringify(currentUser));
+
+  // Safely Toggle Views
+  const loginSec = document.getElementById('loginSection');
+  const dashSec = document.getElementById('dashboardSection');
+  
+  if (loginSec) loginSec.style.display = 'none';
+  if (dashSec) dashSec.style.display = 'block';
+
+  // Safely Toggle Teacher Panels
+  const isTeacher = currentUser.role === 'Teacher';
+  const teacherCtrl = document.getElementById('teacherControls');
+  const teacherRpt = document.getElementById('teacherReports');
+
+  if (teacherCtrl) teacherCtrl.style.display = isTeacher ? 'block' : 'none';
+  if (teacherRpt) teacherRpt.style.display = isTeacher ? 'grid' : 'none';
+
+  // Safely Update Text Displays
+  const nameDisp = document.getElementById('userNameDisplay');
+  const roleDisp = document.getElementById('userRoleDisplay');
+  const classDisp = document.getElementById('userClassDisplay');
+
+  if (nameDisp) nameDisp.innerText = currentUser.fullName;
+  if (roleDisp) {
+    roleDisp.innerText = currentUser.role;
+    roleDisp.className = `role-badge ${isTeacher ? 'role-teacher' : 'role-student'}`;
+  }
+  if (classDisp) {
+    classDisp.innerText = isTeacher ? '' : `(${currentUser.class})`;
+  }
+
+  // Safely Trigger Dashboard Rendering if function exists
+  try {
+    if (typeof renderAssessments === 'function') renderAssessments();
+  } catch (err) {
+    console.error("Login succeeded, but renderAssessments failed:", err);
   }
 }
 
-// 3. AUTO-LOGIN ON PAGE REFRESH
-window.addEventListener('DOMContentLoaded', () => {
-  if (currentUser) {
-    document.getElementById('loginSection').style.display = 'none';
-    document.getElementById('dashboardSection').style.display = 'block';
-
-    const isTeacher = currentUser.role === 'Teacher';
-    if (document.getElementById('teacherControls')) document.getElementById('teacherControls').style.display = isTeacher ? 'block' : 'none';
-    if (document.getElementById('teacherReports')) document.getElementById('teacherReports').style.display = isTeacher ? 'grid' : 'none';
-
-    if (document.getElementById('userNameDisplay')) document.getElementById('userNameDisplay').innerText = currentUser.fullName;
-    if (document.getElementById('userRoleDisplay')) {
-      document.getElementById('userRoleDisplay').innerText = currentUser.role;
-      document.getElementById('userRoleDisplay').className = `role-badge ${isTeacher ? 'role-teacher' : 'role-student'}`;
-    }
-    if (document.getElementById('userClassDisplay')) {
-      document.getElementById('userClassDisplay').innerText = isTeacher ? '' : `(${currentUser.class})`;
-    }
-
-    if (typeof renderAssessments === 'function') renderAssessments();
-  }
-});
 function handleLogout() {
   localStorage.removeItem('portal_session');
   currentUser = null;
