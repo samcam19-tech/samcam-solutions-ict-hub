@@ -113,28 +113,28 @@
     <!-- ================= STUDENT / COMMON QUIZ LIST ================= -->
     <section id="availableQuizzesContainer" class="section-card">
       <h3 style="margin-bottom: 1rem;"><i class="fa-solid fa-list-check"></i> Available Quizzes</h3>
-      <div id="quizList" class="quiz-grid">
-        <!-- Dynamically loaded from Firestore -->
+      <div id="quizList" class="quiz-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem;">
+        <!-- Dynamically loaded from Firestore / Local Cache -->
       </div>
     </section>
 
     <!-- ================= TIMED QUIZ RUNNER ================= -->
     <section id="quizRunner" class="section-card" style="display: none;">
-      <div class="quiz-runner-header">
+      <div class="quiz-runner-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem;">
         <div>
-          <h3 id="activeQuizTitle" style="color: #0f172a;">Quiz Title</h3>
-          <span id="activeQuizClass" class="quiz-badge">Class</span>
+          <h3 id="activeQuizTitle" style="color: #0f172a; margin:0;">Quiz Title</h3>
+          <span id="activeQuizClass" class="quiz-badge" style="background:#e0f2fe; color:#0369a1; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:600;">Class</span>
         </div>
-        <div id="timerBadge" class="timer-badge">
+        <div id="timerBadge" class="timer-badge" style="font-weight:bold; color:#dc2626; font-size:1.1rem;">
           <i class="fa-solid fa-clock"></i> Time Left: <span id="quizTimer">00:00</span>
         </div>
       </div>
 
-      <form id="quizForm">
+      <form id="quizForm" onsubmit="event.preventDefault();">
         <div id="questionsList">
           <!-- Questions rendered dynamically -->
         </div>
-        <button type="button" onclick="submitQuizToFirestore()" class="btn-action btn-submit" style="margin-top: 1.5rem;">
+        <button type="button" onclick="submitQuizToFirestore()" class="btn-action btn-submit" style="margin-top: 1.5rem; width:100%; padding:0.75rem; background:#16a34a; color:#fff; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">
           <i class="fa-solid fa-paper-plane"></i> Submit Answers
         </button>
       </form>
@@ -142,8 +142,7 @@
 
   </main>
 
-  <!-- Main Quiz JavaScript Engine -->
-  <script src="script.js"></script>
+  <!-- JavaScript Load Engine -->
   <script src="quiz.js"></script>
 </body>
 </html>
