@@ -1,1 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assessment Portal - Online Quizzes</title>
+  
+  <!-- FontAwesome & Custom CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="quiz-style.css">
 
+  <!-- Firebase App & Firestore Compatibility SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header style="padding: 1rem; background: #0f172a; color: #fff; display: flex; justify-content: space-between; align-items: center;">
+    <h2><i class="fa-solid fa-graduation-cap"></i> Interactive Quiz Engine</h2>
+    <!-- Link back to main portal -->
+    <a href="index.html" style="color: #cbd5e1; text-decoration: none; font-weight: 500;">
+      <i class="fa-solid fa-arrow-left"></i> Back to Assessment Portal
+    </a>
+  </header>
+
+  <main style="max-width: 900px; margin: 2rem auto; padding: 0 1rem;">
+    <!-- Active Quizzes List Container -->
+    <section id="availableQuizzesContainer">
+      <h3>Available Quizzes</h3>
+      <div id="quizList">
+        <!-- Dynamically loaded from Firestore -->
+      </div>
+    </section>
+
+    <!-- Quiz Taking View (Initially Hidden) -->
+    <section id="quizRunner" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <h3 id="activeQuizTitle">Quiz Title</h3>
+        <div id="timerBadge" style="background: #e11d48; color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: bold;">
+          <i class="fa-solid fa-clock"></i> Time Left: <span id="quizTimer">00:00</span>
+        </div>
+      </div>
+
+      <form id="quizForm" style="margin-top: 1.5rem;">
+        <div id="questionsList">
+          <!-- Render questions dynamic -->
+        </div>
+        <button type="button" onclick="submitQuizToFirestore()" class="btn-submit" style="margin-top: 1.5rem;">
+          Submit Answers
+        </button>
+      </form>
+    </section>
+  </main>
+
+  <!-- Quiz JS logic -->
+  <script src="quiz-engine.js"></script>
+</body>
+</html>
