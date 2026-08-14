@@ -1206,3 +1206,85 @@ window.openSubmissionModalWithDetails = function(testId, encodedTitle) {
   }
   testIdEl.value = testId;
 };
+
+/* ==========================================================================
+   DIRECT LOGIN EXECUTION HANDLER
+   ========================================================================== */
+window.executeLogin = async function() {
+  const userEl = document.getElementById('loginUsername');
+  const passEl = document.getElementById('loginPassword');
+  const errEl = document.getElementById('loginError');
+
+  if (!userEl || !passEl) {
+    alert("Error: Form input elements missing in DOM.");
+    return;
+  }
+
+  const u = userEl.value.trim().toLowerCase();
+  const p = passEl.value.trim();
+
+  if (!u || !p) {
+    if (errEl) {
+      errEl.textContent = 'Please fill in both fields.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+
+  let userMatch = null;
+
+  // 1. Root Hardcoded Check
+  if (u === 'admin' && p === 'admin123') {
+    userMatch = {
+      fullName: "System Admin",
+      class: "Staff",
+      username: "admin",
+      password: "admin123",
+      role: "Teacher"
+    };
+  }
+
+  // 2. Local Storage User Search
+  if (!userMatch) {
+    const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+    userMatch = localUsers.find(acc => acc.username.toLowerCase() === u && acc.password === p);
+  }
+
+  // 3. Firestore Fallback Search
+  if (!userMatch && window.db) {
+    try {
+      const snap = await window.db.collection('users').doc(u).get();
+      if (snap.exists && snap.data().password === p) {
+        userMatch = snap.data();
+      }
+    } catch (err) {
+      console.warn("Firestore lookup error:", err);
+    }
+  }
+
+  // 4. Authenticate
+  if (userMatch) {
+    if (errEl) errEl.style.display = 'none';
+
+    window.currentUser = userMatch;
+    currentUser = userMatch;
+
+    localStorage.setItem('portal_session', JSON.stringify(userMatch));
+
+    // Clear inputs
+    userEl.value = '';
+    passEl.value = '';
+
+    // Refresh View
+    if (typeof updatePortalUI === 'function') {
+      updatePortalUI();
+    } else {
+      location.reload();
+    }
+  } else {
+    if (errEl) {
+      errEl.textContent = 'Invalid username or password!';
+      errEl.style.display = 'block';
+    }
+  }
+};
