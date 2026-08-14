@@ -49,42 +49,66 @@ let activeQuizData = null;
 let quizTimerInterval = null;
 let builderQuestionCount = 0;
 
+// Listen for live session changes broadcasted by script.js
+window.addEventListener('portalSessionChanged', (e) => {
+  syncQuizEngineSession(e.detail);
+});
+
+// Helper: Synchronize user session state across UI badges and teacher panels
+function syncQuizEngineSession(user) {
+  currentUser = user;
+
+  const userBadge = document.getElementById('userBadge');
+  const teacherPanel = document.getElementById('teacherPanel');
+
+  if (!currentUser) {
+    if (userBadge) userBadge.innerHTML = `<i class="fa-solid fa-user"></i> Guest`;
+    if (teacherPanel) teacherPanel.style.display = 'none';
+    return;
+  }
+
+  // Update Badge
+  if (userBadge) {
+    const roleText = (currentUser.role && currentUser.role.toLowerCase() === 'teacher') || currentUser.role === 'admin' 
+      ? 'Teacher' 
+      : (currentUser.class || 'Student');
+    userBadge.innerHTML = `<i class="fa-solid fa-user-check"></i> ${currentUser.fullName || currentUser.username} <span style="background:#0284c7; padding:0.1rem 0.4rem; border-radius:4px; font-size:0.75rem; margin-left:0.3rem;">${roleText}</span>`;
+  }
+
+  // Check Teacher / Admin Access
+  const userRole = (currentUser.role || '').toLowerCase();
+  const isTeacher = userRole === 'teacher' || userRole === 'admin';
+  
+  if (teacherPanel) {
+    teacherPanel.style.display = isTeacher ? 'block' : 'none';
+    if (isTeacher) setTimeout(fetchQuizResults, 200);
+  }
+}
+
 // ==========================================================================
 // 3. INITIALIZATION ON PAGE LOAD
 // ==========================================================================
 document.addEventListener("DOMContentLoaded", () => {
   try {
-    const sessionData = localStorage.getItem('portal_session');
-    
-    if (sessionData) {
-      currentUser = JSON.parse(sessionData);
-    } else {
-      currentUser = { username: "teacher", role: "Teacher", class: "S4", fullName: "Teacher / Admin" };
+    // Determine current user session safely
+    let activeUser = window.currentUser;
+    if (!activeUser) {
+      try {
+        const sessionData = localStorage.getItem('portal_session');
+        if (sessionData) activeUser = JSON.parse(sessionData);
+      } catch (e) {
+        console.error("Error reading portal_session:", e);
+        activeUser = null;
+      }
     }
 
-    // Safely update user badge
-    const userBadge = document.getElementById('userBadge');
-    if (userBadge) {
-      const roleText = (currentUser.role && currentUser.role.toLowerCase() === 'teacher') || currentUser.role === 'admin' 
-        ? 'Teacher' 
-        : (currentUser.class || 'Student');
-      userBadge.innerHTML = `<i class="fa-solid fa-user-check"></i> ${currentUser.fullName || currentUser.username} <span style="background:#0284c7; padding:0.1rem 0.4rem; border-radius:4px; font-size:0.75rem; margin-left:0.3rem;">${roleText}</span>`;
-    }
+    // Apply session and update UI
+    syncQuizEngineSession(activeUser);
 
-    // Check teacher / admin access
-    const userRole = (currentUser.role || '').toLowerCase();
-    const isTeacher = userRole === 'teacher' || userRole === 'admin';
-    
-    const teacherPanel = document.getElementById('teacherPanel');
-    if (isTeacher && teacherPanel) {
-      teacherPanel.style.display = 'block';
-      setTimeout(fetchQuizResults, 200);
-    }
-
-    // Trigger quiz collection load
+    // Trigger active quiz loading
     fetchActiveQuizzes();
   } catch (err) {
-    console.error("Initialization Error:", err);
+    console.error("Initialization Error in Quiz Engine:", err);
   }
 });
 
@@ -148,16 +172,17 @@ function renderQuizCards(quizzesList) {
   // Filter quizzes by user class scope
   const filteredQuizzes = quizzesList.filter(q => {
     if (isTeacher) return true;
-    if (!currentUser.class) return true;
+    if (!currentUser || !currentUser.class) return true;
     const target = q.targetClass || 'All';
     return target === 'All' || target === currentUser.class;
   });
 
   if (filteredQuizzes.length === 0) {
+    const currentClassText = currentUser && currentUser.class ? 'for class ' + currentUser.class : '';
     quizListContainer.innerHTML = `
       <div style="grid-column: 1/-1; background:#f1f5f9; text-align:center; padding:2rem; border-radius:8px; color:#475569;">
         <i class="fa-solid fa-folder-open" style="font-size:2rem; margin-bottom:0.5rem; color:#94a3b8;"></i>
-        <p style="margin:0; font-weight:500;">No active quizzes assigned ${currentUser.class ? 'for class ' + currentUser.class : ''}.</p>
+        <p style="margin:0; font-weight:500;">No active quizzes assigned ${currentClassText}.</p>
       </div>
     `;
     return;
@@ -286,7 +311,7 @@ async function handleSaveQuiz(event) {
     targetClass,
     durationMinutes: duration,
     questions,
-    createdBy: currentUser.username || "Teacher",
+    createdBy: currentUser ? currentUser.username : "Teacher",
     createdAt: firebase.firestore.FieldValue ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
   };
 
@@ -361,6 +386,11 @@ async function fetchQuizResults() {
 
 async function startQuiz(quizId) {
   try {
+    if (!currentUser) {
+      alert("Please log in to attempt a quiz.");
+      return;
+    }
+
     if (db) {
       const existingResult = await db.collection('quiz_results')
         .where('quizId', '==', quizId)
@@ -497,9 +527,9 @@ async function submitQuizToFirestore() {
   const resultRecord = {
     quizId: activeQuizData.id,
     quizTitle: activeQuizData.title,
-    studentUsername: currentUser.username || "anonymous",
-    studentName: currentUser.fullName || currentUser.username,
-    studentClass: currentUser.class || "N/A",
+    studentUsername: currentUser ? currentUser.username : "anonymous",
+    studentName: currentUser ? (currentUser.fullName || currentUser.username) : "Anonymous Student",
+    studentClass: currentUser ? (currentUser.class || "N/A") : "N/A",
     score,
     totalQuestions: total,
     percentage,
