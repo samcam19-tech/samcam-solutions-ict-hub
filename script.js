@@ -527,9 +527,13 @@ function renderAssessments() {
   container.innerHTML = assessments.map(a => {
     const deadlineDate = new Date(a.deadline);
     const isExpired = now > deadlineDate;
-    const studentSub = (currentUser && currentUser.role === 'Student') ? submissions.find(s => s.testId === a.id && s.studentName === currentUser.fullName) : null;
     
-    // Safely encode title for the inline onclick handler
+    // Check submission status by test ID and student name
+    const studentSub = (currentUser && currentUser.role === 'Student') 
+      ? submissions.find(s => String(s.testId) === String(a.id) && s.studentName === currentUser.fullName) 
+      : null;
+    
+    // Safely encode title for inline onclick execution
     const safeTitle = encodeURIComponent(a.title);
 
     return `
@@ -551,8 +555,8 @@ function renderAssessments() {
               ${isExpired ? `
                 <button disabled class="btn-action btn-disabled"><i class="fa-solid fa-lock"></i> Deadline Passed</button>
               ` : `
-                <!-- TRIGGER MODAL INSTEAD OF DIRECT FILE EXPLORER -->
-                <button type="button" onclick="openSubmissionModalWithDetails('${safeTitle}')" class="btn-action btn-upload">
+                <!-- TRIGGER MODAL WITH PARAMETERS -->
+                <button type="button" onclick="openSubmissionModalWithDetails('${a.id}', '${safeTitle}')" class="btn-action btn-upload">
                   <i class="fa-solid fa-file-arrow-up"></i> Upload Answer
                 </button>
               `}
@@ -574,9 +578,10 @@ function handleFormSubmission(event) {
   const nameEl = document.getElementById('studentName');
   const classEl = document.getElementById('studentClass');
   const titleEl = document.getElementById('testTitle');
+  const testIdEl = document.getElementById('submissionTestId'); // Hidden input if available
   const fileInput = document.getElementById('assignmentFile');
 
-  if (!fileInput.files || fileInput.files.length === 0) {
+  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
     alert("Please select a file to upload.");
     return;
   }
@@ -584,30 +589,33 @@ function handleFormSubmission(event) {
   const file = fileInput.files[0];
   const reader = new FileReader();
 
-  // Convert uploaded file to Data URL so it can be downloaded later from localStorage
+  // Convert uploaded file to Data URL so it can be preserved in localStorage
   reader.onload = function(e) {
     const fileDataUrl = e.target.result;
 
     const newSubmission = {
       id: Date.now(),
-      studentName: nameEl.value.trim(),
-      studentClass: classEl.value.trim(),
-      testTitle: titleEl.value.trim(),
+      testId: testIdEl ? testIdEl.value : null,
+      studentName: nameEl ? nameEl.value.trim() : '',
+      studentClass: classEl ? classEl.value.trim() : '',
+      testTitle: titleEl ? titleEl.value.trim() : '',
       fileName: file.name,
-      fileUrl: fileDataUrl, // Data URL for direct downloading
+      fileUrl: fileDataUrl,
       submittedAt: new Date().toISOString().split('T')[0]
     };
 
-    // Save to localStorage
+    // Save submission to localStorage
     const existing = JSON.parse(localStorage.getItem('portal_submissions')) || [];
     existing.unshift(newSubmission);
     localStorage.setItem('portal_submissions', JSON.stringify(existing));
 
-    // Clear form & close modal
-    document.getElementById('assignmentForm').reset();
+    // Reset Form & Close Modal
+    const form = document.getElementById('assignmentForm');
+    if (form) form.reset();
     closeSubmissionModal();
 
-    // Refresh rendering
+    // Re-render both views dynamically
+    renderAssessments();
     renderSubmissions();
   };
 
@@ -642,7 +650,7 @@ function renderSubmissions() {
 }
 
 /* ==========================================================================
-   MODAL TOGGLES
+   MODAL TOGGLES & HELPERS
    ========================================================================== */
 function openSubmissionModal() {
   const modal = document.getElementById('submissionModal');
@@ -654,13 +662,13 @@ function closeSubmissionModal() {
   if (modal) modal.style.display = 'none';
 }
 
-function openSubmissionModalWithDetails(encodedTitle) {
+function openSubmissionModalWithDetails(testId, encodedTitle) {
   const decodedTitle = decodeURIComponent(encodedTitle);
   
-  // 1. Open Modal
+  // 1. Open the Modal View
   openSubmissionModal();
 
-  // 2. Auto-fill details if student is logged in
+  // 2. Pre-fill student credentials if logged in
   if (currentUser) {
     const nameEl = document.getElementById('studentName');
     const classEl = document.getElementById('studentClass');
@@ -668,9 +676,20 @@ function openSubmissionModalWithDetails(encodedTitle) {
     if (classEl) classEl.value = currentUser.class || '';
   }
 
-  // 3. Pre-fill the Assignment/Test Title
+  // 3. Pre-fill Assessment Metadata
   const titleEl = document.getElementById('testTitle');
   if (titleEl) {
     titleEl.value = decodedTitle;
   }
+
+  // 4. Store test ID (create hidden input dynamically if not in HTML)
+  let testIdEl = document.getElementById('submissionTestId');
+  if (!testIdEl) {
+    testIdEl = document.createElement('input');
+    testIdEl.type = 'hidden';
+    testIdEl.id = 'submissionTestId';
+    const form = document.getElementById('assignmentForm');
+    if (form) form.appendChild(testIdEl);
+  }
+  testIdEl.value = testId;
 }
