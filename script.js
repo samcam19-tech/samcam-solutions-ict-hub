@@ -528,6 +528,8 @@ function renderAssessments() {
     const deadlineDate = new Date(a.deadline);
     const isExpired = now > deadlineDate;
     const studentSub = (currentUser && currentUser.role === 'Student') ? submissions.find(s => s.testId === a.id && s.studentName === currentUser.fullName) : null;
+    
+    // Safely encode title for the inline onclick handler
     const safeTitle = encodeURIComponent(a.title);
 
     return `
@@ -549,10 +551,10 @@ function renderAssessments() {
               ${isExpired ? `
                 <button disabled class="btn-action btn-disabled"><i class="fa-solid fa-lock"></i> Deadline Passed</button>
               ` : `
-                <label class="btn-action btn-upload">
+                <!-- TRIGGER MODAL INSTEAD OF DIRECT FILE EXPLORER -->
+                <button type="button" onclick="openSubmissionModalWithDetails('${safeTitle}')" class="btn-action btn-upload">
                   <i class="fa-solid fa-file-arrow-up"></i> Upload Answer
-                  <input type="file" style="display:none;" onchange="handleStudentSubmission(${a.id}, decodeURIComponent('${safeTitle}'), this)">
-                </label>
+                </button>
               `}
             `}
           ` : ''}
