@@ -1,148 +1,168 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Assessment Portal - Online Quizzes</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Assessment Engine | School Portal</title>
   
-  <!-- FontAwesome Icons & Custom Stylesheet -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="quiz-style.css">
-
-  <!-- Firebase App & Firestore Compatibility SDKs -->
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Quiz Stylesheet -->
+  <link rel="stylesheet" href="quiz.css" />
+  
+  <!-- Firebase SDKs (Compatibility Mode) -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
-  <!-- Top Navigation Header -->
-  <header class="quiz-header">
-    <h2><i class="fa-solid fa-graduation-cap"></i> Interactive Quiz Engine</h2>
-    <div class="nav-actions" style="display: flex; align-items: center; gap: 1rem;">
-      <span id="userBadge"></span>
-      <a href="index.html" class="back-link">
-        <i class="fa-solid fa-arrow-left"></i> Back to Assessment Portal
-      </a>
+  <!-- Top Portal Header -->
+  <header class="portal-header">
+    <div class="header-container">
+      <div class="brand-title">
+        <i class="fa-solid fa-graduation-cap"></i>
+        <h2>ICT Assessment Engine</h2>
+      </div>
+      <div class="user-profile">
+        <div id="userBadge" class="user-badge">
+          <i class="fa-solid fa-circle-notch fa-spin"></i> Checking Session...
+        </div>
+      </div>
     </div>
   </header>
 
-  <main class="quiz-container">
+  <!-- Main Container -->
+  <main class="portal-container">
 
-    <!-- ================= TEACHER / ADMIN SECTION ================= -->
-    <section id="teacherPanel" class="section-card" style="display: none;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h3><i class="fa-solid fa-pen-ruler"></i> Teacher Operations</h3>
-        <button type="button" onclick="toggleQuizBuilder()" class="btn-action" style="width: auto;">
-          <i class="fa-solid fa-plus"></i> New Quiz Builder
+    <!-- =================================================================== -->
+    <!-- TEACHER / ADMIN MANAGEMENT PANEL                                    -->
+    <!-- =================================================================== -->
+    <section id="teacherPanel" class="admin-panel" style="display: none;">
+      <div class="panel-header">
+        <div>
+          <h3><i class="fa-solid fa-user-shield"></i> Educator Control Center</h3>
+          <p>Create live assessment items and track student submissions in real-time.</p>
+        </div>
+        <button class="btn btn-primary" onclick="toggleQuizBuilder()">
+          <i class="fa-solid fa-plus-circle"></i> Create New Quiz
         </button>
       </div>
 
       <!-- Quiz Builder Form -->
-      <form id="createQuizForm" onsubmit="handleSaveQuiz(event)" style="display: none; background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 2rem;">
-        <h4 style="margin-bottom: 1rem; color: #0f172a;">Quiz Details</h4>
+      <form id="createQuizForm" class="builder-form" style="display: none;" onsubmit="handleSaveQuiz(event)">
+        <h4><i class="fa-solid fa-pen-ruler"></i> Quiz Creator</h4>
         
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+        <div class="form-grid">
           <div class="form-group">
-            <label for="builderTitle">Quiz Title:</label>
-            <input type="text" id="builderTitle" class="form-control" placeholder="e.g., S4 ICT Mid-Term Quiz" required>
+            <label for="builderTitle">Assessment Title</label>
+            <input type="text" id="builderTitle" placeholder="e.g., S.4 End of Term Spreadsheets Practical" required />
           </div>
+
           <div class="form-group">
-            <label for="builderClass">Target Class:</label>
-            <select id="builderClass" class="form-control" required>
-              <option value="">Select Class</option>
-              <option value="All">All Classes</option>
-              <option value="S1">S.1</option>
-              <option value="S2">S.2</option>
-              <option value="S3">S.3</option>
-              <option value="S4">S.4</option>
-              <option value="S5">S.5</option>
-              <option value="S6">S.6</option>
+            <label for="builderClass">Target Class / Stream</label>
+            <select id="builderClass" required>
+              <option value="S1">Senior 1 (S1)</option>
+              <option value="S2">Senior 2 (S2)</option>
+              <option value="S3">Senior 3 (S3)</option>
+              <option value="S4" selected>Senior 4 (S4)</option>
+              <option value="S5">Senior 5 (S5)</option>
+              <option value="S6">Senior 6 (S6)</option>
+              <option value="All">All Streams</option>
             </select>
           </div>
+
           <div class="form-group">
-            <label for="builderDuration">Duration (Minutes):</label>
-            <input type="number" id="builderDuration" class="form-control" min="1" value="15" required>
+            <label for="builderDuration">Timer (Minutes)</label>
+            <input type="number" id="builderDuration" min="1" max="180" value="15" required />
           </div>
         </div>
 
-        <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #e2e8f0;">
-
         <!-- Dynamic Questions Container -->
-        <h4 style="margin-bottom: 1rem; color: #0f172a;">Questions</h4>
-        <div id="builderQuestionsContainer">
-          <!-- Dynamically inserted by quiz.js -->
-        </div>
+        <div id="builderQuestionsContainer" class="builder-questions"></div>
 
-        <button type="button" onclick="addQuestionToBuilder()" class="btn-action btn-secondary" style="margin-bottom: 1.5rem;">
-          <i class="fa-solid fa-plus-circle"></i> Add Question
-        </button>
-
-        <div style="display: flex; gap: 1rem;">
-          <button type="submit" class="btn-action btn-submit" style="flex: 1; margin-top: 0;">
-            <i class="fa-solid fa-cloud-arrow-up"></i> Publish Quiz
+        <div class="builder-actions">
+          <button type="button" class="btn btn-secondary" onclick="addQuestionToBuilder()">
+            <i class="fa-solid fa-plus"></i> Add Question
           </button>
-          <button type="button" onclick="toggleQuizBuilder()" class="btn-action btn-secondary">
-            Cancel
-          </button>
+          <div class="builder-right-btns">
+            <button type="button" class="btn btn-outline" onclick="toggleQuizBuilder()">Cancel</button>
+            <button type="submit" class="btn btn-success">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Publish Quiz
+            </button>
+          </div>
         </div>
       </form>
 
-      <!-- Results Oversight Table for Teachers -->
-      <div id="resultsTableContainer" style="margin-top: 1.5rem; background: #ffffff; padding: 1.25rem; border-radius: 8px; border: 1px solid #e2e8f0;">
-        <h4 style="margin-bottom: 1rem; color: #0f172a;"><i class="fa-solid fa-chart-line"></i> Recent Student Submissions</h4>
-        <div class="results-table-wrapper">
-          <table class="results-table">
-            <thead>
-              <tr>
-                <th>Student</th>
-                <th>Quiz Title</th>
-                <th>Score</th>
-                <th>Submitted At</th>
-              </tr>
-            </thead>
-            <tbody id="teacherResultsTable">
-              <tr>
-                <td colspan="4" style="text-align: center; padding: 1rem; color: #64748b;">Loading results...</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+      <!-- Live Results Table -->
+      <div class="results-table-container">
+        <h4><i class="fa-solid fa-chart-column"></i> Recent Student Submissions</h4>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Assessment Title</th>
+              <th>Score</th>
+              <th>Submitted At</th>
+            </tr>
+          </thead>
+          <tbody id="teacherResultsTable">
+            <tr>
+              <td colspan="4" class="table-loading">
+                <i class="fa-solid fa-circle-notch fa-spin"></i> Fetching submissions...
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
-    <!-- ================= STUDENT / COMMON QUIZ LIST ================= -->
-    <section id="availableQuizzesContainer" class="section-card">
-      <h3 style="margin-bottom: 1rem;"><i class="fa-solid fa-list-check"></i> Available Quizzes</h3>
-      <div id="quizList" class="quiz-grid">
-        <!-- Dynamically loaded from Firestore / Local Cache -->
+    <!-- =================================================================== -->
+    <!-- AVAILABLE QUIZZES DASHBOARD (Student View)                          -->
+    <!-- =================================================================== -->
+    <section id="availableQuizzesContainer" class="dashboard-section">
+      <div class="section-title">
+        <h3><i class="fa-solid fa-book-open-reader"></i> Available Assessments</h3>
+        <p>Select an assessment below to begin your timed test session.</p>
       </div>
+
+      <!-- Quizzes Grid (Injected by JS) -->
+      <div id="quizList" class="quiz-grid"></div>
     </section>
 
-    <!-- ================= TIMED QUIZ RUNNER ================= -->
-    <section id="quizRunner" class="section-card" style="display: none;">
-      <div class="quiz-runner-header">
+    <!-- =================================================================== -->
+    <!-- ACTIVE QUIZ RUNNER INTERFACE                                        -->
+    <!-- =================================================================== -->
+    <section id="quizRunner" class="quiz-runner" style="display: none;">
+      <!-- Sticky Assessment Header -->
+      <div class="runner-header">
         <div>
-          <h3 id="activeQuizTitle" style="color: #0f172a; margin: 0;">Quiz Title</h3>
-          <span id="activeQuizClass" class="quiz-badge">Class</span>
+          <span id="activeQuizClass" class="badge badge-primary">S4</span>
+          <h2 id="activeQuizTitle">ICT Practical Quiz</h2>
         </div>
-        <div id="timerBadge" class="timer-badge">
+        <div class="timer-box">
           <i class="fa-solid fa-clock"></i> Time Left: <span id="quizTimer">00:00</span>
         </div>
       </div>
 
-      <form id="quizForm" onsubmit="event.preventDefault();">
-        <div id="questionsList">
-          <!-- Dynamic quiz questions load here -->
-        </div>
-        <button type="button" onclick="submitQuizToFirestore()" class="btn-action btn-submit">
-          <i class="fa-solid fa-paper-plane"></i> Submit Answers
+      <!-- Question List (Injected by JS) -->
+      <div id="questionsList" class="questions-wrapper"></div>
+
+      <!-- Submit Footer -->
+      <div class="runner-footer">
+        <button type="button" class="btn btn-success btn-lg" onclick="submitQuizToFirestore()">
+          <i class="fa-solid fa-paper-plane"></i> Submit Assessment
         </button>
-      </form>
+      </div>
     </section>
 
   </main>
 
-  <!-- Module Execution Logic -->
+  <!-- Quiz Engine Logic -->
   <script src="quiz.js"></script>
 </body>
 </html>
