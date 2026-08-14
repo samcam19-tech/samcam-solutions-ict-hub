@@ -1,4 +1,6 @@
-// 1. Firebase Configuration (Matches script.js)
+// ==========================================================================
+// 1. FIREBASE CONFIGURATION & INITIALIZATION
+// ==========================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
   authDomain: "samcam-system.firebaseapp.com",
@@ -14,13 +16,27 @@ if (!firebase.apps.length) {
 }
 const db = firebase.firestore();
 
-// 2. STATE MANAGEMENT
+// Enable offline persistence for Firestore if supported
+db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
+  if (err.code === 'failed-precondition') {
+    console.warn('Firestore persistence failed: Multiple tabs open');
+  } else if (err.code === 'unimplemented') {
+    console.warn('Firestore persistence not supported by browser');
+  }
+});
+
+// ==========================================================================
+// 2. STATE MANAGEMENT & GLOBALS
+// ==========================================================================
 let currentUser = null;
 let activeQuizData = null;
 let quizTimerInterval = null;
 let builderQuestionCount = 0;
+let quizUnsubscribeListener = null;
 
+// ==========================================================================
 // 3. INITIALIZATION ON PAGE LOAD
+// ==========================================================================
 document.addEventListener("DOMContentLoaded", () => {
   const sessionData = localStorage.getItem('portal_session');
   
@@ -34,11 +50,15 @@ document.addEventListener("DOMContentLoaded", () => {
   // Display user badge
   const userBadge = document.getElementById('userBadge');
   if (userBadge) {
-    userBadge.innerHTML = `<i class="fa-solid fa-user"></i> ${currentUser.fullName || currentUser.username} (${currentUser.role === 'Teacher' ? 'Teacher' : currentUser.class || 'Student'})`;
+    const roleText = (currentUser.role && currentUser.role.toLowerCase() === 'teacher') || currentUser.role === 'admin' 
+      ? 'Teacher' 
+      : (currentUser.class || 'Student');
+    userBadge.innerHTML = `<i class="fa-solid fa-user"></i> ${currentUser.fullName || currentUser.username} (${roleText})`;
   }
 
-  // Unified Teacher Authorization Check
-  const isTeacher = currentUser.role === 'Teacher' || currentUser.role === 'admin' || currentUser.role === 'teacher';
+  // Unified Teacher Authorization Check (Case-Insensitive)
+  const userRole = (currentUser.role || '').toLowerCase();
+  const isTeacher = userRole === 'teacher' || userRole === 'admin';
   
   if (isTeacher) {
     const teacherPanel = document.getElementById('teacherPanel');
@@ -46,11 +66,91 @@ document.addEventListener("DOMContentLoaded", () => {
     fetchQuizResults(); // Load student results table for teachers
   }
 
-  fetchActiveQuizzes();
+  // ⚡ Load cached quizzes instantly, then initialize real-time listener
+  initRealtimeQuizEngine();
 });
 
 // ==========================================================================
-// TEACHER / ADMIN: QUIZ BUILDER & RESULTS TRACKER
+// 4. INSTANT CACHE + REAL-TIME QUIZ SYNC ENGINE
+// ==========================================================================
+
+function initRealtimeQuizEngine() {
+  const quizListContainer = document.getElementById('quizList');
+  if (!quizListContainer) return;
+
+  // STEP 1: Fast initial load from LocalStorage (0ms latency UI render)
+  const cachedQuizzes = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || [];
+  if (cachedQuizzes.length > 0) {
+    renderQuizCards(cachedQuizzes);
+  } else {
+    quizListContainer.innerHTML = `<p><i class="fa-solid fa-spinner fa-spin"></i> Loading active quizzes...</p>`;
+  }
+
+  // STEP 2: Real-time Snapshot Listener to handle background sync without delays
+  if (quizUnsubscribeListener) quizUnsubscribeListener(); // Prevent duplicate listeners
+
+  quizUnsubscribeListener = db.collection('quizzes').onSnapshot((snapshot) => {
+    const freshQuizzes = [];
+    snapshot.forEach((doc) => {
+      freshQuizzes.push({ id: doc.id, ...doc.data() });
+    });
+
+    // Update Local Storage Cache
+    localStorage.setItem('portal_quizzes_cache', JSON.stringify(freshQuizzes));
+
+    // Instant UI Re-render with fresh database state
+    renderQuizCards(freshQuizzes);
+  }, (err) => {
+    console.error("Firestore Quiz Listener Error:", err);
+    if (cachedQuizzes.length === 0) {
+      quizListContainer.innerHTML = `<p style="color: #ef4444;">Unable to sync live quizzes. Check internet connection.</p>`;
+    }
+  });
+}
+
+function renderQuizCards(quizzesList) {
+  const quizListContainer = document.getElementById('quizList');
+  if (!quizListContainer) return;
+
+  const userRole = (currentUser.role || '').toLowerCase();
+  const isTeacher = userRole === 'teacher' || userRole === 'admin';
+
+  // In-Memory Filtering (Prevents indexing stalls & multi-filter lag)
+  const filteredQuizzes = quizzesList.filter(q => {
+    if (isTeacher) return true;
+    if (!currentUser.class) return true;
+    const target = q.targetClass || 'All';
+    return target === 'All' || target === currentUser.class;
+  });
+
+  if (filteredQuizzes.length === 0) {
+    quizListContainer.innerHTML = `<p style="grid-column: 1/-1; color: #64748b;">No active quizzes found ${currentUser.class ? 'for class ' + currentUser.class : ''}.</p>`;
+    return;
+  }
+
+  let html = '';
+  filteredQuizzes.forEach(q => {
+    html += `
+      <div class="quiz-card" style="border:1px solid #e2e8f0; padding:1rem; border-radius:8px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div>
+          <span class="quiz-badge" style="background:#e0f2fe; color:#0369a1; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:600;">${q.targetClass || 'All Classes'}</span>
+          <h4 style="margin: 0.5rem 0; font-size:1.1rem;">${q.title}</h4>
+          <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">
+            <i class="fa-solid fa-clock"></i> ${q.durationMinutes} Minutes | ${q.questions ? q.questions.length : 0} Questions
+          </p>
+        </div>
+        <button onclick="startQuiz('${q.id}')" class="btn-action" style="padding:0.5rem 1rem; background:#2563eb; color:#fff; border:none; border-radius:4px; cursor:pointer; font-weight:500;">
+          <i class="fa-solid fa-play"></i> Start Quiz
+        </button>
+      </div>
+    `;
+  });
+
+  quizListContainer.innerHTML = html;
+}
+
+// ==========================================================================
+// 5. TEACHER / ADMIN: QUIZ BUILDER & RESULTS TRACKER
 // ==========================================================================
 
 function toggleQuizBuilder() {
@@ -151,7 +251,6 @@ async function handleSaveQuiz(event) {
     document.getElementById('builderQuestionsContainer').innerHTML = '';
     builderQuestionCount = 0;
     toggleQuizBuilder();
-    fetchActiveQuizzes();
   } catch (err) {
     console.error("Error creating quiz:", err);
     alert("Failed to save quiz: " + err.message);
@@ -165,7 +264,7 @@ async function fetchQuizResults() {
   try {
     const snapshot = await db.collection('quiz_results').orderBy('submittedAt', 'desc').get();
     if (snapshot.empty) {
-      resultsContainer.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#64748b;">No quiz submissions yet.</td></tr>`;
+      resultsContainer.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#64748b; padding:1rem;">No quiz submissions yet.</td></tr>`;
       return;
     }
 
@@ -174,10 +273,10 @@ async function fetchQuizResults() {
       const res = doc.data();
       rowsHtml += `
         <tr>
-          <td><strong>${res.studentName}</strong> (${res.studentClass})</td>
-          <td>${res.quizTitle}</td>
-          <td><span style="font-weight:bold; color:${res.percentage >= 50 ? '#16a34a' : '#dc2626'};">${res.score}/${res.totalQuestions} (${res.percentage}%)</span></td>
-          <td>${res.submittedAt ? new Date(res.submittedAt.toDate()).toLocaleString() : 'Just now'}</td>
+          <td style="padding:0.75rem;"><strong>${res.studentName}</strong> (${res.studentClass})</td>
+          <td style="padding:0.75rem;">${res.quizTitle}</td>
+          <td style="padding:0.75rem;"><span style="font-weight:bold; color:${res.percentage >= 50 ? '#16a34a' : '#dc2626'};">${res.score}/${res.totalQuestions} (${res.percentage}%)</span></td>
+          <td style="padding:0.75rem;">${res.submittedAt ? new Date(res.submittedAt.toDate()).toLocaleString() : 'Just now'}</td>
         </tr>
       `;
     });
@@ -188,59 +287,12 @@ async function fetchQuizResults() {
 }
 
 // ==========================================================================
-// STUDENT: FETCH & RUN QUIZZES
+// 6. STUDENT: RUN QUIZZES
 // ==========================================================================
-
-async function fetchActiveQuizzes() {
-  const quizListContainer = document.getElementById('quizList');
-  if (!quizListContainer) return;
-  quizListContainer.innerHTML = "<p><i class='fa-solid fa-spinner fa-spin'></i> Loading quizzes...</p>";
-
-  try {
-    let query = db.collection('quizzes');
-    const isTeacher = currentUser.role === 'Teacher' || currentUser.role === 'admin' || currentUser.role === 'teacher';
-
-    // Filter by class for students
-    if (!isTeacher && currentUser.class) {
-      query = query.where('targetClass', 'in', [currentUser.class, 'All']);
-    }
-
-    const snapshot = await query.get();
-
-    if (snapshot.empty) {
-      quizListContainer.innerHTML = `<p style="grid-column: 1/-1; color: #64748b;">No active quizzes found ${currentUser.class ? 'for class ' + currentUser.class : ''}.</p>`;
-      return;
-    }
-
-    let html = '';
-    snapshot.forEach(doc => {
-      const q = doc.data();
-      html += `
-        <div class="quiz-card" style="border:1px solid #e2e8f0; padding:1rem; border-radius:8px; background:#fff;">
-          <div>
-            <span class="quiz-badge" style="background:#e0f2fe; color:#0369a1; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem;">${q.targetClass || 'All Classes'}</span>
-            <h4 style="margin: 0.5rem 0;">${q.title}</h4>
-            <p style="font-size: 0.85rem; color: #64748b; margin-bottom: 1rem;">
-              <i class="fa-solid fa-clock"></i> ${q.durationMinutes} Minutes | ${q.questions ? q.questions.length : 0} Questions
-            </p>
-          </div>
-          <button onclick="startQuiz('${doc.id}')" class="btn-action" style="padding:0.5rem 1rem; background:#2563eb; color:#fff; border:none; border-radius:4px; cursor:pointer;">
-            <i class="fa-solid fa-play"></i> Start Quiz
-          </button>
-        </div>
-      `;
-    });
-
-    quizListContainer.innerHTML = html;
-  } catch (err) {
-    console.error("Error fetching quizzes:", err);
-    quizListContainer.innerHTML = `<p style="color: #ef4444;">Error loading quizzes.</p>`;
-  }
-}
 
 async function startQuiz(quizId) {
   try {
-    // Check if student has already completed this quiz
+    // 1. Double attempt validation check
     const existingResult = await db.collection('quiz_results')
       .where('quizId', '==', quizId)
       .where('studentUsername', '==', currentUser.username)
@@ -251,13 +303,20 @@ async function startQuiz(quizId) {
       return;
     }
 
-    const doc = await db.collection('quizzes').doc(quizId).get();
-    if (!doc.exists) {
-      alert("Quiz not found.");
-      return;
+    // 2. Fast retrieval from local cache if possible, fallback to Firestore
+    const cachedQuizzes = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || [];
+    let foundQuiz = cachedQuizzes.find(q => q.id === quizId);
+
+    if (!foundQuiz) {
+      const doc = await db.collection('quizzes').doc(quizId).get();
+      if (!doc.exists) {
+        alert("Quiz not found.");
+        return;
+      }
+      foundQuiz = { id: doc.id, ...doc.data() };
     }
 
-    activeQuizData = { id: doc.id, ...doc.data() };
+    activeQuizData = foundQuiz;
 
     document.getElementById('activeQuizTitle').textContent = activeQuizData.title;
     document.getElementById('activeQuizClass').textContent = activeQuizData.targetClass || 'General';
@@ -300,7 +359,7 @@ function renderQuizQuestions(questions) {
 }
 
 // ==========================================================================
-// TIMER & AUTO-SUBMIT LOGIC
+// 7. TIMER & AUTO-SUBMIT LOGIC
 // ==========================================================================
 
 function startTimer(durationMinutes) {
@@ -328,7 +387,7 @@ function startTimer(durationMinutes) {
 }
 
 // ==========================================================================
-// QUIZ SUBMISSION & INSTANT AUTO-GRADING
+// 8. QUIZ SUBMISSION & INSTANT AUTO-GRADING
 // ==========================================================================
 
 async function submitQuizToFirestore() {
@@ -374,7 +433,8 @@ async function submitQuizToFirestore() {
     document.getElementById('quizRunner').style.display = 'none';
     document.getElementById('availableQuizzesContainer').style.display = 'block';
     
-    const isTeacher = currentUser.role === 'Teacher' || currentUser.role === 'admin' || currentUser.role === 'teacher';
+    const userRole = (currentUser.role || '').toLowerCase();
+    const isTeacher = userRole === 'teacher' || userRole === 'admin';
     if (isTeacher) {
       document.getElementById('teacherPanel').style.display = 'block';
       fetchQuizResults();
