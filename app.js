@@ -11,34 +11,43 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize Theme
   initTheme();
 
-  // Load Data Source (Tries local portal_resources first, then falls back to data.json)
-  const localData = localStorage.getItem('portal_resources');
-  if (localData) {
-    try {
-      allResources = JSON.parse(localData);
-      initPortal();
-    } catch (e) {
-      fetchDataJSON();
-    }
-  } else {
-    fetchDataJSON();
-  }
+  // Always load fresh data from data.json first (bypasses local caching issues)
+  fetchDataJSON();
 
   // Scroll listener for Back to Top Button
   window.addEventListener('scroll', handleScroll);
 });
 
+/* ==========================================================================
+   DATA FETCHING & INITIALIZATION
+   ========================================================================== */
 function fetchDataJSON() {
-  fetch('data.json')
-    .then(response => response.json())
+  // Append timestamp parameter to force browser/GitHub Pages cache invalidation
+  fetch('./data.json?v=' + new Date().getTime())
+    .then(response => {
+      if (!response.ok) throw new Error("HTTP error " + response.status);
+      return response.json();
+    })
     .then(data => {
       allResources = data;
+      // Clear outdated local storage to maintain absolute sync with data.json
+      localStorage.removeItem('portal_resources');
       initPortal();
     })
     .catch(error => {
-      console.error("Error loading resources:", error);
-      allResources = [];
-      renderCards();
+      console.error("Error loading resources from data.json:", error);
+      // Offline / Error Fallback to local storage if network request fails
+      const localData = localStorage.getItem('portal_resources');
+      if (localData) {
+        try {
+          allResources = JSON.parse(localData);
+        } catch (e) {
+          allResources = [];
+        }
+      } else {
+        allResources = [];
+      }
+      initPortal();
     });
 }
 
@@ -64,7 +73,8 @@ function clearSearch() {
   if (searchInput) {
     searchInput.value = '';
     searchQuery = '';
-    document.getElementById('clearSearchBtn').style.display = 'none';
+    const clearBtn = document.getElementById('clearSearchBtn');
+    if (clearBtn) clearBtn.style.display = 'none';
     renderCards();
   }
 }
@@ -89,6 +99,21 @@ function updateActiveButtons(selector, targetBtn) {
 
   group.forEach(btn => btn.classList.remove('active'));
   button.classList.add('active');
+}
+
+function resetFilters() {
+  currentClass = 'ALL';
+  currentCategory = 'ALL';
+  clearSearch();
+  
+  document.querySelectorAll('.segmented-control .segment-btn').forEach(btn => {
+    btn.classList.remove('active');
+    if (btn.textContent.trim().toLowerCase().includes('all')) {
+      btn.classList.add('active');
+    }
+  });
+  
+  renderCards();
 }
 
 /* ==========================================================================
@@ -194,21 +219,6 @@ function renderCards() {
   });
 }
 
-function resetFilters() {
-  currentClass = 'ALL';
-  currentCategory = 'ALL';
-  clearSearch();
-  
-  document.querySelectorAll('.segmented-control .segment-btn').forEach(btn => {
-    btn.classList.remove('active');
-    if (btn.textContent.trim().toLowerCase().includes('all')) {
-      btn.classList.add('active');
-    }
-  });
-  
-  renderCards();
-}
-
 function updateStatsCounters() {
   const statTotal = document.getElementById('statTotal');
   const statSupport = document.getElementById('statSupport');
@@ -240,7 +250,7 @@ function openPreviewModal(encodedItem) {
     <span class="tag tag-cat" style="margin-bottom:0.5rem; display:inline-block;">${item.class} • ${item.category}</span>
     <h2 style="font-size:1.25rem; margin-bottom:0.75rem;">${item.title}</h2>
     <p style="color:#475569; font-size:0.9rem; margin-bottom:1.25rem;">${item.description || 'No detailed description available.'}</p>
-    <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #e2e8f0; padding-top:1rem;">
+    <div style="display:flex; justify-style:space-between; align-items:center; border-top:1px solid #e2e8f0; padding-top:1rem;">
       <small style="color:#64748b;"><i class="fa-solid fa-file"></i> Format: ${fileMeta.label}</small>
       <a href="${item.fileUrl || '#'}" download class="download-btn">
         <i class="fa-solid ${fileMeta.icon}"></i> Download File
@@ -289,11 +299,7 @@ function toggleTheme() {
 function handleScroll() {
   const btn = document.getElementById('backToTopBtn');
   if (btn) {
-    if (window.scrollY > 300) {
-      btn.style.display = 'flex';
-    } else {
-      btn.style.display = 'none';
-    }
+    btn.style.display = window.scrollY > 300 ? 'flex' : 'none';
   }
 }
 
