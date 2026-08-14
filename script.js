@@ -6,17 +6,6 @@
 let currentUser = null;
 let editingUsername = null;
 
-// Unified Root Administrator Account
-const rootTeacher = {
-  fullName: "System Admin",
-  class: "Staff",
-  username: "admin",
-  password: "admin123",
-  role: "Teacher"
-};
-
-const HARDCODED_ACCOUNTS = [ rootTeacher ];
-
 const initialAssessments = [
   {
     "id": 1,
@@ -34,11 +23,7 @@ const initialAssessments = [
    INITIALIZATION & SESSION PERSISTENCE
    ========================================================================== */
 document.addEventListener("DOMContentLoaded", () => {
-  let users = JSON.parse(localStorage.getItem('portal_users')) || [];
-  users = users.filter(u => u.username.toLowerCase() !== rootTeacher.username.toLowerCase());
-  users.unshift(rootTeacher);
-  localStorage.setItem('portal_users', JSON.stringify(users));
-
+  // Initialize default storage collections if they don't exist yet
   if (!localStorage.getItem('portal_resources')) {
     localStorage.setItem('portal_resources', JSON.stringify(initialAssessments));
   }
@@ -46,7 +31,13 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem('portal_submissions', JSON.stringify([]));
   }
 
-  currentUser = JSON.parse(localStorage.getItem('portal_session')) || null;
+  // Restore session from localStorage on page load/refresh
+  try {
+    currentUser = JSON.parse(localStorage.getItem('portal_session')) || null;
+  } catch (e) {
+    console.error("Error reading portal_session:", e);
+    currentUser = null;
+  }
   window.currentUser = currentUser;
 
   if (typeof updatePortalUI === 'function') {
@@ -75,32 +66,43 @@ window.executeLogin = async function() {
     return;
   }
 
-  let foundUser = HARDCODED_ACCOUNTS.find(
-    acc => acc.username.toLowerCase() === u && acc.password === p
-  );
+  let foundUser = null;
 
-  if (!foundUser && window.db) {
+  // 1. Primary Auth: Lookup account directly in Firebase Firestore
+  if (window.db) {
     try {
       const snap = await window.db.collection('users').doc(u).get();
-      if (snap.exists && snap.data().password === p) {
-        foundUser = snap.data();
+      if (snap.exists) {
+        const userData = snap.data();
+        if (userData.password === p) {
+          foundUser = userData;
+        }
       }
     } catch (err) {
       console.warn("Firestore lookup error:", err);
     }
   }
 
+  // 2. Offline Fallback: Check local storage created users if DB is unreachable
   if (!foundUser) {
-    const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
-    foundUser = localUsers.find(acc => acc.username.toLowerCase() === u && acc.password === p);
+    try {
+      const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+      foundUser = localUsers.find(
+        acc => (acc.username || '').toLowerCase() === u && acc.password === p
+      );
+    } catch (e) {
+      console.error("Error checking portal_users fallback:", e);
+    }
   }
 
+  // 3. Complete Login Process
   if (foundUser) {
     if (errEl) errEl.style.display = 'none';
 
     window.currentUser = foundUser;
     currentUser = foundUser;
 
+    // Save session payload to local storage
     localStorage.setItem('portal_session', JSON.stringify(foundUser));
 
     userEl.value = '';
@@ -133,7 +135,7 @@ window.handleLogout = function() {
   if (passEl) passEl.value = '';
   if (errEl) errEl.style.display = 'none';
 
-  updatePortalUI();
+  if (typeof updatePortalUI === 'function') updatePortalUI();
 };
 
 /* ==========================================================================
