@@ -1,5 +1,5 @@
 // ==========================================================================
-// 1. FIREBASE CONFIGURATION & INITIALIZATION
+// 1. FIREBASE INITIALIZATION & MOCK DATA
 // ==========================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
@@ -17,7 +17,7 @@ if (typeof firebase !== "undefined" && !firebase.apps.length) {
 
 const db = typeof firebase !== "undefined" ? firebase.firestore() : null;
 
-// Default Mock Data in case Firestore connection drops or is empty
+// Fallback Mock Data in case database connection drops or is empty
 const MOCK_QUIZZES = [
   {
     id: "sample_01",
@@ -42,14 +42,14 @@ const MOCK_QUIZZES = [
 ];
 
 // ==========================================================================
-// 2. STATE MANAGEMENT & GLOBALS
+// 2. STATE MANAGEMENT & SESSION HANDLING
 // ==========================================================================
 let currentUser = null;
 let activeQuizData = null;
 let quizTimerInterval = null;
 let builderQuestionCount = 0;
 
-// Listen for live session changes broadcasted by script.js
+// Listen for live session changes broadcasted by global auth scripts
 window.addEventListener('portalSessionChanged', (e) => {
   syncQuizEngineSession(e.detail);
 });
@@ -66,7 +66,7 @@ function sanitizeUserSession(user) {
   };
 }
 
-// Helper: Synchronize user session state across UI badges and admin/teacher panels
+// Synchronize user session state across UI badges and admin/teacher panels
 function syncQuizEngineSession(user) {
   currentUser = sanitizeUserSession(user);
 
@@ -83,7 +83,7 @@ function syncQuizEngineSession(user) {
   const userRole = (currentUser.role || '').toLowerCase();
   const isAdminOrTeacher = userRole === 'admin' || userRole === 'teacher';
 
-  // Update Badge
+  // Update Badge in Header
   if (userBadge) {
     let badgeTag = userRole === 'admin' 
       ? 'Admin' 
@@ -100,11 +100,10 @@ function syncQuizEngineSession(user) {
 }
 
 // ==========================================================================
-// 3. INITIALIZATION ON PAGE LOAD
+// 3. INITIALIZATION ON DOM READY
 // ==========================================================================
 document.addEventListener("DOMContentLoaded", () => {
   try {
-    // Determine current user session safely
     let activeUser = window.currentUser;
     if (!activeUser) {
       try {
@@ -116,10 +115,8 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // Apply sanitized session and update UI
+    // Apply session and populate dashboard
     syncQuizEngineSession(activeUser);
-
-    // Trigger active quiz loading
     fetchActiveQuizzes();
   } catch (err) {
     console.error("Initialization Error in Quiz Engine:", err);
@@ -127,34 +124,33 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ==========================================================================
-// 4. INSTANT CACHE + REAL-TIME QUIZ SYNC ENGINE
+// 4. INSTANT CACHE & REAL-TIME QUIZ SYNC ENGINE
 // ==========================================================================
-
 function fetchActiveQuizzes() {
   const quizListContainer = document.getElementById('quizList');
   if (!quizListContainer) return;
 
-  // Render Skeleton Placeholders while loading
+  // Loading Placeholder
   quizListContainer.innerHTML = `
     <div style="grid-column: 1/-1; display:flex; justify-content:center; align-items:center; padding:2rem; background:#f8fafc; border-radius:8px; color:#64748b;">
       <i class="fa-solid fa-circle-notch fa-spin" style="margin-right:0.5rem; font-size:1.2rem; color:#2563eb;"></i> Loading available quizzes...
     </div>
   `;
 
-  // STEP 1: Load from local storage cache if present
+  // 1. Load from instant local storage cache
   const cachedQuizzes = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || [];
   if (cachedQuizzes.length > 0) {
     renderQuizCards(cachedQuizzes);
   }
 
-  // STEP 2: Fallback to Mock Data if DB isn't connected
+  // 2. Fallback to Mock Data if Firestore isn't connected
   if (!db) {
     console.warn("Firestore not initialized. Using fallback data.");
     if (cachedQuizzes.length === 0) renderQuizCards(MOCK_QUIZZES);
     return;
   }
 
-  // STEP 3: Real-time listener from Firestore
+  // 3. Real-time Firestore sync
   db.collection('quizzes').onSnapshot((snapshot) => {
     const freshQuizzes = [];
     snapshot.forEach((doc) => {
@@ -163,10 +159,10 @@ function fetchActiveQuizzes() {
 
     const quizzesToDisplay = freshQuizzes.length > 0 ? freshQuizzes : MOCK_QUIZZES;
 
-    // Cache locally
+    // Save to local cache
     localStorage.setItem('portal_quizzes_cache', JSON.stringify(quizzesToDisplay));
 
-    // Render cards
+    // Render cards on UI
     renderQuizCards(quizzesToDisplay);
   }, (err) => {
     console.error("Firestore Listener Error:", err);
@@ -183,7 +179,7 @@ function renderQuizCards(quizzesList) {
   const userRole = (currentUser && currentUser.role ? currentUser.role : '').toLowerCase();
   const isAdminOrTeacher = userRole === 'admin' || userRole === 'teacher';
 
-  // Filter quizzes by user class scope (Admins & Teachers bypass filter)
+  // Filter quizzes by class scope (Admins & Teachers bypass filters)
   const filteredQuizzes = quizzesList.filter(q => {
     if (isAdminOrTeacher) return true;
     if (!currentUser || !currentUser.class) return true;
@@ -206,7 +202,7 @@ function renderQuizCards(quizzesList) {
   filteredQuizzes.forEach(q => {
     const qCount = q.questions ? q.questions.length : 0;
     html += `
-      <div class="quiz-card" style="border:1px solid #e2e8f0; padding:1.25rem; border-radius:10px; background:#ffffff; box-shadow:0 2px 4px rgba(0,0,0,0.04); display:flex; flex-direction:column; justify-content:space-between; transition:transform 0.15s ease;">
+      <div class="quiz-card" style="border:1px solid #e2e8f0; padding:1.25rem; border-radius:10px; background:#ffffff; box-shadow:0 2px 4px rgba(0,0,0,0.04); display:flex; flex-direction:column; justify-content:space-between;">
         <div>
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
             <span style="background:#e0f2fe; color:#0369a1; padding:0.25rem 0.6rem; border-radius:20px; font-size:0.75rem; font-weight:700; text-transform:uppercase;">
@@ -221,7 +217,7 @@ function renderQuizCards(quizzesList) {
             <i class="fa-solid fa-list-check"></i> ${qCount} Question${qCount === 1 ? '' : 's'} Included
           </p>
         </div>
-        <button onclick="startQuiz('${q.id}')" class="btn-action" style="width:100%; padding:0.65rem 1rem; background:#2563eb; color:#ffffff; border:none; border-radius:6px; cursor:pointer; font-weight:600; display:flex; align-items:center; justify-content:center; gap:0.5rem; box-shadow:0 2px 4px rgba(37,99,235,0.2);">
+        <button onclick="startQuiz('${q.id}')" class="btn btn-primary" style="width:100%; justify-content:center;">
           <i class="fa-solid fa-play"></i> Start Quiz
         </button>
       </div>
@@ -232,9 +228,8 @@ function renderQuizCards(quizzesList) {
 }
 
 // ==========================================================================
-// 5. TEACHER / ADMIN: QUIZ BUILDER & RESULTS TRACKER
+// 5. EDUCATOR CONTROL CENTER (QUIZ BUILDER & RESULTS TRACKER)
 // ==========================================================================
-
 function toggleQuizBuilder() {
   const form = document.getElementById('createQuizForm');
   if (!form) return;
@@ -274,7 +269,7 @@ function addQuestionToBuilder() {
     </div>
 
     <div style="display:flex; align-items:center; gap:0.5rem; background:#f8fafc; padding:0.5rem; border-radius:6px; border:1px solid #f1f5f9;">
-      <label style="font-size:0.85rem; font-weight:600; color:#475569;">Correct Answer:</label>
+      <label style="font-size:0.85rem; font-weight:600; color:#475569;">Correct Option:</label>
       <select class="q-correct" required style="padding:0.3rem 0.5rem; border-radius:4px; border:1px solid #cbd5e1; font-size:0.85rem;">
         <option value="0">Option 1</option>
         <option value="1">Option 2</option>
@@ -333,20 +328,19 @@ async function handleSaveQuiz(event) {
     if (db) {
       await db.collection('quizzes').add(quizDoc);
     } else {
-      // Local fallback append
       const cached = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || MOCK_QUIZZES;
       cached.push({ id: `local_${Date.now()}`, ...quizDoc });
       localStorage.setItem('portal_quizzes_cache', JSON.stringify(cached));
       renderQuizCards(cached);
     }
 
-    alert("Quiz created successfully!");
+    alert("Quiz created and published successfully!");
     document.getElementById('createQuizForm').reset();
     document.getElementById('builderQuestionsContainer').innerHTML = '';
     builderQuestionCount = 0;
     toggleQuizBuilder();
   } catch (err) {
-    console.error("Error creating quiz:", err);
+    console.error("Error publishing quiz:", err);
     alert("Failed to save quiz: " + err.message);
   }
 }
@@ -389,22 +383,22 @@ async function fetchQuizResults() {
     });
     resultsContainer.innerHTML = rowsHtml;
   } catch (err) {
-    console.error("Error fetching results:", err);
+    console.error("Error fetching submission results:", err);
     resultsContainer.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444; padding:1rem;">Failed to load submission results.</td></tr>`;
   }
 }
 
 // ==========================================================================
-// 6. STUDENT / USER: RUN QUIZZES
+// 6. QUIZ RUNNER ENGINE
 // ==========================================================================
-
 async function startQuiz(quizId) {
   try {
     if (!currentUser) {
-      alert("Please log in to attempt a quiz.");
+      alert("Please log in to attempt an assessment.");
       return;
     }
 
+    // Check duplicate attempts in Firestore
     if (db) {
       const existingResult = await db.collection('quiz_results')
         .where('quizId', '==', quizId)
@@ -452,7 +446,7 @@ async function startQuiz(quizId) {
 
     startTimer(activeQuizData.durationMinutes || 10);
   } catch (err) {
-    console.error("Error launching quiz:", err);
+    console.error("Error launching quiz session:", err);
   }
 }
 
@@ -461,7 +455,7 @@ function renderQuizQuestions(questions) {
   if (!container) return;
 
   if (questions.length === 0) {
-    container.innerHTML = `<p style="padding:1rem; color:#64748b;">No questions are currently attached to this quiz.</p>`;
+    container.innerHTML = `<p style="padding:1rem; color:#64748b;">No questions attached to this assessment.</p>`;
     return;
   }
 
@@ -474,7 +468,7 @@ function renderQuizQuestions(questions) {
         </div>
         <div style="display:flex; flex-direction:column; gap:0.6rem;">
           ${q.options.map((opt, optIndex) => `
-            <label class="option-label" style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.8rem; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; font-size:0.9rem; transition:background 0.15s ease;">
+            <label class="option-label" style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.8rem; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; font-size:0.9rem;">
               <input type="radio" name="q_${qIndex}" value="${optIndex}" style="accent-color:#2563eb;">
               <span>${opt}</span>
             </label>
@@ -488,9 +482,8 @@ function renderQuizQuestions(questions) {
 }
 
 // ==========================================================================
-// 7. TIMER & SUBMISSION
+// 7. TIMER & SUBMISSION ENGINE
 // ==========================================================================
-
 function startTimer(durationMinutes) {
   let secondsRemaining = durationMinutes * 60;
   const display = document.getElementById('quizTimer');
@@ -556,9 +549,9 @@ async function submitQuizToFirestore() {
       await db.collection('quiz_results').add(resultRecord);
     }
 
-    alert(`Quiz Submitted Successfully!\nResult: ${score}/${total} (${percentage}%)`);
+    alert(`Quiz Submitted Successfully!\nScore: ${score}/${total} (${percentage}%)`);
 
-    // Reset UI view back to dashboard
+    // Reset view to dashboard
     const runner = document.getElementById('quizRunner');
     const quizzesContainer = document.getElementById('availableQuizzesContainer');
     if (runner) runner.style.display = 'none';
