@@ -1,0 +1,74 @@
+name: Auto-Update Resource Library
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'uploads/**' # Only runs when files in the uploads folder change
+
+permissions:
+  contents: write # Allows the bot to save data.json back to your repo
+
+jobs:
+  update-json:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Generate new data.json
+        run: |
+          cat << 'EOF' > generate.js
+          const fs = require('fs');
+          
+          // Read all files in uploads folder, ignore hidden files like .gitkeep
+          const files = fs.readdirSync('uploads/').filter(f => !f.startsWith('.'));
+          
+          const resources = files.map((file, index) => {
+            const upper = file.toUpperCase();
+            
+            // 1. Smart Guess: Class
+            let cls = 'ALL';
+            if (upper.includes('S.1') || upper.includes('S1')) cls = 'S1';
+            else if (upper.includes('S.2') || upper.includes('S2')) cls = 'S2';
+            else if (upper.includes('S.3') || upper.includes('S3')) cls = 'S3';
+            else if (upper.match(/S\.?4/) || upper.includes('UCE') || upper.includes('O LEVEL')) cls = 'S4';
+            else if (upper.match(/S\.?5/)) cls = 'S5';
+            else if (upper.match(/S\.?6/) || upper.includes('UACE') || upper.includes('A LEVEL')) cls = 'S6';
+            
+            // 2. Smart Guess: Category
+            let cat = 'Support File';
+            if (upper.includes('NOTE')) cat = 'Notes';
+            else if (upper.includes('MOCK') || upper.includes('PP1') || upper.includes('PP2') || upper.includes('PAPER')) cat = 'Question Paper';
+            else if (upper.includes('MARKING') || upper.includes('GUIDE')) cat = 'Marking Guide';
+            
+            // 3. Clean Title (Removes .pdf, .pptx, etc.)
+            const title = file.replace(/\.[^/.]+$/, "");
+            
+            // 4. Get Current Date
+            const date = new Date().toISOString().split('T')[0];
+            
+            return {
+              id: index + 1,
+              class: cls,
+              category: cat,
+              title: title,
+              description: `${cls} ${cat}: ${title}`,
+              fileUrl: `uploads/${encodeURIComponent(file)}`,
+              date: date
+            };
+          });
+          
+          // Save to data.json
+          fs.writeFileSync('data.json', JSON.stringify(resources, null, 2));
+          EOF
+          node generate.js
+
+      - name: Commit and Save data.json
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add data.json
+          git commit -m "Auto-updated data.json with new uploads" || echo "No changes to commit"
+          git push
