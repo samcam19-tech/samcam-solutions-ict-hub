@@ -305,18 +305,28 @@ window.downloadStudentCSV = async function() {
 /* ==========================================================================
    3. STUDENT MANAGEMENT MODAL
    ========================================================================== */
-window.openStudentModal = function() {
+window.openManageStudentsModal = function() {
   const modal = document.getElementById('manageStudentsModal');
-  if (modal) modal.style.display = 'flex';
+  if (modal) {
+    modal.style.display = 'flex';
+  } else {
+    console.error("Element #manageStudentsModal not found in DOM.");
+  }
   editingUsername = null;
   renderStudentModalTable();
 };
 
-window.closeStudentModal = function() {
+window.closeManageStudentsModal = function() {
   const modal = document.getElementById('manageStudentsModal');
-  if (modal) modal.style.display = 'none';
+  if (modal) {
+    modal.style.display = 'none';
+  }
   editingUsername = null;
 };
+
+// Backwards compatibility alias in case old handlers are referenced
+window.openStudentModal = window.openManageStudentsModal;
+window.closeStudentModal = window.closeManageStudentsModal;
 
 window.renderStudentModalTable = async function() {
   const tbody = document.getElementById('studentModalTableBody');
