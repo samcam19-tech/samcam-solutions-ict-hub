@@ -1,57 +1,74 @@
 [
   {
     "id": 1,
-    "class": "S4",
-    "category": "Notes",
-    "title": "O LEVEL FULL NOTES",
-    "description": "Comprehensive notes covering basic data types and system components.",
-    "fileUrl": "uploads/ICT NOTES.pdf",
-    "date": "2026-08-05"
+    "class": "ALL",
+    "category": "Support File",
+    "title": "COMPUTER HARDWARE",
+    "description": "ALL Support File: COMPUTER HARDWARE",
+    "fileUrl": "uploads/COMPUTER%20HARDWARE.pptx",
+    "date": "2026-08-14"
   },
   {
     "id": 2,
-    "class": "S4",
-    "category": "Question Paper",
-    "title": "Wakissha UCE ICT 2 MOCK 2026",
-    "description": "Wakissha UCE ICT 2 MOCK 2026",
-    "fileUrl": "uploads/Wakissha UCE ICT 2 MOCK 2026.pdf",
-    "date": "2026-08-05"
+    "class": "ALL",
+    "category": "Notes",
+    "title": "ICT NOTES",
+    "description": "ALL Notes: ICT NOTES",
+    "fileUrl": "uploads/ICT%20NOTES.pdf",
+    "date": "2026-08-14"
   },
   {
     "id": 3,
     "class": "S4",
     "category": "Question Paper",
     "title": "S.4 INTERNAL MOCK PP1",
-    "description": "S.4 INTERNAL MOCK PP1",
-    "fileUrl": "uploads/S.4 INTERNAL MOCK PP1.pdf",
-    "date": "2026-08-05"
+    "description": "S4 Question Paper: S.4 INTERNAL MOCK PP1",
+    "fileUrl": "uploads/S.4%20INTERNAL%20MOCK%20PP1.pdf",
+    "date": "2026-08-14"
   },
   {
     "id": 4,
     "class": "S4",
     "category": "Question Paper",
     "title": "S.4 INTERNAL MOCK PP2",
-    "description": "S.4 INTERNAL MOCK PP2",
-    "fileUrl": "uploads/S.4 INTERNAL MOCK PP2.pdf",
-    "date": "2026-08-05"
+    "description": "S4 Question Paper: S.4 INTERNAL MOCK PP2",
+    "fileUrl": "uploads/S.4%20INTERNAL%20MOCK%20PP2.pdf",
+    "date": "2026-08-14"
   },
   {
     "id": 5,
     "class": "S5",
-    "category": "Notes",
-    "title": "COMPUTER HARDWARE",
-    "description": "Full notes for A level Computer Hardware topic",
-    "fileUrl": "uploads/COMPUTER HARDWARE.pptx",
-    "date": "2026-08-05"
+    "category": "Support File",
+    "title": "S.5 END OF TERM 2 EXAM",
+    "description": "S5 Support File: S.5 END OF TERM 2 EXAM",
+    "fileUrl": "uploads/S.5%20END%20OF%20TERM%202%20EXAM.pdf",
+    "date": "2026-08-14"
   },
   {
     "id": 6,
     "class": "S5",
+    "category": "Marking Guide",
+    "title": "S.5 END OF TERM 2 GUIDE",
+    "description": "S5 Marking Guide: S.5 END OF TERM 2 GUIDE",
+    "fileUrl": "uploads/S.5%20END%20OF%20TERM%202%20GUIDE.pdf",
+    "date": "2026-08-14"
+  },
+  {
+    "id": 7,
+    "class": "S5",
     "category": "Notes",
-    "title": "INTRODUCTION TO ICT",
-    "description": "Full notes for A level Introduction to ICT topic",
-    "fileUrl": "uploads/S.5 INTRODUCTION TO ICT NOTES.pptx",
-    "date": "2026-08-05"
+    "title": "S.5 INTRODUCTION TO ICT NOTES",
+    "description": "S5 Notes: S.5 INTRODUCTION TO ICT NOTES",
+    "fileUrl": "uploads/S.5%20INTRODUCTION%20TO%20ICT%20NOTES.pdf",
+    "date": "2026-08-14"
+  },
+  {
+    "id": 8,
+    "class": "S4",
+    "category": "Question Paper",
+    "title": "Wakissha UCE ICT 2 MOCK 2026",
+    "description": "S4 Question Paper: Wakissha UCE ICT 2 MOCK 2026",
+    "fileUrl": "uploads/Wakissha%20UCE%20ICT%202%20MOCK%202026.pdf",
+    "date": "2026-08-14"
   }
-
 ]
