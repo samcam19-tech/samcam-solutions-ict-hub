@@ -562,6 +562,59 @@ function renderAssessments() {
   }).join('');
 }
 
+/* ==========================================================================
+   STUDENT SUBMISSION HANDLER
+   ========================================================================== */
+
+function handleFormSubmission(event) {
+  event.preventDefault();
+
+  const nameEl = document.getElementById('studentName');
+  const classEl = document.getElementById('studentClass');
+  const titleEl = document.getElementById('testTitle');
+  const fileInput = document.getElementById('assignmentFile');
+
+  if (!fileInput.files || fileInput.files.length === 0) {
+    alert("Please select a file to upload.");
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const reader = new FileReader();
+
+  // Convert uploaded file to Data URL so it can be downloaded later from localStorage
+  reader.onload = function(e) {
+    const fileDataUrl = e.target.result;
+
+    const newSubmission = {
+      id: Date.now(),
+      studentName: nameEl.value.trim(),
+      studentClass: classEl.value.trim(),
+      testTitle: titleEl.value.trim(),
+      fileName: file.name,
+      fileUrl: fileDataUrl, // Data URL for direct downloading
+      submittedAt: new Date().toISOString().split('T')[0]
+    };
+
+    // Save to localStorage
+    const existing = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+    existing.unshift(newSubmission);
+    localStorage.setItem('portal_submissions', JSON.stringify(existing));
+
+    // Clear form & close modal
+    document.getElementById('assignmentForm').reset();
+    closeSubmissionModal();
+
+    // Refresh rendering
+    renderSubmissions();
+  };
+
+  reader.readAsDataURL(file);
+}
+
+/* ==========================================================================
+   RENDER SUBMISSIONS LIST
+   ========================================================================== */
 function renderSubmissions() {
   const container = document.getElementById('submissionsContainer');
   if (!container) return;
@@ -574,14 +627,27 @@ function renderSubmissions() {
   }
 
   container.innerHTML = submissions.map(sub => `
-    <div class="sub-item">
+    <div class="sub-item" style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem; border-bottom:1px solid #e2e8f0;">
       <div>
-        <strong>${sub.studentName}</strong> <small>(${sub.studentClass})</small><br>
-        <span style="color:#64748b;">${sub.testTitle}</span>
+        <strong>${sub.studentName}</strong> <small style="color:#2563eb;">(${sub.studentClass})</small><br>
+        <span style="color:#64748b; font-size:0.85rem;">${sub.testTitle}</span>
       </div>
-      <a href="${sub.fileUrl}" download class="btn-action btn-download" style="padding:0.3rem 0.6rem; font-size:0.75rem;">
+      <a href="${sub.fileUrl}" download="${sub.fileName || 'submission'}" class="btn-action btn-download" style="padding:0.3rem 0.6rem; font-size:0.75rem; text-decoration:none;">
         <i class="fa-solid fa-download"></i> Get File
       </a>
     </div>
   `).join('');
+}
+
+/* ==========================================================================
+   MODAL TOGGLES
+   ========================================================================== */
+function openSubmissionModal() {
+  const modal = document.getElementById('submissionModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function closeSubmissionModal() {
+  const modal = document.getElementById('submissionModal');
+  if (modal) modal.style.display = 'none';
 }
