@@ -1,3 +1,6 @@
+// Track quiz currently being edited (null if creating a new one)
+let editingQuizId = null;
+
 // ==========================================================================
 // 1. FIREBASE INITIALIZATION & MOCK DATA
 // ==========================================================================
@@ -271,26 +274,33 @@ function renderQuizCards(quizzesList) {
     } else {
       // Active Quiz Card
       html += `
-        <div class="quiz-card" style="border:1px solid #e2e8f0; padding:1.25rem; border-radius:10px; background:#ffffff; box-shadow:0 2px 4px rgba(0,0,0,0.04); display:flex; flex-direction:column; justify-content:space-between;">
-          <div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-              <span style="background:#e0f2fe; color:#0369a1; padding:0.25rem 0.6rem; border-radius:20px; font-size:0.75rem; font-weight:700; text-transform:uppercase;">
-                <i class="fa-solid fa-layer-group"></i> ${q.targetClass || 'All Classes'}
-              </span>
-              <span style="font-size:0.75rem; color:#64748b; font-weight:600;">
-                <i class="fa-solid fa-clock" style="color:#f59e0b;"></i> ${q.durationMinutes} Mins
-              </span>
-            </div>
-            <h4 style="margin:0 0 0.5rem 0; font-size:1.1rem; color:#0f172a; font-weight:600;">${q.title}</h4>
-            <p style="font-size:0.85rem; color:#64748b; margin:0 0 1.25rem 0;">
-              <i class="fa-solid fa-list-check"></i> ${qCount} Question${qCount === 1 ? '' : 's'} Included
-            </p>
-          </div>
-          <button onclick="startQuiz('${q.id}')" class="btn btn-primary" style="width:100%; justify-content:center;">
-            <i class="fa-solid fa-play"></i> Start Quiz
-          </button>
+  <div class="quiz-card" style="border:1px solid #e2e8f0; padding:1.25rem; border-radius:10px; background:#ffffff; box-shadow:0 2px 4px rgba(0,0,0,0.04); display:flex; flex-direction:column; justify-content:space-between;">
+    <div>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+        <span style="background:#e0f2fe; color:#0369a1; padding:0.25rem 0.6rem; border-radius:20px; font-size:0.75rem; font-weight:700; text-transform:uppercase;">
+          <i class="fa-solid fa-layer-group"></i> ${q.targetClass || 'All Classes'}
+        </span>
+        <div style="display:flex; gap:0.4rem; align-items:center;">
+          <span style="font-size:0.75rem; color:#64748b; font-weight:600; margin-right:0.5rem;">
+            <i class="fa-solid fa-clock" style="color:#f59e0b;"></i> ${q.durationMinutes} Mins
+          </span>
+          ${isAdminOrTeacher ? `
+            <button onclick="editQuiz('${q.id}')" title="Edit Quiz" style="background:#0284c7; border:none; color:#fff; padding:0.25rem 0.4rem; border-radius:4px; cursor:pointer; font-size:0.75rem;">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+          ` : ''}
         </div>
-      `;
+      </div>
+      <h4 style="margin:0 0 0.5rem 0; font-size:1.1rem; color:#0f172a; font-weight:600;">${q.title}</h4>
+      <p style="font-size:0.85rem; color:#64748b; margin:0 0 1.25rem 0;">
+        <i class="fa-solid fa-list-check"></i> ${qCount} Question${qCount === 1 ? '' : 's'} Included
+      </p>
+    </div>
+    <button onclick="startQuiz('${q.id}')" class="btn btn-primary" style="width:100%; justify-content:center;">
+      <i class="fa-solid fa-play"></i> Start Quiz
+    </button>
+  </div>
+`;
     }
   });
 
@@ -306,6 +316,12 @@ function toggleQuizBuilder() {
 
   const isHidden = form.style.display === 'none' || form.style.display === '';
   form.style.display = isHidden ? 'block' : 'none';
+
+  if (isHidden) {
+    // Reset editing state when opening fresh
+    editingQuizId = null;
+    form.reset();
+  }
 
   const container = document.getElementById('builderQuestionsContainer');
   if (isHidden && container && container.children.length === 0) {
@@ -403,7 +419,6 @@ async function handleSaveQuiz(event) {
   }
 
   const questions = [];
-  let hasError = false;
 
   questionElements.forEach((qEl, idx) => {
     const typeSelect = qEl.querySelector('.q-type-select');
@@ -441,27 +456,44 @@ async function handleSaveQuiz(event) {
     targetClass,
     durationMinutes: duration,
     questions,
-    createdBy: currentUser ? currentUser.username : "Admin",
-    createdAt: firebase.firestore.FieldValue ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
+    updatedAt: firebase.firestore.FieldValue ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
   };
 
   try {
     if (db) {
-      await db.collection('quizzes').add(quizDoc);
+      if (editingQuizId) {
+        // Update existing quiz record in Firestore
+        await db.collection('quizzes').doc(editingQuizId).update(quizDoc);
+        alert("Quiz updated successfully!");
+      } else {
+        // Create new quiz record in Firestore
+        quizDoc.createdBy = currentUser ? currentUser.username : "Admin";
+        quizDoc.createdAt = firebase.firestore.FieldValue ? firebase.firestore.FieldValue.serverTimestamp() : new Date();
+        await db.collection('quizzes').add(quizDoc);
+        alert("Quiz created and published successfully!");
+      }
     } else {
-      const cached = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || MOCK_QUIZZES;
-      cached.push({ id: `local_${Date.now()}`, ...quizDoc });
+      // LocalStorage fallback handling
+      let cached = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || MOCK_QUIZZES;
+      if (editingQuizId) {
+        cached = cached.map(q => q.id === editingQuizId ? { ...q, ...quizDoc } : q);
+        alert("Quiz updated locally!");
+      } else {
+        cached.push({ id: `local_${Date.now()}`, ...quizDoc });
+        alert("Quiz created locally!");
+      }
       localStorage.setItem('portal_quizzes_cache', JSON.stringify(cached));
       renderQuizCards(cached);
     }
 
-    alert("Quiz created and published successfully!");
+    // Cleanup form and states
+    editingQuizId = null;
     document.getElementById('createQuizForm').reset();
     document.getElementById('builderQuestionsContainer').innerHTML = '';
     builderQuestionCount = 0;
     toggleQuizBuilder();
   } catch (err) {
-    console.error("Error publishing quiz:", err);
+    console.error("Error saving quiz:", err);
     alert("Failed to save quiz: " + err.message);
   }
 }
@@ -664,6 +696,52 @@ async function deleteQuizSubmission(docId) {
     console.error("Error deleting quiz submission:", err);
     alert("Failed to delete submission: " + err.message);
   }
+}
+
+// Populate the builder form with existing quiz data for editing
+function editQuiz(quizId) {
+  const cachedQuizzes = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || [];
+  const quiz = cachedQuizzes.find(q => q.id === quizId);
+  
+  if (!quiz) {
+    alert("Quiz data not found.");
+    return;
+  }
+
+  editingQuizId = quiz.id;
+
+  // Ensure the quiz builder panel is visible
+  const form = document.getElementById('createQuizForm');
+  if (form && (form.style.display === 'none' || form.style.display === '')) {
+    form.style.display = 'block';
+  }
+
+  // Populate basic metadata fields
+  const titleInput = document.getElementById('builderTitle');
+  const classSelect = document.getElementById('builderClass');
+  const durationInput = document.getElementById('builderDuration');
+
+  if (titleInput) titleInput.value = quiz.title || '';
+  if (classSelect) classSelect.value = quiz.targetClass || 'All';
+  if (durationInput) durationInput.value = quiz.durationMinutes || 10;
+
+  // Clear and reload questions into the builder
+  const container = document.getElementById('builderQuestionsContainer');
+  if (container) {
+    container.innerHTML = '';
+    builderQuestionCount = 0;
+    
+    if (quiz.questions && quiz.questions.length > 0) {
+      quiz.questions.forEach(q => {
+        addQuestionToBuilder(q);
+      });
+    } else {
+      addQuestionToBuilder();
+    }
+  }
+
+  // Scroll smoothly up to the builder form
+  form.scrollIntoView({ behavior: 'smooth' });
 }
 
 // ==========================================================================
