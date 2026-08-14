@@ -458,6 +458,19 @@ async function handleSaveQuiz(event) {
     }
   });
 
+  // Check original class if editing
+  let originalQuizClass = null;
+  if (editingQuizId) {
+    const cachedQuizzes = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || [];
+    const existingOriginal = cachedQuizzes.find(q => q.id === editingQuizId);
+    if (existingOriginal) {
+      originalQuizClass = existingOriginal.targetClass;
+    }
+  }
+
+  // Determine if target class changed during an edit
+  const isClassChanged = editingQuizId && originalQuizClass && originalQuizClass !== targetClass;
+
   const quizDoc = {
     title,
     targetClass,
@@ -468,26 +481,31 @@ async function handleSaveQuiz(event) {
 
   try {
     if (db) {
-      if (editingQuizId) {
-        // Update existing quiz record in Firestore
+      if (editingQuizId && !isClassChanged) {
+        // Same class: Update existing record normally
         await db.collection('quizzes').doc(editingQuizId).update(quizDoc);
         alert("Quiz updated successfully!");
       } else {
-        // Create new quiz record in Firestore
+        // Brand new quiz or class changed: Keep old quiz and create a separate new record
         quizDoc.createdBy = currentUser ? currentUser.username : "Admin";
         quizDoc.createdAt = firebase.firestore.FieldValue ? firebase.firestore.FieldValue.serverTimestamp() : new Date();
         await db.collection('quizzes').add(quizDoc);
-        alert("Quiz created and published successfully!");
+
+        if (isClassChanged) {
+          alert(`Class changed from "${originalQuizClass}" to "${targetClass}". The original quiz remains intact, and a new quiz variant has been created for ${targetClass}!`);
+        } else {
+          alert("Quiz created and published successfully!");
+        }
       }
     } else {
       // LocalStorage fallback handling
       let cached = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || MOCK_QUIZZES;
-      if (editingQuizId) {
+      if (editingQuizId && !isClassChanged) {
         cached = cached.map(q => q.id === editingQuizId ? { ...q, ...quizDoc } : q);
         alert("Quiz updated locally!");
       } else {
         cached.push({ id: `local_${Date.now()}`, ...quizDoc });
-        alert("Quiz created locally!");
+        alert(isClassChanged ? "Class changed: Original quiz preserved and a new variant created!" : "Quiz created locally!");
       }
       localStorage.setItem('portal_quizzes_cache', JSON.stringify(cached));
       renderQuizCards(cached);
