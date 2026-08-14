@@ -73,9 +73,14 @@ function syncQuizEngineSession(user) {
   const userBadge = document.getElementById('userBadge');
   const teacherPanel = document.getElementById('teacherPanel');
 
+  // IF NO SESSION FOUND: Immediately switch UI badge from "Checking Session..." to "Guest"
   if (!currentUser) {
-    if (userBadge) userBadge.innerHTML = `<i class="fa-solid fa-user"></i> Guest`;
-    if (teacherPanel) teacherPanel.style.display = 'none';
+    if (userBadge) {
+      userBadge.innerHTML = `<i class="fa-solid fa-user-clock"></i> Guest`;
+    }
+    if (teacherPanel) {
+      teacherPanel.style.display = 'none';
+    }
     return;
   }
 
@@ -89,7 +94,7 @@ function syncQuizEngineSession(user) {
       ? 'Admin' 
       : (userRole === 'teacher' ? 'Teacher' : (currentUser.class || 'Student'));
 
-    userBadge.innerHTML = `<i class="fa-solid fa-user-check"></i> ${currentUser.fullName || currentUser.username} <span style="background:#0284c7; padding:0.1rem 0.4rem; border-radius:4px; font-size:0.75rem; margin-left:0.3rem;">${badgeTag}</span>`;
+    userBadge.innerHTML = `<i class="fa-solid fa-user-check"></i> ${currentUser.fullName || currentUser.username} <span style="background:#0284c7; color:#ffffff; padding:0.1rem 0.45rem; border-radius:4px; font-size:0.75rem; margin-left:0.35rem; font-weight:700;">${badgeTag}</span>`;
   }
 
   // Show Teacher / Admin Management Panel
@@ -105,21 +110,29 @@ function syncQuizEngineSession(user) {
 document.addEventListener("DOMContentLoaded", () => {
   try {
     let activeUser = window.currentUser;
+
+    // Direct resolution from 'portal_session' key
     if (!activeUser) {
-      try {
-        const sessionData = localStorage.getItem('portal_session');
-        if (sessionData) activeUser = JSON.parse(sessionData);
-      } catch (e) {
-        console.error("Error reading portal_session:", e);
-        activeUser = null;
+      const sessionData = localStorage.getItem('portal_session');
+      if (sessionData) {
+        try {
+          activeUser = JSON.parse(sessionData);
+        } catch (e) {
+          console.error("Error parsing portal_session from localStorage:", e);
+          activeUser = null;
+        }
       }
     }
 
-    // Apply session and populate dashboard
+    // Apply session and unfreeze UI badge immediately
     syncQuizEngineSession(activeUser);
+
+    // Populate quizzes
     fetchActiveQuizzes();
   } catch (err) {
     console.error("Initialization Error in Quiz Engine:", err);
+    // Force unfreeze on unexpected error
+    syncQuizEngineSession(null);
   }
 });
 
