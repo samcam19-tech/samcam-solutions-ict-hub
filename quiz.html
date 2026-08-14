@@ -16,46 +16,110 @@
 <body>
 
   <!-- Top Navigation Header -->
-  <header style="padding: 1rem; background: #0f172a; color: #fff; display: flex; justify-content: space-between; align-items: center;">
+  <header class="quiz-header">
     <h2><i class="fa-solid fa-graduation-cap"></i> Interactive Quiz Engine</h2>
-    <!-- Link back to main portal -->
-    <a href="index.html" style="color: #cbd5e1; text-decoration: none; font-weight: 500;">
-      <i class="fa-solid fa-arrow-left"></i> Back to Assessment Portal
-    </a>
+    <div class="nav-actions" style="display: flex; align-items: center; gap: 1rem;">
+      <span id="userBadge" style="color: #38bdf8; font-weight: 600; font-size: 0.9rem;"></span>
+      <a href="index.html" class="back-link">
+        <i class="fa-solid fa-arrow-left"></i> Back to Assessment Portal
+      </a>
+    </div>
   </header>
 
-  <main style="max-width: 900px; margin: 2rem auto; padding: 0 1rem;">
-    <!-- Active Quizzes List Container -->
-    <section id="availableQuizzesContainer">
-      <h3>Available Quizzes</h3>
-      <div id="quizList">
+  <main class="quiz-container">
+
+    <!-- ================= TEACHER / ADMIN SECTION ================= -->
+    <section id="teacherPanel" class="section-card" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <h3><i class="fa-solid fa-pen-ruler"></i> Create New Quiz</h3>
+        <button type="button" onclick="toggleQuizBuilder()" class="btn-action" style="width: auto;">
+          <i class="fa-solid fa-plus"></i> New Quiz Builder
+        </button>
+      </div>
+
+      <!-- Quiz Builder Form -->
+      <form id="createQuizForm" onsubmit="handleSaveQuiz(event)" style="display: none; background: #f8fafc; padding: 1.5rem; border-radius: 8px; border: 1px solid #cbd5e1; margin-bottom: 2rem;">
+        <h4 style="margin-bottom: 1rem; color: #0f172a;">Quiz Details</h4>
+        
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="font-weight: 600; font-size: 0.85rem;">Quiz Title:</label>
+            <input type="text" id="builderTitle" placeholder="e.g., S4 ICT Mid-Term Quiz" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid #cbd5e1;">
+          </div>
+          <div>
+            <label style="font-weight: 600; font-size: 0.85rem;">Target Class:</label>
+            <select id="builderClass" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid #cbd5e1;">
+              <option value="">Select Class</option>
+              <option value="S1">S.1</option>
+              <option value="S2">S.2</option>
+              <option value="S3">S.3</option>
+              <option value="S4">S.4</option>
+              <option value="S5">S.5</option>
+              <option value="S6">S.6</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-weight: 600; font-size: 0.85rem;">Duration (Minutes):</label>
+            <input type="number" id="builderDuration" min="1" value="15" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid #cbd5e1;">
+          </div>
+        </div>
+
+        <hr style="margin: 1.5rem 0; border: none; border-top: 1px solid #e2e8f0;">
+
+        <!-- Dynamic Questions List -->
+        <h4 style="margin-bottom: 1rem; color: #0f172a;">Questions</h4>
+        <div id="builderQuestionsContainer">
+          <!-- Dynamic Question Cards Inserted Here -->
+        </div>
+
+        <button type="button" onclick="addQuestionToBuilder()" class="btn-action" style="background: #475569; margin-bottom: 1.5rem;">
+          <i class="fa-solid fa-plus-circle"></i> Add Question
+        </button>
+
+        <div style="display: flex; gap: 1rem;">
+          <button type="submit" class="btn-action btn-submit" style="flex: 1;">
+            <i class="fa-solid fa-cloud-arrow-up"></i> Publish Quiz
+          </button>
+          <button type="button" onclick="toggleQuizBuilder()" class="btn-action" style="background: #94a3b8; width: auto;">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <!-- ================= STUDENT / COMMON QUIZ LIST ================= -->
+    <section id="availableQuizzesContainer" class="section-card">
+      <h3 style="margin-bottom: 1rem;"><i class="fa-solid fa-list-check"></i> Available Quizzes</h3>
+      <div id="quizList" class="quiz-grid">
         <!-- Dynamically loaded from Firestore -->
       </div>
     </section>
 
-    <!-- Quiz Taking View (Initially Hidden) -->
-    <section id="quizRunner" style="display: none;">
-      <div style="display: flex; justify-content: space-between; align-items: center;">
-        <h3 id="activeQuizTitle">Quiz Title</h3>
-        <div id="timerBadge" style="background: #e11d48; color: white; padding: 0.5rem 1rem; border-radius: 20px; font-weight: bold;">
+    <!-- ================= TIMED QUIZ RUNNER ================= -->
+    <section id="quizRunner" class="section-card" style="display: none;">
+      <div class="quiz-runner-header">
+        <div>
+          <h3 id="activeQuizTitle" style="color: #0f172a;">Quiz Title</h3>
+          <span id="activeQuizClass" class="quiz-badge">Class</span>
+        </div>
+        <div id="timerBadge" class="timer-badge">
           <i class="fa-solid fa-clock"></i> Time Left: <span id="quizTimer">00:00</span>
         </div>
       </div>
 
-      <form id="quizForm" style="margin-top: 1.5rem;">
+      <form id="quizForm">
         <div id="questionsList">
-          <!-- Render questions dynamic -->
+          <!-- Questions rendered dynamically -->
         </div>
-        <button type="button" onclick="submitQuizToFirestore()" class="btn-submit" style="margin-top: 1.5rem;">
-          Submit Answers
+        <button type="button" onclick="submitQuizToFirestore()" class="btn-action btn-submit" style="margin-top: 1.5rem;">
+          <i class="fa-solid fa-paper-plane"></i> Submit Answers
         </button>
       </form>
     </section>
+
   </main>
 
-  <!-- Quiz JS logic -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <!-- Main Quiz JavaScript Engine -->
   <script src="quiz-engine.js"></script>
 </body>
 </html>
