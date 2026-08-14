@@ -86,23 +86,23 @@
   </nav>
 
   <div class="portal-container">
-    
-    <!-- AUTHENTICATED LOGIN PANEL -->
-    <div id="loginSection" class="card-box" style="max-width: 450px; margin: 2rem auto;">
-      <h3><i class="fa-solid fa-right-to-bracket"></i> Portal Sign In</h3>
-      <form id="loginForm" action="javascript:void(0);" onsubmit="handleLogin(event)">
-        <div class="form-group">
-          <label for="loginUsername">Username</label>
-          <input type="text" id="loginUsername" name="username" placeholder="Enter username..." required autocomplete="username">
-        </div>
-        <div class="form-group">
-          <label for="loginPassword">Password</label>
-          <input type="password" id="loginPassword" name="password" placeholder="Enter password..." required autocomplete="current-password">
-        </div>
-        <div id="loginError" class="error-msg">Invalid username or password!</div>
-        <button type="button" class="btn-submit" onclick="handleLogin(event)" style="margin-top: 1rem;">Sign In</button>
-      </form>
-    </div>
+  <!-- AUTHENTICATED LOGIN PANEL -->
+  <div id="loginSection" class="card-box" style="max-width: 450px; margin: 2rem auto;">
+    <h3><i class="fa-solid fa-right-to-bracket"></i> Portal Sign In</h3>
+    <form id="loginForm" action="javascript:void(0);">
+      <div class="form-group">
+        <label for="loginUsername">Username</label>
+        <input type="text" id="loginUsername" name="username" placeholder="Enter username..." required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label for="loginPassword">Password</label>
+        <input type="password" id="loginPassword" name="password" placeholder="Enter password..." required autocomplete="current-password">
+      </div>
+      <div id="loginError" class="error-msg" style="display:none; color: #ef4444; margin-top: 0.5rem; font-size: 0.85rem;">Invalid username or password!</div>
+      <button type="button" onclick="executeLogin()" class="btn-submit" style="margin-top: 1rem; width: 100%;">Sign In</button>
+    </form>
+  </div>
+</div>
 
     <!-- MAIN PORTAL DASHBOARD -->
     <div id="dashboardSection" style="display: none;">
