@@ -433,8 +433,10 @@ window.downloadStudentCSV = async function() {
 };
 
 /* ==========================================================================
-   3. STUDENT MANAGEMENT MODAL CONTROLS
+   3. STUDENT MANAGEMENT MODAL CONTROLS (FIREBASE FIRESTORE SYNC)
    ========================================================================== */
+let editingUsername = null;
+
 window.openStudentModal = function() {
   const modal = document.getElementById('studentModal');
   if (modal) modal.style.display = 'flex';
@@ -448,26 +450,52 @@ window.closeStudentModal = function() {
   editingUsername = null;
 };
 
-window.renderStudentModalTable = function() {
+// Asynchronous Render to fetch live student data from Firestore
+window.renderStudentModalTable = async function() {
   const tbody = document.getElementById('studentModalTableBody');
   const searchInput = document.getElementById('studentSearchInput');
   const searchFilter = searchInput ? searchInput.value.toLowerCase().trim() : '';
 
   if (!tbody) return;
 
-  const users = JSON.parse(localStorage.getItem('portal_users')) || [];
-  const students = users.filter(u => u.role === 'Student' && (
-    u.fullName.toLowerCase().includes(searchFilter) ||
-    u.class.toLowerCase().includes(searchFilter) ||
-    u.username.toLowerCase().includes(searchFilter)
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#64748b;">Loading students from database...</td></tr>';
+
+  let students = [];
+
+  // 1. Fetch live records from Cloud Firestore
+  if (window.db) {
+    try {
+      const snap = await window.db.collection('users').where('role', '==', 'Student').get();
+      snap.forEach(doc => students.push(doc.data()));
+      
+      // Update local storage cache to stay in sync
+      const allLocalUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+      const nonStudents = allLocalUsers.filter(u => u.role !== 'Student');
+      localStorage.setItem('portal_users', JSON.stringify([...nonStudents, ...students]));
+    } catch (err) {
+      console.warn('Failed to fetch students from Firestore, falling back to local storage:', err);
+    }
+  }
+
+  // 2. Fallback to Local Storage if Firestore returned empty or failed
+  if (students.length === 0) {
+    const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+    students = localUsers.filter(u => u.role === 'Student');
+  }
+
+  // 3. Filter based on search query
+  const filteredStudents = students.filter(u => (
+    (u.fullName || '').toLowerCase().includes(searchFilter) ||
+    (u.class || '').toLowerCase().includes(searchFilter) ||
+    (u.username || '').toLowerCase().includes(searchFilter)
   ));
 
-  if (students.length === 0) {
+  if (filteredStudents.length === 0) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#64748b;">No matching student accounts found.</td></tr>';
     return;
   }
 
-  tbody.innerHTML = students.map((s, index) => {
+  tbody.innerHTML = filteredStudents.map((s, index) => {
     const isEditing = editingUsername === s.username;
     if (isEditing) {
       return `
@@ -520,7 +548,8 @@ window.cancelStudentEdit = function() {
   renderStudentModalTable();
 };
 
-window.saveStudentEdit = function(oldUsername) {
+// Save Student Edits to Firestore + Local Cache
+window.saveStudentEdit = async function(oldUsername) {
   const newFullName = document.getElementById('editFullName').value.trim();
   const newClass = document.getElementById('editClass').value;
   const newUsername = document.getElementById('editUsername').value.trim();
@@ -531,53 +560,107 @@ window.saveStudentEdit = function(oldUsername) {
     return;
   }
 
-  let users = JSON.parse(localStorage.getItem('portal_users')) || [];
-
-  if (newUsername.toLowerCase() !== oldUsername.toLowerCase() && users.some(u => u.username.toLowerCase() === newUsername.toLowerCase())) {
-    alert('Username is already taken.');
-    return;
+  // Check username uniqueness if changed
+  if (newUsername.toLowerCase() !== oldUsername.toLowerCase()) {
+    if (window.db) {
+      try {
+        const docSnap = await window.db.collection('users').doc(newUsername.toLowerCase()).get();
+        if (docSnap.exists) {
+          alert('Username is already taken by another account.');
+          return;
+        }
+      } catch (err) {
+        console.warn('Could not verify username uniqueness in cloud:', err);
+      }
+    }
   }
 
-  const userIndex = users.findIndex(u => u.username === oldUsername);
-  if (userIndex !== -1) {
-    users[userIndex].fullName = newFullName;
-    users[userIndex].class = newClass;
-    users[userIndex].username = newUsername;
-    users[userIndex].password = newPassword;
+  const updatedData = {
+    fullName: newFullName,
+    class: newClass,
+    username: newUsername,
+    password: newPassword,
+    role: 'Student'
+  };
 
-    localStorage.setItem('portal_users', JSON.stringify(users));
-    editingUsername = null;
-    renderStudentModalTable();
+  // Update in Firebase Firestore
+  if (window.db) {
+    try {
+      // If username changed, delete old document ID and create new one
+      if (oldUsername.toLowerCase() !== newUsername.toLowerCase()) {
+        await window.db.collection('users').doc(oldUsername.toLowerCase()).delete();
+      }
+      await window.db.collection('users').doc(newUsername.toLowerCase()).set(updatedData, { merge: true });
+    } catch (err) {
+      console.error('Error updating student in Firestore:', err);
+      alert('Failed to update record on cloud database.');
+      return;
+    }
   }
-};
 
-window.deleteStudent = function(username) {
-  if (!confirm(`Are you sure you want to delete student "${username}"?`)) return;
+  // Sync with Local Storage
+  let localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+  const idx = localUsers.findIndex(u => u.username.toLowerCase() === oldUsername.toLowerCase());
+  if (idx !== -1) {
+    localUsers[idx] = updatedData;
+  } else {
+    localUsers.push(updatedData);
+  }
+  localStorage.setItem('portal_users', JSON.stringify(localUsers));
 
-  let users = JSON.parse(localStorage.getItem('portal_users')) || [];
-  users = users.filter(u => u.username !== username);
-
-  localStorage.setItem('portal_users', JSON.stringify(users));
+  editingUsername = null;
   renderStudentModalTable();
 };
 
-window.deleteAllStudents = function() {
-  let users = JSON.parse(localStorage.getItem('portal_users')) || [];
-  const studentCount = users.filter(u => u.role === 'Student').length;
+// Delete single student from Firestore + Local Cache
+window.deleteStudent = async function(username) {
+  if (!confirm(`Are you sure you want to delete student "${username}"?`)) return;
 
-  if (studentCount === 0) {
-    alert('No student accounts to delete.');
-    return;
+  if (window.db) {
+    try {
+      await window.db.collection('users').doc(username.toLowerCase()).delete();
+    } catch (err) {
+      console.error('Error deleting student from Firestore:', err);
+      alert('Could not delete student from cloud database.');
+      return;
+    }
   }
 
-  if (confirm(`WARNING: Are you sure you want to delete ALL ${studentCount} registered students?`)) {
-    users = users.filter(u => u.role !== 'Student');
-    localStorage.setItem('portal_users', JSON.stringify(users));
-    renderStudentModalTable();
-    alert('All student accounts deleted.');
-  }
+  let localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+  localUsers = localUsers.filter(u => u.username.toLowerCase() !== username.toLowerCase());
+  localStorage.setItem('portal_users', JSON.stringify(localUsers));
+
+  renderStudentModalTable();
 };
 
+// Bulk delete all students from Firestore + Local Cache
+window.deleteAllStudents = async function() {
+  let localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+  
+  if (confirm('WARNING: Are you sure you want to delete ALL registered students from the cloud and local storage?')) {
+    if (window.db) {
+      try {
+        const snap = await window.db.collection('users').where('role', '==', 'Student').get();
+        const batch = window.db.batch();
+        snap.forEach(doc => {
+          batch.delete(doc.ref);
+        });
+        await batch.commit();
+      } catch (err) {
+        console.error('Error performing bulk deletion in Firestore:', err);
+        alert('Failed to complete bulk deletion on cloud.');
+        return;
+      }
+    }
+
+    // Clear students from Local Storage
+    localUsers = localUsers.filter(u => u.role !== 'Student');
+    localStorage.setItem('portal_users', JSON.stringify(localUsers));
+
+    renderStudentModalTable();
+    alert('All student accounts deleted successfully.');
+  }
+};
 /* ==========================================================================
    4. ASSESSMENT & SUBMISSION ENGINE
    ========================================================================== */
