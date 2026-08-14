@@ -17,51 +17,82 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Generate new data.json
+      - name: Incremental Update data.json
         run: |
           cat << 'EOF' > generate.js
           const fs = require('fs');
-          
-          // Read all files in uploads folder, ignore hidden files like .gitkeep
-          const files = fs.readdirSync('uploads/').filter(f => !f.startsWith('.'));
-          
-          const resources = files.map((file, index) => {
-            const upper = file.toUpperCase();
-            
-            // 1. Smart Guess: Class
-            let cls = 'ALL';
-            if (upper.includes('S.1') || upper.includes('S1')) cls = 'S1';
-            else if (upper.includes('S.2') || upper.includes('S2')) cls = 'S2';
-            else if (upper.includes('S.3') || upper.includes('S3')) cls = 'S3';
-            else if (upper.match(/S\.?4/) || upper.includes('UCE') || upper.includes('O LEVEL')) cls = 'S4';
-            else if (upper.match(/S\.?5/)) cls = 'S5';
-            else if (upper.match(/S\.?6/) || upper.includes('UACE') || upper.includes('A LEVEL')) cls = 'S6';
-            
-            // 2. Smart Guess: Category
-            let cat = 'Support File';
-            if (upper.includes('NOTE')) cat = 'Notes';
-            else if (upper.includes('MOCK') || upper.includes('PP1') || upper.includes('PP2') || upper.includes('PAPER')) cat = 'Question Paper';
-            else if (upper.includes('MARKING') || upper.includes('GUIDE')) cat = 'Marking Guide';
-            
-            // 3. Clean Title (Removes .pdf, .pptx, etc.)
-            const title = file.replace(/\.[^/.]+$/, "");
-            
-            // 4. Get Current Date
-            const date = new Date().toISOString().split('T')[0];
-            
-            return {
-              id: index + 1,
-              class: cls,
-              category: cat,
-              title: title,
-              description: `${cls} ${cat}: ${title}`,
-              fileUrl: `uploads/${encodeURIComponent(file)}`,
-              date: date
-            };
+
+          const uploadDir = 'uploads/';
+          const dataFilePath = 'data.json';
+
+          // 1. Read existing data.json or fallback to empty array
+          let existingData = [];
+          if (fs.existsSync(dataFilePath)) {
+            try {
+              existingData = JSON.parse(fs.readFileSync(dataFilePath, 'utf8'));
+            } catch (e) {
+              console.error("Error reading data.json, starting fresh:", e);
+              existingData = [];
+            }
+          }
+
+          // 2. Read current files in uploads folder
+          const diskFiles = fs.readdirSync(uploadDir).filter(f => !f.startsWith('.'));
+
+          // Map disk files to their expected relative encoded URL
+          const diskFileUrls = diskFiles.map(file => `uploads/${encodeURIComponent(file)}`);
+
+          // 3. Keep existing items whose files still exist on disk
+          const updatedResources = existingData.filter(item => {
+            // Decodes fileUrl or checks encoded match against disk files
+            return diskFileUrls.includes(item.fileUrl) || diskFiles.some(f => `uploads/${f}` === item.fileUrl);
           });
-          
-          // Save to data.json
-          fs.writeFileSync('data.json', JSON.stringify(resources, null, 2));
+
+          // Track existing file URLs to avoid duplicates
+          const existingFileUrls = new Set(updatedResources.map(r => decodeURIComponent(r.fileUrl.replace('uploads/', ''))));
+
+          // Calculate next auto-increment ID
+          let maxId = updatedResources.reduce((max, r) => (r.id > max ? r.id : max), 0);
+
+          // 4. Process ONLY NEW files
+          diskFiles.forEach(file => {
+            if (!existingFileUrls.has(file)) {
+              maxId += 1;
+              const upper = file.toUpperCase();
+
+              // Smart Guess: Class
+              let cls = 'ALL';
+              if (upper.includes('S.1') || upper.includes('S1')) cls = 'S1';
+              else if (upper.includes('S.2') || upper.includes('S2')) cls = 'S2';
+              else if (upper.includes('S.3') || upper.includes('S3')) cls = 'S3';
+              else if (upper.match(/S\.?4/) || upper.includes('UCE') || upper.includes('O LEVEL')) cls = 'S4';
+              else if (upper.match(/S\.?5/)) cls = 'S5';
+              else if (upper.match(/S\.?6/) || upper.includes('UACE') || upper.includes('A LEVEL')) cls = 'S6';
+
+              // Smart Guess: Category
+              let cat = 'Support File';
+              if (upper.includes('NOTE')) cat = 'Notes';
+              else if (upper.includes('MOCK') || upper.includes('PP1') || upper.includes('PP2') || upper.includes('PAPER') || upper.includes('EXAM')) cat = 'Question Paper';
+              else if (upper.includes('MARKING') || upper.includes('GUIDE')) cat = 'Marking Guide';
+
+              // Clean Title & Date
+              const title = file.replace(/\.[^/.]+$/, "");
+              const date = new Date().toISOString().split('T')[0];
+
+              updatedResources.push({
+                id: maxId,
+                class: cls,
+                category: cat,
+                title: title,
+                description: `${cls} ${cat}: ${title}`,
+                fileUrl: `uploads/${encodeURIComponent(file)}`,
+                date: date
+              });
+            }
+          });
+
+          // 5. Save back to data.json
+          fs.writeFileSync(dataFilePath, JSON.stringify(updatedResources, null, 2));
           EOF
           node generate.js
 
@@ -70,5 +101,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add data.json
-          git commit -m "Auto-updated data.json with new uploads" || echo "No changes to commit"
+          git commit -m "Auto-updated data.json with new uploads (preserved existing entries)" || echo "No changes to commit"
           git push
