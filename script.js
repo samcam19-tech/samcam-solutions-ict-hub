@@ -2,6 +2,7 @@
    SAMCAM SOLUTIONS - ASSESSMENT PORTAL ENGINE (script.js)
    ========================================================================== */
 
+alert("JS FILE LOADED SUCCESSFULLY!");
 // Shared Portal State
 let currentUser = null;
 let editingUsername = null;
