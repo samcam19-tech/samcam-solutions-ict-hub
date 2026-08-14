@@ -636,6 +636,36 @@ function exportResultsToExcel() {
   XLSX.writeFile(workbook, `Assessment_Scores_${new Date().toISOString().slice(0, 10)}.xlsx`);
 }
 
+// Delete a student's submission from the oversight table
+async function deleteQuizSubmission(docId) {
+  if (!confirm("Are you sure you want to delete this student submission? This action cannot be undone.")) {
+    return;
+  }
+
+  try {
+    if (db) {
+      await db.collection('quiz_results').doc(docId).delete();
+    }
+
+    // Remove from the global tracking array
+    globalTeacherResults = globalTeacherResults.filter(s => s.id !== docId);
+
+    // Remove the row dynamically from the HTML table without reloading
+    const row = document.getElementById(`submissionRow_${docId}`);
+    if (row) row.remove();
+
+    // Check if table is empty now and show empty state if necessary
+    const resultsContainer = document.getElementById('teacherResultsTable');
+    if (resultsContainer && resultsContainer.children.length === 0) {
+      resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:1rem;">No submissions registered yet.</td></tr>`;
+    }
+
+  } catch (err) {
+    console.error("Error deleting quiz submission:", err);
+    alert("Failed to delete submission: " + err.message);
+  }
+}
+
 // ==========================================================================
 // 7. QUIZ RUNNER ENGINE
 // ==========================================================================
