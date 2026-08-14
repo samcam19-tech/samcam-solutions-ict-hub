@@ -254,9 +254,16 @@ function renderQuizCards(quizzesList) {
               <span style="background:#dcfce7; color:#15803d; padding:0.25rem 0.6rem; border-radius:20px; font-size:0.75rem; font-weight:700;">
                 <i class="fa-solid fa-circle-check"></i> Attempted
               </span>
-              <span style="font-size:0.75rem; color:#64748b; font-weight:600;">
-                ${q.targetClass || 'All Classes'}
-              </span>
+              <div style="display:flex; gap:0.4rem; align-items:center;">
+                <span style="font-size:0.75rem; color:#64748b; font-weight:600; margin-right:0.5rem;">
+                  ${q.targetClass || 'All Classes'}
+                </span>
+                ${isAdminOrTeacher ? `
+                  <button onclick="editQuiz('${q.id}')" title="Edit Quiz" style="background:#0284c7; border:none; color:#fff; padding:0.25rem 0.4rem; border-radius:4px; cursor:pointer; font-size:0.75rem;">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                  </button>
+                ` : ''}
+              </div>
             </div>
             <h4 style="margin:0 0 0.5rem 0; font-size:1.1rem; color:#0f172a; font-weight:600;">${q.title}</h4>
             
@@ -274,33 +281,33 @@ function renderQuizCards(quizzesList) {
     } else {
       // Active Quiz Card
       html += `
-  <div class="quiz-card" style="border:1px solid #e2e8f0; padding:1.25rem; border-radius:10px; background:#ffffff; box-shadow:0 2px 4px rgba(0,0,0,0.04); display:flex; flex-direction:column; justify-content:space-between;">
-    <div>
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-        <span style="background:#e0f2fe; color:#0369a1; padding:0.25rem 0.6rem; border-radius:20px; font-size:0.75rem; font-weight:700; text-transform:uppercase;">
-          <i class="fa-solid fa-layer-group"></i> ${q.targetClass || 'All Classes'}
-        </span>
-        <div style="display:flex; gap:0.4rem; align-items:center;">
-          <span style="font-size:0.75rem; color:#64748b; font-weight:600; margin-right:0.5rem;">
-            <i class="fa-solid fa-clock" style="color:#f59e0b;"></i> ${q.durationMinutes} Mins
-          </span>
-          ${isAdminOrTeacher ? `
-            <button onclick="editQuiz('${q.id}')" title="Edit Quiz" style="background:#0284c7; border:none; color:#fff; padding:0.25rem 0.4rem; border-radius:4px; cursor:pointer; font-size:0.75rem;">
-              <i class="fa-solid fa-pen-to-square"></i>
-            </button>
-          ` : ''}
+        <div class="quiz-card" style="border:1px solid #e2e8f0; padding:1.25rem; border-radius:10px; background:#ffffff; box-shadow:0 2px 4px rgba(0,0,0,0.04); display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+              <span style="background:#e0f2fe; color:#0369a1; padding:0.25rem 0.6rem; border-radius:20px; font-size:0.75rem; font-weight:700; text-transform:uppercase;">
+                <i class="fa-solid fa-layer-group"></i> ${q.targetClass || 'All Classes'}
+              </span>
+              <div style="display:flex; gap:0.4rem; align-items:center;">
+                <span style="font-size:0.75rem; color:#64748b; font-weight:600; margin-right:0.5rem;">
+                  <i class="fa-solid fa-clock" style="color:#f59e0b;"></i> ${q.durationMinutes} Mins
+                </span>
+                ${isAdminOrTeacher ? `
+                  <button onclick="editQuiz('${q.id}')" title="Edit Quiz" style="background:#0284c7; border:none; color:#fff; padding:0.25rem 0.4rem; border-radius:4px; cursor:pointer; font-size:0.75rem;">
+                    <i class="fa-solid fa-pen-to-square"></i>
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+            <h4 style="margin:0 0 0.5rem 0; font-size:1.1rem; color:#0f172a; font-weight:600;">${q.title}</h4>
+            <p style="font-size:0.85rem; color:#64748b; margin:0 0 1.25rem 0;">
+              <i class="fa-solid fa-list-check"></i> ${qCount} Question${qCount === 1 ? '' : 's'} Included
+            </p>
+          </div>
+          <button onclick="startQuiz('${q.id}')" class="btn btn-primary" style="width:100%; justify-content:center;">
+            <i class="fa-solid fa-play"></i> Start Quiz
+          </button>
         </div>
-      </div>
-      <h4 style="margin:0 0 0.5rem 0; font-size:1.1rem; color:#0f172a; font-weight:600;">${q.title}</h4>
-      <p style="font-size:0.85rem; color:#64748b; margin:0 0 1.25rem 0;">
-        <i class="fa-solid fa-list-check"></i> ${qCount} Question${qCount === 1 ? '' : 's'} Included
-      </p>
-    </div>
-    <button onclick="startQuiz('${q.id}')" class="btn btn-primary" style="width:100%; justify-content:center;">
-      <i class="fa-solid fa-play"></i> Start Quiz
-    </button>
-  </div>
-`;
+      `;
     }
   });
 
