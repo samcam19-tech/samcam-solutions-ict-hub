@@ -6,25 +6,17 @@
 let currentUser = null;
 let editingUsername = null;
 
-// Default Administrator Credentials
+// Unified Root Administrator Account (Matches HARDCODED_ACCOUNTS)
 const rootTeacher = {
+  fullName: "System Admin",
+  class: "Staff",
   username: "admin",
-  password: "admin",
-  fullName: "Root Teacher / Admin",
+  password: "admin123", // <--- Standardized to admin123
   role: "Teacher"
 };
 
-// Default hardcoded admin / teacher fallback accounts
-const HARDCODED_ACCOUNTS = [
-  {
-    fullName: "System Admin",
-    class: "Staff",
-    username: "admin",
-    password: "admin123", 
-    role: "Teacher"
-  }
-];
-
+// Hardcoded fallback accounts
+const HARDCODED_ACCOUNTS = [ rootTeacher ];
 
 // Default Seed Assessment
 const initialAssessments = [
@@ -46,10 +38,11 @@ const initialAssessments = [
 document.addEventListener("DOMContentLoaded", () => {
   // Ensure default root teacher exists in LocalStorage
   let users = JSON.parse(localStorage.getItem('portal_users')) || [];
-  if (!users.some(u => u.username.toLowerCase() === rootTeacher.username.toLowerCase())) {
-    users.unshift(rootTeacher);
-    localStorage.setItem('portal_users', JSON.stringify(users));
-  }
+  
+  // Clean up any old cached admin with incorrect password
+  users = users.filter(u => u.username.toLowerCase() !== rootTeacher.username.toLowerCase());
+  users.unshift(rootTeacher);
+  localStorage.setItem('portal_users', JSON.stringify(users));
 
   if (!localStorage.getItem('portal_resources')) {
     localStorage.setItem('portal_resources', JSON.stringify(initialAssessments));
@@ -62,8 +55,147 @@ document.addEventListener("DOMContentLoaded", () => {
   currentUser = JSON.parse(localStorage.getItem('portal_session')) || null;
 
   // Render Initial View
-  updatePortalUI();
+  if (typeof updatePortalUI === 'function') {
+    updatePortalUI();
+  }
 });
+
+/* ==========================================================================
+   1. AUTHENTICATION MODULE (HARDCODED ROOT ADMIN + FIREBASE & LOCAL CACHE)
+   ========================================================================== */
+
+window.currentUser = window.currentUser || null;
+
+window.handleLogin = async function(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  
+  const userEl = document.getElementById('loginUsername');
+  const passEl = document.getElementById('loginPassword');
+  const errEl = document.getElementById('loginError');
+
+  if (!userEl || !passEl) {
+    console.error("Login input fields missing in DOM.");
+    return;
+  }
+
+  const userVal = userEl.value.trim();
+  const passVal = passEl.value.trim();
+
+  if (!userVal || !passVal) {
+    if (errEl) {
+      errEl.textContent = 'Please enter both username and password.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+
+  let foundUser = null;
+
+  // 1. Check Hardcoded Root Accounts First
+  foundUser = HARDCODED_ACCOUNTS.find(
+    u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal
+  );
+
+  // 2. Check Firebase Firestore Cloud Database
+  if (!foundUser && window.db) {
+    try {
+      const docSnap = await window.db.collection('users').doc(userVal.toLowerCase()).get();
+      
+      if (docSnap.exists) {
+        const cloudUser = docSnap.data();
+        if (cloudUser.password === passVal) {
+          foundUser = cloudUser;
+        }
+      } else {
+        const querySnap = await window.db.collection('users')
+          .where('username', '==', userVal)
+          .limit(1)
+          .get();
+
+        if (!querySnap.empty) {
+          const cloudUser = querySnap.docs[0].data();
+          if (cloudUser.password === passVal) {
+            foundUser = cloudUser;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Cloud login lookup failed, falling back to local storage:', err);
+    }
+  }
+
+  // 3. Check Local Storage Fallback
+  if (!foundUser) {
+    const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+    foundUser = localUsers.find(
+      u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal
+    );
+  }
+
+  // 4. Handle Login Success or Failure
+  if (foundUser) {
+    if (errEl) errEl.style.display = 'none';
+    
+    currentUser = foundUser;
+    window.currentUser = foundUser;
+
+    localStorage.setItem('portal_session', JSON.stringify(currentUser));
+    
+    userEl.value = '';
+    passEl.value = '';
+
+    if (typeof updatePortalUI === 'function') {
+      updatePortalUI();
+    } else {
+      location.reload();
+    }
+  } else {
+    if (errEl) {
+      errEl.textContent = 'Invalid username or password!';
+      errEl.style.display = 'block';
+    }
+  }
+};
+
+window.checkExistingSession = function() {
+  const savedSession = localStorage.getItem('portal_session');
+  if (savedSession) {
+    try {
+      currentUser = JSON.parse(savedSession);
+      window.currentUser = currentUser;
+      if (typeof updatePortalUI === 'function') {
+        updatePortalUI();
+      }
+    } catch (err) {
+      console.error('Error restoring session:', err);
+      localStorage.removeItem('portal_session');
+    }
+  }
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', window.checkExistingSession);
+} else {
+  window.checkExistingSession();
+}
+
+window.handleLogout = function() {
+  localStorage.removeItem('portal_session');
+  currentUser = null;
+  window.currentUser = null;
+
+  const userEl = document.getElementById('loginUsername');
+  const passEl = document.getElementById('loginPassword');
+  const errEl = document.getElementById('loginError');
+
+  if (userEl) userEl.value = '';
+  if (passEl) passEl.value = '';
+  if (errEl) errEl.style.display = 'none';
+
+  if (typeof updatePortalUI === 'function') {
+    updatePortalUI();
+  }
+};
 
 /* ==========================================================================
    1. AUTHENTICATION MODULE (HARDCODED ROOT ADMIN + FIREBASE & LOCAL CACHE)
