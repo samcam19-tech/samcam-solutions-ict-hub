@@ -20,7 +20,7 @@
     .form-group { margin-bottom: 1rem; }
     .form-group label { display: block; font-weight: 600; margin-bottom: 0.4rem; font-size: 0.9rem; color: #475569; }
     .form-group input, .form-group select, .form-group textarea {
-      width: 100%; padding: 0.65rem; border: 1px solid #cbd5e1; border-radius: 6px; font-family: inherit; font-size: 0.9rem;
+      width: 100%; padding: 0.65rem; border: 1px solid #cbd5e1; border-radius: 6px; font-family: inherit; font-size: 0.9rem; box-sizing: border-box;
     }
     
     .btn-submit {
@@ -63,6 +63,21 @@
     .student-table input, .student-table select { width: 100%; padding: 0.3rem; font-size: 0.85rem; border: 1px solid #cbd5e1; border-radius: 4px; }
     
     .modal-top-bar { display: flex; justify-content: space-between; align-items: center; gap: 1rem; margin-bottom: 1rem; flex-wrap: wrap; }
+
+    /* Modal Overlay Styles */
+    .modal, .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(15, 23, 42, 0.6); display: flex; align-items: center;
+      justify-content: center; z-index: 1000; padding: 1rem; box-sizing: border-box;
+    }
+    .modal-card {
+      background: #ffffff; width: 100%; max-width: 500px; padding: 2rem;
+      border-radius: 12px; position: relative; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    }
+    .modal-close-btn {
+      position: absolute; top: 1rem; right: 1rem; font-size: 1.2rem;
+      cursor: pointer; color: #64748b; border: none; background: transparent;
+    }
   </style>
 </head>
 <body>
@@ -86,23 +101,22 @@
   </nav>
 
   <div class="portal-container">
-  <!-- AUTHENTICATED LOGIN PANEL -->
-  <div id="loginSection" class="card-box" style="max-width: 450px; margin: 2rem auto;">
-    <h3><i class="fa-solid fa-right-to-bracket"></i> Portal Sign In</h3>
-    <form id="loginForm" action="javascript:void(0);">
-      <div class="form-group">
-        <label for="loginUsername">Username</label>
-        <input type="text" id="loginUsername" name="username" placeholder="Enter username..." required autocomplete="username">
-      </div>
-      <div class="form-group">
-        <label for="loginPassword">Password</label>
-        <input type="password" id="loginPassword" name="password" placeholder="Enter password..." required autocomplete="current-password">
-      </div>
-      <div id="loginError" class="error-msg" style="display:none; color: #ef4444; margin-top: 0.5rem; font-size: 0.85rem;">Invalid username or password!</div>
-      <button type="button" onclick="executeLogin()" class="btn-submit" style="margin-top: 1rem; width: 100%;">Sign In</button>
-    </form>
-  </div>
-</div>
+    <!-- AUTHENTICATED LOGIN PANEL -->
+    <div id="loginSection" class="card-box" style="max-width: 450px; margin: 2rem auto;">
+      <h3><i class="fa-solid fa-right-to-bracket"></i> Portal Sign In</h3>
+      <form id="loginForm" action="javascript:void(0);">
+        <div class="form-group">
+          <label for="loginUsername">Username</label>
+          <input type="text" id="loginUsername" name="username" placeholder="Enter username..." required autocomplete="username">
+        </div>
+        <div class="form-group">
+          <label for="loginPassword">Password</label>
+          <input type="password" id="loginPassword" name="password" placeholder="Enter password..." required autocomplete="current-password">
+        </div>
+        <div id="loginError" class="error-msg" style="display:none; color: #ef4444; margin-top: 0.5rem; font-size: 0.85rem;">Invalid username or password!</div>
+        <button type="submit" id="signInBtn" class="btn-submit" style="margin-top: 1rem; width: 100%;">Sign In</button>
+      </form>
+    </div>
 
     <!-- MAIN PORTAL DASHBOARD -->
     <div id="dashboardSection" style="display: none;">
@@ -257,7 +271,7 @@
 
     </div>
 
-  </div>
+  </div> <!-- End of .portal-container -->
 
   <!-- MODAL 1: STUDENT SUBMISSION FORM -->
   <div id="submissionModal" class="modal" style="display:none;">
@@ -286,7 +300,6 @@
 
         <div class="form-group">
           <label for="submissionTestTitle">Assignment / Test Title</label>
-          <!-- Fixed ID collision: renamed from testTitle to submissionTestTitle -->
           <input type="text" id="submissionTestTitle" placeholder="e.g. End of Term 2 ICT Practical" required>
         </div>
 
@@ -342,15 +355,15 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
 
   <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
-  authDomain: "samcam-system.firebaseapp.com",
-  projectId: "samcam-system",
-  storageBucket: "samcam-system.firebasestorage.app",
-  messagingSenderId: "74940789582",
-  appId: "1:74940789582:web:f159688165a194e841241f",
-  measurementId: "G-L2H4V8Y050"
-};
+    const firebaseConfig = {
+      apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
+      authDomain: "samcam-system.firebaseapp.com",
+      projectId: "samcam-system",
+      storageBucket: "samcam-system.firebasestorage.app",
+      messagingSenderId: "74940789582",
+      appId: "1:74940789582:web:f159688165a194e841241f",
+      measurementId: "G-L2H4V8Y050"
+    };
 
     // Initialize Firebase and Firestore Database
     firebase.initializeApp(firebaseConfig);
@@ -358,5 +371,24 @@ const firebaseConfig = {
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="script.js"></script>
+
+  <!-- GUARANTEED EVENT BINDING FOR LOGIN FORM -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      const loginForm = document.getElementById('loginForm');
+      if (loginForm) {
+        loginForm.addEventListener('submit', function(e) {
+          e.preventDefault();
+          if (typeof window.executeLogin === 'function') {
+            window.executeLogin();
+          } else if (typeof window.handleLogin === 'function') {
+            window.handleLogin(e);
+          } else {
+            alert('Login handler function is loading. Please try again in a moment.');
+          }
+        });
+      }
+    });
+  </script>
 </body>
 </html>
