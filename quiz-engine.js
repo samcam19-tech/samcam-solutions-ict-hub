@@ -410,14 +410,14 @@ async function fetchQuizResults() {
   if (!resultsContainer) return;
 
   if (!db) {
-    resultsContainer.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#64748b; padding:1rem;">Live results database unreachable.</td></tr>`;
+    resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:1rem;">Live results database unreachable.</td></tr>`;
     return;
   }
 
   try {
     const snapshot = await db.collection('quiz_results').orderBy('submittedAt', 'desc').get();
     if (snapshot.empty) {
-      resultsContainer.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#64748b; padding:1rem;">No submissions registered yet.</td></tr>`;
+      resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:1rem;">No submissions registered yet.</td></tr>`;
       return;
     }
 
@@ -434,15 +434,29 @@ async function fetchQuizResults() {
 
       rowsHtml += `
         <tr style="border-bottom:1px solid #f1f5f9;">
-          <td style="padding:0.75rem;"><strong>${res.studentName}</strong> <span style="font-size:0.8rem; color:#64748b;">(${res.studentClass || 'N/A'})</span></td>
-          <td style="padding:0.75rem; font-weight:500;">${res.quizTitle}</td>
+          <!-- Column 1: Student Name -->
+          <td style="padding:0.75rem; font-weight:600; color:#0f172a;">${res.studentName}</td>
+
+          <!-- Column 2: Class -->
+          <td style="padding:0.75rem; color:#475569; font-weight:500;">${res.studentClass || 'N/A'}</td>
+
+          <!-- Column 3: Assessment Title -->
+          <td style="padding:0.75rem; font-weight:500; color:#1e293b;">${res.quizTitle}</td>
+
+          <!-- Column 4: Time Spent -->
           <td style="padding:0.75rem; font-size:0.85rem; color:#475569;">${formatSeconds(res.timeSpentSeconds)}</td>
+
+          <!-- Column 5: Score (%) -->
           <td style="padding:0.75rem;">
             <span style="font-weight:700; color:${res.percentage >= 50 ? '#16a34a' : '#dc2626'}; background:${res.percentage >= 50 ? '#f0fdf4' : '#fef2f2'}; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.85rem;">
               ${res.score}/${res.totalQuestions} (${res.percentage}%)
             </span>
           </td>
+
+          <!-- Column 6: Submitted At -->
           <td style="padding:0.75rem; font-size:0.85rem; color:#64748b;">${submittedTime}</td>
+
+          <!-- Column 7: Actions -->
           <td style="padding:0.75rem;">
             <button class="btn btn-secondary btn-sm" onclick="inspectLearnerSubmission('${doc.id}')" style="background:#0284c7; border:none; padding:0.25rem 0.6rem; font-size:0.75rem; border-radius:4px; color:#fff; cursor:pointer;">
               <i class="fa-solid fa-eye"></i> Inspect
@@ -454,10 +468,9 @@ async function fetchQuizResults() {
     resultsContainer.innerHTML = rowsHtml;
   } catch (err) {
     console.error("Error fetching submission results:", err);
-    resultsContainer.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444; padding:1rem;">Failed to load submission results.</td></tr>`;
+    resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:1rem;">Failed to load submission results.</td></tr>`;
   }
 }
-
 // Teacher Response Inspection Modal
 function inspectLearnerSubmission(docId) {
   const sub = globalTeacherResults.find(s => s.id === docId);
