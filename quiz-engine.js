@@ -494,7 +494,7 @@ async function fetchQuizResults() {
         : 'Recently';
 
       rowsHtml += `
-        <tr style="border-bottom:1px solid #f1f5f9;">
+        <tr style="border-bottom:1px solid #f1f5f9;" id="submissionRow_${doc.id}">
           <!-- Column 1: Student Name -->
           <td style="padding:0.75rem; font-weight:600; color:#0f172a;">${res.studentName}</td>
 
@@ -517,11 +517,16 @@ async function fetchQuizResults() {
           <!-- Column 6: Submitted At -->
           <td style="padding:0.75rem; font-size:0.85rem; color:#64748b;">${submittedTime}</td>
 
-          <!-- Column 7: Actions -->
+          <!-- Column 7: Actions (Icons Only) -->
           <td style="padding:0.75rem;">
-            <button class="btn btn-secondary btn-sm" onclick="inspectLearnerSubmission('${doc.id}')" style="background:#0284c7; border:none; padding:0.25rem 0.6rem; font-size:0.75rem; border-radius:4px; color:#fff; cursor:pointer;">
-              <i class="fa-solid fa-eye"></i> Inspect
-            </button>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+              <button class="btn btn-secondary btn-sm" onclick="inspectLearnerSubmission('${doc.id}')" title="Inspect Submission" style="background:#0284c7; border:none; padding:0.35rem 0.5rem; font-size:0.85rem; border-radius:4px; color:#fff; cursor:pointer;">
+                <i class="fa-solid fa-eye"></i>
+              </button>
+              <button class="btn btn-danger btn-sm" onclick="deleteQuizSubmission('${doc.id}')" title="Delete Submission" style="background:#dc2626; border:none; padding:0.35rem 0.5rem; font-size:0.85rem; border-radius:4px; color:#fff; cursor:pointer;">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
           </td>
         </tr>
       `;
@@ -530,6 +535,36 @@ async function fetchQuizResults() {
   } catch (err) {
     console.error("Error fetching submission results:", err);
     resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:1rem;">Failed to load submission results.</td></tr>`;
+  }
+}
+
+// Delete a student's submission from the oversight table
+async function deleteQuizSubmission(docId) {
+  if (!confirm("Are you sure you want to delete this student submission? This action cannot be undone.")) {
+    return;
+  }
+
+  try {
+    if (db) {
+      await db.collection('quiz_results').doc(docId).delete();
+    }
+
+    // Remove from the global tracking array
+    globalTeacherResults = globalTeacherResults.filter(s => s.id !== docId);
+
+    // Remove the row dynamically from the HTML table without reloading
+    const row = document.getElementById(`submissionRow_${docId}`);
+    if (row) row.remove();
+
+    // Check if table is empty now and show empty state if necessary
+    const resultsContainer = document.getElementById('teacherResultsTable');
+    if (resultsContainer && resultsContainer.children.length === 0) {
+      resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:1rem;">No submissions registered yet.</td></tr>`;
+    }
+
+  } catch (err) {
+    console.error("Error deleting quiz submission:", err);
+    alert("Failed to delete submission: " + err.message);
   }
 }
 
