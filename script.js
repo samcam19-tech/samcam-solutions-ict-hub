@@ -2,24 +2,21 @@
    SAMCAM SOLUTIONS - ASSESSMENT PORTAL ENGINE (script.js)
    ========================================================================== */
 
-alert("JS FILE LOADED SUCCESSFULLY!");
 // Shared Portal State
 let currentUser = null;
 let editingUsername = null;
 
-// Unified Root Administrator Account (Matches HARDCODED_ACCOUNTS)
+// Unified Root Administrator Account
 const rootTeacher = {
   fullName: "System Admin",
   class: "Staff",
   username: "admin",
-  password: "admin123", // <--- Standardized to admin123
+  password: "admin123",
   role: "Teacher"
 };
 
-// Hardcoded fallback accounts
 const HARDCODED_ACCOUNTS = [ rootTeacher ];
 
-// Default Seed Assessment
 const initialAssessments = [
   {
     "id": 1,
@@ -37,10 +34,7 @@ const initialAssessments = [
    INITIALIZATION & SESSION PERSISTENCE
    ========================================================================== */
 document.addEventListener("DOMContentLoaded", () => {
-  // Ensure default root teacher exists in LocalStorage
   let users = JSON.parse(localStorage.getItem('portal_users')) || [];
-  
-  // Clean up any old cached admin with incorrect password
   users = users.filter(u => u.username.toLowerCase() !== rootTeacher.username.toLowerCase());
   users.unshift(rootTeacher);
   localStorage.setItem('portal_users', JSON.stringify(users));
@@ -52,115 +46,78 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem('portal_submissions', JSON.stringify([]));
   }
 
-  // Restore Active User Session
   currentUser = JSON.parse(localStorage.getItem('portal_session')) || null;
+  window.currentUser = currentUser;
 
-  // Render Initial View
   if (typeof updatePortalUI === 'function') {
     updatePortalUI();
   }
 });
 
 /* ==========================================================================
-   1. AUTHENTICATION MODULE (HARDCODED ROOT ADMIN + FIREBASE & LOCAL CACHE)
+   1. AUTHENTICATION MODULE
    ========================================================================== */
-
-window.currentUser = window.currentUser || null;
-
-window.handleLogin = async function(e) {
-  if (e && e.preventDefault) e.preventDefault();
-  
-  console.log("=== LOGIN TRIGGERED ===");
-
+window.executeLogin = async function() {
   const userEl = document.getElementById('loginUsername');
   const passEl = document.getElementById('loginPassword');
   const errEl = document.getElementById('loginError');
 
-  if (!userEl || !passEl) {
-    alert("CRITICAL ERROR: Could not find loginUsername or loginPassword fields in your HTML!");
-    console.error("DOM Elements Missing:", { userEl, passEl });
-    return;
-  }
+  if (!userEl || !passEl) return;
 
-  const userVal = userEl.value.trim();
-  const passVal = passEl.value.trim();
+  const u = userEl.value.trim().toLowerCase();
+  const p = passEl.value.trim();
 
-  console.log("Input Username:", userVal);
-  console.log("Input Password Length:", passVal.length);
-
-  if (!userVal || !passVal) {
-    alert("Please fill in both the username and password.");
+  if (!u || !p) {
     if (errEl) {
-      errEl.textContent = 'Please enter both username and password.';
+      errEl.textContent = 'Please fill in both fields.';
       errEl.style.display = 'block';
     }
     return;
   }
 
-  let foundUser = null;
-
-  // 1. Check Hardcoded Accounts
-  foundUser = HARDCODED_ACCOUNTS.find(
-    u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal
+  let foundUser = HARDCODED_ACCOUNTS.find(
+    acc => acc.username.toLowerCase() === u && acc.password === p
   );
 
-  if (foundUser) {
-    console.log("✅ Matched Hardcoded Root Admin:", foundUser);
-  }
-
-  // 2. Check Firebase Firestore Cloud Database
   if (!foundUser && window.db) {
-    console.log("Searching Cloud Firestore...");
     try {
-      const docSnap = await window.db.collection('users').doc(userVal.toLowerCase()).get();
-      if (docSnap.exists && docSnap.data().password === passVal) {
-        foundUser = docSnap.data();
-        console.log("✅ Matched Firestore User:", foundUser);
+      const snap = await window.db.collection('users').doc(u).get();
+      if (snap.exists && snap.data().password === p) {
+        foundUser = snap.data();
       }
     } catch (err) {
-      console.warn("Firestore lookup failed:", err);
+      console.warn("Firestore lookup error:", err);
     }
   }
 
-  // 3. Check Local Storage Fallback
   if (!foundUser) {
-    console.log("Checking Local Storage cache...");
     const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
-    foundUser = localUsers.find(
-      u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal
-    );
-    if (foundUser) console.log("✅ Matched Local Storage User:", foundUser);
+    foundUser = localUsers.find(acc => acc.username.toLowerCase() === u && acc.password === p);
   }
 
-  // 4. Handle Login Success or Failure
   if (foundUser) {
     if (errEl) errEl.style.display = 'none';
-    
-    currentUser = foundUser;
-    window.currentUser = foundUser;
 
-    localStorage.setItem('portal_session', JSON.stringify(currentUser));
-    
+    window.currentUser = foundUser;
+    currentUser = foundUser;
+
+    localStorage.setItem('portal_session', JSON.stringify(foundUser));
+
     userEl.value = '';
     passEl.value = '';
 
-    console.log("Login successful! Updating UI...");
-    alert(`Welcome back, ${currentUser.fullName}! Logging in...`);
-
-    if (typeof updatePortalUI === 'function') {
-      updatePortalUI();
-    } else {
-      alert("WARNING: updatePortalUI() is not defined! Reloading page...");
-      location.reload();
-    }
+    if (typeof updatePortalUI === 'function') updatePortalUI();
   } else {
-    console.warn("❌ Login Failed: Credentials did not match any record.");
-    alert("LOGIN FAILED: Invalid username or password.");
     if (errEl) {
       errEl.textContent = 'Invalid username or password!';
       errEl.style.display = 'block';
     }
   }
+};
+
+window.handleLogin = function(e) {
+  if (e && e.preventDefault) e.preventDefault();
+  window.executeLogin();
 };
 
 window.handleLogout = function() {
@@ -176,171 +133,13 @@ window.handleLogout = function() {
   if (passEl) passEl.value = '';
   if (errEl) errEl.style.display = 'none';
 
-  if (typeof updatePortalUI === 'function') {
-    updatePortalUI();
-  }
-};
-
-/* ==========================================================================
-   1. AUTHENTICATION MODULE (HARDCODED ROOT ADMIN + FIREBASE & LOCAL CACHE)
-   ========================================================================== */
-
-window.currentUser = window.currentUser || null;
-
-window.handleLogin = async function(e) {
-  if (e && e.preventDefault) e.preventDefault();
-  
-  const userEl = document.getElementById('loginUsername');
-  const passEl = document.getElementById('loginPassword');
-  const errEl = document.getElementById('loginError');
-
-  if (!userEl || !passEl) {
-    console.error("Login input fields missing in DOM.");
-    return;
-  }
-
-  const userVal = userEl.value.trim();
-  const passVal = passEl.value.trim();
-
-  if (!userVal || !passVal) {
-    if (errEl) {
-      errEl.textContent = 'Please enter both username and password.';
-      errEl.style.display = 'block';
-    }
-    return;
-  }
-
-  let foundUser = null;
-
-  // 2. Priority 1: Check Hardcoded Root Accounts
-  foundUser = HARDCODED_ACCOUNTS.find(
-    u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal
-  );
-
-  // 3. Priority 2: Check Firebase Firestore Cloud Database
-  if (!foundUser && window.db) {
-    try {
-      const docSnap = await window.db.collection('users').doc(userVal.toLowerCase()).get();
-      
-      if (docSnap.exists) {
-        const cloudUser = docSnap.data();
-        if (cloudUser.password === passVal) {
-          foundUser = cloudUser;
-        }
-      } else {
-        const querySnap = await window.db.collection('users')
-          .where('username', '==', userVal)
-          .limit(1)
-          .get();
-
-        if (!querySnap.empty) {
-          const cloudUser = querySnap.docs[0].data();
-          if (cloudUser.password === passVal) {
-            foundUser = cloudUser;
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('Cloud login lookup failed, falling back to local storage:', err);
-    }
-  }
-
-  // 4. Priority 3: Check Local Storage Fallback
-  if (!foundUser) {
-    const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
-    foundUser = localUsers.find(
-      u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal
-    );
-  }
-
-  // 5. Execute Login
-  if (foundUser) {
-    if (errEl) errEl.style.display = 'none';
-    
-    // Assign both locally and globally
-    currentUser = foundUser;
-    window.currentUser = foundUser;
-
-    // Persist session
-    localStorage.setItem('portal_session', JSON.stringify(currentUser));
-    
-    // Mirror into local storage cache
-    const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
-    if (!localUsers.some(u => u.username.toLowerCase() === currentUser.username.toLowerCase())) {
-      localUsers.push(currentUser);
-      localStorage.setItem('portal_users', JSON.stringify(localUsers));
-    }
-
-    // Clear form inputs
-    userEl.value = '';
-    passEl.value = '';
-
-    // Update UI
-    if (typeof updatePortalUI === 'function') {
-      updatePortalUI();
-    } else {
-      location.reload();
-    }
-  } else {
-    if (errEl) {
-      errEl.textContent = 'Invalid username or password!';
-      errEl.style.display = 'block';
-    }
-  }
-};
-
-// Auto-restore session on page load
-window.checkExistingSession = function() {
-  const savedSession = localStorage.getItem('portal_session');
-  if (savedSession) {
-    try {
-      currentUser = JSON.parse(savedSession);
-      window.currentUser = currentUser;
-      if (typeof updatePortalUI === 'function') {
-        updatePortalUI();
-      }
-    } catch (err) {
-      console.error('Error restoring session:', err);
-      localStorage.removeItem('portal_session');
-    }
-  }
-};
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', window.checkExistingSession);
-} else {
-  window.checkExistingSession();
-}
-
-window.handleLogout = function() {
-  localStorage.removeItem('portal_session');
-  currentUser = null;
-
-  // Clear input fields
-  const userEl = document.getElementById('loginUsername');
-  const passEl = document.getElementById('loginPassword');
-  const errEl = document.getElementById('loginError');
-
-  if (userEl) userEl.value = '';
-  if (passEl) passEl.value = '';
-  
-  // Optionally reset login error display state
-  if (errEl) errEl.style.display = 'none';
-
-  // If your form uses a parent <form> tag (e.g. id="loginForm"), you can also do:
-  // const loginForm = document.getElementById('loginForm');
-  // if (loginForm) loginForm.reset();
-
   updatePortalUI();
 };
 
 /* ==========================================================================
-   2. STUDENT REGISTRATION & BULK IMPORT (FIREBASE FIRESTORE SYNC)
+   2. STUDENT REGISTRATION & BULK IMPORT
    ========================================================================== */
-
-// Helper to save a single user permanently to Firebase Cloud Firestore and Local Cache
 async function saveUserToCloud(userObj) {
-  // 1. Sync to Local Storage Cache
   const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
   const idx = localUsers.findIndex(u => u.username.toLowerCase() === userObj.username.toLowerCase());
   if (idx >= 0) {
@@ -350,7 +149,6 @@ async function saveUserToCloud(userObj) {
   }
   localStorage.setItem('portal_users', JSON.stringify(localUsers));
 
-  // 2. Sync to Cloud Firestore (Doc ID = lowercase username to prevent duplicates)
   if (window.db) {
     try {
       await window.db.collection('users').doc(userObj.username.toLowerCase()).set({
@@ -367,7 +165,6 @@ async function saveUserToCloud(userObj) {
   }
 }
 
-// Single Student Registration
 window.handleRegisterStudent = async function(e) {
   e.preventDefault();
   if (!currentUser || currentUser.role !== 'Teacher') return;
@@ -377,42 +174,19 @@ window.handleRegisterStudent = async function(e) {
   const username = document.getElementById('regUsername').value.trim();
   const password = document.getElementById('regPassword').value.trim();
 
-  // Check username collision in Firestore
-  if (window.db) {
-    try {
-      const docSnap = await window.db.collection('users').doc(username.toLowerCase()).get();
-      if (docSnap.exists) {
-        alert('Username already exists in the system! Please assign a unique username.');
-        return;
-      }
-    } catch (err) {
-      console.warn('Could not verify username in Firestore, checking local storage:', err);
-    }
-  }
-
-  // Fallback local username collision check
   const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
   if (localUsers.some(u => u.username.toLowerCase() === username.toLowerCase())) {
     alert('Username already exists! Please assign a unique username.');
     return;
   }
 
-  const newUser = {
-    fullName,
-    class: studentClass,
-    username,
-    password,
-    role: "Student"
-  };
-
+  const newUser = { fullName, class: studentClass, username, password, role: "Student" };
   await saveUserToCloud(newUser);
 
-  alert(`Student "${fullName}" registered permanently for ${studentClass}!`);
+  alert(`Student "${fullName}" registered successfully!`);
   e.target.reset();
 
-  if (typeof renderStudentModalTable === 'function') {
-    renderStudentModalTable();
-  }
+  if (typeof renderStudentModalTable === 'function') renderStudentModalTable();
 };
 
 function generateStrongPassword() {
@@ -424,7 +198,6 @@ function generateStrongPassword() {
   return pwd;
 }
 
-// Bulk Student Import from Excel / CSV
 window.handleBulkImport = function() {
   if (!currentUser || currentUser.role !== 'Teacher') return;
 
@@ -436,9 +209,7 @@ window.handleBulkImport = function() {
     return;
   }
 
-  const file = fileInput.files[0];
   const reader = new FileReader();
-
   reader.onload = async function(e) {
     try {
       const data = new Uint8Array(e.target.result);
@@ -446,46 +217,18 @@ window.handleBulkImport = function() {
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "", blankrows: false });
 
-      // Fetch existing users from Firestore to avoid duplicate usernames
-      let systemUsers = [];
-      if (window.db) {
-        try {
-          const snap = await window.db.collection('users').get();
-          snap.forEach(doc => systemUsers.push(doc.data()));
-        } catch (err) {
-          console.warn('Failed to fetch users from Firestore, using local cache:', err);
-          systemUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
-        }
-      } else {
-        systemUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
-      }
-
+      let systemUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
       let addedCount = 0;
       const savePromises = [];
 
       jsonRows.forEach((row, index) => {
         if (!row || row.length === 0) return;
+        let rawName = String(row[0] || '').trim();
 
-        let rawName = "";
-        for (let col = 0; col < row.length; col++) {
-          let val = String(row[col] || '').trim();
-          if (val && isNaN(val) && val.length > 1) {
-            rawName = val;
-            break;
-          }
-        }
-
-        if (!rawName && row[0]) rawName = String(row[0]).trim();
-
-        // Skip headers
-        if (index === 0 && (
-          rawName.toLowerCase().includes('name') ||
-          rawName.toLowerCase().includes('student') ||
-          rawName.toLowerCase().includes('s/n')
-        )) return;
+        if (index === 0 && (rawName.toLowerCase().includes('name') || rawName.toLowerCase().includes('student'))) return;
 
         if (rawName && isNaN(rawName)) {
-          const nameParts = rawName.trim().split(/\s+/);
+          const nameParts = rawName.split(/\s+/);
           let lastName = nameParts[nameParts.length - 1].toLowerCase().replace(/[^a-z0-9]/g, '');
           if (!lastName) lastName = "student";
 
@@ -508,43 +251,33 @@ window.handleBulkImport = function() {
 
           systemUsers.push(newUser);
           addedCount++;
-
           savePromises.push(saveUserToCloud(newUser));
         }
       });
 
       await Promise.all(savePromises);
-
-      alert(`Imported ${addedCount} student account(s) into ${targetClass} and saved permanently to Firebase! Click "Download CSV" to retrieve credentials.`);
+      alert(`Imported ${addedCount} student account(s) into ${targetClass}!`);
       fileInput.value = '';
-
-      if (typeof renderStudentModalTable === 'function') {
-        renderStudentModalTable();
-      }
+      if (typeof renderStudentModalTable === 'function') renderStudentModalTable();
     } catch (err) {
       console.error(err);
       alert('Error parsing or saving file data.');
     }
   };
-
-  reader.readAsArrayBuffer(file);
+  reader.readAsArrayBuffer(fileInput.files[0]);
 };
 
-// Export Registered Students CSV (Fetches from Cloud/Local)
 window.downloadStudentCSV = async function() {
   let students = [];
-
-  // 1. Fetch from Firestore if available
   if (window.db) {
     try {
       const snap = await window.db.collection('users').where('role', '==', 'Student').get();
       snap.forEach(doc => students.push(doc.data()));
     } catch (err) {
-      console.warn('Failed to fetch students from Cloud for CSV export, falling back to local storage:', err);
+      console.warn('Fallback to local storage:', err);
     }
   }
 
-  // 2. Fallback to Local Storage if cloud returned empty or failed
   if (students.length === 0) {
     const users = JSON.parse(localStorage.getItem('portal_users')) || [];
     students = users.filter(u => u.role === 'Student');
@@ -570,10 +303,8 @@ window.downloadStudentCSV = async function() {
 };
 
 /* ==========================================================================
-   3. STUDENT MANAGEMENT MODAL CONTROLS (FIREBASE FIRESTORE SYNC)
+   3. STUDENT MANAGEMENT MODAL
    ========================================================================== */
-let editingUsername = null;
-
 window.openStudentModal = function() {
   const modal = document.getElementById('studentModal');
   if (modal) modal.style.display = 'flex';
@@ -587,7 +318,6 @@ window.closeStudentModal = function() {
   editingUsername = null;
 };
 
-// Asynchronous Render to fetch live student data from Firestore
 window.renderStudentModalTable = async function() {
   const tbody = document.getElementById('studentModalTableBody');
   const searchInput = document.getElementById('studentSearchInput');
@@ -595,32 +325,21 @@ window.renderStudentModalTable = async function() {
 
   if (!tbody) return;
 
-  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#64748b;">Loading students from database...</td></tr>';
-
   let students = [];
-
-  // 1. Fetch live records from Cloud Firestore
   if (window.db) {
     try {
       const snap = await window.db.collection('users').where('role', '==', 'Student').get();
       snap.forEach(doc => students.push(doc.data()));
-      
-      // Update local storage cache to stay in sync
-      const allLocalUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
-      const nonStudents = allLocalUsers.filter(u => u.role !== 'Student');
-      localStorage.setItem('portal_users', JSON.stringify([...nonStudents, ...students]));
     } catch (err) {
-      console.warn('Failed to fetch students from Firestore, falling back to local storage:', err);
+      console.warn('Fallback to local:', err);
     }
   }
 
-  // 2. Fallback to Local Storage if Firestore returned empty or failed
   if (students.length === 0) {
     const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
     students = localUsers.filter(u => u.role === 'Student');
   }
 
-  // 3. Filter based on search query
   const filteredStudents = students.filter(u => (
     (u.fullName || '').toLowerCase().includes(searchFilter) ||
     (u.class || '').toLowerCase().includes(searchFilter) ||
@@ -628,7 +347,7 @@ window.renderStudentModalTable = async function() {
   ));
 
   if (filteredStudents.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#64748b;">No matching student accounts found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#64748b;">No matching students found.</td></tr>';
     return;
   }
 
@@ -652,8 +371,8 @@ window.renderStudentModalTable = async function() {
           <td><input type="text" id="editUsername" value="${s.username}"></td>
           <td><input type="text" id="editPassword" value="${s.password}"></td>
           <td style="display:flex; gap:0.4rem;">
-            <button onclick="saveStudentEdit('${s.username}')" class="btn-icon-only btn-upload" title="Save"><i class="fa-solid fa-check"></i></button>
-            <button onclick="cancelStudentEdit()" class="btn-icon-only btn-secondary" title="Cancel"><i class="fa-solid fa-xmark"></i></button>
+            <button onclick="saveStudentEdit('${s.username}')" class="btn-action btn-upload"><i class="fa-solid fa-check"></i></button>
+            <button onclick="cancelStudentEdit()" class="btn-action btn-secondary"><i class="fa-solid fa-xmark"></i></button>
           </td>
         </tr>
       `;
@@ -667,8 +386,8 @@ window.renderStudentModalTable = async function() {
         <td><code>${s.username}</code></td>
         <td><code>${s.password}</code></td>
         <td style="display:flex; gap:0.4rem;">
-          <button onclick="enableStudentEdit('${s.username}')" class="btn-icon-only btn-edit" title="Edit Student"><i class="fa-solid fa-pen-to-square"></i></button>
-          <button onclick="deleteStudent('${s.username}')" class="btn-icon-only btn-danger" title="Delete Student"><i class="fa-solid fa-trash"></i></button>
+          <button onclick="enableStudentEdit('${s.username}')" class="btn-action btn-edit"><i class="fa-solid fa-pen-to-square"></i></button>
+          <button onclick="deleteStudent('${s.username}')" class="btn-action btn-danger"><i class="fa-solid fa-trash"></i></button>
         </td>
       </tr>
     `;
@@ -685,82 +404,37 @@ window.cancelStudentEdit = function() {
   renderStudentModalTable();
 };
 
-// Save Student Edits to Firestore + Local Cache
 window.saveStudentEdit = async function(oldUsername) {
   const newFullName = document.getElementById('editFullName').value.trim();
   const newClass = document.getElementById('editClass').value;
   const newUsername = document.getElementById('editUsername').value.trim();
   const newPassword = document.getElementById('editPassword').value.trim();
 
-  if (!newFullName || !newUsername || !newPassword) {
-    alert('All fields are required.');
-    return;
-  }
+  if (!newFullName || !newUsername || !newPassword) return;
 
-  // Check username uniqueness if changed
-  if (newUsername.toLowerCase() !== oldUsername.toLowerCase()) {
-    if (window.db) {
-      try {
-        const docSnap = await window.db.collection('users').doc(newUsername.toLowerCase()).get();
-        if (docSnap.exists) {
-          alert('Username is already taken by another account.');
-          return;
-        }
-      } catch (err) {
-        console.warn('Could not verify username uniqueness in cloud:', err);
-      }
-    }
-  }
+  const updatedData = { fullName: newFullName, class: newClass, username: newUsername, password: newPassword, role: 'Student' };
 
-  const updatedData = {
-    fullName: newFullName,
-    class: newClass,
-    username: newUsername,
-    password: newPassword,
-    role: 'Student'
-  };
-
-  // Update in Firebase Firestore
   if (window.db) {
-    try {
-      // If username changed, delete old document ID and create new one
-      if (oldUsername.toLowerCase() !== newUsername.toLowerCase()) {
-        await window.db.collection('users').doc(oldUsername.toLowerCase()).delete();
-      }
-      await window.db.collection('users').doc(newUsername.toLowerCase()).set(updatedData, { merge: true });
-    } catch (err) {
-      console.error('Error updating student in Firestore:', err);
-      alert('Failed to update record on cloud database.');
-      return;
+    if (oldUsername.toLowerCase() !== newUsername.toLowerCase()) {
+      await window.db.collection('users').doc(oldUsername.toLowerCase()).delete();
     }
+    await window.db.collection('users').doc(newUsername.toLowerCase()).set(updatedData, { merge: true });
   }
 
-  // Sync with Local Storage
   let localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
   const idx = localUsers.findIndex(u => u.username.toLowerCase() === oldUsername.toLowerCase());
-  if (idx !== -1) {
-    localUsers[idx] = updatedData;
-  } else {
-    localUsers.push(updatedData);
-  }
+  if (idx !== -1) localUsers[idx] = updatedData;
   localStorage.setItem('portal_users', JSON.stringify(localUsers));
 
   editingUsername = null;
   renderStudentModalTable();
 };
 
-// Delete single student from Firestore + Local Cache
 window.deleteStudent = async function(username) {
-  if (!confirm(`Are you sure you want to delete student "${username}"?`)) return;
+  if (!confirm(`Delete student "${username}"?`)) return;
 
   if (window.db) {
-    try {
-      await window.db.collection('users').doc(username.toLowerCase()).delete();
-    } catch (err) {
-      console.error('Error deleting student from Firestore:', err);
-      alert('Could not delete student from cloud database.');
-      return;
-    }
+    await window.db.collection('users').doc(username.toLowerCase()).delete();
   }
 
   let localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
@@ -770,34 +444,23 @@ window.deleteStudent = async function(username) {
   renderStudentModalTable();
 };
 
-// Bulk delete all students from Firestore + Local Cache
 window.deleteAllStudents = async function() {
-  let localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
-  
-  if (confirm('WARNING: Are you sure you want to delete ALL registered students from the cloud and local storage?')) {
+  if (confirm('Delete ALL registered students?')) {
     if (window.db) {
-      try {
-        const snap = await window.db.collection('users').where('role', '==', 'Student').get();
-        const batch = window.db.batch();
-        snap.forEach(doc => {
-          batch.delete(doc.ref);
-        });
-        await batch.commit();
-      } catch (err) {
-        console.error('Error performing bulk deletion in Firestore:', err);
-        alert('Failed to complete bulk deletion on cloud.');
-        return;
-      }
+      const snap = await window.db.collection('users').where('role', '==', 'Student').get();
+      const batch = window.db.batch();
+      snap.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
     }
 
-    // Clear students from Local Storage
+    let localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
     localUsers = localUsers.filter(u => u.role !== 'Student');
     localStorage.setItem('portal_users', JSON.stringify(localUsers));
 
     renderStudentModalTable();
-    alert('All student accounts deleted successfully.');
   }
 };
+
 /* ==========================================================================
    4. ASSESSMENT & SUBMISSION ENGINE
    ========================================================================== */
@@ -833,31 +496,6 @@ window.handleCreateAssessment = function(e) {
   renderAssessments();
 };
 
-window.handleStudentSubmission = function(testId, testTitle, fileInput) {
-  if (!fileInput || !fileInput.files.length) return;
-
-  const fileName = fileInput.files[0].name;
-  const submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
-
-  const newSubmission = {
-    id: Date.now(),
-    testId: testId,
-    testTitle: testTitle,
-    studentName: currentUser.fullName,
-    studentClass: currentUser.class,
-    fileName: fileName,
-    fileUrl: "uploads/submissions/" + fileName,
-    submittedAt: new Date().toLocaleString()
-  };
-
-  submissions.push(newSubmission);
-  localStorage.setItem('portal_submissions', JSON.stringify(submissions));
-
-  alert(`Submitted answer file for: ${testTitle}`);
-  renderAssessments();
-  if (currentUser.role === 'Teacher') renderSubmissions();
-};
-
 /* ==========================================================================
    5. PORTAL UI RENDERERS
    ========================================================================== */
@@ -866,7 +504,6 @@ function updatePortalUI() {
   const dashSec = document.getElementById('dashboardSection');
   const teacherControls = document.getElementById('teacherControls');
   const teacherReports = document.getElementById('teacherReports');
-  const viewPanel = document.getElementById('assessmentsViewPanel');
 
   if (!loginSec || !dashSec) return;
 
@@ -894,16 +531,10 @@ function updatePortalUI() {
   if (currentUser.role === 'Teacher') {
     if (teacherControls) teacherControls.style.display = 'block';
     if (teacherReports) teacherReports.style.display = 'grid';
-    if (viewPanel && viewPanel.parentElement) {
-      viewPanel.parentElement.style.gridTemplateColumns = '1fr 2fr';
-    }
     renderSubmissions();
   } else {
     if (teacherControls) teacherControls.style.display = 'none';
     if (teacherReports) teacherReports.style.display = 'none';
-    if (viewPanel && viewPanel.parentElement) {
-      viewPanel.parentElement.style.gridTemplateColumns = '1fr';
-    }
   }
 
   renderAssessments();
@@ -923,7 +554,7 @@ function renderAssessments() {
   }
 
   if (assessments.length === 0) {
-    container.innerHTML = `<p style="color:#64748b;">No active assessments available ${currentUser && currentUser.role === 'Student' ? 'for ' + currentUser.class : ''}.</p>`;
+    container.innerHTML = `<p style="color:#64748b;">No active assessments available.</p>`;
     return;
   }
 
@@ -931,12 +562,10 @@ function renderAssessments() {
     const deadlineDate = new Date(a.deadline);
     const isExpired = now > deadlineDate;
     
-    // Check submission status by test ID and student name
     const studentSub = (currentUser && currentUser.role === 'Student') 
       ? submissions.find(s => String(s.testId) === String(a.id) && s.studentName === currentUser.fullName) 
       : null;
     
-    // Safely encode title for inline onclick execution
     const safeTitle = encodeURIComponent(a.title);
 
     return `
@@ -953,30 +582,14 @@ function renderAssessments() {
 
           ${(currentUser && currentUser.role === 'Student') ? `
             ${studentSub ? `
-              <!-- SUBMITTED STATE -->
-              <span style="color:#16a34a; font-size:0.85rem; font-weight:600; display:inline-flex; align-items:center; gap:0.3rem;">
-                <i class="fa-solid fa-circle-check"></i> Submitted (${studentSub.fileName})
-              </span>
-              
+              <span style="color:#16a34a; font-size:0.85rem; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Submitted (${studentSub.fileName})</span>
               ${!isExpired ? `
-                <!-- RESUBMIT / CANCEL ACTIONS BEFORE DEADLINE -->
-                <button type="button" onclick="openSubmissionModalWithDetails('${a.id}', '${safeTitle}')" class="btn-action btn-edit" title="Replace uploaded file">
-                  <i class="fa-solid fa-arrows-rotate"></i> Replace File
-                </button>
-                <button type="button" onclick="cancelSubmission('${a.id}')" class="btn-action btn-danger" style="padding:0.4rem 0.6rem; font-size:0.8rem;" title="Unsubmit file">
-                  <i class="fa-solid fa-trash-can"></i>
-                </button>
-              ` : `
-                <span style="font-size:0.75rem; color:#94a3b8; margin-left:0.5rem;">(Locked - Deadline passed)</span>
-              `}
+                <button type="button" onclick="openSubmissionModalWithDetails('${a.id}', '${safeTitle}')" class="btn-action btn-edit"><i class="fa-solid fa-arrows-rotate"></i> Replace</button>
+                <button type="button" onclick="cancelSubmission('${a.id}')" class="btn-action btn-danger"><i class="fa-solid fa-trash-can"></i></button>
+              ` : `<span style="font-size:0.75rem; color:#94a3b8;">(Locked)</span>`}
             ` : `
-              <!-- NOT SUBMITTED YET STATE -->
-              ${isExpired ? `
-                <button disabled class="btn-action btn-disabled"><i class="fa-solid fa-lock"></i> Deadline Passed</button>
-              ` : `
-                <button type="button" onclick="openSubmissionModalWithDetails('${a.id}', '${safeTitle}')" class="btn-action btn-upload">
-                  <i class="fa-solid fa-file-arrow-up"></i> Upload Answer
-                </button>
+              ${isExpired ? `<button disabled class="btn-action btn-disabled"><i class="fa-solid fa-lock"></i> Deadline Passed</button>` : `
+                <button type="button" onclick="openSubmissionModalWithDetails('${a.id}', '${safeTitle}')" class="btn-action btn-upload"><i class="fa-solid fa-file-arrow-up"></i> Upload Answer</button>
               `}
             `}
           ` : ''}
@@ -987,35 +600,29 @@ function renderAssessments() {
 }
 
 /* ==========================================================================
-   STUDENT SUBMISSION HANDLERS (FIREBASE FIRESTORE SYNC)
+   STUDENT SUBMISSION HANDLERS
    ========================================================================== */
-
 window.handleFormSubmission = function(event) {
   event.preventDefault();
 
   const nameEl = document.getElementById('studentName');
   const classEl = document.getElementById('studentClass');
-  
-  // Handled either submissionTestTitle or testTitle from modal fix
-  const titleEl = document.getElementById('submissionTestTitle') || document.getElementById('testTitle');
+  const titleEl = document.getElementById('submissionTestTitle');
   const testIdEl = document.getElementById('submissionTestId');
   const fileInput = document.getElementById('assignmentFile');
 
-  if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+  if (!fileInput || !fileInput.files.length) {
     alert("Please select a file to upload.");
     return;
   }
 
   const file = fileInput.files[0];
-  
-  // Note: Large files (>1MB) in DataURL format can exceed Firestore document limits.
   if (file.size > 1048576) {
     alert("File size exceeds 1 MB. Please upload a smaller document.");
     return;
   }
 
   const reader = new FileReader();
-
   reader.onload = async function(e) {
     const fileDataUrl = e.target.result;
     const testIdVal = testIdEl ? testIdEl.value : null;
@@ -1034,112 +641,70 @@ window.handleFormSubmission = function(event) {
       submittedAt: new Date().toISOString()
     };
 
-    // 1. Sync to Firebase Firestore
     if (window.db) {
       try {
         await window.db.collection('submissions').doc(submissionId).set(newSubmission, { merge: true });
       } catch (err) {
-        console.error('Error uploading submission to Cloud Firestore:', err);
-        alert('Warning: Could not save submission online. Saving locally...');
+        console.error('Firestore save error:', err);
       }
     }
 
-    // 2. Sync to Local Storage Cache (Overwrite previous entry for same test & student)
     let localSubmissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
-    if (testIdVal && studentNameVal) {
-      localSubmissions = localSubmissions.filter(s => 
-        !(String(s.testId) === String(testIdVal) && s.studentName.toLowerCase() === studentNameVal.toLowerCase())
-      );
-    }
+    localSubmissions = localSubmissions.filter(s => !(String(s.testId) === String(testIdVal) && s.studentName.toLowerCase() === studentNameVal.toLowerCase()));
     localSubmissions.unshift(newSubmission);
     localStorage.setItem('portal_submissions', JSON.stringify(localSubmissions));
 
-    // Reset Form & Close Modal
     const form = document.getElementById('assignmentForm');
     if (form) form.reset();
-    
-    if (typeof closeSubmissionModal === 'function') {
-      closeSubmissionModal();
-    }
+    closeSubmissionModal();
 
     alert("Assignment submitted successfully!");
-
-    // Re-render UI
-    if (typeof renderAssessments === 'function') renderAssessments();
-    if (typeof renderSubmissions === 'function') renderSubmissions();
+    renderAssessments();
+    if (currentUser && currentUser.role === 'Teacher') renderSubmissions();
   };
 
   reader.readAsDataURL(file);
 };
 
-/**
- * Allows a student to cancel / unsubmit their file directly before deadline
- */
 window.cancelSubmission = async function(testId) {
   if (!currentUser || currentUser.role !== 'Student') return;
 
-  const confirmCancel = confirm("Are you sure you want to cancel and delete your current submission for this assessment?");
-  if (!confirmCancel) return;
+  if (!confirm("Are you sure you want to cancel your submission?")) return;
 
   const studentName = currentUser.fullName;
   const submissionId = `sub_${testId}_${studentName.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
 
-  // 1. Remove from Firebase Firestore
   if (window.db) {
     try {
       await window.db.collection('submissions').doc(submissionId).delete();
     } catch (err) {
-      console.error('Error deleting submission from Cloud Firestore:', err);
+      console.error('Firestore delete error:', err);
     }
   }
 
-  // 2. Remove from Local Storage Cache
   let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
-  submissions = submissions.filter(s => 
-    !(String(s.testId) === String(testId) && s.studentName.toLowerCase() === studentName.toLowerCase())
-  );
+  submissions = submissions.filter(s => !(String(s.testId) === String(testId) && s.studentName.toLowerCase() === studentName.toLowerCase()));
   localStorage.setItem('portal_submissions', JSON.stringify(submissions));
 
-  // Refresh views
-  if (typeof renderAssessments === 'function') renderAssessments();
-  if (typeof renderSubmissions === 'function') renderSubmissions();
+  renderAssessments();
 };
 
-/* ==========================================================================
-   RENDER SUBMISSIONS LIST (FIREBASE FIRESTORE SYNC)
-   ========================================================================== */
 window.renderSubmissions = async function() {
   const container = document.getElementById('submissionsContainer');
   if (!container) return;
 
-  container.innerHTML = '<p style="color:#64748b; font-size:0.85rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading submitted work...</p>';
-
   let submissions = [];
-
-  // 1. Fetch live submissions from Firebase Firestore
   if (window.db) {
     try {
       const snap = await window.db.collection('submissions').get();
       snap.forEach(doc => submissions.push(doc.data()));
-
-      // Sync local storage cache with cloud data
-      localStorage.setItem('portal_submissions', JSON.stringify(submissions));
     } catch (err) {
-      console.warn('Failed to load submissions from cloud, falling back to local storage:', err);
+      console.warn('Firestore fallback:', err);
     }
   }
 
-  // 2. Fallback to Local Storage if Firestore returned empty or failed
   if (submissions.length === 0) {
     submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
-  }
-
-  // 3. Filter submissions if user is a Student (Students only see their own work, Teachers see all)
-  if (currentUser && currentUser.role === 'Student') {
-    submissions = submissions.filter(s => 
-      s.studentName.toLowerCase() === currentUser.fullName.toLowerCase() ||
-      (s.studentUsername && s.studentUsername.toLowerCase() === currentUser.username.toLowerCase())
-    );
   }
 
   if (submissions.length === 0) {
@@ -1147,7 +712,6 @@ window.renderSubmissions = async function() {
     return;
   }
 
-  // Sort newest submissions first
   submissions.sort((a, b) => new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0));
 
   container.innerHTML = submissions.map(sub => `
@@ -1156,7 +720,7 @@ window.renderSubmissions = async function() {
         <strong>${sub.studentName}</strong> <small style="color:#2563eb;">(${sub.studentClass})</small><br>
         <span style="color:#64748b; font-size:0.85rem;">${sub.testTitle}</span>
       </div>
-      <a href="${sub.fileUrl}" download="${sub.fileName || 'submission'}" class="btn-action btn-download" style="padding:0.3rem 0.6rem; font-size:0.75rem; text-decoration:none;">
+      <a href="${sub.fileUrl}" download="${sub.fileName || 'submission'}" class="btn-action btn-download" style="padding:0.3rem 0.6rem; font-size:0.75rem;">
         <i class="fa-solid fa-download"></i> Get File
       </a>
     </div>
@@ -1164,7 +728,7 @@ window.renderSubmissions = async function() {
 };
 
 /* ==========================================================================
-   MODAL TOGGLES & HELPERS
+   MODAL TOGGLES
    ========================================================================== */
 window.openSubmissionModal = function() {
   const modal = document.getElementById('submissionModal');
@@ -1178,11 +742,8 @@ window.closeSubmissionModal = function() {
 
 window.openSubmissionModalWithDetails = function(testId, encodedTitle) {
   const decodedTitle = decodeURIComponent(encodedTitle);
-  
-  // 1. Open the Modal View
   openSubmissionModal();
 
-  // 2. Pre-fill student credentials if logged in
   if (currentUser) {
     const nameEl = document.getElementById('studentName');
     const classEl = document.getElementById('studentClass');
@@ -1190,13 +751,10 @@ window.openSubmissionModalWithDetails = function(testId, encodedTitle) {
     if (classEl) classEl.value = currentUser.class || '';
   }
 
-  // 3. Pre-fill Assessment Metadata
-  const titleEl = document.getElementById('testTitle');
-  if (titleEl) {
-    titleEl.value = decodedTitle;
-  }
+  // FIXED TARGET FIELD ID
+  const titleEl = document.getElementById('submissionTestTitle');
+  if (titleEl) titleEl.value = decodedTitle;
 
-  // 4. Store test ID (create hidden input dynamically if not in HTML)
   let testIdEl = document.getElementById('submissionTestId');
   if (!testIdEl) {
     testIdEl = document.createElement('input');
@@ -1206,86 +764,4 @@ window.openSubmissionModalWithDetails = function(testId, encodedTitle) {
     if (form) form.appendChild(testIdEl);
   }
   testIdEl.value = testId;
-};
-
-/* ==========================================================================
-   DIRECT LOGIN EXECUTION HANDLER
-   ========================================================================== */
-window.executeLogin = async function() {
-  const userEl = document.getElementById('loginUsername');
-  const passEl = document.getElementById('loginPassword');
-  const errEl = document.getElementById('loginError');
-
-  if (!userEl || !passEl) {
-    alert("Error: Form input elements missing in DOM.");
-    return;
-  }
-
-  const u = userEl.value.trim().toLowerCase();
-  const p = passEl.value.trim();
-
-  if (!u || !p) {
-    if (errEl) {
-      errEl.textContent = 'Please fill in both fields.';
-      errEl.style.display = 'block';
-    }
-    return;
-  }
-
-  let userMatch = null;
-
-  // 1. Root Hardcoded Check
-  if (u === 'admin' && p === 'admin123') {
-    userMatch = {
-      fullName: "System Admin",
-      class: "Staff",
-      username: "admin",
-      password: "admin123",
-      role: "Teacher"
-    };
-  }
-
-  // 2. Local Storage User Search
-  if (!userMatch) {
-    const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
-    userMatch = localUsers.find(acc => acc.username.toLowerCase() === u && acc.password === p);
-  }
-
-  // 3. Firestore Fallback Search
-  if (!userMatch && window.db) {
-    try {
-      const snap = await window.db.collection('users').doc(u).get();
-      if (snap.exists && snap.data().password === p) {
-        userMatch = snap.data();
-      }
-    } catch (err) {
-      console.warn("Firestore lookup error:", err);
-    }
-  }
-
-  // 4. Authenticate
-  if (userMatch) {
-    if (errEl) errEl.style.display = 'none';
-
-    window.currentUser = userMatch;
-    currentUser = userMatch;
-
-    localStorage.setItem('portal_session', JSON.stringify(userMatch));
-
-    // Clear inputs
-    userEl.value = '';
-    passEl.value = '';
-
-    // Refresh View
-    if (typeof updatePortalUI === 'function') {
-      updatePortalUI();
-    } else {
-      location.reload();
-    }
-  } else {
-    if (errEl) {
-      errEl.textContent = 'Invalid username or password!';
-      errEl.style.display = 'block';
-    }
-  }
 };
