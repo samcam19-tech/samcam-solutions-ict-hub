@@ -79,5 +79,23 @@
     "description": "S5 Marking Guide: MID TERM GUIDE S.5",
     "fileUrl": "uploads/MID%20TERM%20GUIDE%20S.5.pdf",
     "date": "2026-08-14"
+  },
+  {
+    "id": 10,
+    "class": "S1",
+    "category": "Marking Guide",
+    "title": "MID TERM 2 S.1 GUIDE",
+    "description": "S1 Marking Guide: MID TERM 2 S.1 GUIDE",
+    "fileUrl": "uploads/MID%20TERM%202%20S.1%20GUIDE.pdf",
+    "date": "2026-08-14"
+  },
+  {
+    "id": 11,
+    "class": "S5",
+    "category": "Question Paper",
+    "title": "MID TERM 2 S.5 EXAM",
+    "description": "S5 Question Paper: MID TERM 2 S.5 EXAM",
+    "fileUrl": "uploads/MID%20TERM%202%20S.5%20EXAM.pdf",
+    "date": "2026-08-14"
   }
 ]
