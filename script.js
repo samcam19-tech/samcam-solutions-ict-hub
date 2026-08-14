@@ -550,12 +550,27 @@ function renderAssessments() {
 
           ${(currentUser && currentUser.role === 'Student') ? `
             ${studentSub ? `
-              <span style="color:#16a34a; font-size:0.85rem; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Submitted (${studentSub.fileName})</span>
+              <!-- SUBMITTED STATE -->
+              <span style="color:#16a34a; font-size:0.85rem; font-weight:600; display:inline-flex; align-items:center; gap:0.3rem;">
+                <i class="fa-solid fa-circle-check"></i> Submitted (${studentSub.fileName})
+              </span>
+              
+              ${!isExpired ? `
+                <!-- RESUBMIT / CANCEL ACTIONS BEFORE DEADLINE -->
+                <button type="button" onclick="openSubmissionModalWithDetails('${a.id}', '${safeTitle}')" class="btn-action btn-edit" title="Replace uploaded file">
+                  <i class="fa-solid fa-arrows-rotate"></i> Replace File
+                </button>
+                <button type="button" onclick="cancelSubmission('${a.id}')" class="btn-action btn-danger" style="padding:0.4rem 0.6rem; font-size:0.8rem;" title="Unsubmit file">
+                  <i class="fa-solid fa-trash-can"></i>
+                </button>
+              ` : `
+                <span style="font-size:0.75rem; color:#94a3b8; margin-left:0.5rem;">(Locked - Deadline passed)</span>
+              `}
             ` : `
+              <!-- NOT SUBMITTED YET STATE -->
               ${isExpired ? `
                 <button disabled class="btn-action btn-disabled"><i class="fa-solid fa-lock"></i> Deadline Passed</button>
               ` : `
-                <!-- TRIGGER MODAL WITH PARAMETERS -->
                 <button type="button" onclick="openSubmissionModalWithDetails('${a.id}', '${safeTitle}')" class="btn-action btn-upload">
                   <i class="fa-solid fa-file-arrow-up"></i> Upload Answer
                 </button>
@@ -569,7 +584,7 @@ function renderAssessments() {
 }
 
 /* ==========================================================================
-   STUDENT SUBMISSION HANDLER
+   STUDENT SUBMISSION HANDLERS
    ========================================================================== */
 
 function handleFormSubmission(event) {
@@ -577,8 +592,10 @@ function handleFormSubmission(event) {
 
   const nameEl = document.getElementById('studentName');
   const classEl = document.getElementById('studentClass');
-  const titleEl = document.getElementById('testTitle');
-  const testIdEl = document.getElementById('submissionTestId'); // Hidden input if available
+  
+  // Handled either submissionTestTitle or testTitle from modal fix
+  const titleEl = document.getElementById('submissionTestTitle') || document.getElementById('testTitle');
+  const testIdEl = document.getElementById('submissionTestId');
   const fileInput = document.getElementById('assignmentFile');
 
   if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
@@ -589,14 +606,15 @@ function handleFormSubmission(event) {
   const file = fileInput.files[0];
   const reader = new FileReader();
 
-  // Convert uploaded file to Data URL so it can be preserved in localStorage
   reader.onload = function(e) {
     const fileDataUrl = e.target.result;
+    const testIdVal = testIdEl ? testIdEl.value : null;
+    const studentNameVal = nameEl ? nameEl.value.trim() : '';
 
     const newSubmission = {
       id: Date.now(),
-      testId: testIdEl ? testIdEl.value : null,
-      studentName: nameEl ? nameEl.value.trim() : '',
+      testId: testIdVal,
+      studentName: studentNameVal,
       studentClass: classEl ? classEl.value.trim() : '',
       testTitle: titleEl ? titleEl.value.trim() : '',
       fileName: file.name,
@@ -604,8 +622,13 @@ function handleFormSubmission(event) {
       submittedAt: new Date().toISOString().split('T')[0]
     };
 
-    // Save submission to localStorage
-    const existing = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+    let existing = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+    
+    // REMOVE OLD SUBMISSION FOR THIS ASSIGNMENT IF IT EXISTS (OVERWRITE PREVIOUS)
+    if (testIdVal && studentNameVal) {
+      existing = existing.filter(s => !(String(s.testId) === String(testIdVal) && s.studentName === studentNameVal));
+    }
+
     existing.unshift(newSubmission);
     localStorage.setItem('portal_submissions', JSON.stringify(existing));
 
@@ -614,7 +637,7 @@ function handleFormSubmission(event) {
     if (form) form.reset();
     closeSubmissionModal();
 
-    // Re-render both views dynamically
+    // Re-render UI
     renderAssessments();
     renderSubmissions();
   };
@@ -622,6 +645,26 @@ function handleFormSubmission(event) {
   reader.readAsDataURL(file);
 }
 
+/**
+ * Allows a student to cancel / unsubmit their file directly before deadline
+ */
+function cancelSubmission(testId) {
+  if (!currentUser || currentUser.role !== 'Student') return;
+
+  const confirmCancel = confirm("Are you sure you want to cancel and delete your current submission for this assessment?");
+  if (!confirmCancel) return;
+
+  let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+  
+  // Filter out the current student's submission for this test ID
+  submissions = submissions.filter(s => !(String(s.testId) === String(testId) && s.studentName === currentUser.fullName));
+  
+  localStorage.setItem('portal_submissions', JSON.stringify(submissions));
+
+  // Refresh views
+  renderAssessments();
+  renderSubmissions();
+}
 /* ==========================================================================
    RENDER SUBMISSIONS LIST
    ========================================================================== */
