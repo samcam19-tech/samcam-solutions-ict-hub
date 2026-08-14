@@ -665,6 +665,9 @@ async function submitQuizToFirestore() {
   const questions = activeQuizData.questions || [];
   const total = questions.length;
 
+  const headerBackBtn = document.getElementById('runnerBackButton');
+  if (headerBackBtn) headerBackBtn.style.display = 'none';
+
   const studentAnswers = [];
   const detailedResponses = [];
 
