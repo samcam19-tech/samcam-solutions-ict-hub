@@ -103,9 +103,40 @@ window.handleLogout = function() {
 };
 
 /* ==========================================================================
-   2. STUDENT REGISTRATION & BULK IMPORT
+   2. STUDENT REGISTRATION & BULK IMPORT (FIREBASE FIRESTORE SYNC)
    ========================================================================== */
-window.handleRegisterStudent = function(e) {
+
+// Helper to save a single user permanently to Firebase Cloud Firestore and Local Cache
+async function saveUserToCloud(userObj) {
+  // 1. Sync to Local Storage Cache
+  const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+  const idx = localUsers.findIndex(u => u.username.toLowerCase() === userObj.username.toLowerCase());
+  if (idx >= 0) {
+    localUsers[idx] = userObj;
+  } else {
+    localUsers.push(userObj);
+  }
+  localStorage.setItem('portal_users', JSON.stringify(localUsers));
+
+  // 2. Sync to Cloud Firestore (Doc ID = lowercase username to prevent duplicates)
+  if (window.db) {
+    try {
+      await window.db.collection('users').doc(userObj.username.toLowerCase()).set({
+        fullName: userObj.fullName,
+        class: userObj.class,
+        username: userObj.username,
+        password: userObj.password,
+        role: userObj.role || 'Student',
+        createdAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (err) {
+      console.error('Firestore sync error:', err);
+    }
+  }
+}
+
+// Single Student Registration
+window.handleRegisterStudent = async function(e) {
   e.preventDefault();
   if (!currentUser || currentUser.role !== 'Teacher') return;
 
@@ -114,24 +145,42 @@ window.handleRegisterStudent = function(e) {
   const username = document.getElementById('regUsername').value.trim();
   const password = document.getElementById('regPassword').value.trim();
 
-  const users = JSON.parse(localStorage.getItem('portal_users')) || [];
+  // Check username collision in Firestore
+  if (window.db) {
+    try {
+      const docSnap = await window.db.collection('users').doc(username.toLowerCase()).get();
+      if (docSnap.exists) {
+        alert('Username already exists in the system! Please assign a unique username.');
+        return;
+      }
+    } catch (err) {
+      console.warn('Could not verify username in Firestore, checking local storage:', err);
+    }
+  }
 
-  if (users.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+  // Fallback local username collision check
+  const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+  if (localUsers.some(u => u.username.toLowerCase() === username.toLowerCase())) {
     alert('Username already exists! Please assign a unique username.');
     return;
   }
 
-  users.push({
+  const newUser = {
     fullName,
     class: studentClass,
     username,
     password,
     role: "Student"
-  });
+  };
 
-  localStorage.setItem('portal_users', JSON.stringify(users));
-  alert(`Student "${fullName}" registered successfully for ${studentClass}!`);
+  await saveUserToCloud(newUser);
+
+  alert(`Student "${fullName}" registered permanently for ${studentClass}!`);
   e.target.reset();
+
+  if (typeof renderStudentModalTable === 'function') {
+    renderStudentModalTable();
+  }
 };
 
 function generateStrongPassword() {
@@ -143,6 +192,7 @@ function generateStrongPassword() {
   return pwd;
 }
 
+// Bulk Student Import from Excel / CSV
 window.handleBulkImport = function() {
   if (!currentUser || currentUser.role !== 'Teacher') return;
 
@@ -157,15 +207,29 @@ window.handleBulkImport = function() {
   const file = fileInput.files[0];
   const reader = new FileReader();
 
-  reader.onload = function(e) {
+  reader.onload = async function(e) {
     try {
       const data = new Uint8Array(e.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
       const jsonRows = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "", blankrows: false });
 
-      const users = JSON.parse(localStorage.getItem('portal_users')) || [];
+      // Fetch existing users from Firestore to avoid duplicate usernames
+      let systemUsers = [];
+      if (window.db) {
+        try {
+          const snap = await window.db.collection('users').get();
+          snap.forEach(doc => systemUsers.push(doc.data()));
+        } catch (err) {
+          console.warn('Failed to fetch users from Firestore, using local cache:', err);
+          systemUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+        }
+      } else {
+        systemUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+      }
+
       let addedCount = 0;
+      const savePromises = [];
 
       jsonRows.forEach((row, index) => {
         if (!row || row.length === 0) return;
@@ -197,38 +261,62 @@ window.handleBulkImport = function() {
           let finalUsername = baseUsername;
           let counter = 1;
 
-          while (users.some(u => u.username.toLowerCase() === finalUsername.toLowerCase())) {
+          while (systemUsers.some(u => u.username.toLowerCase() === finalUsername.toLowerCase())) {
             finalUsername = `${baseUsername}${counter}`;
             counter++;
           }
 
-          users.push({
+          const newUser = {
             fullName: rawName,
             class: targetClass,
             username: finalUsername,
             password: generateStrongPassword(),
             role: "Student"
-          });
+          };
 
+          systemUsers.push(newUser);
           addedCount++;
+
+          savePromises.push(saveUserToCloud(newUser));
         }
       });
 
-      localStorage.setItem('portal_users', JSON.stringify(users));
-      alert(`Imported ${addedCount} student account(s) into ${targetClass}! Click "Download CSV" to retrieve credentials.`);
+      await Promise.all(savePromises);
+
+      alert(`Imported ${addedCount} student account(s) into ${targetClass} and saved permanently to Firebase! Click "Download CSV" to retrieve credentials.`);
       fileInput.value = '';
+
+      if (typeof renderStudentModalTable === 'function') {
+        renderStudentModalTable();
+      }
     } catch (err) {
       console.error(err);
-      alert('Error parsing file. Please verify it is a valid Excel or CSV file.');
+      alert('Error parsing or saving file data.');
     }
   };
 
   reader.readAsArrayBuffer(file);
 };
 
-window.downloadStudentCSV = function() {
-  const users = JSON.parse(localStorage.getItem('portal_users')) || [];
-  const students = users.filter(u => u.role === 'Student');
+// Export Registered Students CSV (Fetches from Cloud/Local)
+window.downloadStudentCSV = async function() {
+  let students = [];
+
+  // 1. Fetch from Firestore if available
+  if (window.db) {
+    try {
+      const snap = await window.db.collection('users').where('role', '==', 'Student').get();
+      snap.forEach(doc => students.push(doc.data()));
+    } catch (err) {
+      console.warn('Failed to fetch students from Cloud for CSV export, falling back to local storage:', err);
+    }
+  }
+
+  // 2. Fallback to Local Storage if cloud returned empty or failed
+  if (students.length === 0) {
+    const users = JSON.parse(localStorage.getItem('portal_users')) || [];
+    students = users.filter(u => u.role === 'Student');
+  }
 
   if (students.length === 0) {
     alert('No registered students found to export.');
