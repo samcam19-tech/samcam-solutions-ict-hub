@@ -20,7 +20,7 @@ const HARDCODED_ACCOUNTS = [
     fullName: "System Admin",
     class: "Staff",
     username: "admin",
-    password: "admin123", // Customize your root admin password here
+    password: "admin123", 
     role: "Teacher"
   }
 ];
@@ -69,18 +69,6 @@ document.addEventListener("DOMContentLoaded", () => {
    1. AUTHENTICATION MODULE (HARDCODED ROOT ADMIN + FIREBASE & LOCAL CACHE)
    ========================================================================== */
 
-// 1. HARDCODED ROOT ADMIN ACCOUNTS (Guarantees root login works everywhere)
-const HARDCODED_ACCOUNTS = [
-  {
-    fullName: "System Admin",
-    class: "Staff",
-    username: "admin",
-    password: "admin123", // Root admin password
-    role: "Teacher"
-  }
-];
-
-// Ensure global session variable is available on window
 window.currentUser = window.currentUser || null;
 
 window.handleLogin = async function(e) {
