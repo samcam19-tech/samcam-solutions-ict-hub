@@ -54,31 +54,126 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* ==========================================================================
-   1. AUTHENTICATION MODULE
+   1. AUTHENTICATION MODULE (HARDCODED ROOT ADMIN + FIREBASE & LOCAL CACHE)
    ========================================================================== */
-window.handleLogin = function(e) {
+
+// Default hardcoded admin / teacher fallback accounts
+const HARDCODED_ACCOUNTS = [
+  {
+    fullName: "System Admin",
+    class: "Staff",
+    username: "admin",
+    password: "admin123", // Customize your root admin password here
+    role: "Teacher"
+  }
+];
+
+window.handleLogin = async function(e) {
   e.preventDefault();
+  
   const userVal = document.getElementById('loginUsername').value.trim();
   const passVal = document.getElementById('loginPassword').value.trim();
   const errEl = document.getElementById('loginError');
 
-  const users = JSON.parse(localStorage.getItem('portal_users')) || [];
-  const foundUser = users.find(u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal);
+  if (!userVal || !passVal) {
+    if (errEl) {
+      errEl.textContent = 'Please enter both username and password.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
 
+  let foundUser = null;
+
+  // 1. Check Hardcoded Root Accounts First (Always works even if cache/db is cleared)
+  foundUser = HARDCODED_ACCOUNTS.find(
+    u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal
+  );
+
+  // 2. Check Firebase Firestore Cloud Database (if not found in hardcoded list)
+  if (!foundUser && window.db) {
+    try {
+      const docSnap = await window.db.collection('users').doc(userVal.toLowerCase()).get();
+      
+      if (docSnap.exists) {
+        const cloudUser = docSnap.data();
+        if (cloudUser.password === passVal) {
+          foundUser = cloudUser;
+        }
+      } else {
+        const querySnap = await window.db.collection('users')
+          .where('username', '==', userVal)
+          .limit(1)
+          .get();
+
+        if (!querySnap.empty) {
+          const cloudUser = querySnap.docs[0].data();
+          if (cloudUser.password === passVal) {
+            foundUser = cloudUser;
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Cloud login lookup failed, falling back to local storage:', err);
+    }
+  }
+
+  // 3. Check Local Storage Fallback
+  if (!foundUser) {
+    const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+    foundUser = localUsers.find(
+      u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal
+    );
+  }
+
+  // 4. Handle Login Success or Failure
   if (foundUser) {
     if (errEl) errEl.style.display = 'none';
     currentUser = foundUser;
+
+    // Persist user session locally
     localStorage.setItem('portal_session', JSON.stringify(currentUser));
     
-    // Clear input fields on successful login so they aren't pre-filled on logout
+    // Ensure root admin or new user is mirrored in local storage array
+    const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+    if (!localUsers.some(u => u.username.toLowerCase() === currentUser.username.toLowerCase())) {
+      localUsers.push(currentUser);
+      localStorage.setItem('portal_users', JSON.stringify(localUsers));
+    }
+
+    // Clear login input fields
     document.getElementById('loginUsername').value = '';
     document.getElementById('loginPassword').value = '';
-    
-    updatePortalUI();
+
+    // Refresh UI state
+    if (typeof updatePortalUI === 'function') {
+      updatePortalUI();
+    }
   } else {
-    if (errEl) errEl.style.display = 'block';
+    if (errEl) {
+      errEl.textContent = 'Invalid username or password!';
+      errEl.style.display = 'block';
+    }
   }
 };
+
+// Auto-restore session on page load
+window.checkExistingSession = function() {
+  const savedSession = localStorage.getItem('portal_session');
+  if (savedSession) {
+    try {
+      currentUser = JSON.parse(savedSession);
+      if (typeof updatePortalUI === 'function') {
+        updatePortalUI();
+      }
+    } catch (err) {
+      console.error('Error restoring session:', err);
+      localStorage.removeItem('portal_session');
+    }
+  }
+};
+
+document.addEventListener('DOMContentLoaded', window.checkExistingSession);
 
 window.handleLogout = function() {
   localStorage.removeItem('portal_session');
