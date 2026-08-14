@@ -556,6 +556,8 @@ async function startQuiz(quizId) {
 
     const cachedQuizzes = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || MOCK_QUIZZES;
     let foundQuiz = cachedQuizzes.find(q => q.id === quizId);
+    const headerBackBtn = document.getElementById('runnerBackButton');
+    if (headerBackBtn) headerBackBtn.style.display = 'inline-flex';
 
     if (!foundQuiz && db) {
       const doc = await db.collection('quizzes').doc(quizId).get();
