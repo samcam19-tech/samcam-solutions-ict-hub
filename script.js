@@ -306,14 +306,14 @@ window.downloadStudentCSV = async function() {
    3. STUDENT MANAGEMENT MODAL
    ========================================================================== */
 window.openStudentModal = function() {
-  const modal = document.getElementById('studentModal');
+  const modal = document.getElementById('manageStudentsModal');
   if (modal) modal.style.display = 'flex';
   editingUsername = null;
   renderStudentModalTable();
 };
 
 window.closeStudentModal = function() {
-  const modal = document.getElementById('studentModal');
+  const modal = document.getElementById('manageStudentsModal');
   if (modal) modal.style.display = 'none';
   editingUsername = null;
 };
