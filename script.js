@@ -34,9 +34,17 @@ function loadSessionFromStorage() {
 // Helper: Broadcast session updates to other modules (like Quiz Engine)
 function broadcastSessionUpdate(user) {
   window.currentUser = user;
+  
+  // Guarantee localStorage persistence before dispatching event
+  if (user) {
+    localStorage.setItem('portal_session', JSON.stringify(user));
+  } else {
+    localStorage.removeItem('portal_session');
+  }
+
+  // Dispatch custom event for real-time listeners on the same page
   window.dispatchEvent(new CustomEvent('portalSessionChanged', { detail: user }));
 }
-
 /* ==========================================================================
    INITIALIZATION & SESSION PERSISTENCE
    ========================================================================== */
