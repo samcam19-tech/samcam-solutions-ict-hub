@@ -17,7 +17,7 @@ if (typeof firebase !== "undefined" && !firebase.apps.length) {
 
 const db = typeof firebase !== "undefined" ? firebase.firestore() : null;
 
-// Fallback Mock Data in case database connection drops or is empty
+// Fallback Mock Data
 const MOCK_QUIZZES = [
   {
     id: "sample_01",
@@ -49,6 +49,15 @@ let activeQuizData = null;
 let quizTimerInterval = null;
 let builderQuestionCount = 0;
 
+// Tracking duration metrics
+let timeSpentSeconds = 0;
+let totalQuizDurationSeconds = 0;
+
+// Learner attempts registry (quizId -> resultRecord)
+let learnerSubmissionsMap = {};
+// Global collection of results for teacher inspection & Excel output
+let globalTeacherResults = [];
+
 // Listen for live session changes broadcasted by global auth scripts
 window.addEventListener('portalSessionChanged', (e) => {
   syncQuizEngineSession(e.detail);
@@ -67,13 +76,12 @@ function sanitizeUserSession(user) {
 }
 
 // Synchronize user session state across UI badges and admin/teacher panels
-function syncQuizEngineSession(user) {
+async function syncQuizEngineSession(user) {
   currentUser = sanitizeUserSession(user);
 
   const userBadge = document.getElementById('userBadge');
   const teacherPanel = document.getElementById('teacherPanel');
 
-  // IF NO SESSION FOUND: Immediately switch UI badge from "Checking Session..." to "Guest"
   if (!currentUser) {
     if (userBadge) {
       userBadge.innerHTML = `<i class="fa-solid fa-user-clock"></i> Guest`;
@@ -84,7 +92,7 @@ function syncQuizEngineSession(user) {
     return;
   }
 
-  // Normalize role check (handles "Admin", "admin", "Teacher", "teacher")
+  // Normalize role check
   const userRole = (currentUser.role || '').toLowerCase();
   const isAdminOrTeacher = userRole === 'admin' || userRole === 'teacher';
 
@@ -102,16 +110,18 @@ function syncQuizEngineSession(user) {
     teacherPanel.style.display = isAdminOrTeacher ? 'block' : 'none';
     if (isAdminOrTeacher) setTimeout(fetchQuizResults, 200);
   }
+
+  // Fetch student's prior submissions to mark completed quizzes inactive
+  await fetchLearnerAttempts();
 }
 
 // ==========================================================================
 // 3. INITIALIZATION ON DOM READY
 // ==========================================================================
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   try {
     let activeUser = window.currentUser;
 
-    // Direct resolution from 'portal_session' key
     if (!activeUser) {
       const sessionData = localStorage.getItem('portal_session');
       if (sessionData) {
@@ -124,46 +134,59 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // Apply session and unfreeze UI badge immediately
-    syncQuizEngineSession(activeUser);
-
-    // Populate quizzes
+    await syncQuizEngineSession(activeUser);
     fetchActiveQuizzes();
   } catch (err) {
     console.error("Initialization Error in Quiz Engine:", err);
-    // Force unfreeze on unexpected error
     syncQuizEngineSession(null);
   }
 });
 
 // ==========================================================================
-// 4. INSTANT CACHE & REAL-TIME QUIZ SYNC ENGINE
+// 4. LEARNER PREVIOUS ATTEMPTS SYNC
+// ==========================================================================
+async function fetchLearnerAttempts() {
+  learnerSubmissionsMap = {};
+  if (!currentUser || !db) return;
+
+  try {
+    const snapshot = await db.collection('quiz_results')
+      .where('studentUsername', '==', currentUser.username)
+      .get();
+
+    snapshot.forEach(doc => {
+      const res = doc.data();
+      learnerSubmissionsMap[res.quizId] = { id: doc.id, ...res };
+    });
+  } catch (err) {
+    console.error("Error retrieving learner attempts:", err);
+  }
+}
+
+// ==========================================================================
+// 5. INSTANT CACHE & REAL-TIME QUIZ SYNC ENGINE
 // ==========================================================================
 function fetchActiveQuizzes() {
   const quizListContainer = document.getElementById('quizList');
   if (!quizListContainer) return;
 
-  // Loading Placeholder
   quizListContainer.innerHTML = `
     <div style="grid-column: 1/-1; display:flex; justify-content:center; align-items:center; padding:2rem; background:#f8fafc; border-radius:8px; color:#64748b;">
       <i class="fa-solid fa-circle-notch fa-spin" style="margin-right:0.5rem; font-size:1.2rem; color:#2563eb;"></i> Loading available quizzes...
     </div>
   `;
 
-  // 1. Load from instant local storage cache
   const cachedQuizzes = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || [];
   if (cachedQuizzes.length > 0) {
     renderQuizCards(cachedQuizzes);
   }
 
-  // 2. Fallback to Mock Data if Firestore isn't connected
   if (!db) {
     console.warn("Firestore not initialized. Using fallback data.");
     if (cachedQuizzes.length === 0) renderQuizCards(MOCK_QUIZZES);
     return;
   }
 
-  // 3. Real-time Firestore sync
   db.collection('quizzes').onSnapshot((snapshot) => {
     const freshQuizzes = [];
     snapshot.forEach((doc) => {
@@ -171,17 +194,11 @@ function fetchActiveQuizzes() {
     });
 
     const quizzesToDisplay = freshQuizzes.length > 0 ? freshQuizzes : MOCK_QUIZZES;
-
-    // Save to local cache
     localStorage.setItem('portal_quizzes_cache', JSON.stringify(quizzesToDisplay));
-
-    // Render cards on UI
     renderQuizCards(quizzesToDisplay);
   }, (err) => {
     console.error("Firestore Listener Error:", err);
-    if (cachedQuizzes.length === 0) {
-      renderQuizCards(MOCK_QUIZZES);
-    }
+    if (cachedQuizzes.length === 0) renderQuizCards(MOCK_QUIZZES);
   });
 }
 
@@ -192,7 +209,6 @@ function renderQuizCards(quizzesList) {
   const userRole = (currentUser && currentUser.role ? currentUser.role : '').toLowerCase();
   const isAdminOrTeacher = userRole === 'admin' || userRole === 'teacher';
 
-  // Filter quizzes by class scope (Admins & Teachers bypass filters)
   const filteredQuizzes = quizzesList.filter(q => {
     if (isAdminOrTeacher) return true;
     if (!currentUser || !currentUser.class) return true;
@@ -214,34 +230,65 @@ function renderQuizCards(quizzesList) {
   let html = '';
   filteredQuizzes.forEach(q => {
     const qCount = q.questions ? q.questions.length : 0;
-    html += `
-      <div class="quiz-card" style="border:1px solid #e2e8f0; padding:1.25rem; border-radius:10px; background:#ffffff; box-shadow:0 2px 4px rgba(0,0,0,0.04); display:flex; flex-direction:column; justify-content:space-between;">
-        <div>
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
-            <span style="background:#e0f2fe; color:#0369a1; padding:0.25rem 0.6rem; border-radius:20px; font-size:0.75rem; font-weight:700; text-transform:uppercase;">
-              <i class="fa-solid fa-layer-group"></i> ${q.targetClass || 'All Classes'}
-            </span>
-            <span style="font-size:0.75rem; color:#64748b; font-weight:600;">
-              <i class="fa-solid fa-clock" style="color:#f59e0b;"></i> ${q.durationMinutes} Mins
-            </span>
+    const attempt = learnerSubmissionsMap[q.id];
+
+    if (attempt) {
+      // Completed / Inactive State Card
+      html += `
+        <div class="quiz-card" style="border:1px solid #cbd5e1; padding:1.25rem; border-radius:10px; background:#f8fafc; opacity:0.95; display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+              <span style="background:#dcfce7; color:#15803d; padding:0.25rem 0.6rem; border-radius:20px; font-size:0.75rem; font-weight:700;">
+                <i class="fa-solid fa-circle-check"></i> Attempted
+              </span>
+              <span style="font-size:0.75rem; color:#64748b; font-weight:600;">
+                ${q.targetClass || 'All Classes'}
+              </span>
+            </div>
+            <h4 style="margin:0 0 0.5rem 0; font-size:1.1rem; color:#0f172a; font-weight:600;">${q.title}</h4>
+            
+            <div style="background:#e0f2fe; border:1px solid #bae6fd; border-radius:6px; padding:0.6rem; margin-bottom:1rem; color:#0369a1; font-size:0.85rem;">
+              <div><i class="fa-solid fa-award"></i> <strong>Score:</strong> ${attempt.percentage}% (${attempt.score}/${attempt.totalQuestions})</div>
+              <div><i class="fa-solid fa-stopwatch"></i> <strong>Time Taken:</strong> ${formatSeconds(attempt.timeSpentSeconds)}</div>
+            </div>
           </div>
-          <h4 style="margin:0 0 0.5rem 0; font-size:1.1rem; color:#0f172a; font-weight:600;">${q.title}</h4>
-          <p style="font-size:0.85rem; color:#64748b; margin:0 0 1.25rem 0;">
-            <i class="fa-solid fa-list-check"></i> ${qCount} Question${qCount === 1 ? '' : 's'} Included
-          </p>
+
+          <button onclick="generateLearnerPDF('${q.id}')" class="btn btn-secondary" style="width:100%; justify-content:center; background:#475569;">
+            <i class="fa-solid fa-file-pdf"></i> Download Result PDF
+          </button>
         </div>
-        <button onclick="startQuiz('${q.id}')" class="btn btn-primary" style="width:100%; justify-content:center;">
-          <i class="fa-solid fa-play"></i> Start Quiz
-        </button>
-      </div>
-    `;
+      `;
+    } else {
+      // Active Quiz Card
+      html += `
+        <div class="quiz-card" style="border:1px solid #e2e8f0; padding:1.25rem; border-radius:10px; background:#ffffff; box-shadow:0 2px 4px rgba(0,0,0,0.04); display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+              <span style="background:#e0f2fe; color:#0369a1; padding:0.25rem 0.6rem; border-radius:20px; font-size:0.75rem; font-weight:700; text-transform:uppercase;">
+                <i class="fa-solid fa-layer-group"></i> ${q.targetClass || 'All Classes'}
+              </span>
+              <span style="font-size:0.75rem; color:#64748b; font-weight:600;">
+                <i class="fa-solid fa-clock" style="color:#f59e0b;"></i> ${q.durationMinutes} Mins
+              </span>
+            </div>
+            <h4 style="margin:0 0 0.5rem 0; font-size:1.1rem; color:#0f172a; font-weight:600;">${q.title}</h4>
+            <p style="font-size:0.85rem; color:#64748b; margin:0 0 1.25rem 0;">
+              <i class="fa-solid fa-list-check"></i> ${qCount} Question${qCount === 1 ? '' : 's'} Included
+            </p>
+          </div>
+          <button onclick="startQuiz('${q.id}')" class="btn btn-primary" style="width:100%; justify-content:center;">
+            <i class="fa-solid fa-play"></i> Start Quiz
+          </button>
+        </div>
+      `;
+    }
   });
 
   quizListContainer.innerHTML = html;
 }
 
 // ==========================================================================
-// 5. EDUCATOR CONTROL CENTER (QUIZ BUILDER & RESULTS TRACKER)
+// 6. EDUCATOR CONTROL CENTER & EXCEL REPORTS
 // ==========================================================================
 function toggleQuizBuilder() {
   const form = document.getElementById('createQuizForm');
@@ -363,46 +410,124 @@ async function fetchQuizResults() {
   if (!resultsContainer) return;
 
   if (!db) {
-    resultsContainer.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#64748b; padding:1rem;">Live results database unreachable.</td></tr>`;
+    resultsContainer.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#64748b; padding:1rem;">Live results database unreachable.</td></tr>`;
     return;
   }
 
   try {
     const snapshot = await db.collection('quiz_results').orderBy('submittedAt', 'desc').get();
     if (snapshot.empty) {
-      resultsContainer.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#64748b; padding:1rem;">No submissions registered yet.</td></tr>`;
+      resultsContainer.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#64748b; padding:1rem;">No submissions registered yet.</td></tr>`;
       return;
     }
 
+    globalTeacherResults = [];
     let rowsHtml = '';
+
     snapshot.forEach(doc => {
-      const res = doc.data();
+      const res = { id: doc.id, ...doc.data() };
+      globalTeacherResults.push(res);
+
       const submittedTime = res.submittedAt && res.submittedAt.toDate 
         ? new Date(res.submittedAt.toDate()).toLocaleString() 
         : 'Recently';
 
       rowsHtml += `
         <tr style="border-bottom:1px solid #f1f5f9;">
-          <td style="padding:0.75rem;"><strong>${res.studentName}</strong> <span style="font-size:0.8rem; color:#64748b;">(${res.studentClass})</span></td>
+          <td style="padding:0.75rem;"><strong>${res.studentName}</strong> <span style="font-size:0.8rem; color:#64748b;">(${res.studentClass || 'N/A'})</span></td>
           <td style="padding:0.75rem; font-weight:500;">${res.quizTitle}</td>
+          <td style="padding:0.75rem; font-size:0.85rem; color:#475569;">${formatSeconds(res.timeSpentSeconds)}</td>
           <td style="padding:0.75rem;">
             <span style="font-weight:700; color:${res.percentage >= 50 ? '#16a34a' : '#dc2626'}; background:${res.percentage >= 50 ? '#f0fdf4' : '#fef2f2'}; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.85rem;">
               ${res.score}/${res.totalQuestions} (${res.percentage}%)
             </span>
           </td>
           <td style="padding:0.75rem; font-size:0.85rem; color:#64748b;">${submittedTime}</td>
+          <td style="padding:0.75rem;">
+            <button class="btn btn-secondary btn-sm" onclick="inspectLearnerSubmission('${doc.id}')" style="background:#0284c7; border:none; padding:0.25rem 0.6rem; font-size:0.75rem; border-radius:4px; color:#fff; cursor:pointer;">
+              <i class="fa-solid fa-eye"></i> Inspect
+            </button>
+          </td>
         </tr>
       `;
     });
     resultsContainer.innerHTML = rowsHtml;
   } catch (err) {
     console.error("Error fetching submission results:", err);
-    resultsContainer.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444; padding:1rem;">Failed to load submission results.</td></tr>`;
+    resultsContainer.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444; padding:1rem;">Failed to load submission results.</td></tr>`;
   }
 }
 
+// Teacher Response Inspection Modal
+function inspectLearnerSubmission(docId) {
+  const sub = globalTeacherResults.find(s => s.id === docId);
+  if (!sub) return alert("Submission payload not located.");
+
+  const modal = document.getElementById('inspectorModal');
+  const studentTitle = document.getElementById('modalStudentName');
+  const body = document.getElementById('modalResponseBody');
+
+  if (!modal || !body) return;
+
+  if (studentTitle) studentTitle.textContent = `${sub.studentName} - Responses Overview`;
+
+  let html = `
+    <div style="margin-bottom:1rem; padding:0.75rem; background:#f8fafc; border-radius:6px; font-size:0.85rem; border:1px solid #e2e8f0;">
+      <div><strong>Assessment:</strong> ${sub.quizTitle}</div>
+      <div><strong>Score:</strong> ${sub.percentage}% (${sub.score}/${sub.totalQuestions}) | <strong>Time Spent:</strong> ${formatSeconds(sub.timeSpentSeconds)}</div>
+    </div>
+  `;
+
+  (sub.detailedResponses || []).forEach((item, idx) => {
+    html += `
+      <div style="padding:0.75rem; border-radius:6px; margin-bottom:0.75rem; border-left:4px solid ${item.isCorrect ? '#16a34a' : '#dc2626'}; background:${item.isCorrect ? '#f0fdf4' : '#fef2f2'}; font-size:0.85rem;">
+        <div style="font-weight:600; color:#0f172a; margin-bottom:0.25rem;">Q${idx + 1}: ${item.questionText}</div>
+        <div><strong>Selected:</strong> ${item.selectedOption}</div>
+        ${!item.isCorrect ? `<div style="color:#dc2626; margin-top:0.25rem;"><strong>Correct Option:</strong> ${item.correctOption}</div>` : ''}
+      </div>
+    `;
+  });
+
+  body.innerHTML = html;
+  modal.style.display = 'flex';
+}
+
+function closeInspectorModal() {
+  const modal = document.getElementById('inspectorModal');
+  if (modal) modal.style.display = 'none';
+}
+
+// Generate Excel Spreadsheet for Teachers
+function exportResultsToExcel() {
+  if (globalTeacherResults.length === 0) {
+    return alert("No student results available to export.");
+  }
+
+  if (typeof XLSX === 'undefined') {
+    return alert("SheetJS library not detected. Ensure sheetjs CDN script is included in HTML.");
+  }
+
+  const exportRows = globalTeacherResults.map(s => ({
+    "Student Name": s.studentName,
+    "Username": s.studentUsername,
+    "Class": s.studentClass || "N/A",
+    "Assessment Title": s.quizTitle,
+    "Score Obtained": s.score,
+    "Total Questions": s.totalQuestions,
+    "Percentage Score (%)": s.percentage,
+    "Time Spent": formatSeconds(s.timeSpentSeconds),
+    "Submission Date": s.submittedAt && s.submittedAt.toDate ? new Date(s.submittedAt.toDate()).toLocaleString() : 'N/A'
+  }));
+
+  const worksheet = XLSX.utils.json_to_sheet(exportRows);
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, worksheet, "Student Scores");
+
+  XLSX.writeFile(workbook, `Assessment_Scores_${new Date().toISOString().slice(0, 10)}.xlsx`);
+}
+
 // ==========================================================================
-// 6. QUIZ RUNNER ENGINE
+// 7. QUIZ RUNNER ENGINE
 // ==========================================================================
 async function startQuiz(quizId) {
   try {
@@ -411,17 +536,9 @@ async function startQuiz(quizId) {
       return;
     }
 
-    // Check duplicate attempts in Firestore
-    if (db) {
-      const existingResult = await db.collection('quiz_results')
-        .where('quizId', '==', quizId)
-        .where('studentUsername', '==', currentUser.username)
-        .get();
-
-      if (!existingResult.empty) {
-        alert("You have already submitted an entry for this quiz.");
-        return;
-      }
+    if (learnerSubmissionsMap[quizId]) {
+      alert("You have already submitted an entry for this quiz.");
+      return;
     }
 
     const cachedQuizzes = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || MOCK_QUIZZES;
@@ -495,15 +612,20 @@ function renderQuizQuestions(questions) {
 }
 
 // ==========================================================================
-// 7. TIMER & SUBMISSION ENGINE
+// 8. TIMER & SUBMISSION ENGINE
 // ==========================================================================
 function startTimer(durationMinutes) {
-  let secondsRemaining = durationMinutes * 60;
-  const display = document.getElementById('quizTimer');
+  totalQuizDurationSeconds = durationMinutes * 60;
+  let secondsRemaining = totalQuizDurationSeconds;
+  timeSpentSeconds = 0;
 
+  const display = document.getElementById('quizTimer');
   clearInterval(quizTimerInterval);
 
   quizTimerInterval = setInterval(() => {
+    secondsRemaining--;
+    timeSpentSeconds++;
+
     const mins = Math.floor(secondsRemaining / 60);
     const secs = secondsRemaining % 60;
 
@@ -516,8 +638,6 @@ function startTimer(durationMinutes) {
       alert("Time has elapsed. Your answers are automatically submitting...");
       submitQuizToFirestore();
     }
-
-    secondsRemaining--;
   }, 1000);
 }
 
@@ -529,7 +649,9 @@ async function submitQuizToFirestore() {
   let score = 0;
   const questions = activeQuizData.questions || [];
   const total = questions.length;
+
   const studentAnswers = [];
+  const detailedResponses = [];
 
   questions.forEach((q, idx) => {
     const selected = document.querySelector(`input[name="q_${idx}"]:checked`);
@@ -537,9 +659,15 @@ async function submitQuizToFirestore() {
     
     studentAnswers.push(answerIndex);
 
-    if (answerIndex === q.correctAnswer) {
-      score++;
-    }
+    const isCorrect = answerIndex === q.correctAnswer;
+    if (isCorrect) score++;
+
+    detailedResponses.push({
+      questionText: q.question,
+      selectedOption: answerIndex >= 0 ? q.options[answerIndex] : "Unanswered",
+      correctOption: q.options[q.correctAnswer],
+      isCorrect
+    });
   });
 
   const percentage = total > 0 ? Math.round((score / total) * 100) : 0;
@@ -553,7 +681,9 @@ async function submitQuizToFirestore() {
     score,
     totalQuestions: total,
     percentage,
+    timeSpentSeconds,
     answers: studentAnswers,
+    detailedResponses,
     submittedAt: firebase.firestore.FieldValue ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
   };
 
@@ -562,14 +692,18 @@ async function submitQuizToFirestore() {
       await db.collection('quiz_results').add(resultRecord);
     }
 
-    alert(`Quiz Submitted Successfully!\nScore: ${score}/${total} (${percentage}%)`);
+    alert(`Quiz Submitted Successfully!\nScore: ${score}/${total} (${percentage}%)\nTime Taken: ${formatSeconds(timeSpentSeconds)}`);
 
     // Reset view to dashboard
     const runner = document.getElementById('quizRunner');
     const quizzesContainer = document.getElementById('availableQuizzesContainer');
     if (runner) runner.style.display = 'none';
     if (quizzesContainer) quizzesContainer.style.display = 'block';
-    
+
+    // Refresh Learner Attempts & Re-render Dashboard Cards
+    await fetchLearnerAttempts();
+    fetchActiveQuizzes();
+
     const userRole = (currentUser && currentUser.role ? currentUser.role : '').toLowerCase();
     const isAdminOrTeacher = userRole === 'teacher' || userRole === 'admin';
     const teacherPanel = document.getElementById('teacherPanel');
@@ -583,4 +717,88 @@ async function submitQuizToFirestore() {
     console.error("Error submitting quiz:", err);
     alert("Submission completed locally, but cloud backup failed. Check connection.");
   }
+}
+
+// ==========================================================================
+// 9. LEARNER PDF REPORT GENERATOR (jsPDF)
+// ==========================================================================
+function generateLearnerPDF(quizId) {
+  const attempt = learnerSubmissionsMap[quizId];
+  if (!attempt) return alert("No attempt record found for this assessment.");
+
+  if (typeof window.jspdf === 'undefined') {
+    return alert("jsPDF library not loaded. Ensure jsPDF scripts are included in html.");
+  }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF();
+
+  // Header Graphic
+  doc.setFillColor(15, 23, 42);
+  doc.rect(0, 0, 210, 32, 'F');
+  
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(16);
+  doc.setFont('helvetica', 'bold');
+  doc.text("ASSESSMENT PERFORMANCE SLIP", 14, 20);
+
+  // Meta Specs
+  doc.setTextColor(30, 41, 59);
+  doc.setFontSize(9);
+  doc.setFont('helvetica', 'normal');
+
+  doc.text(`Learner Name: ${attempt.studentName}`, 14, 42);
+  doc.text(`Class/Stream: ${attempt.studentClass || 'N/A'}`, 14, 48);
+  doc.text(`Assessment Title: ${attempt.quizTitle}`, 14, 54);
+
+  doc.text(`Final Score: ${attempt.percentage}% (${attempt.score}/${attempt.totalQuestions})`, 120, 42);
+  doc.text(`Time Spent: ${formatSeconds(attempt.timeSpentSeconds)}`, 120, 48);
+  doc.text(`Date Generated: ${new Date().toLocaleDateString()}`, 120, 54);
+
+  doc.setDrawColor(226, 232, 240);
+  doc.line(14, 60, 196, 60);
+
+  const tableData = (attempt.detailedResponses || []).map((item, idx) => [
+    idx + 1,
+    item.questionText,
+    item.selectedOption,
+    item.correctOption,
+    item.isCorrect ? "CORRECT" : "INCORRECT"
+  ]);
+
+  doc.autoTable({
+    startY: 65,
+    head: [['#', 'Question Prompt', 'Your Choice', 'Correct Option', 'Status']],
+    body: tableData,
+    theme: 'grid',
+    headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: 'bold' },
+    columnStyles: {
+      0: { cellWidth: 10 },
+      1: { cellWidth: 65 },
+      2: { cellWidth: 45 },
+      3: { cellWidth: 45 },
+      4: { cellWidth: 20, fontStyle: 'bold' }
+    },
+    didParseCell: function(data) {
+      if (data.column.index === 4 && data.cell.section === 'body') {
+        if (data.cell.raw === 'CORRECT') {
+          data.cell.styles.textColor = [22, 163, 74];
+        } else {
+          data.cell.styles.textColor = [220, 38, 38];
+        }
+      }
+    }
+  });
+
+  doc.save(`${attempt.studentName.replace(/\s+/g, '_')}_Result_Slip.pdf`);
+}
+
+// ==========================================================================
+// 10. TIME FORMATTING HELPERS
+// ==========================================================================
+function formatSeconds(totalSecs) {
+  if (!totalSecs || isNaN(totalSecs)) return '0s';
+  const m = Math.floor(totalSecs / 60);
+  const s = totalSecs % 60;
+  return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
