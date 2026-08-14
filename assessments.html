@@ -407,38 +407,49 @@
     </div>
   </div>
 
-  <!-- MODAL 2: VIEW, EDIT & DELETE REGISTERED STUDENTS (UPDATED CLASS & ID) -->
-  <div id="manageStudentsModal" class="manage-students-modal-overlay" style="display:none;">
-    <div class="manage-students-modal-card">
-      <button onclick="closeManageStudentsModal()" class="modal-close-btn"><i class="fa-solid fa-xmark"></i></button>
-      <h3 style="margin-bottom:1.25rem;"><i class="fa-solid fa-users-gear"></i> Manage Registered Students</h3>
-      
-      <div class="modal-top-bar">
-        <input type="text" id="studentSearchInput" placeholder="Search by name, class, or username..." onkeyup="renderStudentModalTable()" style="padding: 0.5rem; flex: 1; min-width: 200px; border: 1px solid #cbd5e1; border-radius: 6px;">
-        <button onclick="deleteAllStudents()" class="btn-action btn-danger">
-          <i class="fa-solid fa-trash-can"></i> Delete All Students
-        </button>
-      </div>
+<!-- MODAL 2: VIEW, EDIT & DELETE REGISTERED STUDENTS (UPDATED CLASS & ID) -->
+<div id="manageStudentsModal" class="manage-students-modal-overlay" style="display:none;">
+  <div class="manage-students-modal-card">
+    <button type="button" onclick="closeManageStudentsModal()" class="modal-close-btn" aria-label="Close modal">
+      <i class="fa-solid fa-xmark"></i>
+    </button>
+    
+    <h3 style="margin-bottom:1.25rem;">
+      <i class="fa-solid fa-users-gear"></i> Manage Registered Students
+    </h3>
+    
+    <div class="modal-top-bar">
+      <input 
+        type="text" 
+        id="studentSearchInput" 
+        placeholder="Search by name, class, or username..." 
+        onkeyup="renderStudentModalTable()" 
+        style="padding: 0.5rem; flex: 1; min-width: 200px; border: 1px solid #cbd5e1; border-radius: 6px;"
+      >
+      <button type="button" onclick="deleteAllStudents()" class="btn-action btn-danger">
+        <i class="fa-solid fa-trash-can"></i> Delete All Students
+      </button>
+    </div>
 
-      <div style="overflow-x: auto;">
-        <table class="student-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Full Name</th>
-              <th>Class</th>
-              <th>Username</th>
-              <th>Password</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="studentModalTableBody">
-            <!-- Student records render dynamically -->
-          </tbody>
-        </table>
-      </div>
+    <div style="overflow-x: auto; width: 100%;">
+      <table class="student-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Full Name</th>
+            <th>Class</th>
+            <th>Username</th>
+            <th>Password</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="studentModalTableBody">
+          <!-- Student records render dynamically -->
+        </tbody>
+      </table>
     </div>
   </div>
+</div>
 
   <!-- Firebase App & Firestore Compatibility Libraries -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
