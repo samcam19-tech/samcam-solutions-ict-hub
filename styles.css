@@ -615,8 +615,9 @@ body {
    PORTAL DASHBOARD & MODAL EXTENSIONS
    ========================================================================== */
 
-/* Modal System */
-.modal-overlay {
+/* Modal System (Supports both .modal-overlay and .modal) */
+.modal-overlay,
+.modal {
   display: none;
   position: fixed;
   top: 0;
