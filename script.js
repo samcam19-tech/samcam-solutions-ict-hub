@@ -69,6 +69,11 @@ window.handleLogin = function(e) {
     if (errEl) errEl.style.display = 'none';
     currentUser = foundUser;
     localStorage.setItem('portal_session', JSON.stringify(currentUser));
+    
+    // Clear input fields on successful login so they aren't pre-filled on logout
+    document.getElementById('loginUsername').value = '';
+    document.getElementById('loginPassword').value = '';
+    
     updatePortalUI();
   } else {
     if (errEl) errEl.style.display = 'block';
@@ -78,6 +83,22 @@ window.handleLogin = function(e) {
 window.handleLogout = function() {
   localStorage.removeItem('portal_session');
   currentUser = null;
+
+  // Clear input fields
+  const userEl = document.getElementById('loginUsername');
+  const passEl = document.getElementById('loginPassword');
+  const errEl = document.getElementById('loginError');
+
+  if (userEl) userEl.value = '';
+  if (passEl) passEl.value = '';
+  
+  // Optionally reset login error display state
+  if (errEl) errEl.style.display = 'none';
+
+  // If your form uses a parent <form> tag (e.g. id="loginForm"), you can also do:
+  // const loginForm = document.getElementById('loginForm');
+  // if (loginForm) loginForm.reset();
+
   updatePortalUI();
 };
 
