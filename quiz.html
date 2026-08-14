@@ -31,7 +31,7 @@
     <!-- ================= TEACHER / ADMIN SECTION ================= -->
     <section id="teacherPanel" class="section-card" style="display: none;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-        <h3><i class="fa-solid fa-pen-ruler"></i> Create New Quiz</h3>
+        <h3><i class="fa-solid fa-pen-ruler"></i> Teacher Operations</h3>
         <button type="button" onclick="toggleQuizBuilder()" class="btn-action" style="width: auto;">
           <i class="fa-solid fa-plus"></i> New Quiz Builder
         </button>
@@ -50,6 +50,7 @@
             <label style="font-weight: 600; font-size: 0.85rem;">Target Class:</label>
             <select id="builderClass" required style="width: 100%; padding: 0.5rem; border-radius: 6px; border: 1px solid #cbd5e1;">
               <option value="">Select Class</option>
+              <option value="All">All Classes</option>
               <option value="S1">S.1</option>
               <option value="S2">S.2</option>
               <option value="S3">S.3</option>
@@ -85,6 +86,28 @@
           </button>
         </div>
       </form>
+
+      <!-- Results Oversight Table for Teachers -->
+      <div id="resultsTableContainer" style="margin-top: 1.5rem; background: #ffffff; padding: 1.25rem; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <h4 style="margin-bottom: 1rem; color: #0f172a;"><i class="fa-solid fa-chart-line"></i> Recent Student Submissions</h4>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem; text-align: left;">
+            <thead>
+              <tr style="border-bottom: 2px solid #e2e8f0; background: #f8fafc;">
+                <th style="padding: 0.75rem;">Student</th>
+                <th style="padding: 0.75rem;">Quiz Title</th>
+                <th style="padding: 0.75rem;">Score</th>
+                <th style="padding: 0.75rem;">Submitted At</th>
+              </tr>
+            </thead>
+            <tbody id="teacherResultsTable">
+              <tr>
+                <td colspan="4" style="text-align: center; padding: 1rem; color: #64748b;">Loading results...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <!-- ================= STUDENT / COMMON QUIZ LIST ================= -->
@@ -120,6 +143,6 @@
   </main>
 
   <!-- Main Quiz JavaScript Engine -->
-  <script src="quiz-engine.js"></script>
+  <script src="quiz.js"></script>
 </body>
 </html>
