@@ -39,6 +39,9 @@
         <div id="userBadge" class="user-badge">
           <i class="fa-solid fa-circle-notch fa-spin"></i> Checking Session...
         </div>
+        <button type="button" class="btn btn-outline" onclick="exitQuizRunner()" style="padding: 0.35rem 0.7rem; font-size: 0.8rem; display: none;" id="runnerBackButton">
+          <i class="fa-solid fa-arrow-left"></i> Back
+        </button>
       </div>
     </div>
   </header>
@@ -85,7 +88,7 @@
 
           <div class="form-group">
             <label for="builderDuration">Timer (Minutes)</label>
-            <input type="number" id="builderDuration" min="1" max="180" value="15" required />
+            <input type="number" id="builderDuration" min="1" max="180" value="5" required />
           </div>
         </div>
 
