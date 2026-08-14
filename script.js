@@ -850,10 +850,10 @@ function renderAssessments() {
 }
 
 /* ==========================================================================
-   STUDENT SUBMISSION HANDLERS
+   STUDENT SUBMISSION HANDLERS (FIREBASE FIRESTORE SYNC)
    ========================================================================== */
 
-function handleFormSubmission(event) {
+window.handleFormSubmission = function(event) {
   event.preventDefault();
 
   const nameEl = document.getElementById('studentName');
@@ -870,80 +870,148 @@ function handleFormSubmission(event) {
   }
 
   const file = fileInput.files[0];
+  
+  // Note: Large files (>1MB) in DataURL format can exceed Firestore document limits.
+  if (file.size > 1048576) {
+    alert("File size exceeds 1 MB. Please upload a smaller document.");
+    return;
+  }
+
   const reader = new FileReader();
 
-  reader.onload = function(e) {
+  reader.onload = async function(e) {
     const fileDataUrl = e.target.result;
     const testIdVal = testIdEl ? testIdEl.value : null;
-    const studentNameVal = nameEl ? nameEl.value.trim() : '';
+    const studentNameVal = nameEl ? nameEl.value.trim() : (currentUser ? currentUser.fullName : '');
+    const submissionId = `sub_${testIdVal}_${studentNameVal.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
 
     const newSubmission = {
-      id: Date.now(),
-      testId: testIdVal,
+      id: submissionId,
+      testId: String(testIdVal),
       studentName: studentNameVal,
+      studentUsername: currentUser ? currentUser.username : '',
       studentClass: classEl ? classEl.value.trim() : '',
       testTitle: titleEl ? titleEl.value.trim() : '',
       fileName: file.name,
       fileUrl: fileDataUrl,
-      submittedAt: new Date().toISOString().split('T')[0]
+      submittedAt: new Date().toISOString()
     };
 
-    let existing = JSON.parse(localStorage.getItem('portal_submissions')) || [];
-    
-    // REMOVE OLD SUBMISSION FOR THIS ASSIGNMENT IF IT EXISTS (OVERWRITE PREVIOUS)
-    if (testIdVal && studentNameVal) {
-      existing = existing.filter(s => !(String(s.testId) === String(testIdVal) && s.studentName === studentNameVal));
+    // 1. Sync to Firebase Firestore
+    if (window.db) {
+      try {
+        await window.db.collection('submissions').doc(submissionId).set(newSubmission, { merge: true });
+      } catch (err) {
+        console.error('Error uploading submission to Cloud Firestore:', err);
+        alert('Warning: Could not save submission online. Saving locally...');
+      }
     }
 
-    existing.unshift(newSubmission);
-    localStorage.setItem('portal_submissions', JSON.stringify(existing));
+    // 2. Sync to Local Storage Cache (Overwrite previous entry for same test & student)
+    let localSubmissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+    if (testIdVal && studentNameVal) {
+      localSubmissions = localSubmissions.filter(s => 
+        !(String(s.testId) === String(testIdVal) && s.studentName.toLowerCase() === studentNameVal.toLowerCase())
+      );
+    }
+    localSubmissions.unshift(newSubmission);
+    localStorage.setItem('portal_submissions', JSON.stringify(localSubmissions));
 
     // Reset Form & Close Modal
     const form = document.getElementById('assignmentForm');
     if (form) form.reset();
-    closeSubmissionModal();
+    
+    if (typeof closeSubmissionModal === 'function') {
+      closeSubmissionModal();
+    }
+
+    alert("Assignment submitted successfully!");
 
     // Re-render UI
-    renderAssessments();
-    renderSubmissions();
+    if (typeof renderAssessments === 'function') renderAssessments();
+    if (typeof renderSubmissions === 'function') renderSubmissions();
   };
 
   reader.readAsDataURL(file);
-}
+};
 
 /**
  * Allows a student to cancel / unsubmit their file directly before deadline
  */
-function cancelSubmission(testId) {
+window.cancelSubmission = async function(testId) {
   if (!currentUser || currentUser.role !== 'Student') return;
 
   const confirmCancel = confirm("Are you sure you want to cancel and delete your current submission for this assessment?");
   if (!confirmCancel) return;
 
+  const studentName = currentUser.fullName;
+  const submissionId = `sub_${testId}_${studentName.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+
+  // 1. Remove from Firebase Firestore
+  if (window.db) {
+    try {
+      await window.db.collection('submissions').doc(submissionId).delete();
+    } catch (err) {
+      console.error('Error deleting submission from Cloud Firestore:', err);
+    }
+  }
+
+  // 2. Remove from Local Storage Cache
   let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
-  
-  // Filter out the current student's submission for this test ID
-  submissions = submissions.filter(s => !(String(s.testId) === String(testId) && s.studentName === currentUser.fullName));
-  
+  submissions = submissions.filter(s => 
+    !(String(s.testId) === String(testId) && s.studentName.toLowerCase() === studentName.toLowerCase())
+  );
   localStorage.setItem('portal_submissions', JSON.stringify(submissions));
 
   // Refresh views
-  renderAssessments();
-  renderSubmissions();
-}
+  if (typeof renderAssessments === 'function') renderAssessments();
+  if (typeof renderSubmissions === 'function') renderSubmissions();
+};
+
 /* ==========================================================================
-   RENDER SUBMISSIONS LIST
+   RENDER SUBMISSIONS LIST (FIREBASE FIRESTORE SYNC)
    ========================================================================== */
-function renderSubmissions() {
+window.renderSubmissions = async function() {
   const container = document.getElementById('submissionsContainer');
   if (!container) return;
 
-  const submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+  container.innerHTML = '<p style="color:#64748b; font-size:0.85rem;"><i class="fa-solid fa-spinner fa-spin"></i> Loading submitted work...</p>';
+
+  let submissions = [];
+
+  // 1. Fetch live submissions from Firebase Firestore
+  if (window.db) {
+    try {
+      const snap = await window.db.collection('submissions').get();
+      snap.forEach(doc => submissions.push(doc.data()));
+
+      // Sync local storage cache with cloud data
+      localStorage.setItem('portal_submissions', JSON.stringify(submissions));
+    } catch (err) {
+      console.warn('Failed to load submissions from cloud, falling back to local storage:', err);
+    }
+  }
+
+  // 2. Fallback to Local Storage if Firestore returned empty or failed
+  if (submissions.length === 0) {
+    submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+  }
+
+  // 3. Filter submissions if user is a Student (Students only see their own work, Teachers see all)
+  if (currentUser && currentUser.role === 'Student') {
+    submissions = submissions.filter(s => 
+      s.studentName.toLowerCase() === currentUser.fullName.toLowerCase() ||
+      (s.studentUsername && s.studentUsername.toLowerCase() === currentUser.username.toLowerCase())
+    );
+  }
 
   if (submissions.length === 0) {
     container.innerHTML = '<p style="color:#64748b; font-size:0.85rem;">No student work submitted yet.</p>';
     return;
   }
+
+  // Sort newest submissions first
+  submissions.sort((a, b) => new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0));
 
   container.innerHTML = submissions.map(sub => `
     <div class="sub-item" style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem; border-bottom:1px solid #e2e8f0;">
@@ -956,22 +1024,22 @@ function renderSubmissions() {
       </a>
     </div>
   `).join('');
-}
+};
 
 /* ==========================================================================
    MODAL TOGGLES & HELPERS
    ========================================================================== */
-function openSubmissionModal() {
+window.openSubmissionModal = function() {
   const modal = document.getElementById('submissionModal');
   if (modal) modal.style.display = 'flex';
-}
+};
 
-function closeSubmissionModal() {
+window.closeSubmissionModal = function() {
   const modal = document.getElementById('submissionModal');
   if (modal) modal.style.display = 'none';
-}
+};
 
-function openSubmissionModalWithDetails(testId, encodedTitle) {
+window.openSubmissionModalWithDetails = function(testId, encodedTitle) {
   const decodedTitle = decodeURIComponent(encodedTitle);
   
   // 1. Open the Modal View
@@ -1001,4 +1069,4 @@ function openSubmissionModalWithDetails(testId, encodedTitle) {
     if (form) form.appendChild(testIdEl);
   }
   testIdEl.value = testId;
-}
+};
