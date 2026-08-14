@@ -17,7 +17,7 @@ if (typeof firebase !== "undefined" && !firebase.apps.length) {
 
 const db = typeof firebase !== "undefined" ? firebase.firestore() : null;
 
-// Fallback Mock Data
+// Fallback Mock Data with mixed question types (mcq and text)
 const MOCK_QUIZZES = [
   {
     id: "sample_01",
@@ -27,15 +27,18 @@ const MOCK_QUIZZES = [
     questions: [
       {
         id: 1,
+        type: "mcq",
         question: "Which component is considered the primary brain of a computer system?",
         options: ["Hard Disk Drive", "Central Processing Unit", "Random Access Memory", "Power Supply Unit"],
-        correctAnswer: 1
+        correctAnswer: 1,
+        marks: 1
       },
       {
         id: 2,
+        type: "text",
         question: "What function in spreadsheet applications is used to sum cell ranges conditionally?",
-        options: ["SUM()", "COUNT()", "SUMIF()", "VLOOKUP()"],
-        correctAnswer: 2
+        correctAnswer: "SUMIF()",
+        marks: 1
       }
     ]
   }
@@ -141,6 +144,13 @@ document.addEventListener("DOMContentLoaded", async () => {
     syncQuizEngineSession(null);
   }
 });
+
+// Helper formatting function for time display
+function formatSeconds(seconds) {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}m ${secs}s`;
+}
 
 // ==========================================================================
 // 4. LEARNER PREVIOUS ATTEMPTS SYNC
@@ -297,49 +307,81 @@ function toggleQuizBuilder() {
   const isHidden = form.style.display === 'none' || form.style.display === '';
   form.style.display = isHidden ? 'block' : 'none';
 
-  if (isHidden && builderQuestionCount === 0) {
+  const container = document.getElementById('builderQuestionsContainer');
+  if (isHidden && container && container.children.length === 0) {
     addQuestionToBuilder();
   }
 }
 
-function addQuestionToBuilder() {
+function addQuestionToBuilder(existingData = {}) {
   builderQuestionCount++;
   const container = document.getElementById('builderQuestionsContainer');
   if (!container) return;
 
+  const qIndex = container.children.length;
+  const qType = existingData.type || 'mcq';
+  const qText = existingData.question || '';
+  const qMarks = existingData.marks || 1;
+
   const qCard = document.createElement('div');
-  qCard.className = 'question-item';
+  qCard.className = 'builder-question-card question-item';
   qCard.id = `builderQ_${builderQuestionCount}`;
   qCard.style.cssText = 'background:#ffffff; border:1px solid #e2e8f0; border-radius:8px; padding:1rem; margin-bottom:1rem; box-shadow:0 1px 2px rgba(0,0,0,0.03);';
 
   qCard.innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
       <strong style="color:#1e293b; font-size:0.95rem;">Question #${builderQuestionCount}</strong>
-      <button type="button" onclick="removeBuilderQuestion('${qCard.id}')" style="color:#ef4444; border:none; background:none; cursor:pointer; font-size:0.85rem; font-weight:600;">
-        <i class="fa-solid fa-trash"></i> Remove
-      </button>
+      <div style="display: flex; gap: 0.75rem; align-items: center;">
+        <select class="form-control q-type-select" onchange="toggleQuestionType(this, '${qCard.id}')" style="padding:0.2rem 0.4rem; border-radius:4px; border:1px solid #cbd5e1; font-size:0.8rem;">
+          <option value="mcq" ${qType === 'mcq' ? 'selected' : ''}>Multiple Choice</option>
+          <option value="text" ${qType === 'text' ? 'selected' : ''}>Short Answer / Text</option>
+        </select>
+        <button type="button" onclick="removeBuilderQuestion('${qCard.id}')" style="color:#ef4444; border:none; background:none; cursor:pointer; font-size:0.85rem; font-weight:600;">
+          <i class="fa-solid fa-trash"></i> Remove
+        </button>
+      </div>
     </div>
-    <input type="text" class="q-title" placeholder="Enter question text..." required style="width:100%; padding:0.6rem; margin-bottom:0.75rem; border-radius:6px; border:1px solid #cbd5e1; font-size:0.9rem;">
+    <input type="text" class="q-title" value="${qText}" placeholder="Enter question description..." required style="width:100%; padding:0.6rem; margin-bottom:0.75rem; border-radius:6px; border:1px solid #cbd5e1; font-size:0.9rem;">
     
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:0.75rem;">
-      <input type="text" class="q-opt-0" placeholder="Option 1" required style="padding:0.5rem; border-radius:4px; border:1px solid #cbd5e1; font-size:0.85rem;">
-      <input type="text" class="q-opt-1" placeholder="Option 2" required style="padding:0.5rem; border-radius:4px; border:1px solid #cbd5e1; font-size:0.85rem;">
-      <input type="text" class="q-opt-2" placeholder="Option 3" required style="padding:0.5rem; border-radius:4px; border:1px solid #cbd5e1; font-size:0.85rem;">
-      <input type="text" class="q-opt-3" placeholder="Option 4" required style="padding:0.5rem; border-radius:4px; border:1px solid #cbd5e1; font-size:0.85rem;">
+    <div class="q-options-container" id="optionsContainer_${qCard.id}" style="display: ${qType === 'mcq' ? 'block' : 'none'};">
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:0.75rem;">
+        <input type="text" class="q-opt-0" value="${existingData.options ? existingData.options[0] || '' : ''}" placeholder="Option 1" style="padding:0.5rem; border-radius:4px; border:1px solid #cbd5e1; font-size:0.85rem;">
+        <input type="text" class="q-opt-1" value="${existingData.options ? existingData.options[1] || '' : ''}" placeholder="Option 2" style="padding:0.5rem; border-radius:4px; border:1px solid #cbd5e1; font-size:0.85rem;">
+        <input type="text" class="q-opt-2" value="${existingData.options ? existingData.options[2] || '' : ''}" placeholder="Option 3" style="padding:0.5rem; border-radius:4px; border:1px solid #cbd5e1; font-size:0.85rem;">
+        <input type="text" class="q-opt-3" value="${existingData.options ? existingData.options[3] || '' : ''}" placeholder="Option 4" style="padding:0.5rem; border-radius:4px; border:1px solid #cbd5e1; font-size:0.85rem;">
+      </div>
+      <div style="display:flex; align-items:center; gap:0.5rem; background:#f8fafc; padding:0.5rem; border-radius:6px; border:1px solid #f1f5f9; margin-bottom:0.75rem;">
+        <label style="font-size:0.85rem; font-weight:600; color:#475569;">Correct Option:</label>
+        <select class="q-correct" style="padding:0.3rem 0.5rem; border-radius:4px; border:1px solid #cbd5e1; font-size:0.85rem;">
+          <option value="0" ${existingData.correctAnswer === 0 ? 'selected' : ''}>Option 1</option>
+          <option value="1" ${existingData.correctAnswer === 1 ? 'selected' : ''}>Option 2</option>
+          <option value="2" ${existingData.correctAnswer === 2 ? 'selected' : ''}>Option 3</option>
+          <option value="3" ${existingData.correctAnswer === 3 ? 'selected' : ''}>Option 4</option>
+        </select>
+      </div>
     </div>
 
-    <div style="display:flex; align-items:center; gap:0.5rem; background:#f8fafc; padding:0.5rem; border-radius:6px; border:1px solid #f1f5f9;">
-      <label style="font-size:0.85rem; font-weight:600; color:#475569;">Correct Option:</label>
-      <select class="q-correct" required style="padding:0.3rem 0.5rem; border-radius:4px; border:1px solid #cbd5e1; font-size:0.85rem;">
-        <option value="0">Option 1</option>
-        <option value="1">Option 2</option>
-        <option value="2">Option 3</option>
-        <option value="3">Option 4</option>
-      </select>
+    <div class="q-text-answer-container" id="textContainer_${qCard.id}" style="display: ${qType === 'text' ? 'block' : 'none'}; margin-bottom:0.75rem;">
+      <label style="font-size:0.85rem; font-weight:600; color:#475569; display:block; margin-bottom:0.25rem;">Expected Correct Answer:</label>
+      <input type="text" class="q-text-correct" value="${qType === 'text' ? (existingData.correctAnswer || '') : ''}" placeholder="Type exact expected answer for grading..." style="width:100%; padding:0.5rem; border-radius:4px; border:1px solid #cbd5e1; font-size:0.85rem;" />
     </div>
   `;
 
   container.appendChild(qCard);
+}
+
+function toggleQuestionType(selectElement, cardId) {
+  const card = document.getElementById(cardId);
+  const optionsContainer = card.querySelector(`#optionsContainer_${cardId}`);
+  const textContainer = card.querySelector(`#textContainer_${cardId}`);
+  
+  if (selectElement.value === 'text') {
+    optionsContainer.style.display = 'none';
+    textContainer.style.display = 'block';
+  } else {
+    optionsContainer.style.display = 'block';
+    textContainer.style.display = 'none';
+  }
 }
 
 function removeBuilderQuestion(elementId) {
@@ -361,18 +403,37 @@ async function handleSaveQuiz(event) {
   }
 
   const questions = [];
+  let hasError = false;
+
   questionElements.forEach((qEl, idx) => {
-    questions.push({
-      id: idx + 1,
-      question: qEl.querySelector('.q-title').value.trim(),
-      options: [
-        qEl.querySelector('.q-opt-0').value.trim(),
-        qEl.querySelector('.q-opt-1').value.trim(),
-        qEl.querySelector('.q-opt-2').value.trim(),
-        qEl.querySelector('.q-opt-3').value.trim()
-      ],
-      correctAnswer: parseInt(qEl.querySelector('.q-correct').value, 10)
-    });
+    const typeSelect = qEl.querySelector('.q-type-select');
+    const qType = typeSelect ? typeSelect.value : 'mcq';
+    const qText = qEl.querySelector('.q-title').value.trim();
+
+    if (qType === 'text') {
+      const textCorrect = qEl.querySelector('.q-text-correct').value.trim();
+      questions.push({
+        id: idx + 1,
+        type: 'text',
+        question: qText,
+        correctAnswer: textCorrect,
+        marks: 1
+      });
+    } else {
+      questions.push({
+        id: idx + 1,
+        type: 'mcq',
+        question: qText,
+        options: [
+          qEl.querySelector('.q-opt-0').value.trim(),
+          qEl.querySelector('.q-opt-1').value.trim(),
+          qEl.querySelector('.q-opt-2').value.trim(),
+          qEl.querySelector('.q-opt-3').value.trim()
+        ],
+        correctAnswer: parseInt(qEl.querySelector('.q-correct').value, 10),
+        marks: 1
+      });
+    }
   });
 
   const quizDoc = {
@@ -471,6 +532,7 @@ async function fetchQuizResults() {
     resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:1rem;">Failed to load submission results.</td></tr>`;
   }
 }
+
 // Teacher Response Inspection Modal
 function inspectLearnerSubmission(docId) {
   const sub = globalTeacherResults.find(s => s.id === docId);
@@ -495,8 +557,8 @@ function inspectLearnerSubmission(docId) {
     html += `
       <div style="padding:0.75rem; border-radius:6px; margin-bottom:0.75rem; border-left:4px solid ${item.isCorrect ? '#16a34a' : '#dc2626'}; background:${item.isCorrect ? '#f0fdf4' : '#fef2f2'}; font-size:0.85rem;">
         <div style="font-weight:600; color:#0f172a; margin-bottom:0.25rem;">Q${idx + 1}: ${item.questionText}</div>
-        <div><strong>Selected:</strong> ${item.selectedOption}</div>
-        ${!item.isCorrect ? `<div style="color:#dc2626; margin-top:0.25rem;"><strong>Correct Option:</strong> ${item.correctOption}</div>` : ''}
+        <div><strong>Selected/Entered:</strong> ${item.selectedOption}</div>
+        ${!item.isCorrect ? `<div style="color:#dc2626; margin-top:0.25rem;"><strong>Expected Answer:</strong> ${item.correctOption}</div>` : ''}
       </div>
     `;
   });
@@ -606,19 +668,33 @@ function renderQuizQuestions(questions) {
 
   let html = '';
   questions.forEach((q, qIndex) => {
+    let inputsHtml = '';
+    
+    if (q.type === 'text') {
+      inputsHtml = `
+        <div class="form-group" style="margin-top: 1rem;">
+          <input type="text" class="form-control student-answer-input" name="q_${qIndex}" placeholder="Type your concise answer here..." style="width:100%; padding:0.6rem; border-radius:6px; border:1px solid #cbd5e1; font-size:0.9rem;" />
+        </div>
+      `;
+    } else {
+      inputsHtml = `<div class="options-list" style="margin-top: 1rem; display: flex; flex-direction: column; gap: 0.5rem;">`;
+      (q.options || []).forEach((opt, optIndex) => {
+        inputsHtml += `
+          <label class="option-label" style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.8rem; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; font-size:0.9rem;">
+            <input type="radio" name="q_${qIndex}" value="${optIndex}" style="accent-color:#2563eb;">
+            <span>${opt}</span>
+          </label>
+        `;
+      });
+      inputsHtml += `</div>`;
+    }
+
     html += `
       <div class="question-item" style="margin-bottom:1.5rem; padding:1.25rem; border:1px solid #e2e8f0; border-radius:8px; background:#fafafa;">
-        <div class="question-text" style="font-weight:600; font-size:1rem; margin-bottom:1rem; color:#0f172a;">
+        <div class="question-text" style="font-weight:600; font-size:1rem; margin-bottom:0.5rem; color:#0f172a;">
           ${qIndex + 1}. ${q.question}
         </div>
-        <div style="display:flex; flex-direction:column; gap:0.6rem;">
-          ${q.options.map((opt, optIndex) => `
-            <label class="option-label" style="display:flex; align-items:center; gap:0.75rem; padding:0.6rem 0.8rem; background:#ffffff; border:1px solid #cbd5e1; border-radius:6px; cursor:pointer; font-size:0.9rem;">
-              <input type="radio" name="q_${qIndex}" value="${optIndex}" style="accent-color:#2563eb;">
-              <span>${opt}</span>
-            </label>
-          `).join('')}
-        </div>
+        ${inputsHtml}
       </div>
     `;
   });
@@ -672,18 +748,36 @@ async function submitQuizToFirestore() {
   const detailedResponses = [];
 
   questions.forEach((q, idx) => {
-    const selected = document.querySelector(`input[name="q_${idx}"]:checked`);
-    const answerIndex = selected ? parseInt(selected.value, 10) : -1;
-    
-    studentAnswers.push(answerIndex);
+    let isCorrect = false;
+    let selectedOptionText = "Unanswered";
 
-    const isCorrect = answerIndex === q.correctAnswer;
+    if (q.type === 'text') {
+      const inputEl = document.querySelector(`input[name="q_${idx}"]`);
+      const val = inputEl ? inputEl.value.trim() : "";
+      studentAnswers.push(val);
+      selectedOptionText = val !== "" ? val : "Unanswered";
+      
+      // Case-insensitive clean comparison for text questions
+      if (val.toLowerCase() === String(q.correctAnswer).toLowerCase()) {
+        isCorrect = true;
+      }
+    } else {
+      const selected = document.querySelector(`input[name="q_${idx}"]:checked`);
+      const answerIndex = selected ? parseInt(selected.value, 10) : -1;
+      studentAnswers.push(answerIndex);
+
+      selectedOptionText = answerIndex >= 0 && q.options ? q.options[answerIndex] : "Unanswered";
+      if (answerIndex === q.correctAnswer) {
+        isCorrect = true;
+      }
+    }
+
     if (isCorrect) score++;
 
     detailedResponses.push({
       questionText: q.question,
-      selectedOption: answerIndex >= 0 ? q.options[answerIndex] : "Unanswered",
-      correctOption: q.options[q.correctAnswer],
+      selectedOption: selectedOptionText,
+      correctOption: q.type === 'text' ? q.correctAnswer : (q.options ? q.options[q.correctAnswer] : ''),
       isCorrect
     });
   });
@@ -810,7 +904,6 @@ function generateLearnerPDF(quizId) {
 
   doc.save(`${attempt.studentName.replace(/\s+/g, '_')}_Result_Slip.pdf`);
 }
-
 // ==========================================================================
 // 10. TIME FORMATTING HELPERS
 // ==========================================================================
