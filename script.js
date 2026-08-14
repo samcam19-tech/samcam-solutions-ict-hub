@@ -14,6 +14,18 @@ const rootTeacher = {
   role: "Teacher"
 };
 
+// Default hardcoded admin / teacher fallback accounts
+const HARDCODED_ACCOUNTS = [
+  {
+    fullName: "System Admin",
+    class: "Staff",
+    username: "admin",
+    password: "admin123", // Customize your root admin password here
+    role: "Teacher"
+  }
+];
+
+
 // Default Seed Assessment
 const initialAssessments = [
   {
@@ -56,18 +68,6 @@ document.addEventListener("DOMContentLoaded", () => {
 /* ==========================================================================
    1. AUTHENTICATION MODULE (HARDCODED ROOT ADMIN + FIREBASE & LOCAL CACHE)
    ========================================================================== */
-
-// Default hardcoded admin / teacher fallback accounts
-const HARDCODED_ACCOUNTS = [
-  {
-    fullName: "System Admin",
-    class: "Staff",
-    username: "admin",
-    password: "admin123", // Customize your root admin password here
-    role: "Teacher"
-  }
-];
-
 window.handleLogin = async function(e) {
   e.preventDefault();
   
