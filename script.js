@@ -69,19 +69,26 @@ window.currentUser = window.currentUser || null;
 window.handleLogin = async function(e) {
   if (e && e.preventDefault) e.preventDefault();
   
+  console.log("=== LOGIN TRIGGERED ===");
+
   const userEl = document.getElementById('loginUsername');
   const passEl = document.getElementById('loginPassword');
   const errEl = document.getElementById('loginError');
 
   if (!userEl || !passEl) {
-    console.error("Login input fields missing in DOM.");
+    alert("CRITICAL ERROR: Could not find loginUsername or loginPassword fields in your HTML!");
+    console.error("DOM Elements Missing:", { userEl, passEl });
     return;
   }
 
   const userVal = userEl.value.trim();
   const passVal = passEl.value.trim();
 
+  console.log("Input Username:", userVal);
+  console.log("Input Password Length:", passVal.length);
+
   if (!userVal || !passVal) {
+    alert("Please fill in both the username and password.");
     if (errEl) {
       errEl.textContent = 'Please enter both username and password.';
       errEl.style.display = 'block';
@@ -91,45 +98,37 @@ window.handleLogin = async function(e) {
 
   let foundUser = null;
 
-  // 1. Check Hardcoded Root Accounts First
+  // 1. Check Hardcoded Accounts
   foundUser = HARDCODED_ACCOUNTS.find(
     u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal
   );
 
+  if (foundUser) {
+    console.log("✅ Matched Hardcoded Root Admin:", foundUser);
+  }
+
   // 2. Check Firebase Firestore Cloud Database
   if (!foundUser && window.db) {
+    console.log("Searching Cloud Firestore...");
     try {
       const docSnap = await window.db.collection('users').doc(userVal.toLowerCase()).get();
-      
-      if (docSnap.exists) {
-        const cloudUser = docSnap.data();
-        if (cloudUser.password === passVal) {
-          foundUser = cloudUser;
-        }
-      } else {
-        const querySnap = await window.db.collection('users')
-          .where('username', '==', userVal)
-          .limit(1)
-          .get();
-
-        if (!querySnap.empty) {
-          const cloudUser = querySnap.docs[0].data();
-          if (cloudUser.password === passVal) {
-            foundUser = cloudUser;
-          }
-        }
+      if (docSnap.exists && docSnap.data().password === passVal) {
+        foundUser = docSnap.data();
+        console.log("✅ Matched Firestore User:", foundUser);
       }
     } catch (err) {
-      console.warn('Cloud login lookup failed, falling back to local storage:', err);
+      console.warn("Firestore lookup failed:", err);
     }
   }
 
   // 3. Check Local Storage Fallback
   if (!foundUser) {
+    console.log("Checking Local Storage cache...");
     const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
     foundUser = localUsers.find(
       u => u.username.toLowerCase() === userVal.toLowerCase() && u.password === passVal
     );
+    if (foundUser) console.log("✅ Matched Local Storage User:", foundUser);
   }
 
   // 4. Handle Login Success or Failure
@@ -144,40 +143,24 @@ window.handleLogin = async function(e) {
     userEl.value = '';
     passEl.value = '';
 
+    console.log("Login successful! Updating UI...");
+    alert(`Welcome back, ${currentUser.fullName}! Logging in...`);
+
     if (typeof updatePortalUI === 'function') {
       updatePortalUI();
     } else {
+      alert("WARNING: updatePortalUI() is not defined! Reloading page...");
       location.reload();
     }
   } else {
+    console.warn("❌ Login Failed: Credentials did not match any record.");
+    alert("LOGIN FAILED: Invalid username or password.");
     if (errEl) {
       errEl.textContent = 'Invalid username or password!';
       errEl.style.display = 'block';
     }
   }
 };
-
-window.checkExistingSession = function() {
-  const savedSession = localStorage.getItem('portal_session');
-  if (savedSession) {
-    try {
-      currentUser = JSON.parse(savedSession);
-      window.currentUser = currentUser;
-      if (typeof updatePortalUI === 'function') {
-        updatePortalUI();
-      }
-    } catch (err) {
-      console.error('Error restoring session:', err);
-      localStorage.removeItem('portal_session');
-    }
-  }
-};
-
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', window.checkExistingSession);
-} else {
-  window.checkExistingSession();
-}
 
 window.handleLogout = function() {
   localStorage.removeItem('portal_session');
