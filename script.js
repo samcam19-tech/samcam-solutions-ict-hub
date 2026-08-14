@@ -653,3 +653,24 @@ function closeSubmissionModal() {
   const modal = document.getElementById('submissionModal');
   if (modal) modal.style.display = 'none';
 }
+
+function openSubmissionModalWithDetails(encodedTitle) {
+  const decodedTitle = decodeURIComponent(encodedTitle);
+  
+  // 1. Open Modal
+  openSubmissionModal();
+
+  // 2. Auto-fill details if student is logged in
+  if (currentUser) {
+    const nameEl = document.getElementById('studentName');
+    const classEl = document.getElementById('studentClass');
+    if (nameEl) nameEl.value = currentUser.fullName || '';
+    if (classEl) classEl.value = currentUser.class || '';
+  }
+
+  // 3. Pre-fill the Assignment/Test Title
+  const titleEl = document.getElementById('testTitle');
+  if (titleEl) {
+    titleEl.value = decodedTitle;
+  }
+}
