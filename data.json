@@ -70,5 +70,14 @@
     "description": "Official Marking Guide for Senior 5 End of Term 2 Examination.",
     "fileUrl": "uploads/S.5%20END%20OF%20TERM%202%20GUIDE.pdf",
     "date": "2026-08-14"
+  },
+  {
+    "id": 9,
+    "class": "S5",
+    "category": "Marking Guide",
+    "title": "MID TERM GUIDE S.5",
+    "description": "S5 Marking Guide: MID TERM GUIDE S.5",
+    "fileUrl": "uploads/MID%20TERM%20GUIDE%20S.5.pdf",
+    "date": "2026-08-14"
   }
 ]
