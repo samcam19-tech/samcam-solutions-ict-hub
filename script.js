@@ -3,7 +3,7 @@
    ========================================================================== */
 
 // Shared Portal State
-let currentUser = null;
+window.currentUser = null;
 let editingUsername = null;
 
 const initialAssessments = [
@@ -19,11 +19,29 @@ const initialAssessments = [
   }
 ];
 
+// Helper: Safely get current session
+function loadSessionFromStorage() {
+  try {
+    const raw = localStorage.getItem('portal_session');
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch (e) {
+    console.error("Corrupted portal_session format:", e);
+    return null;
+  }
+}
+
+// Helper: Broadcast session updates to other modules (like Quiz Engine)
+function broadcastSessionUpdate(user) {
+  window.currentUser = user;
+  window.dispatchEvent(new CustomEvent('portalSessionChanged', { detail: user }));
+}
+
 /* ==========================================================================
    INITIALIZATION & SESSION PERSISTENCE
    ========================================================================== */
 document.addEventListener("DOMContentLoaded", () => {
-  // Initialize default storage collections if they don't exist yet
+  // 1. Initialize default collections if missing
   if (!localStorage.getItem('portal_resources')) {
     localStorage.setItem('portal_resources', JSON.stringify(initialAssessments));
   }
@@ -31,15 +49,11 @@ document.addEventListener("DOMContentLoaded", () => {
     localStorage.setItem('portal_submissions', JSON.stringify([]));
   }
 
-  // Restore session from localStorage on page load/refresh
-  try {
-    currentUser = JSON.parse(localStorage.getItem('portal_session')) || null;
-  } catch (e) {
-    console.error("Error reading portal_session:", e);
-    currentUser = null;
-  }
-  window.currentUser = currentUser;
+  // 2. Restore session
+  const session = loadSessionFromStorage();
+  broadcastSessionUpdate(session);
 
+  // 3. Refresh UI
   if (typeof updatePortalUI === 'function') {
     updatePortalUI();
   }
@@ -68,7 +82,7 @@ window.executeLogin = async function() {
 
   let foundUser = null;
 
-  // 1. Primary Auth: Lookup account directly in Firebase Firestore
+  // 1. Primary Auth: Firebase Firestore
   if (window.db) {
     try {
       const snap = await window.db.collection('users').doc(u).get();
@@ -83,7 +97,7 @@ window.executeLogin = async function() {
     }
   }
 
-  // 2. Offline Fallback: Check local storage created users if DB is unreachable
+  // 2. Offline Fallback: LocalStorage users
   if (!foundUser) {
     try {
       const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
@@ -95,15 +109,15 @@ window.executeLogin = async function() {
     }
   }
 
-  // 3. Complete Login Process
+  // 3. Complete Login
   if (foundUser) {
     if (errEl) errEl.style.display = 'none';
 
-    window.currentUser = foundUser;
-    currentUser = foundUser;
-
-    // Save session payload to local storage
+    // Save to LocalStorage
     localStorage.setItem('portal_session', JSON.stringify(foundUser));
+    
+    // Broadcast to global window and all running scripts
+    broadcastSessionUpdate(foundUser);
 
     userEl.value = '';
     passEl.value = '';
@@ -124,8 +138,7 @@ window.handleLogin = function(e) {
 
 window.handleLogout = function() {
   localStorage.removeItem('portal_session');
-  currentUser = null;
-  window.currentUser = null;
+  broadcastSessionUpdate(null);
 
   const userEl = document.getElementById('loginUsername');
   const passEl = document.getElementById('loginPassword');
