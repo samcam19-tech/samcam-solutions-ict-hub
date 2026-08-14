@@ -54,9 +54,21 @@ window.addEventListener('portalSessionChanged', (e) => {
   syncQuizEngineSession(e.detail);
 });
 
-// Helper: Synchronize user session state across UI badges and teacher panels
+// Helper: Ensure session objects have safe, operational structure
+function sanitizeUserSession(user) {
+  if (!user) return null;
+  return {
+    ...user,
+    username: user.username || "user",
+    fullName: user.fullName || user.username || "Portal User",
+    role: user.role || "Student",
+    class: user.class || "General"
+  };
+}
+
+// Helper: Synchronize user session state across UI badges and admin/teacher panels
 function syncQuizEngineSession(user) {
-  currentUser = user;
+  currentUser = sanitizeUserSession(user);
 
   const userBadge = document.getElementById('userBadge');
   const teacherPanel = document.getElementById('teacherPanel');
@@ -67,21 +79,23 @@ function syncQuizEngineSession(user) {
     return;
   }
 
+  // Normalize role check (handles "Admin", "admin", "Teacher", "teacher")
+  const userRole = (currentUser.role || '').toLowerCase();
+  const isAdminOrTeacher = userRole === 'admin' || userRole === 'teacher';
+
   // Update Badge
   if (userBadge) {
-    const roleText = (currentUser.role && currentUser.role.toLowerCase() === 'teacher') || currentUser.role === 'admin' 
-      ? 'Teacher' 
-      : (currentUser.class || 'Student');
-    userBadge.innerHTML = `<i class="fa-solid fa-user-check"></i> ${currentUser.fullName || currentUser.username} <span style="background:#0284c7; padding:0.1rem 0.4rem; border-radius:4px; font-size:0.75rem; margin-left:0.3rem;">${roleText}</span>`;
+    let badgeTag = userRole === 'admin' 
+      ? 'Admin' 
+      : (userRole === 'teacher' ? 'Teacher' : (currentUser.class || 'Student'));
+
+    userBadge.innerHTML = `<i class="fa-solid fa-user-check"></i> ${currentUser.fullName || currentUser.username} <span style="background:#0284c7; padding:0.1rem 0.4rem; border-radius:4px; font-size:0.75rem; margin-left:0.3rem;">${badgeTag}</span>`;
   }
 
-  // Check Teacher / Admin Access
-  const userRole = (currentUser.role || '').toLowerCase();
-  const isTeacher = userRole === 'teacher' || userRole === 'admin';
-  
+  // Show Teacher / Admin Management Panel
   if (teacherPanel) {
-    teacherPanel.style.display = isTeacher ? 'block' : 'none';
-    if (isTeacher) setTimeout(fetchQuizResults, 200);
+    teacherPanel.style.display = isAdminOrTeacher ? 'block' : 'none';
+    if (isAdminOrTeacher) setTimeout(fetchQuizResults, 200);
   }
 }
 
@@ -102,7 +116,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     }
 
-    // Apply session and update UI
+    // Apply sanitized session and update UI
     syncQuizEngineSession(activeUser);
 
     // Trigger active quiz loading
@@ -167,11 +181,11 @@ function renderQuizCards(quizzesList) {
   if (!quizListContainer) return;
 
   const userRole = (currentUser && currentUser.role ? currentUser.role : '').toLowerCase();
-  const isTeacher = userRole === 'teacher' || userRole === 'admin';
+  const isAdminOrTeacher = userRole === 'admin' || userRole === 'teacher';
 
-  // Filter quizzes by user class scope
+  // Filter quizzes by user class scope (Admins & Teachers bypass filter)
   const filteredQuizzes = quizzesList.filter(q => {
-    if (isTeacher) return true;
+    if (isAdminOrTeacher) return true;
     if (!currentUser || !currentUser.class) return true;
     const target = q.targetClass || 'All';
     return target === 'All' || target === currentUser.class;
@@ -311,7 +325,7 @@ async function handleSaveQuiz(event) {
     targetClass,
     durationMinutes: duration,
     questions,
-    createdBy: currentUser ? currentUser.username : "Teacher",
+    createdBy: currentUser ? currentUser.username : "Admin",
     createdAt: firebase.firestore.FieldValue ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
   };
 
@@ -381,7 +395,7 @@ async function fetchQuizResults() {
 }
 
 // ==========================================================================
-// 6. STUDENT: RUN QUIZZES
+// 6. STUDENT / USER: RUN QUIZZES
 // ==========================================================================
 
 async function startQuiz(quizId) {
@@ -551,9 +565,9 @@ async function submitQuizToFirestore() {
     if (quizzesContainer) quizzesContainer.style.display = 'block';
     
     const userRole = (currentUser && currentUser.role ? currentUser.role : '').toLowerCase();
-    const isTeacher = userRole === 'teacher' || userRole === 'admin';
+    const isAdminOrTeacher = userRole === 'teacher' || userRole === 'admin';
     const teacherPanel = document.getElementById('teacherPanel');
-    if (isTeacher && teacherPanel) {
+    if (isAdminOrTeacher && teacherPanel) {
       teacherPanel.style.display = 'block';
       fetchQuizResults();
     }
