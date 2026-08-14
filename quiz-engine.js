@@ -11,19 +11,11 @@ const firebaseConfig = {
   measurementId: "G-L2H4V8Y050"
 };
 
-if (!firebase.apps.length) {
+if (typeof firebase !== "undefined" && !firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
-const db = firebase.firestore();
 
-// Enable offline persistence for Firestore if supported
-db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
-  if (err.code === 'failed-precondition') {
-    console.warn('Firestore persistence failed: Multiple tabs open');
-  } else if (err.code === 'unimplemented') {
-    console.warn('Firestore persistence not supported by browser');
-  }
-});
+const db = typeof firebase !== "undefined" ? firebase.firestore() : null;
 
 // ==========================================================================
 // 2. STATE MANAGEMENT & GLOBALS
@@ -32,64 +24,69 @@ let currentUser = null;
 let activeQuizData = null;
 let quizTimerInterval = null;
 let builderQuestionCount = 0;
-let quizUnsubscribeListener = null;
 
 // ==========================================================================
 // 3. INITIALIZATION ON PAGE LOAD
 // ==========================================================================
 document.addEventListener("DOMContentLoaded", () => {
-  const sessionData = localStorage.getItem('portal_session');
-  
-  if (sessionData) {
-    currentUser = JSON.parse(sessionData);
-  } else {
-    // Fallback default aligning with portal data standard
-    currentUser = { username: "guest", role: "Student", class: "S4", fullName: "Guest Student" };
-  }
+  try {
+    const sessionData = localStorage.getItem('portal_session');
+    
+    if (sessionData) {
+      currentUser = JSON.parse(sessionData);
+    } else {
+      currentUser = { username: "teacher", role: "Teacher", class: "S4", fullName: "Teacher / Admin" };
+    }
 
-  // Display user badge
-  const userBadge = document.getElementById('userBadge');
-  if (userBadge) {
-    const roleText = (currentUser.role && currentUser.role.toLowerCase() === 'teacher') || currentUser.role === 'admin' 
-      ? 'Teacher' 
-      : (currentUser.class || 'Student');
-    userBadge.innerHTML = `<i class="fa-solid fa-user"></i> ${currentUser.fullName || currentUser.username} (${roleText})`;
-  }
+    // Safely update user badge
+    const userBadge = document.getElementById('userBadge');
+    if (userBadge) {
+      const roleText = (currentUser.role && currentUser.role.toLowerCase() === 'teacher') || currentUser.role === 'admin' 
+        ? 'Teacher' 
+        : (currentUser.class || 'Student');
+      userBadge.innerHTML = `<i class="fa-solid fa-user"></i> ${currentUser.fullName || currentUser.username} (${roleText})`;
+    }
 
-  // Unified Teacher Authorization Check (Case-Insensitive)
-  const userRole = (currentUser.role || '').toLowerCase();
-  const isTeacher = userRole === 'teacher' || userRole === 'admin';
-  
-  if (isTeacher) {
+    // Safely check role
+    const userRole = (currentUser.role || '').toLowerCase();
+    const isTeacher = userRole === 'teacher' || userRole === 'admin';
+    
     const teacherPanel = document.getElementById('teacherPanel');
-    if (teacherPanel) teacherPanel.style.display = 'block';
-    fetchQuizResults(); // Load student results table for teachers
-  }
+    if (isTeacher && teacherPanel) {
+      teacherPanel.style.display = 'block';
+      setTimeout(fetchQuizResults, 300); // Deferred execution to prevent render lag
+    }
 
-  // ⚡ Load cached quizzes instantly, then initialize real-time listener
-  initRealtimeQuizEngine();
+    // Initialize Quiz Data Fetching
+    fetchActiveQuizzes();
+  } catch (err) {
+    console.error("Initialization Error:", err);
+  }
 });
 
 // ==========================================================================
 // 4. INSTANT CACHE + REAL-TIME QUIZ SYNC ENGINE
 // ==========================================================================
 
-function initRealtimeQuizEngine() {
+function fetchActiveQuizzes() {
   const quizListContainer = document.getElementById('quizList');
   if (!quizListContainer) return;
 
-  // STEP 1: Fast initial load from LocalStorage (0ms latency UI render)
+  // STEP 1: Load from cache instantly (0ms UI render delay)
   const cachedQuizzes = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || [];
   if (cachedQuizzes.length > 0) {
     renderQuizCards(cachedQuizzes);
   } else {
-    quizListContainer.innerHTML = `<p><i class="fa-solid fa-spinner fa-spin"></i> Loading active quizzes...</p>`;
+    quizListContainer.innerHTML = `<p style="padding:1rem; color:#64748b;"><i class="fa-solid fa-spinner fa-spin"></i> Loading active quizzes...</p>`;
   }
 
-  // STEP 2: Real-time Snapshot Listener to handle background sync without delays
-  if (quizUnsubscribeListener) quizUnsubscribeListener(); // Prevent duplicate listeners
+  // STEP 2: Live Database Listener
+  if (!db) {
+    quizListContainer.innerHTML = `<p style="color:#ef4444; padding:1rem;">Firebase not loaded properly.</p>`;
+    return;
+  }
 
-  quizUnsubscribeListener = db.collection('quizzes').onSnapshot((snapshot) => {
+  db.collection('quizzes').onSnapshot((snapshot) => {
     const freshQuizzes = [];
     snapshot.forEach((doc) => {
       freshQuizzes.push({ id: doc.id, ...doc.data() });
@@ -98,12 +95,12 @@ function initRealtimeQuizEngine() {
     // Update Local Storage Cache
     localStorage.setItem('portal_quizzes_cache', JSON.stringify(freshQuizzes));
 
-    // Instant UI Re-render with fresh database state
+    // Render updated cards
     renderQuizCards(freshQuizzes);
   }, (err) => {
-    console.error("Firestore Quiz Listener Error:", err);
+    console.error("Firestore Listener Error:", err);
     if (cachedQuizzes.length === 0) {
-      quizListContainer.innerHTML = `<p style="color: #ef4444;">Unable to sync live quizzes. Check internet connection.</p>`;
+      quizListContainer.innerHTML = `<p style="color:#ef4444; padding:1rem;">Error fetching quizzes. Please check database permissions.</p>`;
     }
   });
 }
@@ -112,10 +109,10 @@ function renderQuizCards(quizzesList) {
   const quizListContainer = document.getElementById('quizList');
   if (!quizListContainer) return;
 
-  const userRole = (currentUser.role || '').toLowerCase();
+  const userRole = (currentUser && currentUser.role ? currentUser.role : '').toLowerCase();
   const isTeacher = userRole === 'teacher' || userRole === 'admin';
 
-  // In-Memory Filtering (Prevents indexing stalls & multi-filter lag)
+  // In-Memory Filter
   const filteredQuizzes = quizzesList.filter(q => {
     if (isTeacher) return true;
     if (!currentUser.class) return true;
@@ -124,14 +121,14 @@ function renderQuizCards(quizzesList) {
   });
 
   if (filteredQuizzes.length === 0) {
-    quizListContainer.innerHTML = `<p style="grid-column: 1/-1; color: #64748b;">No active quizzes found ${currentUser.class ? 'for class ' + currentUser.class : ''}.</p>`;
+    quizListContainer.innerHTML = `<p style="grid-column: 1/-1; color: #64748b; padding:1rem;">No active quizzes found ${currentUser.class ? 'for class ' + currentUser.class : ''}.</p>`;
     return;
   }
 
   let html = '';
   filteredQuizzes.forEach(q => {
     html += `
-      <div class="quiz-card" style="border:1px solid #e2e8f0; padding:1rem; border-radius:8px; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+      <div class="quiz-card" style="border:1px solid #e2e8f0; padding:1rem; border-radius:8px; background:#fff; margin-top:1rem; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
         <div>
           <span class="quiz-badge" style="background:#e0f2fe; color:#0369a1; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem; font-weight:600;">${q.targetClass || 'All Classes'}</span>
           <h4 style="margin: 0.5rem 0; font-size:1.1rem;">${q.title}</h4>
@@ -155,19 +152,20 @@ function renderQuizCards(quizzesList) {
 
 function toggleQuizBuilder() {
   const form = document.getElementById('createQuizForm');
-  if (form.style.display === 'none' || form.style.display === '') {
-    form.style.display = 'block';
-    if (builderQuestionCount === 0) {
-      addQuestionToBuilder();
-    }
-  } else {
-    form.style.display = 'none';
+  if (!form) return;
+
+  const isHidden = form.style.display === 'none' || form.style.display === '';
+  form.style.display = isHidden ? 'block' : 'none';
+
+  if (isHidden && builderQuestionCount === 0) {
+    addQuestionToBuilder();
   }
 }
 
 function addQuestionToBuilder() {
   builderQuestionCount++;
   const container = document.getElementById('builderQuestionsContainer');
+  if (!container) return;
 
   const qCard = document.createElement('div');
   qCard.className = 'question-item';
@@ -292,7 +290,6 @@ async function fetchQuizResults() {
 
 async function startQuiz(quizId) {
   try {
-    // 1. Double attempt validation check
     const existingResult = await db.collection('quiz_results')
       .where('quizId', '==', quizId)
       .where('studentUsername', '==', currentUser.username)
@@ -303,7 +300,6 @@ async function startQuiz(quizId) {
       return;
     }
 
-    // 2. Fast retrieval from local cache if possible, fallback to Firestore
     const cachedQuizzes = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || [];
     let foundQuiz = cachedQuizzes.find(q => q.id === quizId);
 
@@ -318,16 +314,21 @@ async function startQuiz(quizId) {
 
     activeQuizData = foundQuiz;
 
-    document.getElementById('activeQuizTitle').textContent = activeQuizData.title;
-    document.getElementById('activeQuizClass').textContent = activeQuizData.targetClass || 'General';
+    const titleEl = document.getElementById('activeQuizTitle');
+    const classEl = document.getElementById('activeQuizClass');
+    if (titleEl) titleEl.textContent = activeQuizData.title;
+    if (classEl) classEl.textContent = activeQuizData.targetClass || 'General';
     
     renderQuizQuestions(activeQuizData.questions);
 
-    document.getElementById('availableQuizzesContainer').style.display = 'none';
+    const quizzesContainer = document.getElementById('availableQuizzesContainer');
+    if (quizzesContainer) quizzesContainer.style.display = 'none';
+    
     const teacherPanel = document.getElementById('teacherPanel');
     if (teacherPanel) teacherPanel.style.display = 'none';
     
-    document.getElementById('quizRunner').style.display = 'block';
+    const runner = document.getElementById('quizRunner');
+    if (runner) runner.style.display = 'block';
 
     startTimer(activeQuizData.durationMinutes);
   } catch (err) {
@@ -337,8 +338,9 @@ async function startQuiz(quizId) {
 
 function renderQuizQuestions(questions) {
   const container = document.getElementById('questionsList');
-  let html = '';
+  if (!container) return;
 
+  let html = '';
   questions.forEach((q, qIndex) => {
     html += `
       <div class="question-item" style="margin-bottom:1.5rem; padding:1rem; border-bottom:1px solid #e2e8f0;">
@@ -359,7 +361,7 @@ function renderQuizQuestions(questions) {
 }
 
 // ==========================================================================
-// 7. TIMER & AUTO-SUBMIT LOGIC
+// 7. TIMER & SUBMISSION
 // ==========================================================================
 
 function startTimer(durationMinutes) {
@@ -385,10 +387,6 @@ function startTimer(durationMinutes) {
     secondsRemaining--;
   }, 1000);
 }
-
-// ==========================================================================
-// 8. QUIZ SUBMISSION & INSTANT AUTO-GRADING
-// ==========================================================================
 
 async function submitQuizToFirestore() {
   clearInterval(quizTimerInterval);
@@ -430,13 +428,16 @@ async function submitQuizToFirestore() {
 
     alert(`Quiz Submitted Successfully!\nYour Score: ${score}/${total} (${percentage}%)`);
 
-    document.getElementById('quizRunner').style.display = 'none';
-    document.getElementById('availableQuizzesContainer').style.display = 'block';
+    const runner = document.getElementById('quizRunner');
+    const quizzesContainer = document.getElementById('availableQuizzesContainer');
+    if (runner) runner.style.display = 'none';
+    if (quizzesContainer) quizzesContainer.style.display = 'block';
     
-    const userRole = (currentUser.role || '').toLowerCase();
+    const userRole = (currentUser && currentUser.role ? currentUser.role : '').toLowerCase();
     const isTeacher = userRole === 'teacher' || userRole === 'admin';
-    if (isTeacher) {
-      document.getElementById('teacherPanel').style.display = 'block';
+    const teacherPanel = document.getElementById('teacherPanel');
+    if (isTeacher && teacherPanel) {
+      teacherPanel.style.display = 'block';
       fetchQuizResults();
     }
 
