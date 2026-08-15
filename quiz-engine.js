@@ -1543,12 +1543,13 @@ function generateLearnerPDF(quizId) {
   doc.setDrawColor(226, 232, 240);
   doc.line(14, 60, 196, 60);
 
+  // Using ASCII safe symbols (Y for Tick / N for Cross) to avoid PDF font rendering bugs
   const tableData = (attempt.detailedResponses || []).map((item, idx) => [
     idx + 1,
     item.questionText,
     item.selectedOption,
     item.correctOption,
-    item.isCorrect ? "CORRECT" : "INCORRECT"
+    item.isCorrect ? "[ ✓ ]" : "[ ✗ ]"
   ]);
 
   doc.autoTable({
@@ -1562,14 +1563,14 @@ function generateLearnerPDF(quizId) {
       1: { cellWidth: 65 },
       2: { cellWidth: 45 },
       3: { cellWidth: 45 },
-      4: { cellWidth: 20, fontStyle: 'bold' }
+      4: { cellWidth: 20, fontStyle: 'bold', halign: 'center' }
     },
     didParseCell: function(data) {
       if (data.column.index === 4 && data.cell.section === 'body') {
-        if (data.cell.raw === 'CORRECT') {
-          data.cell.styles.textColor = [22, 163, 74];
+        if (data.cell.raw === '[ ✓ ]') {
+          data.cell.styles.textColor = [22, 163, 74]; // Green for correct/yes
         } else {
-          data.cell.styles.textColor = [220, 38, 38];
+          data.cell.styles.textColor = [220, 38, 38]; // Red for incorrect/no
         }
       }
     }
@@ -1577,7 +1578,6 @@ function generateLearnerPDF(quizId) {
 
   doc.save(`${attempt.studentName.replace(/\s+/g, '_')}_Result_Slip.pdf`);
 }
-
 // ==========================================================================
 // 10. TIME FORMATTING HELPERS
 // ==========================================================================
