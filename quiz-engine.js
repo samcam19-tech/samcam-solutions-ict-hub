@@ -1476,22 +1476,32 @@ async function submitQuizToFirestore() {
       const selected = document.querySelector(`input[name="q_${idx}"]:checked`);
       const answerIndex = selected ? parseInt(selected.value, 10) : -1;
 
-      // Extract the exact text string of what the student clicked
       selectedOptionText = answerIndex >= 0 && q.options ? q.options[answerIndex] : "Unanswered";
-      studentAnswers.push(selectedOptionText); // Save text string instead of raw index
+      studentAnswers.push(selectedOptionText);
 
-      // Compare text strings so option shuffling never breaks the grade
-      const correctText = String(q.correctAnswer || "").trim().toLowerCase();
-      const studentText = selectedOptionText.trim().toLowerCase();
+      // Robust Grading: Handle both text-based answers and index numbers seamlessly
+      if (answerIndex >= 0 && q.options) {
+        const correctVal = q.correctAnswer;
 
-      if (answerIndex >= 0 && studentText === correctText) {
-        isCorrect = true;
+        if (typeof correctVal === 'number' || (!isNaN(correctVal) && String(correctVal).trim() !== "" && !isNaN(Number(correctVal)))) {
+          // If stored as an index number (e.g. 1)
+          if (answerIndex === parseInt(correctVal, 10)) {
+            isCorrect = true;
+          }
+        } else {
+          // If stored as a text string
+          const correctText = String(correctVal || "").trim().toLowerCase();
+          const studentText = selectedOptionText.trim().toLowerCase();
+          if (studentText === correctText) {
+            isCorrect = true;
+          }
+        }
       }
     }
 
     if (isCorrect) score++;
 
-    // Format display string for correct option(s)
+    // Format display string for correct option(s) cleanly for the moderation table
     let displayCorrect = "";
     if (q.type === 'text') {
       if (Array.isArray(q.acceptedAnswers) && q.acceptedAnswers.length > 0) {
@@ -1500,8 +1510,13 @@ async function submitQuizToFirestore() {
         displayCorrect = String(q.correctAnswer || "").replace(/^answer:\s*/i, "").trim();
       }
     } else {
-      // Display the actual correct text string directly
-      displayCorrect = String(q.correctAnswer || "").trim();
+      // If correctAnswer is a number index, convert it to the matching option text string
+      const correctVal = q.correctAnswer;
+      if ((typeof correctVal === 'number' || (!isNaN(correctVal) && String(correctVal).trim() !== "" && !isNaN(Number(correctVal)))) && q.options && q.options[Number(correctVal)] !== undefined) {
+        displayCorrect = q.options[Number(correctVal)];
+      } else {
+        displayCorrect = String(correctVal || "").trim();
+      }
     }
 
     detailedResponses.push({
