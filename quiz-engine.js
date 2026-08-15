@@ -881,10 +881,12 @@ function closeInspectorModal() {
   if (modal) modal.style.display = 'none';
 }
 // ==========================================================================
-// MULTI-SHEET EXCEL EXPORT WITH BORDERS & GROUPING (FULLY OPTIMIZED)
+// MULTI-SHEET EXCEL EXPORT (ROBUST GLOBAL CHECK)
 // ==========================================================================
 function exportResultsToExcel() {
-  if (!window.XLSX) {
+  const XLSXLib = window.XLSX || window.XLSXStyle;
+
+  if (!XLSXLib) {
     alert("SheetJS library is not loaded. Please ensure the Excel library script is included.");
     return;
   }
@@ -895,24 +897,16 @@ function exportResultsToExcel() {
   }
 
   try {
-    // 1. Create a new workbook
-    const wb = XLSX.utils.book_new();
-
-    // 2. Group submissions by Class -> then by Quiz Title
+    const wb = XLSXLib.utils.book_new();
     const groupedData = {};
 
     globalTeacherResults.forEach(res => {
       const className = res.studentClass || "Unassigned Class";
       const quizTitle = res.quizTitle || "General Quiz";
 
-      if (!groupedData[className]) {
-        groupedData[className] = {};
-      }
-      if (!groupedData[className][quizTitle]) {
-        groupedData[className][quizTitle] = [];
-      }
+      if (!groupedData[className]) groupedData[className] = {};
+      if (!groupedData[className][quizTitle]) groupedData[className][quizTitle] = [];
 
-      // Safe date formatting
       let submittedStr = "Recently";
       if (res.submittedAt) {
         if (typeof res.submittedAt.toDate === 'function') {
@@ -934,47 +928,22 @@ function exportResultsToExcel() {
       });
     });
 
-    // 3. Iterate through each class and quiz to build individual sheets
     Object.keys(groupedData).forEach(className => {
       Object.keys(groupedData[className]).forEach(quizTitle => {
         const rows = groupedData[className][quizTitle];
-        const ws = XLSX.utils.json_to_sheet(rows);
+        const ws = XLSXLib.utils.json_to_sheet(rows);
 
-        const thinBorder = {
-          top: { style: "thin", color: { rgb: "D1D5DB" } },
-          bottom: { style: "thin", color: { rgb: "D1D5DB" } },
-          left: { style: "thin", color: { rgb: "D1D5DB" } },
-          right: { style: "thin", color: { rgb: "D1D5DB" } }
-        };
-
-        const headerStyle = {
-          font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11, name: "Calibri" },
-          fill: { fgColor: { rgb: "0284C7" } },
-          alignment: { horizontal: "center", vertical: "center" },
-          border: thinBorder
-        };
-
-        const cellStyle = {
-          font: { sz: 10, name: "Calibri", color: { rgb: "1F2937" } },
-          alignment: { horizontal: "left", vertical: "center" },
-          border: thinBorder
-        };
-
-        // Safe range parsing and column width calculations
         if (ws && ws['!ref']) {
-          const range = XLSX.utils.decode_range(ws['!ref']);
+          const range = XLSXLib.utils.decode_range(ws['!ref']);
           const colWidths = [];
 
           for (let C = range.s.c; C <= range.e.c; ++C) {
             let maxLen = 10;
             for (let R = range.s.r; R <= range.e.r; ++R) {
-              const cellRef = XLSX.utils.encode_cell({ c: C, r: R });
-              if (ws[cellRef]) {
-                ws[cellRef].s = (R === 0) ? headerStyle : cellStyle;
-                const val = String(ws[cellRef].v || "");
-                if (val.length > maxLen) {
-                  maxLen = val.length;
-                }
+              const cellRef = XLSXLib.utils.encode_cell({ c: C, r: R });
+              if (ws[cellRef] && ws[cellRef].v) {
+                const val = String(ws[cellRef].v);
+                if (val.length > maxLen) maxLen = val.length;
               }
             }
             colWidths.push({ wch: Math.max(maxLen + 4, 15) });
@@ -982,19 +951,17 @@ function exportResultsToExcel() {
           ws['!cols'] = colWidths;
         }
 
-        // Clean and truncate sheet names safely for Excel limitations (max 31 chars, no special symbols)
         let safeSheetName = `${className} - ${quizTitle}`.replace(/[:\\\/?*\[\]]/g, "");
         if (safeSheetName.length > 31) {
           safeSheetName = safeSheetName.substring(0, 31);
         }
 
-        XLSX.utils.book_append_sheet(wb, ws, safeSheetName);
+        XLSXLib.utils.book_append_sheet(wb, ws, safeSheetName);
       });
     });
 
-    // 4. Trigger file write & download
     const dateStr = new Date().toISOString().split('T')[0];
-    XLSX.writeFile(wb, `Student_Quiz_Results_${dateStr}.xlsx`);
+    XLSXLib.writeFile(wb, `Student_Quiz_Results_${dateStr}.xlsx`);
   } catch (err) {
     console.error("Excel Export Error:", err);
     alert("An error occurred while generating the Excel spreadsheet. Check console for details.");
