@@ -1696,22 +1696,30 @@ function formatSeconds(totalSecs) {
 }
 
 // ==========================================
-// ULTRA-TIGHT ANTI-CHEATING PROTECTIONS
+// 5-STRIKE ANTI-CHEATING PROTECTIONS
 // ==========================================
 
+let tabSwitchCount = 0;
+const MAX_TAB_SWITCHES = 5; // Allows up to 5 violations before auto-submission
 let hasQuizSubmittedDueToCheating = false;
 
-// Helper function to instantly trigger lockdown/submission
-function triggerCheatingLockdown(reason) {
+// Helper function to handle warning or locking down after 5 strikes
+function handleCheatingViolation(reason) {
     const quizRunner = document.getElementById("quizRunner");
     if (quizRunner && quizRunner.style.display !== "none" && !hasQuizSubmittedDueToCheating) {
-        hasQuizSubmittedDueToCheating = true;
-        alert(`🚨 Security Violation: ${reason}\n\nYour assessment is being submitted automatically.`);
-        
-        if (typeof submitQuizToFirestore === 'function') {
-            submitQuizToFirestore();
+        tabSwitchCount++;
+
+        if (tabSwitchCount < MAX_TAB_SWITCHES) {
+            alert(`⚠️ Security Warning #${tabSwitchCount} of ${MAX_TAB_SWITCHES}: ${reason}\n\nDoing this again will result in automatic quiz submission!`);
         } else {
-            window.location.href = 'assessments.html';
+            hasQuizSubmittedDueToCheating = true;
+            alert(`🚨 Maximum limit reached (${MAX_TAB_SWITCHES} violations). Your assessment is being submitted automatically.`);
+            
+            if (typeof submitQuizToFirestore === 'function') {
+                submitQuizToFirestore();
+            } else {
+                window.location.href = 'assessments.html';
+            }
         }
     }
 }
@@ -1735,7 +1743,7 @@ document.addEventListener("contextmenu", (e) => {
     }
 });
 
-// Optional: Add CSS class dynamically to block text selection highlighting
+// Add CSS to block text selection highlighting
 document.addEventListener("DOMContentLoaded", () => {
     const style = document.createElement('style');
     style.innerHTML = `
@@ -1749,14 +1757,14 @@ document.addEventListener("DOMContentLoaded", () => {
     document.head.appendChild(style);
 });
 
-// 3. ZERO TOLERANCE: Tab Switching (Instant Auto-Submit)
+// 3. Tab Switching Tracker (Up to 5 strikes)
 document.addEventListener("visibilitychange", () => {
     if (document.hidden) {
-        triggerCheatingLockdown("You switched away from the assessment tab or minimized the window.");
+        handleCheatingViolation("You switched away from the assessment tab or minimized the window.");
     }
 });
 
-// 4. ZERO TOLERANCE: Separate Window / Split-Screen Blurring (Instant Auto-Submit)
+// 4. Separate Window / Split-Screen Blurring Tracker (Up to 5 strikes)
 window.addEventListener("blur", () => {
-    triggerCheatingLockdown("You clicked outside the assessment window into a separate browser window or split screen.");
+    handleCheatingViolation("You clicked outside the assessment window into a separate browser window or split screen.");
 });
