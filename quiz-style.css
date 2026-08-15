@@ -292,3 +292,75 @@ body {
 
 .review-item.correct { background: #f0fdf4; border-left-color: var(--success-color); }
 .review-item.incorrect { background: #fef2f2; border-left-color: var(--danger-color); }
+
+/* ==========================================================================
+   ADDITIONS FOR ENHANCED LMS FEATURES (Analytics, History, Upload)
+   ========================================================================== */
+
+/* File Upload Drag & Drop Box */
+.import-box {
+  background: var(--bg-light);
+  border: 2px dashed #cbd5e1;
+  padding: 1.25rem;
+  border-radius: 8px;
+  margin: 1rem 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: border-color 0.2s;
+}
+
+.import-box:hover {
+  border-color: var(--primary-color);
+}
+
+/* Analytics Summary Grid Cards */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.analytics-card {
+  background: var(--bg-light);
+  padding: 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.analytics-card-title {
+  font-size: 0.775rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.analytics-card-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-top: 0.2rem;
+}
+
+/* Timeline History List */
+.history-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.history-item {
+  background: #fff;
+  border: 1px solid var(--border-color);
+  padding: 1rem 1.25rem;
+  border-radius: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.history-item:hover {
+  border-color: #94a3b8;
+}
