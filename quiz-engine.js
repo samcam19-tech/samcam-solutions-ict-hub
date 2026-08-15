@@ -1696,22 +1696,38 @@ function formatSeconds(totalSecs) {
 }
 
 // ==========================================
-// UNIFIED ANTI-CHEATING PROTECTIONS
+// ULTRA-TIGHT ANTI-CHEATING PROTECTIONS
 // ==========================================
 
-let tabSwitchCount = 0;
-const MAX_TAB_SWITCHES = 3;
+let hasQuizSubmittedDueToCheating = false;
 
-// 1. Prevent copying
-document.addEventListener("copy", (e) => {
+// Helper function to instantly trigger lockdown/submission
+function triggerCheatingLockdown(reason) {
     const quizRunner = document.getElementById("quizRunner");
-    if (quizRunner && quizRunner.style.display !== "none") {
-        e.preventDefault();
-        alert("Copying questions or content is disabled during assessments.");
+    if (quizRunner && quizRunner.style.display !== "none" && !hasQuizSubmittedDueToCheating) {
+        hasQuizSubmittedDueToCheating = true;
+        alert(`🚨 Security Violation: ${reason}\n\nYour assessment is being submitted automatically.`);
+        
+        if (typeof submitQuizToFirestore === 'function') {
+            submitQuizToFirestore();
+        } else {
+            window.location.href = 'assessments.html';
+        }
     }
+}
+
+// 1. Prevent copying, cutting, and pasting
+["copy", "cut", "paste"].forEach(eventType => {
+    document.addEventListener(eventType, (e) => {
+        const quizRunner = document.getElementById("quizRunner");
+        if (quizRunner && quizRunner.style.display !== "none") {
+            e.preventDefault();
+            alert("Action blocked: Copying or pasting is strictly prohibited during assessments.");
+        }
+    });
 });
 
-// 2. Prevent right-click context menu
+// 2. Prevent right-click context menu and text selection highlighting
 document.addEventListener("contextmenu", (e) => {
     const quizRunner = document.getElementById("quizRunner");
     if (quizRunner && quizRunner.style.display !== "none") {
@@ -1719,22 +1735,28 @@ document.addEventListener("contextmenu", (e) => {
     }
 });
 
-// 3. Track tab switching / window blurring
-document.addEventListener("visibilitychange", () => {
-    const quizRunner = document.getElementById("quizRunner");
-    if (quizRunner && quizRunner.style.display !== "none") {
-        if (document.hidden) {
-            tabSwitchCount++;
-            
-            if (tabSwitchCount < MAX_TAB_SWITCHES) {
-                alert(`⚠️ Warning #${tabSwitchCount}: You have switched away from the assessment tab. Leaving the quiz again may result in auto-submission!`);
-            } else {
-                alert("Maximum tab switches exceeded. Your assessment is being submitted automatically.");
-                if (typeof submitQuizToFirestore === 'function') {
-                    submitQuizToFirestore();
-                }
-            }
+// Optional: Add CSS class dynamically to block text selection highlighting
+document.addEventListener("DOMContentLoaded", () => {
+    const style = document.createElement('style');
+    style.innerHTML = `
+        #quizRunner {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
+    `;
+    document.head.appendChild(style);
+});
+
+// 3. ZERO TOLERANCE: Tab Switching (Instant Auto-Submit)
+document.addEventListener("visibilitychange", () => {
+    if (document.hidden) {
+        triggerCheatingLockdown("You switched away from the assessment tab or minimized the window.");
     }
 });
 
+// 4. ZERO TOLERANCE: Separate Window / Split-Screen Blurring (Instant Auto-Submit)
+window.addEventListener("blur", () => {
+    triggerCheatingLockdown("You clicked outside the assessment window into a separate browser window or split screen.");
+});
