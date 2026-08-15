@@ -1425,7 +1425,7 @@ async function submitQuizToFirestore() {
 
     const cleanStudent = String(studentInput)
       .toLowerCase()
-      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "")
+      .replace(/[.,\/#$%\^&\*;:{}=\-_`~()]/g, "")
       .trim();
 
     // Gather all acceptable answers from array or fallback to correctAnswer string
@@ -1475,10 +1475,16 @@ async function submitQuizToFirestore() {
     } else {
       const selected = document.querySelector(`input[name="q_${idx}"]:checked`);
       const answerIndex = selected ? parseInt(selected.value, 10) : -1;
-      studentAnswers.push(answerIndex);
 
+      // Extract the exact text string of what the student clicked
       selectedOptionText = answerIndex >= 0 && q.options ? q.options[answerIndex] : "Unanswered";
-      if (answerIndex === q.correctAnswer) {
+      studentAnswers.push(selectedOptionText); // Save text string instead of raw index
+
+      // Compare text strings so option shuffling never breaks the grade
+      const correctText = String(q.correctAnswer || "").trim().toLowerCase();
+      const studentText = selectedOptionText.trim().toLowerCase();
+
+      if (answerIndex >= 0 && studentText === correctText) {
         isCorrect = true;
       }
     }
@@ -1494,7 +1500,8 @@ async function submitQuizToFirestore() {
         displayCorrect = String(q.correctAnswer || "").replace(/^answer:\s*/i, "").trim();
       }
     } else {
-      displayCorrect = q.options ? q.options[q.correctAnswer] : '';
+      // Display the actual correct text string directly
+      displayCorrect = String(q.correctAnswer || "").trim();
     }
 
     detailedResponses.push({
