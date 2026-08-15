@@ -395,9 +395,16 @@ body {
    MEDIA QUERIES FOR TABLETS AND DESKTOPS (min-width: 640px+)
    ========================================================================== */
 
+/* ==========================================================================
+   MEDIA QUERIES FOR TABLETS AND DESKTOPS (min-width: 640px+)
+   ========================================================================== */
+
 @media (min-width: 640px) {
   .portal-header { padding: 1rem 2rem; }
-  .header-container { flex-direction: row; align-items: center; gap: 0; }
+  
+  /* FIXED: Added justify-content: space-between to push brand left and badge/back button right */
+  .header-container { flex-direction: row; align-items: center; justify-content: space-between; gap: 0; }
+  
   .user-badge { width: auto; font-size: 0.875rem; }
   .portal-container { margin: 2rem auto; padding: 0 1rem; }
   .admin-panel, .dashboard-section, .quiz-runner { padding: 1.75rem; margin-bottom: 2rem; }
