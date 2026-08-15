@@ -35,10 +35,14 @@
         <i class="fa-solid fa-graduation-cap"></i>
         <h2>ICT Assessment Engine</h2>
       </div>
-      <div class="user-profile">
+      <div class="user-profile" style="display: flex; align-items: center; gap: 0.75rem;">
         <div id="userBadge" class="user-badge">
           <i class="fa-solid fa-circle-notch fa-spin"></i> Checking Session...
         </div>
+        <!-- Back to Assessment Page Button -->
+        <a href="assessement.html" class="btn btn-outline" title="Back to Assessments" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; background: rgba(255,255,255,0.1); border-color: #334155; color: #fff; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 20px;">
+          <i class="fa-solid fa-arrow-left"></i> Back
+        </a>
         <button type="button" class="btn btn-outline" onclick="exitQuizRunner()" style="padding: 0.35rem 0.7rem; font-size: 0.8rem; display: none;" id="runnerBackButton">
           <i class="fa-solid fa-arrow-left"></i> Back
         </button>
