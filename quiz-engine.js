@@ -238,7 +238,7 @@ const quizzesPerPage = 6;
 let globalFilteredQuizzes = []; // Stores filtered items globally for pagination use
 
 // ==========================================================================
-// RENDER QUIZ CARDS (Paginated Version)
+// RENDER QUIZ CARDS (Paginated Version with Delete Action)
 // ==========================================================================
 function renderQuizCards(quizzesList) {
   const quizListContainer = document.getElementById('quizList');
@@ -318,6 +318,9 @@ function renderQuizCardsPage() {
                   <button onclick="editQuiz('${q.id}')" title="Edit Quiz" style="background:#0284c7; border:none; color:#fff; padding:0.25rem 0.4rem; border-radius:4px; cursor:pointer; font-size:0.75rem;">
                     <i class="fa-solid fa-pen-to-square"></i>
                   </button>
+                  <button onclick="deleteQuiz('${q.id}')" title="Delete Quiz" style="background:#ef4444; border:none; color:#fff; padding:0.25rem 0.4rem; border-radius:4px; cursor:pointer; font-size:0.75rem;">
+                    <i class="fa-solid fa-trash-can"></i>
+                  </button>
                 ` : ''}
               </div>
             </div>
@@ -355,6 +358,9 @@ function renderQuizCardsPage() {
                 ${isAdminOrTeacher ? `
                   <button onclick="editQuiz('${q.id}')" title="Edit Quiz" style="background:#0284c7; border:none; color:#fff; padding:0.25rem 0.4rem; border-radius:4px; cursor:pointer; font-size:0.75rem;">
                     <i class="fa-solid fa-pen-to-square"></i>
+                  </button>
+                  <button onclick="deleteQuiz('${q.id}')" title="Delete Quiz" style="background:#ef4444; border:none; color:#fff; padding:0.25rem 0.4rem; border-radius:4px; cursor:pointer; font-size:0.75rem;">
+                    <i class="fa-solid fa-trash-can"></i>
                   </button>
                 ` : ''}
               </div>
@@ -398,6 +404,38 @@ function renderQuizCardsPage() {
 function changeQuizzesPage(direction) {
   currentQuizzesPage += direction;
   renderQuizCardsPage();
+}
+
+// ==========================================================================
+// DELETE QUIZ HANDLER
+// ==========================================================================
+async function deleteQuiz(quizId) {
+  if (!confirm("Are you sure you want to delete this quiz? This action cannot be undone.")) {
+    return;
+  }
+
+  try {
+    if (db) {
+      await db.collection('quizzes').doc(quizId).delete();
+    }
+    
+    // Also remove from LocalStorage cache
+    let cached = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || [];
+    cached = cached.filter(q => q.id !== quizId);
+    localStorage.setItem('portal_quizzes_cache', JSON.stringify(cached));
+
+    alert("Quiz deleted successfully!");
+
+    // Refresh UI list
+    if (typeof fetchActiveQuizzes === 'function') {
+      fetchActiveQuizzes();
+    } else {
+      renderQuizCards(cached);
+    }
+  } catch (err) {
+    console.error("Error deleting quiz:", err);
+    alert("Failed to delete quiz: " + err.message);
+  }
 }
 
 // ==========================================================================
