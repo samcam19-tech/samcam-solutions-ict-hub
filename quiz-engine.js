@@ -1695,12 +1695,36 @@ function formatSeconds(totalSecs) {
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
+
+
+// ==========================================
+// ANTI-CHEATING PROTECTIONS
+// ==========================================
 // Track how many times a user leaves the quiz page
 let tabSwitchCount = 0;
 const MAX_SWITCHES = 3; // Adjust threshold as needed
 
+// 1. Prevent copying and right-clicking inside the quiz runner
+document.addEventListener("copy", (e) => {
+    const quizRunner = document.getElementById("quizRunner");
+    if (quizRunner && quizRunner.style.display !== "none") {
+        e.preventDefault();
+        alert("Copying questions is disabled during assessments.");
+    }
+});
+
+document.addEventListener("contextmenu", (e) => {
+    const quizRunner = document.getElementById("quizRunner");
+    if (quizRunner && quizRunner.style.display !== "none") {
+        e.preventDefault();
+    }
+});
+
+// 2. Track tab switching during active quiz
+let tabSwitchCount = 0;
+const MAX_SWITCHES = 3; // Adjust threshold as needed
+
 document.addEventListener("visibilitychange", () => {
-    // Check if the quiz runner is currently active
     const quizRunner = document.getElementById("quizRunner");
     if (quizRunner && quizRunner.style.display !== "none") {
         if (document.hidden) {
@@ -1709,7 +1733,7 @@ document.addEventListener("visibilitychange", () => {
             
             if (tabSwitchCount >= MAX_SWITCHES) {
                 alert("Maximum tab switches exceeded. Your assessment is being submitted automatically.");
-                submitQuizToFirestore(); // Triggers your existing submission function
+                submitQuizToFirestore(); 
             }
         }
     }
