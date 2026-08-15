@@ -676,6 +676,9 @@ function removeBuilderQuestion(elementId) {
   if (el) el.remove();
 }
 
+// ==========================================================================
+// SAVE QUIZ WITH TEXT-BASED CORRECT ANSWERS (SHUFFLE-PROOF)
+// ==========================================================================
 async function handleSaveQuiz(event) {
   event.preventDefault();
 
@@ -706,17 +709,25 @@ async function handleSaveQuiz(event) {
         marks: 1
       });
     } else {
+      const options = [
+        qEl.querySelector('.q-opt-0').value.trim(),
+        qEl.querySelector('.q-opt-1').value.trim(),
+        qEl.querySelector('.q-opt-2').value.trim(),
+        qEl.querySelector('.q-opt-3').value.trim()
+      ];
+
+      const correctSelectEl = qEl.querySelector('.q-correct');
+      const correctIndex = correctSelectEl ? parseInt(correctSelectEl.value, 10) : 0;
+      
+      // Extract the exact text string of the correct option instead of saving a numeric index
+      const correctText = options[correctIndex] || options[0];
+
       questions.push({
         id: idx + 1,
         type: 'mcq',
         question: qText,
-        options: [
-          qEl.querySelector('.q-opt-0').value.trim(),
-          qEl.querySelector('.q-opt-1').value.trim(),
-          qEl.querySelector('.q-opt-2').value.trim(),
-          qEl.querySelector('.q-opt-3').value.trim()
-        ],
-        correctAnswer: parseInt(qEl.querySelector('.q-correct').value, 10),
+        options: options,
+        correctAnswer: correctText,
         marks: 1
       });
     }
@@ -786,7 +797,6 @@ async function handleSaveQuiz(event) {
     alert("Failed to save quiz: " + err.message);
   }
 }
-
 // ==========================================================================
 // EDUCATOR RESULTS, OVERSIGHT & ANALYTICS DASHBOARD (Maintained & Enhanced)
 // ==========================================================================
