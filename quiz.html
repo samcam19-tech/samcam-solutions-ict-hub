@@ -155,6 +155,16 @@
             </tbody>
           </table>
         </div>
+
+        <!-- Pagination Controls for Submissions Table -->
+        <div id="submissionsPagination" class="pagination-container" style="display: none; justify-content: space-between; align-items: center; padding: 1rem 0;">
+          <span id="submissionsPaginationInfo" style="font-size: 0.85rem; color: #64748b;">Showing 0 of 0 entries</span>
+          <div class="pagination-buttons" style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-outline" id="subPrevBtn" onclick="changeSubmissionsPage(-1)"><i class="fa-solid fa-chevron-left"></i> Prev</button>
+            <span id="subPageIndicator" style="align-self: center; font-size: 0.85rem; font-weight: 600;">Page 1 of 1</span>
+            <button class="btn btn-outline" id="subNextBtn" onclick="changeSubmissionsPage(1)">Next <i class="fa-solid fa-chevron-right"></i></button>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -169,6 +179,16 @@
 
       <!-- Quizzes Grid -->
       <div id="quizList" class="quiz-grid"></div>
+
+      <!-- Pagination Controls for Available Quizzes -->
+      <div id="quizzesPagination" class="pagination-container" style="display: none; justify-content: space-between; align-items: center; padding: 1.5rem 0 0 0;">
+        <span id="quizzesPaginationInfo" style="font-size: 0.85rem; color: #64748b;">Showing 0 of 0 quizzes</span>
+        <div class="pagination-buttons" style="display: flex; gap: 0.5rem;">
+          <button class="btn btn-outline" id="quizPrevBtn" onclick="changeQuizzesPage(-1)"><i class="fa-solid fa-chevron-left"></i> Prev</button>
+          <span id="quizPageIndicator" style="align-self: center; font-size: 0.85rem; font-weight: 600;">Page 1 of 1</span>
+          <button class="btn btn-outline" id="quizNextBtn" onclick="changeQuizzesPage(1)">Next <i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+      </div>
     </section>
 
     <!-- =================================================================== -->
