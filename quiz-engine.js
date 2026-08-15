@@ -348,6 +348,79 @@ function renderQuizCards(quizzesList) {
 }
 
 // ==========================================================================
+// INTELLIGENT SHORT ANSWER EVALUATION ALGORITHM
+// ==========================================================================
+function evaluateShortAnswer(studentInput, correctAnswer) {
+  if (!studentInput || !correctAnswer) return false;
+
+  // 1. Normalize both strings: lowercase, remove punctuation, split into word tokens
+  const cleanStudent = studentInput.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim();
+  const cleanCorrect = correctAnswer.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim();
+
+  // Exact match shortcut
+  if (cleanStudent === cleanCorrect) return true;
+
+  const studentTokens = cleanStudent.split(/\s+/);
+  const correctTokens = cleanCorrect.split(/\s+/);
+
+  // 2. Keyword Intersection Check (checks if critical keywords are present)
+  // Useful if the correct answer is a phrase like "Central Processing Unit" and they write "processing unit cpu"
+  let matchedKeywords = 0;
+  correctTokens.forEach(token => {
+    if (token.length > 2 && studentTokens.includes(token)) {
+      matchedKeywords++;
+    }
+  });
+
+  // If most significant keywords (> 75%) match, consider it correct
+  const keywordThreshold = Math.ceil(correctTokens.filter(t => t.length > 2).length * 0.75);
+  if (keywordThreshold > 0 && matchedKeywords >= keywordThreshold) {
+    return true;
+  }
+
+  // 3. Levenshtein Distance / Similarity Ratio for minor typos or single-word answers
+  const similarity = calculateStringSimilarity(cleanStudent, cleanCorrect);
+  return similarity >= 0.82; // 82% similarity tolerance for spelling variations
+}
+
+// Helper: Calculates normalized similarity score between 0 and 1
+function calculateStringSimilarity(str1, str2) {
+  const longer = str1.length > str2.length ? str1 : str2;
+  const shorter = str1.length > str2.length ? str2 : str1;
+  if (longer.length === 0) return 1.0;
+  
+  const editDistance = getLevenshteinDistance(longer, shorter);
+  return (longer.length - editDistance) / longer.length;
+}
+
+// Helper: Computes standard Levenshtein edit distance
+function getLevenshteinDistance(a, b) {
+  const matrix = [];
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          Math.min(
+            matrix[i][j - 1] + 1, // insertion
+            matrix[i - 1][j] + 1  // deletion
+          )
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+}
+
+// ==========================================================================
 // 6. EDUCATOR CONTROL CENTER, DOCUMENT IMPORT & EXCEL REPORTS
 // ==========================================================================
 
@@ -1180,6 +1253,9 @@ function startTimer(durationMinutes) {
   }, 1000);
 }
 
+// ==========================================================================
+// SUBMIT QUIZ WITH INTELLIGENT SHORT ANSWER ALGORITHM
+// ==========================================================================
 async function submitQuizToFirestore() {
   clearInterval(quizTimerInterval);
 
@@ -1195,6 +1271,55 @@ async function submitQuizToFirestore() {
   const studentAnswers = [];
   const detailedResponses = [];
 
+  // Helper algorithm for fuzzy short-answer evaluation
+  const evaluateShortAnswer = (studentInput, correctAnswer) => {
+    if (!studentInput || !correctAnswer) return false;
+
+    const cleanStudent = studentInput.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim();
+    const cleanCorrect = correctAnswer.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim();
+
+    if (cleanStudent === cleanCorrect) return true;
+
+    const studentTokens = cleanStudent.split(/\s+/);
+    const correctTokens = cleanCorrect.split(/\s+/);
+
+    let matchedKeywords = 0;
+    correctTokens.forEach(token => {
+      if (token.length > 2 && studentTokens.includes(token)) {
+        matchedKeywords++;
+      }
+    });
+
+    const keywordThreshold = Math.ceil(correctTokens.filter(t => t.length > 2).length * 0.75);
+    if (keywordThreshold > 0 && matchedKeywords >= keywordThreshold) {
+      return true;
+    }
+
+    // Levenshtein similarity ratio for minor typo tolerance
+    const longer = cleanStudent.length > cleanCorrect.length ? cleanStudent : cleanCorrect;
+    const shorter = cleanStudent.length > cleanCorrect.length ? cleanCorrect : cleanStudent;
+    if (longer.length === 0) return 1.0;
+
+    const getLevenshteinDistance = (a, b) => {
+      const matrix = [];
+      for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+      for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+      for (let i = 1; i <= b.length; i++) {
+        for (let j = 1; j <= a.length; j++) {
+          if (b.charAt(i - 1) === a.charAt(j - 1)) {
+            matrix[i][j] = matrix[i - 1][j - 1];
+          } else {
+            matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
+          }
+        }
+      }
+      return matrix[b.length][a.length];
+    };
+
+    const similarity = (longer.length - getLevenshteinDistance(longer, shorter)) / longer.length;
+    return similarity >= 0.82;
+  };
+
   questions.forEach((q, idx) => {
     let isCorrect = false;
     let selectedOptionText = "Unanswered";
@@ -1205,8 +1330,8 @@ async function submitQuizToFirestore() {
       studentAnswers.push(val);
       selectedOptionText = val !== "" ? val : "Unanswered";
       
-      // Case-insensitive clean comparison for text questions
-      if (val.toLowerCase() === String(q.correctAnswer).toLowerCase()) {
+      // Evaluates text using the flexible token & typo-tolerant algorithm
+      if (evaluateShortAnswer(val, q.correctAnswer)) {
         isCorrect = true;
       }
     } else {
@@ -1278,7 +1403,6 @@ async function submitQuizToFirestore() {
     alert("Submission completed locally, but cloud backup failed. Check connection.");
   }
 }
-
 // ==========================================================================
 // 9. LEARNER PDF REPORT GENERATOR (jsPDF)
 // ==========================================================================
