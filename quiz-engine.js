@@ -1265,7 +1265,7 @@ function startTimer(durationMinutes) {
 }
 
 // ==========================================================================
-// SUBMIT QUIZ WITH STREAMLINED ROBUST SHORT-ANSWER EVALUATION
+// SUBMIT QUIZ WITH MULTI-ANSWER SCHEMES & TEACHER MODERATION QUEUE
 // ==========================================================================
 async function submitQuizToFirestore() {
   clearInterval(quizTimerInterval);
@@ -1281,50 +1281,47 @@ async function submitQuizToFirestore() {
 
   const studentAnswers = [];
   const detailedResponses = [];
+  let requiresTeacherReview = false;
 
-  // Helper algorithm with robust prefix cleaning, substring containment, and keyword matching
-  const evaluateShortAnswer = (studentInput, rawCorrectAnswer) => {
-    if (!studentInput || !rawCorrectAnswer) return false;
-
-    // 1. Strip out literal "answer:" prefixes and normalize strings completely
-    const cleanCorrect = String(rawCorrectAnswer)
-      .replace(/^answer:\s*/i, "")
-      .toLowerCase()
-      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "")
-      .trim();
+  // Helper function to check multiple acceptable answer schemes
+  const evaluateMultiAnswer = (studentInput, q) => {
+    if (!studentInput) return { isCorrect: false, isPending: false };
 
     const cleanStudent = String(studentInput)
       .toLowerCase()
       .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "")
       .trim();
 
-    // 2. Direct exact match check after cleaning
-    if (cleanStudent === cleanCorrect) return true;
-
-    // 3. Substring / Containment check (handles variations like "compiler" vs "compiler program")
-    if (cleanCorrect.includes(cleanStudent) || cleanStudent.includes(cleanCorrect)) {
-      if (cleanStudent.length >= 3) return true;
+    // Gather all acceptable answers from array or fallback to correctAnswer string
+    let acceptedList = [];
+    if (Array.isArray(q.acceptedAnswers) && q.acceptedAnswers.length > 0) {
+      acceptedList = q.acceptedAnswers;
+    } else if (q.correctAnswer) {
+      const raw = String(q.correctAnswer).replace(/^answer:\s*/i, "").trim();
+      acceptedList = raw.includes(",") ? raw.split(",").map(s => s.trim()) : [raw];
     }
 
-    // 4. Token / Keyword match check (ensures core words are present)
-    const studentTokens = cleanStudent.split(/\s+/).filter(t => t.length > 2);
-    const correctTokens = cleanCorrect.split(/\s+/).filter(t => t.length > 2);
-
-    if (correctTokens.length === 0) return false;
-
-    let matchedCount = 0;
-    correctTokens.forEach(token => {
-      if (studentTokens.includes(token)) {
-        matchedCount++;
-      }
+    // Check exact or normalized match against any allowed variation
+    const matched = acceptedList.some(ans => {
+      const cleanAns = String(ans)
+        .replace(/^answer:\s*/i, "")
+        .toLowerCase()
+        .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "")
+        .trim();
+      return cleanStudent === cleanAns;
     });
 
-    const matchRatio = matchedCount / correctTokens.length;
-    return matchRatio >= 0.60;
+    if (matched) {
+      return { isCorrect: true, isPending: false };
+    }
+
+    // If no predefined match is found, flag it for teacher review instead of failing automatically
+    return { isCorrect: false, isPending: true };
   };
 
   questions.forEach((q, idx) => {
     let isCorrect = false;
+    let isPendingReview = false;
     let selectedOptionText = "Unanswered";
 
     if (q.type === 'text') {
@@ -1333,8 +1330,11 @@ async function submitQuizToFirestore() {
       studentAnswers.push(val);
       selectedOptionText = val !== "" ? val : "Unanswered";
       
-      if (evaluateShortAnswer(val, q.correctAnswer)) {
-        isCorrect = true;
+      if (val !== "") {
+        const evalResult = evaluateMultiAnswer(val, q);
+        isCorrect = evalResult.isCorrect;
+        isPendingReview = evalResult.isPending;
+        if (isPendingReview) requiresTeacherReview = true;
       }
     } else {
       const selected = document.querySelector(`input[name="q_${idx}"]:checked`);
@@ -1349,16 +1349,24 @@ async function submitQuizToFirestore() {
 
     if (isCorrect) score++;
 
-    // Ensure clean display of correct option in detailed response logs
-    const displayCorrect = q.type === 'text' 
-      ? String(q.correctAnswer).replace(/^answer:\s*/i, "").trim() 
-      : (q.options ? q.options[q.correctAnswer] : '');
+    // Format display string for correct option(s)
+    let displayCorrect = "";
+    if (q.type === 'text') {
+      if (Array.isArray(q.acceptedAnswers) && q.acceptedAnswers.length > 0) {
+        displayCorrect = q.acceptedAnswers.join(" / ");
+      } else {
+        displayCorrect = String(q.correctAnswer || "").replace(/^answer:\s*/i, "").trim();
+      }
+    } else {
+      displayCorrect = q.options ? q.options[q.correctAnswer] : '';
+    }
 
     detailedResponses.push({
       questionText: q.question,
       selectedOption: selectedOptionText,
       correctOption: displayCorrect,
-      isCorrect
+      isCorrect,
+      isPendingReview: isPendingReview || false
     });
   });
 
@@ -1376,6 +1384,7 @@ async function submitQuizToFirestore() {
     timeSpentSeconds,
     answers: studentAnswers,
     detailedResponses,
+    status: requiresTeacherReview ? "Pending Review" : "Graded",
     submittedAt: firebase.firestore.FieldValue ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
   };
 
@@ -1384,7 +1393,8 @@ async function submitQuizToFirestore() {
       await db.collection('quiz_results').add(resultRecord);
     }
 
-    alert(`Quiz Submitted Successfully!\nScore: ${score}/${total} (${percentage}%)\nTime Taken: ${formatSeconds(timeSpentSeconds)}`);
+    const reviewNote = requiresTeacherReview ? "\n*(Note: Some text answers are pending educator moderation)*" : "";
+    alert(`Quiz Submitted Successfully!\nScore: ${score}/${total} (${percentage}%)\nTime Taken: ${formatSeconds(timeSpentSeconds)}${reviewNote}`);
 
     // Reset view to dashboard
     const runner = document.getElementById('quizRunner');
@@ -1408,6 +1418,90 @@ async function submitQuizToFirestore() {
   } catch (err) {
     console.error("Error submitting quiz:", err);
     alert("Submission completed locally, but cloud backup failed. Check connection.");
+  }
+}
+
+// ==========================================================================
+// TEACHER MODERATION QUEUE & APPROVAL FUNCTIONS
+// ==========================================================================
+function renderTeacherModerationQueue(submissions) {
+  const container = document.getElementById('teacherModerationContainer');
+  if (!container) return;
+
+  const pendingSubmissions = submissions.filter(sub => sub.status === "Pending Review");
+
+  if (pendingSubmissions.length === 0) {
+    container.innerHTML = `<p class="text-gray-500 text-sm">No short-answer responses currently require moderation.</p>`;
+    return;
+  }
+
+  let html = `<h3 class="text-md font-bold mb-3 text-sky-700">Short-Answer Moderation Queue</h3>`;
+  
+  pendingSubmissions.forEach(sub => {
+    html += `<div class="border border-gray-200 rounded p-4 mb-3 bg-white shadow-sm">
+      <p class="font-semibold text-gray-800">${sub.studentName} (${sub.studentClass}) — Quiz: ${sub.quizTitle}</p>
+      <div class="mt-2 space-y-2">`;
+
+    sub.detailedResponses.forEach((resp, qIdx) => {
+      if (resp.isPendingReview) {
+        html += `<div class="bg-amber-50 border-l-4 border-amber-400 p-2 text-sm">
+          <p class="font-medium text-gray-700">Q: ${resp.questionText}</p>
+          <p class="text-gray-900 mt-1">Student Answer: <span class="font-bold underline">${resp.selectedOption}</span></p>
+          <p class="text-gray-500 text-xs mt-1">Expected Scheme: ${resp.correctOption}</p>
+          <div class="mt-2 flex gap-2">
+            <button onclick="moderateAnswer('${sub.id}', ${qIdx}, true)" class="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700">Approve as Correct</button>
+            <button onclick="moderateAnswer('${sub.id}', ${qIdx}, false)" class="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700">Keep Incorrect</button>
+          </div>
+        </div>`;
+      }
+    });
+
+    html += `</div></div>`;
+  });
+
+  container.innerHTML = html;
+}
+
+async function moderateAnswer(resultId, questionIndex, approve) {
+  if (!db) return;
+
+  try {
+    const docRef = db.collection('quiz_results').doc(resultId);
+    const docSnap = await docRef.get();
+    
+    if (!docSnap.exists) return;
+    const data = docSnap.data();
+
+    let newScore = data.score;
+    const detailed = data.detailedResponses;
+
+    if (detailed[questionIndex].isPendingReview) {
+      detailed[questionIndex].isPendingReview = false;
+      if (approve) {
+        detailed[questionIndex].isCorrect = true;
+        newScore += 1;
+      } else {
+        detailed[questionIndex].isCorrect = false;
+      }
+    }
+
+    const stillPending = detailed.some(r => r.isPendingReview);
+    const newPercentage = Math.round((newScore / data.totalQuestions) * 100);
+
+    await docRef.update({
+      score: newScore,
+      percentage: newPercentage,
+      detailedResponses: detailed,
+      status: stillPending ? "Pending Review" : "Graded"
+    });
+
+    alert("Moderation updated successfully!");
+    if (typeof fetchQuizResults === 'function') {
+      fetchQuizResults();
+    }
+  } catch (err) {
+    console.error("Error updating moderation status:", err);
+    alert("Failed to save moderation action.");
   }
 }
 // ==========================================================================
