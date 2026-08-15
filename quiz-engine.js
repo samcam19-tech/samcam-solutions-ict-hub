@@ -1695,3 +1695,46 @@ function formatSeconds(totalSecs) {
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
 
+// ==========================================
+// UNIFIED ANTI-CHEATING PROTECTIONS
+// ==========================================
+
+let tabSwitchCount = 0;
+const MAX_TAB_SWITCHES = 3;
+
+// 1. Prevent copying
+document.addEventListener("copy", (e) => {
+    const quizRunner = document.getElementById("quizRunner");
+    if (quizRunner && quizRunner.style.display !== "none") {
+        e.preventDefault();
+        alert("Copying questions or content is disabled during assessments.");
+    }
+});
+
+// 2. Prevent right-click context menu
+document.addEventListener("contextmenu", (e) => {
+    const quizRunner = document.getElementById("quizRunner");
+    if (quizRunner && quizRunner.style.display !== "none") {
+        e.preventDefault();
+    }
+});
+
+// 3. Track tab switching / window blurring
+document.addEventListener("visibilitychange", () => {
+    const quizRunner = document.getElementById("quizRunner");
+    if (quizRunner && quizRunner.style.display !== "none") {
+        if (document.hidden) {
+            tabSwitchCount++;
+            
+            if (tabSwitchCount < MAX_TAB_SWITCHES) {
+                alert(`⚠️ Warning #${tabSwitchCount}: You have switched away from the assessment tab. Leaving the quiz again may result in auto-submission!`);
+            } else {
+                alert("Maximum tab switches exceeded. Your assessment is being submitted automatically.");
+                if (typeof submitQuizToFirestore === 'function') {
+                    submitQuizToFirestore();
+                }
+            }
+        }
+    }
+});
+
