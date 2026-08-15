@@ -1254,7 +1254,7 @@ function startTimer(durationMinutes) {
 }
 
 // ==========================================================================
-// SUBMIT QUIZ WITH ROBUST CLEAN-PREFIX SHORT ANSWER ALGORITHM
+// SUBMIT QUIZ WITH STREAMLINED ROBUST SHORT-ANSWER EVALUATION
 // ==========================================================================
 async function submitQuizToFirestore() {
   clearInterval(quizTimerInterval);
@@ -1271,56 +1271,45 @@ async function submitQuizToFirestore() {
   const studentAnswers = [];
   const detailedResponses = [];
 
-  // Helper algorithm with prefix cleaning for short-answer evaluation
+  // Helper algorithm with robust prefix cleaning, substring containment, and keyword matching
   const evaluateShortAnswer = (studentInput, rawCorrectAnswer) => {
     if (!studentInput || !rawCorrectAnswer) return false;
 
-    // Strip out literal "answer:" prefixes if stored from the document import parser
-    const cleanCorrectBase = String(rawCorrectAnswer).replace(/^answer:\s*/i, "").trim();
+    // 1. Strip out literal "answer:" prefixes and normalize strings completely
+    const cleanCorrect = String(rawCorrectAnswer)
+      .replace(/^answer:\s*/i, "")
+      .toLowerCase()
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "")
+      .trim();
 
-    const cleanStudent = studentInput.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim();
-    const cleanCorrect = cleanCorrectBase.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim();
+    const cleanStudent = String(studentInput)
+      .toLowerCase()
+      .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "")
+      .trim();
 
+    // 2. Direct exact match check after cleaning
     if (cleanStudent === cleanCorrect) return true;
 
-    const studentTokens = cleanStudent.split(/\s+/);
-    const correctTokens = cleanCorrect.split(/\s+/);
+    // 3. Substring / Containment check (handles variations like "compiler" vs "compiler program")
+    if (cleanCorrect.includes(cleanStudent) || cleanStudent.includes(cleanCorrect)) {
+      if (cleanStudent.length >= 3) return true;
+    }
 
-    let matchedKeywords = 0;
+    // 4. Token / Keyword match check (ensures core words are present)
+    const studentTokens = cleanStudent.split(/\s+/).filter(t => t.length > 2);
+    const correctTokens = cleanCorrect.split(/\s+/).filter(t => t.length > 2);
+
+    if (correctTokens.length === 0) return false;
+
+    let matchedCount = 0;
     correctTokens.forEach(token => {
-      if (token.length > 2 && studentTokens.includes(token)) {
-        matchedKeywords++;
+      if (studentTokens.includes(token)) {
+        matchedCount++;
       }
     });
 
-    const keywordThreshold = Math.ceil(correctTokens.filter(t => t.length > 2).length * 0.75);
-    if (keywordThreshold > 0 && matchedKeywords >= keywordThreshold) {
-      return true;
-    }
-
-    // Levenshtein similarity ratio for minor typo tolerance
-    const longer = cleanStudent.length > cleanCorrect.length ? cleanStudent : cleanCorrect;
-    const shorter = cleanStudent.length > cleanCorrect.length ? cleanCorrect : cleanStudent;
-    if (longer.length === 0) return 1.0;
-
-    const getLevenshteinDistance = (a, b) => {
-      const matrix = [];
-      for (let i = 0; i <= b.length; i++) matrix[i] = [i];
-      for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-      for (let i = 1; i <= b.length; i++) {
-        for (let j = 1; j <= a.length; j++) {
-          if (b.charAt(i - 1) === a.charAt(j - 1)) {
-            matrix[i][j] = matrix[i - 1][j - 1];
-          } else {
-            matrix[i][j] = Math.min(matrix[i - 1][j - 1] + 1, Math.min(matrix[i][j - 1] + 1, matrix[i - 1][j] + 1));
-          }
-        }
-      }
-      return matrix[b.length][a.length];
-    };
-
-    const similarity = (longer.length - getLevenshteinDistance(longer, shorter)) / longer.length;
-    return similarity >= 0.82;
+    const matchRatio = matchedCount / correctTokens.length;
+    return matchRatio >= 0.60;
   };
 
   questions.forEach((q, idx) => {
