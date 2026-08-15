@@ -1549,7 +1549,7 @@ function generateLearnerPDF(quizId) {
     item.questionText,
     item.selectedOption,
     item.correctOption,
-    item.isCorrect ? "[ ✓ ]" : "[ ✗ ]"
+    item.isCorrect ? "[ Correct ]" : "[ Wrong ]"
   ]);
 
   doc.autoTable({
@@ -1567,7 +1567,7 @@ function generateLearnerPDF(quizId) {
     },
     didParseCell: function(data) {
       if (data.column.index === 4 && data.cell.section === 'body') {
-        if (data.cell.raw === '[ ✓ ]') {
+        if (data.cell.raw === '[ correct ]') {
           data.cell.styles.textColor = [22, 163, 74]; // Green for correct/yes
         } else {
           data.cell.styles.textColor = [220, 38, 38]; // Red for incorrect/no
