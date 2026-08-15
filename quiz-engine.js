@@ -667,7 +667,7 @@ function closeInspectorModal() {
 // ==========================================================================
 // MULTI-SHEET EXCEL EXPORT WITH BORDERS & GROUPING BY CLASS & QUIZ
 // ==========================================================================
-function exportTeacherResultsToExcel() {
+function exportResultsToExcel() {
   if (!window.XLSX) {
     alert("SheetJS library is not loaded. Please ensure the Excel library script is included.");
     return;
