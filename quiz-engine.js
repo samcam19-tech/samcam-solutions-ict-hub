@@ -476,6 +476,7 @@ function parseAndInjectQuestions(rawText) {
     let options = ["", "", "", ""];
     let correctIndex = 0;
     let qType = 'mcq';
+    let textAnswerValue = "";
 
     lines.forEach((line, idx) => {
       if (idx === 0) {
@@ -493,6 +494,9 @@ function parseAndInjectQuestions(rawText) {
         else if (ansChar === 'C') correctIndex = 2;
         else if (ansChar === 'D') correctIndex = 3;
         else correctIndex = 0;
+      } else if (/^answer[\.:]?/i.test(line)) {
+        // Explicitly capture lines starting with "answer:" or "answer."
+        textAnswerValue = line.replace(/^answer[\.:]?\s*/i, '').trim();
       }
     });
 
@@ -500,14 +504,21 @@ function parseAndInjectQuestions(rawText) {
       const hasOptions = options.some(opt => opt !== "");
       if (!hasOptions) {
         qType = 'text';
+        // If an explicit answer line wasn't matched separately, fall back to line 1 or strip prefixes
+        if (!textAnswerValue && lines[1]) {
+          textAnswerValue = lines[1].replace(/^answer[\.:]?\s*/i, "").trim();
+        } else if (textAnswerValue) {
+          textAnswerValue = textAnswerValue.replace(/^answer[\.:]?\s*/i, "").trim();
+        }
       }
 
-      // Inject directly into the builder form
+      // Inject directly into the builder form with cleaned text answer and empty array for accepted variations
       addQuestionToBuilder({
         type: qType,
         question: questionText,
         options: hasOptions ? options : undefined,
-        correctAnswer: hasOptions ? correctIndex : (lines[1] || "")
+        correctAnswer: hasOptions ? correctIndex : textAnswerValue,
+        acceptedAnswers: hasOptions ? [] : [textAnswerValue]
       });
     }
   });
