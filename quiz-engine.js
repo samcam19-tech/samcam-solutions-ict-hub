@@ -232,24 +232,31 @@ function fetchActiveQuizzes() {
   });
 }
 
+// --- Pagination State for Available Quizzes ---
+let currentQuizzesPage = 1;
+const quizzesPerPage = 6;
+let globalFilteredQuizzes = []; // Stores filtered items globally for pagination use
+
 // ==========================================================================
-// RENDER QUIZ CARDS (Maintained & Enhanced)
+// RENDER QUIZ CARDS (Paginated Version)
 // ==========================================================================
 function renderQuizCards(quizzesList) {
   const quizListContainer = document.getElementById('quizList');
+  const paginationContainer = document.getElementById('quizzesPagination');
   if (!quizListContainer) return;
 
   const userRole = (currentUser && currentUser.role ? currentUser.role : '').toLowerCase();
   const isAdminOrTeacher = userRole === 'admin' || userRole === 'teacher';
 
-  const filteredQuizzes = quizzesList.filter(q => {
+  // Filter quizzes based on user role and class
+  globalFilteredQuizzes = quizzesList.filter(q => {
     if (isAdminOrTeacher) return true;
     if (!currentUser || !currentUser.class) return true;
     const target = q.targetClass || 'All';
     return target === 'All' || target === currentUser.class;
   });
 
-  if (filteredQuizzes.length === 0) {
+  if (globalFilteredQuizzes.length === 0) {
     const currentClassText = currentUser && currentUser.class ? 'for class ' + currentUser.class : '';
     quizListContainer.innerHTML = `
       <div style="grid-column: 1/-1; background:#f1f5f9; text-align:center; padding:2rem; border-radius:8px; color:#475569;">
@@ -257,11 +264,40 @@ function renderQuizCards(quizzesList) {
         <p style="margin:0; font-weight:500;">No active quizzes assigned ${currentClassText}.</p>
       </div>
     `;
+    if (paginationContainer) paginationContainer.style.display = 'none';
     return;
   }
 
+  // Reset to page 1 on fresh render and display pagination bar
+  currentQuizzesPage = 1;
+  renderQuizCardsPage();
+}
+
+// Renders the specific slice of quiz cards for the current page
+function renderQuizCardsPage() {
+  const quizListContainer = document.getElementById('quizList');
+  const paginationContainer = document.getElementById('quizzesPagination');
+  
+  if (!globalFilteredQuizzes || globalFilteredQuizzes.length === 0) {
+    if (paginationContainer) paginationContainer.style.display = 'none';
+    return;
+  }
+
+  if (paginationContainer) paginationContainer.style.display = 'flex';
+
+  const totalPages = Math.ceil(globalFilteredQuizzes.length / quizzesPerPage) || 1;
+  if (currentQuizzesPage > totalPages) currentQuizzesPage = totalPages;
+  if (currentQuizzesPage < 1) currentQuizzesPage = 1;
+
+  const start = (currentQuizzesPage - 1) * quizzesPerPage;
+  const end = start + quizzesPerPage;
+  const paginatedQuizzes = globalFilteredQuizzes.slice(start, end);
+
+  const userRole = (currentUser && currentUser.role ? currentUser.role : '').toLowerCase();
+  const isAdminOrTeacher = userRole === 'admin' || userRole === 'teacher';
+
   let html = '';
-  filteredQuizzes.forEach(q => {
+  paginatedQuizzes.forEach(q => {
     const qCount = q.questions ? q.questions.length : 0;
     const attempt = learnerSubmissionsMap[q.id];
 
@@ -345,6 +381,23 @@ function renderQuizCards(quizzesList) {
   });
 
   quizListContainer.innerHTML = html;
+
+  // Update Pagination Controls UI text & button states
+  const infoEl = document.getElementById('quizzesPaginationInfo');
+  const pageIndEl = document.getElementById('quizPageIndicator');
+  const prevBtn = document.getElementById('quizPrevBtn');
+  const nextBtn = document.getElementById('quizNextBtn');
+
+  if (infoEl) infoEl.innerText = `Showing ${start + 1} to ${Math.min(end, globalFilteredQuizzes.length)} of ${globalFilteredQuizzes.length} quizzes`;
+  if (pageIndEl) pageIndEl.innerText = `Page ${currentQuizzesPage} of ${totalPages}`;
+  if (prevBtn) prevBtn.disabled = currentQuizzesPage === 1;
+  if (nextBtn) nextBtn.disabled = currentQuizzesPage === totalPages;
+}
+
+// Triggered by Next / Prev buttons in HTML for Available Assessments
+function changeQuizzesPage(direction) {
+  currentQuizzesPage += direction;
+  renderQuizCardsPage();
 }
 
 // ==========================================================================
