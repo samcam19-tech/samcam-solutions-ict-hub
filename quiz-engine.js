@@ -738,12 +738,17 @@ async function handleSaveQuiz(event) {
 // EDUCATOR RESULTS, OVERSIGHT & ANALYTICS DASHBOARD (Maintained & Enhanced)
 // ==========================================================================
 
+// Pagination State for Teacher Submissions
+let currentSubmissionsPage = 1;
+const submissionsPerPage = 10; // Change this if you want more or fewer rows per page
+
 async function fetchQuizResults() {
   const resultsContainer = document.getElementById('teacherResultsTable');
   if (!resultsContainer) return;
 
   if (!db) {
     resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:1rem;">Live results database unreachable.</td></tr>`;
+    document.getElementById('submissionsPagination').style.display = 'none';
     return;
   }
 
@@ -751,63 +756,110 @@ async function fetchQuizResults() {
     const snapshot = await db.collection('quiz_results').orderBy('submittedAt', 'desc').get();
     if (snapshot.empty) {
       resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:1rem;">No submissions registered yet.</td></tr>`;
+      document.getElementById('submissionsPagination').style.display = 'none';
       return;
     }
 
     globalTeacherResults = [];
-    let rowsHtml = '';
-
     snapshot.forEach(doc => {
-      const res = { id: doc.id, ...doc.data() };
-      globalTeacherResults.push(res);
-
-      const submittedTime = res.submittedAt && res.submittedAt.toDate 
-        ? new Date(res.submittedAt.toDate()).toLocaleString() 
-        : 'Recently';
-
-      rowsHtml += `
-        <tr style="border-bottom:1px solid #f1f5f9;" id="submissionRow_${doc.id}">
-          <!-- Column 1: Student Name -->
-          <td style="padding:0.75rem; font-weight:600; color:#0f172a;">${res.studentName}</td>
-
-          <!-- Column 2: Class -->
-          <td style="padding:0.75rem; color:#475569; font-weight:500;">${res.studentClass || 'N/A'}</td>
-
-          <!-- Column 3: Assessment Title -->
-          <td style="padding:0.75rem; font-weight:500; color:#1e293b;">${res.quizTitle}</td>
-
-          <!-- Column 4: Time Spent -->
-          <td style="padding:0.75rem; font-size:0.85rem; color:#475569;">${formatSeconds(res.timeSpentSeconds)}</td>
-
-          <!-- Column 5: Score (%) -->
-          <td style="padding:0.75rem;">
-            <span style="font-weight:700; color:${res.percentage >= 50 ? '#16a34a' : '#dc2626'}; background:${res.percentage >= 50 ? '#f0fdf4' : '#fef2f2'}; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.85rem;">
-              ${res.score}/${res.totalQuestions} (${res.percentage}%)
-            </span>
-          </td>
-
-          <!-- Column 6: Submitted At -->
-          <td style="padding:0.75rem; font-size:0.85rem; color:#64748b;">${submittedTime}</td>
-
-          <!-- Column 7: Actions (Icons Only) -->
-          <td style="padding:0.75rem;">
-            <div style="display: flex; gap: 0.5rem; align-items: center;">
-              <button class="btn btn-secondary btn-sm" onclick="inspectLearnerSubmission('${doc.id}')" title="Inspect Submission" style="background:#0284c7; border:none; padding:0.35rem 0.5rem; font-size:0.85rem; border-radius:4px; color:#fff; cursor:pointer;">
-                <i class="fa-solid fa-eye"></i>
-              </button>
-              <button class="btn btn-danger btn-sm" onclick="deleteQuizSubmission('${doc.id}')" title="Delete Submission" style="background:#dc2626; border:none; padding:0.35rem 0.5rem; font-size:0.85rem; border-radius:4px; color:#fff; cursor:pointer;">
-                <i class="fa-solid fa-trash"></i>
-              </button>
-            </div>
-          </td>
-        </tr>
-      `;
+      globalTeacherResults.push({ id: doc.id, ...doc.data() });
     });
-    resultsContainer.innerHTML = rowsHtml;
+
+    // Render the first page of results
+    currentSubmissionsPage = 1;
+    renderSubmissionsTablePage();
+
   } catch (err) {
     console.error("Error fetching submission results:", err);
     resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:1rem;">Failed to load submission results.</td></tr>`;
+    document.getElementById('submissionsPagination').style.display = 'none';
   }
+}
+
+// Renders the specific slice of rows for the current page
+function renderSubmissionsTablePage() {
+  const resultsContainer = document.getElementById('teacherResultsTable');
+  const paginationContainer = document.getElementById('submissionsPagination');
+  
+  if (!globalTeacherResults || globalTeacherResults.length === 0) {
+    resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:1rem;">No submissions registered yet.</td></tr>`;
+    if (paginationContainer) paginationContainer.style.display = 'none';
+    return;
+  }
+
+  if (paginationContainer) paginationContainer.style.display = 'flex';
+
+  const totalPages = Math.ceil(globalTeacherResults.length / submissionsPerPage) || 1;
+  if (currentSubmissionsPage > totalPages) currentSubmissionsPage = totalPages;
+  if (currentSubmissionsPage < 1) currentSubmissionsPage = 1;
+
+  const start = (currentSubmissionsPage - 1) * submissionsPerPage;
+  const end = start + submissionsPerPage;
+  const paginatedItems = globalTeacherResults.slice(start, end);
+
+  let rowsHtml = '';
+  paginatedItems.forEach(res => {
+    const submittedTime = res.submittedAt && res.submittedAt.toDate 
+      ? new Date(res.submittedAt.toDate()).toLocaleString() 
+      : 'Recently';
+
+    rowsHtml += `
+      <tr style="border-bottom:1px solid #f1f5f9;" id="submissionRow_${res.id}">
+        <!-- Column 1: Student Name -->
+        <td style="padding:0.75rem; font-weight:600; color:#0f172a;">${res.studentName}</td>
+
+        <!-- Column 2: Class -->
+        <td style="padding:0.75rem; color:#475569; font-weight:500;">${res.studentClass || 'N/A'}</td>
+
+        <!-- Column 3: Assessment Title -->
+        <td style="padding:0.75rem; font-weight:500; color:#1e293b;">${res.quizTitle}</td>
+
+        <!-- Column 4: Time Spent -->
+        <td style="padding:0.75rem; font-size:0.85rem; color:#475569;">${formatSeconds(res.timeSpentSeconds)}</td>
+
+        <!-- Column 5: Score (%) -->
+        <td style="padding:0.75rem;">
+          <span style="font-weight:700; color:${res.percentage >= 50 ? '#16a34a' : '#dc2626'}; background:${res.percentage >= 50 ? '#f0fdf4' : '#fef2f2'}; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.85rem;">
+            ${res.score}/${res.totalQuestions} (${res.percentage}%)
+          </span>
+        </td>
+
+        <!-- Column 6: Submitted At -->
+        <td style="padding:0.75rem; font-size:0.85rem; color:#64748b;">${submittedTime}</td>
+
+        <!-- Column 7: Actions (Icons Only) -->
+        <td style="padding:0.75rem;">
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button class="btn btn-secondary btn-sm" onclick="inspectLearnerSubmission('${res.id}')" title="Inspect Submission" style="background:#0284c7; border:none; padding:0.35rem 0.5rem; font-size:0.85rem; border-radius:4px; color:#fff; cursor:pointer;">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="deleteQuizSubmission('${res.id}')" title="Delete Submission" style="background:#dc2626; border:none; padding:0.35rem 0.5rem; font-size:0.85rem; border-radius:4px; color:#fff; cursor:pointer;">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  });
+
+  resultsContainer.innerHTML = rowsHtml;
+
+  // Update Pagination Controls UI text & button states
+  const infoEl = document.getElementById('submissionsPaginationInfo');
+  const pageIndEl = document.getElementById('subPageIndicator');
+  const prevBtn = document.getElementById('subPrevBtn');
+  const nextBtn = document.getElementById('subNextBtn');
+
+  if (infoEl) infoEl.innerText = `Showing ${start + 1} to ${Math.min(end, globalTeacherResults.length)} of ${globalTeacherResults.length} entries`;
+  if (pageIndEl) pageIndEl.innerText = `Page ${currentSubmissionsPage} of ${totalPages}`;
+  if (prevBtn) prevBtn.disabled = currentSubmissionsPage === 1;
+  if (nextBtn) nextBtn.disabled = currentSubmissionsPage === totalPages;
+}
+
+// Triggered by Next / Prev buttons in HTML
+function changeSubmissionsPage(direction) {
+  currentSubmissionsPage += direction;
+  renderSubmissionsTablePage();
 }
 
 // --- Analytics & Visual Dashboard Integration ---
