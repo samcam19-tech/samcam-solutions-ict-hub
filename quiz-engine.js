@@ -1237,8 +1237,16 @@ function editQuiz(quizId) {
 }
 
 // ==========================================================================
-// 7. QUIZ RUNNER ENGINE (Maintained & Fully Integrated)
+// Fisher-Yates Shuffle Algorithm
 // ==========================================================================
+
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
 
 async function startQuiz(quizId) {
   try {
@@ -1252,8 +1260,11 @@ async function startQuiz(quizId) {
       return;
     }
 
-    // Reset tab switch count for a fresh quiz attempt
+    // Reset tab switch count and cheating flag for a fresh quiz attempt
     tabSwitchCount = 0;
+    if (typeof hasQuizSubmittedDueToCheating !== 'undefined') {
+        hasQuizSubmittedDueToCheating = false;
+    }
 
     const cachedQuizzes = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || MOCK_QUIZZES;
     let foundQuiz = cachedQuizzes.find(q => q.id === quizId);
@@ -1272,7 +1283,24 @@ async function startQuiz(quizId) {
       return;
     }
 
-    activeQuizData = foundQuiz;
+    // Deep copy or clone questions to avoid mutating the original cached/database array permanently
+    let questionsCopy = JSON.parse(JSON.stringify(foundQuiz.questions || []));
+
+    // 1. Shuffle the questions array so Q1 becomes Q7, etc.
+    questionsCopy = shuffleArray(questionsCopy);
+
+    // 2. Shuffle options for each multiple-choice question
+    questionsCopy.forEach(q => {
+      if (q.options && Array.isArray(q.options)) {
+        q.options = shuffleArray(q.options);
+      }
+    });
+
+    // Assign the randomized questions to activeQuizData
+    activeQuizData = {
+      ...foundQuiz,
+      questions: questionsCopy
+    };
 
     const titleEl = document.getElementById('activeQuizTitle');
     const classEl = document.getElementById('activeQuizClass');
@@ -1768,3 +1796,5 @@ document.addEventListener("visibilitychange", () => {
 window.addEventListener("blur", () => {
     handleCheatingViolation("You clicked outside the assessment window into a separate browser window or split screen.");
 });
+
+
