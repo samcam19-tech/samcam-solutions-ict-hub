@@ -1548,7 +1548,7 @@ function generateLearnerPDF(quizId) {
     item.questionText,
     item.selectedOption,
     item.correctOption,
-    item.isCorrect ? "✓" : "✗"
+    item.isCorrect ? "Pass" : "Fail"
   ]);
 
   doc.autoTable({
@@ -1566,7 +1566,7 @@ function generateLearnerPDF(quizId) {
     },
     didParseCell: function(data) {
       if (data.column.index === 4 && data.cell.section === 'body') {
-        if (data.cell.raw === '✓') {
+        if (data.cell.raw === 'Pass') {
           data.cell.styles.textColor = [22, 163, 74]; // Green for tick
         } else {
           data.cell.styles.textColor = [220, 38, 38]; // Red for cross
