@@ -1543,13 +1543,12 @@ function generateLearnerPDF(quizId) {
   doc.setDrawColor(226, 232, 240);
   doc.line(14, 60, 196, 60);
 
-  // Using ASCII safe symbols (Y for Tick / N for Cross) to avoid PDF font rendering bugs
   const tableData = (attempt.detailedResponses || []).map((item, idx) => [
     idx + 1,
     item.questionText,
     item.selectedOption,
     item.correctOption,
-    item.isCorrect ? "[ Correct ]" : "[ Wrong ]"
+    item.isCorrect ? "✓" : "✗"
   ]);
 
   doc.autoTable({
@@ -1567,10 +1566,10 @@ function generateLearnerPDF(quizId) {
     },
     didParseCell: function(data) {
       if (data.column.index === 4 && data.cell.section === 'body') {
-        if (data.cell.raw === '[ correct ]') {
-          data.cell.styles.textColor = [22, 163, 74]; // Green for correct/yes
+        if (data.cell.raw === '✓') {
+          data.cell.styles.textColor = [22, 163, 74]; // Green for tick
         } else {
-          data.cell.styles.textColor = [220, 38, 38]; // Red for incorrect/no
+          data.cell.styles.textColor = [220, 38, 38]; // Red for cross
         }
       }
     }
