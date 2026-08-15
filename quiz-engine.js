@@ -1252,6 +1252,9 @@ async function startQuiz(quizId) {
       return;
     }
 
+    // Reset tab switch count for a fresh quiz attempt
+    tabSwitchCount = 0;
+
     const cachedQuizzes = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || MOCK_QUIZZES;
     let foundQuiz = cachedQuizzes.find(q => q.id === quizId);
     const headerBackBtn = document.getElementById('runnerBackButton');
@@ -1691,3 +1694,23 @@ function formatSeconds(totalSecs) {
   const s = totalSecs % 60;
   return m > 0 ? `${m}m ${s}s` : `${s}s`;
 }
+
+// Track how many times a user leaves the quiz page
+let tabSwitchCount = 0;
+const MAX_SWITCHES = 3; // Adjust threshold as needed
+
+document.addEventListener("visibilitychange", () => {
+    // Check if the quiz runner is currently active
+    const quizRunner = document.getElementById("quizRunner");
+    if (quizRunner && quizRunner.style.display !== "none") {
+        if (document.hidden) {
+            tabSwitchCount++;
+            alert(`⚠️ Warning #${tabSwitchCount}: You have switched away from the assessment tab. Leaving the quiz again may result in auto-submission!`);
+            
+            if (tabSwitchCount >= MAX_SWITCHES) {
+                alert("Maximum tab switches exceeded. Your assessment is being submitted automatically.");
+                submitQuizToFirestore(); // Triggers your existing submission function
+            }
+        }
+    }
+});
