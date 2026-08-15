@@ -1254,7 +1254,7 @@ function startTimer(durationMinutes) {
 }
 
 // ==========================================================================
-// SUBMIT QUIZ WITH INTELLIGENT SHORT ANSWER ALGORITHM
+// SUBMIT QUIZ WITH ROBUST CLEAN-PREFIX SHORT ANSWER ALGORITHM
 // ==========================================================================
 async function submitQuizToFirestore() {
   clearInterval(quizTimerInterval);
@@ -1271,12 +1271,15 @@ async function submitQuizToFirestore() {
   const studentAnswers = [];
   const detailedResponses = [];
 
-  // Helper algorithm for fuzzy short-answer evaluation
-  const evaluateShortAnswer = (studentInput, correctAnswer) => {
-    if (!studentInput || !correctAnswer) return false;
+  // Helper algorithm with prefix cleaning for short-answer evaluation
+  const evaluateShortAnswer = (studentInput, rawCorrectAnswer) => {
+    if (!studentInput || !rawCorrectAnswer) return false;
+
+    // Strip out literal "answer:" prefixes if stored from the document import parser
+    const cleanCorrectBase = String(rawCorrectAnswer).replace(/^answer:\s*/i, "").trim();
 
     const cleanStudent = studentInput.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim();
-    const cleanCorrect = correctAnswer.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim();
+    const cleanCorrect = cleanCorrectBase.toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, "").trim();
 
     if (cleanStudent === cleanCorrect) return true;
 
@@ -1330,7 +1333,6 @@ async function submitQuizToFirestore() {
       studentAnswers.push(val);
       selectedOptionText = val !== "" ? val : "Unanswered";
       
-      // Evaluates text using the flexible token & typo-tolerant algorithm
       if (evaluateShortAnswer(val, q.correctAnswer)) {
         isCorrect = true;
       }
@@ -1347,10 +1349,15 @@ async function submitQuizToFirestore() {
 
     if (isCorrect) score++;
 
+    // Ensure clean display of correct option in detailed response logs
+    const displayCorrect = q.type === 'text' 
+      ? String(q.correctAnswer).replace(/^answer:\s*/i, "").trim() 
+      : (q.options ? q.options[q.correctAnswer] : '');
+
     detailedResponses.push({
       questionText: q.question,
       selectedOption: selectedOptionText,
-      correctOption: q.type === 'text' ? q.correctAnswer : (q.options ? q.options[q.correctAnswer] : ''),
+      correctOption: displayCorrect,
       isCorrect
     });
   });
