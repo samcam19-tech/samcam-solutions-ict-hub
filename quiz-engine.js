@@ -664,33 +664,115 @@ function closeInspectorModal() {
   if (modal) modal.style.display = 'none';
 }
 
-// Generate Excel Spreadsheet for Teachers
-function exportResultsToExcel() {
-  if (globalTeacherResults.length === 0) {
-    return alert("No student results available to export.");
+// ==========================================================================
+// MULTI-SHEET EXCEL EXPORT WITH BORDERS & GROUPING BY CLASS & QUIZ
+// ==========================================================================
+function exportTeacherResultsToExcel() {
+  if (!window.XLSX) {
+    alert("SheetJS library is not loaded. Please ensure the Excel library script is included.");
+    return;
   }
 
-  if (typeof XLSX === 'undefined') {
-    return alert("SheetJS library not detected. Ensure sheetjs CDN script is included in HTML.");
+  if (!globalTeacherResults || globalTeacherResults.length === 0) {
+    alert("No student results available to export.");
+    return;
   }
 
-  const exportRows = globalTeacherResults.map(s => ({
-    "Student Name": s.studentName,
-    "Username": s.studentUsername,
-    "Class": s.studentClass || "N/A",
-    "Assessment Title": s.quizTitle,
-    "Score Obtained": s.score,
-    "Total Questions": s.totalQuestions,
-    "Percentage Score (%)": s.percentage,
-    "Time Spent": formatSeconds(s.timeSpentSeconds),
-    "Submission Date": s.submittedAt && s.submittedAt.toDate ? new Date(s.submittedAt.toDate()).toLocaleString() : 'N/A'
-  }));
+  // 1. Create a new workbook
+  const wb = XLSX.utils.book_new();
 
-  const worksheet = XLSX.utils.json_to_sheet(exportRows);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, "Student Scores");
+  // 2. Group submissions by Class -> then by Quiz Title
+  // Structure: groupedData[className][quizTitle] = [rows...]
+  const groupedData = {};
 
-  XLSX.writeFile(workbook, `Assessment_Scores_${new Date().toISOString().slice(0, 10)}.xlsx`);
+  globalTeacherResults.forEach(res => {
+    const className = res.studentClass || "Unassigned Class";
+    const quizTitle = res.quizTitle || "General Quiz";
+
+    if (!groupedData[className]) {
+      groupedData[className] = {};
+    }
+    if (!groupedData[className][quizTitle]) {
+      groupedData[className][quizTitle] = [];
+    }
+
+    groupedData[className][quizTitle].push({
+      "Student Name": res.studentName || "N/A",
+      "Class": className,
+      "Assessment Title": quizTitle,
+      "Score (%)": `${res.score || 0}/${res.totalQuestions || 0} (${res.percentage || 0}%)`,
+      "Time Spent": formatSeconds ? formatSeconds(res.timeSpentSeconds) : `${res.timeSpentSeconds || 0}s`,
+      "Submitted At": res.submittedAt && res.submittedAt.toDate ? new Date(res.submittedAt.toDate()).toLocaleString() : "Recently"
+    });
+  });
+
+  // 3. Iterate through each class and quiz to build individual sheets
+  Object.keys(groupedData).forEach(className => {
+    Object.keys(groupedData[className]).forEach(quizTitle => {
+      const rows = groupedData[className][quizTitle];
+
+      // Convert rows array to worksheet
+      const ws = XLSX.utils.json_to_sheet(rows);
+
+      // Define standard thin border and cell styling
+      const thinBorder = {
+        top: { style: "thin", color: { rgb: "D1D5DB" } },
+        bottom: { style: "thin", color: { rgb: "D1D5DB" } },
+        left: { style: "thin", color: { rgb: "D1D5DB" } },
+        right: { style: "thin", color: { rgb: "D1D5DB" } }
+      };
+
+      const headerStyle = {
+        font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11, name: "Calibri" },
+        fill: { fgColor: { rgb: "0284C7" } }, // Sky blue header
+        alignment: { horizontal: "center", vertical: "center" },
+        border: thinBorder
+      };
+
+      const cellStyle = {
+        font: { sz: 10, name: "Calibri", color: { rgb: "1F2937" } },
+        alignment: { horizontal: "left", vertical: "center" },
+        border: thinBorder
+      };
+
+      // Apply styles to cells if range is defined
+      if (ws['!ref']) {
+        const range = XLSX.utils.decode_range(ws['!ref']);
+        
+        // Auto-adjust column widths
+        const colWidths = [];
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          let maxLen = 10;
+          for (let R = range.s.r; R <= range.e.r; ++R) {
+            const cellAddress = { c: C, r: R };
+            const cellRef = XLSX.utils.encode_cell(cellAddress);
+            if (ws[cellRef]) {
+              // Apply borders and formatting to every cell
+              ws[cellRef].s = (R === 0) ? headerStyle : cellStyle;
+
+              const val = String(ws[cellRef].v || "");
+              if (val.length > maxLen) maxLen = val.length;
+            }
+          }
+          colWidths.push({ wch: Math.max(maxLen + 4, 15) });
+        }
+        ws['!cols'] = colWidths;
+      }
+
+      // Format sheet name safely (Excel sheet names max length is 31 chars and cannot contain special chars like : \ / ? * [ ])
+      let safeSheetName = `${className} - ${quizTitle}`.replace(/[:\\\/?*\[\]]/g, "");
+      if (safeSheetName.length > 31) {
+        safeSheetName = safeSheetName.substring(0, 31);
+      }
+
+      // Append worksheet to the workbook
+      XLSX.utils.book_append_sheet(wb, ws, safeSheetName);
+    });
+  });
+
+  // 4. Generate filename with date and trigger download
+  const dateStr = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `Student_Quiz_Results_${dateStr}.xlsx`);
 }
 
 // Delete a student's submission from the oversight table
