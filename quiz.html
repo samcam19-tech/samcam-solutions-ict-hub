@@ -24,7 +24,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
 
   <!-- SheetJS for Excel Exports -->
-<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -92,6 +92,20 @@
           </div>
         </div>
 
+        <!-- Document Import Box -->
+        <div style="background:#f8fafc; border:1px dashed #cbd5e1; padding:1rem; border-radius:8px; margin:1rem 0; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h4 style="margin:0 0 0.2rem 0; font-size:0.95rem; color:#0f172a;"><i class="fa-solid fa-file-arrow-up" style="color:#0284c7;"></i> Import Questions from File</h4>
+            <p style="margin:0; font-size:0.8rem; color:#64748b;">Upload a Word (.docx) or text outline to auto-populate questions.</p>
+          </div>
+          <div>
+            <input type="file" id="quizDocInput" accept=".docx, .txt" style="display:none;" onchange="handleDocumentImport(event)">
+            <button type="button" onclick="document.getElementById('quizDocInput').click()" class="btn btn-secondary" style="background:#0284c7; color:#fff; padding:0.5rem 1rem; border-radius:6px; border:none; cursor:pointer; font-size:0.85rem;">
+              <i class="fa-solid fa-upload"></i> Choose Document
+            </button>
+          </div>
+        </div>
+
         <!-- Dynamic Questions Container -->
         <div id="builderQuestionsContainer" class="builder-questions"></div>
 
@@ -112,7 +126,7 @@
       <div class="results-table-container">
         <div class="results-header">
           <h4><i class="fa-solid fa-chart-column"></i> Student Submissions Oversight</h4>
-          <button class="btn btn-excel" onclick="exportResultsToExcel()">
+          <button class="btn btn-excel" onclick="exportTeacherResultsToExcel()">
             <i class="fa-solid fa-file-excel"></i> Export to Excel
           </button>
         </div>
