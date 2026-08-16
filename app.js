@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SAMCAM SOLUTIONS - ACADEMIC PORTAL HUB ENGINE
+   SAMCAM SOLUTIONS - ACADEMIC PORTAL HUB ENGINE (v2.5 - Final Integrated)
    ========================================================================== */
 
 let allResources = [];
@@ -15,12 +15,73 @@ document.addEventListener("DOMContentLoaded", () => {
   // Initialize Theme
   initTheme();
 
+  // Load state from URL parameters first before fetching data
+  loadStateFromURL();
+
   // Always load fresh data from data.json first (bypasses local caching issues)
   fetchDataJSON();
 
   // Scroll listener for Back to Top Button
   window.addEventListener('scroll', handleScroll);
+
+  // Listen to browser back/forward navigation buttons to sync state seamlessly
+  window.addEventListener('popstate', () => {
+    loadStateFromURL();
+    renderCards();
+    syncUIControls();
+  });
 });
+
+/* ==========================================================================
+   URL STATE SYNCHRONIZATION & DEEP LINKING
+   ========================================================================== */
+function loadStateFromURL() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('page')) currentPage = parseInt(params.get('page'), 10) || 1;
+  if (params.has('class')) currentClass = params.get('class');
+  if (params.has('category')) currentCategory = params.get('category');
+  if (params.has('q')) {
+    searchQuery = params.get('q').toLowerCase().trim();
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) searchInput.value = searchQuery;
+    const clearBtn = document.getElementById('clearSearchBtn');
+    if (clearBtn) clearBtn.style.display = searchQuery.length > 0 ? 'block' : 'none';
+  }
+}
+
+function updateURL() {
+  const params = new URLSearchParams();
+  if (currentPage > 1) params.set('page', currentPage);
+  if (currentClass !== 'ALL') params.set('class', currentClass);
+  if (currentCategory !== 'ALL') params.set('category', currentCategory);
+  if (searchQuery.trim() !== '') params.set('q', searchQuery);
+
+  const newQueryString = params.toString();
+  const newRelativePathQuery = window.location.pathname + (newQueryString ? '?' + newQueryString : '');
+  history.replaceState(null, '', newRelativePathQuery);
+}
+
+function syncUIControls() {
+  // Sync Class segment active state
+  document.querySelectorAll('#classFilterGroup .segment-btn').forEach(btn => {
+    const btnText = btn.textContent.trim();
+    if (btnText.toUpperCase() === currentClass.toUpperCase()) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  // Sync Category segment active state
+  document.querySelectorAll('#categoryFilterGroup .segment-btn').forEach(btn => {
+    const btnText = btn.textContent.trim();
+    if (btnText.toUpperCase() === currentCategory.toUpperCase()) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+}
 
 /* ==========================================================================
    DATA FETCHING & INITIALIZATION
@@ -56,6 +117,7 @@ function fetchDataJSON() {
 }
 
 function initPortal() {
+  syncUIControls();
   updateStatsCounters();
   renderCards();
 }
@@ -70,6 +132,7 @@ function handleSearchInput(e) {
   if (clearBtn) {
     clearBtn.style.display = searchQuery.length > 0 ? 'block' : 'none';
   }
+  updateURL();
   renderCards();
 }
 
@@ -81,6 +144,7 @@ function clearSearch() {
     searchQuery = '';
     const clearBtn = document.getElementById('clearSearchBtn');
     if (clearBtn) clearBtn.style.display = 'none';
+    updateURL();
     renderCards();
   }
 }
@@ -89,6 +153,7 @@ function filterClass(cls, event) {
   currentPage = 1; // Reset to page 1 on class filter
   currentClass = cls;
   updateActiveButtons('#classFilterGroup .segment-btn', event ? event.currentTarget || event.target : null);
+  updateURL();
   renderCards();
 }
 
@@ -96,6 +161,7 @@ function filterCategory(cat, event) {
   currentPage = 1; // Reset to page 1 on category filter
   currentCategory = cat;
   updateActiveButtons('#categoryFilterGroup .segment-btn', event ? event.currentTarget || event.target : null);
+  updateURL();
   renderCards();
 }
 
@@ -113,20 +179,28 @@ function resetFilters() {
   currentPage = 1; // Reset to page 1 on reset
   currentClass = 'ALL';
   currentCategory = 'ALL';
-  clearSearch();
+  
+  // Explicitly clear search input element value as requested
+  const searchInput = document.getElementById('searchInput');
+  if (searchInput) searchInput.value = '';
+  searchQuery = '';
+  
+  const clearBtn = document.getElementById('clearSearchBtn');
+  if (clearBtn) clearBtn.style.display = 'none';
   
   document.querySelectorAll('.segmented-control .segment-btn').forEach(btn => {
     btn.classList.remove('active');
-    if (btn.textContent.trim().toLowerCase().includes('all')) {
+    if (btn.textContent.trim().toUpperCase() === 'ALL') {
       btn.classList.add('active');
     }
   });
   
+  updateURL();
   renderCards();
 }
 
 /* ==========================================================================
-   2. FILE TYPE ICON RESOLVER
+   2. FILE TYPE ICON RESOLVER (Includes Zip Folders Support)
    ========================================================================== */
 function getFileTypeIcon(url) {
   if (!url) return { icon: 'fa-file', label: 'FILE' };
@@ -150,14 +224,15 @@ function getFileTypeIcon(url) {
       return { icon: 'fa-database', label: 'ACCESS' };
     case 'zip':
     case 'rar':
-      return { icon: 'fa-file-zipper', label: 'ZIP ARCHIVE' };
+    case '7z':
+      return { icon: 'fa-file-zipper', label: 'ZIPPED FOLDER' };
     default:
       return { icon: 'fa-file-lines', label: ext.toUpperCase() };
   }
 }
 
 /* ==========================================================================
-   3. RESOURCE CARDS RENDERER & PAGINATION
+   3. RESOURCE CARDS RENDERER & SMART PAGINATION WITH ELLIPSIS
    ========================================================================== */
 function renderCards() {
   const container = document.getElementById('resource-grid');
@@ -238,7 +313,7 @@ function renderCards() {
     container.appendChild(card);
   });
 
-  // --- SHOW / HIDE & RENDER PAGINATION CONTROLS ---
+  // --- SHOW / HIDE & RENDER SMART PAGINATION CONTROLS ---
   if (paginationContainer) {
     if (totalPages > 1) {
       paginationContainer.style.display = 'flex';
@@ -256,28 +331,77 @@ function renderPaginationControls(totalPages) {
 
   if (!pageNumbersContainer) return;
 
-  prevBtn.disabled = currentPage === 1;
-  nextBtn.disabled = currentPage === totalPages;
-
-  let pagesHTML = '';
-  for (let i = 1; i <= totalPages; i++) {
-    pagesHTML += `
-      <button class="page-number-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">
-        ${i}
-      </button>
-    `;
+  if (prevBtn) {
+    prevBtn.disabled = currentPage === 1;
+    prevBtn.onclick = () => changePage(-1);
   }
+  if (nextBtn) {
+    nextBtn.disabled = currentPage === totalPages;
+    nextBtn.onclick = () => changePage(1);
+  }
+
+  // Smart Ellipsis Range Generation Logic
+  const getPageRange = (current, total) => {
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
+    let l;
+
+    range.push(1);
+    for (let i = current - delta; i <= current + delta; i++) {
+      if (i < total && i > 1) {
+        range.push(i);
+      }
+    }
+    if (total > 1) range.push(total);
+
+    for (let i of range) {
+      if (l) {
+        if (i - l === 2) {
+          rangeWithDots.push(l + 1);
+        } else if (i - l !== 1) {
+          rangeWithDots.push('...');
+        }
+      }
+      rangeWithDots.push(i);
+      l = i;
+    }
+    return rangeWithDots;
+  };
+
+  const pages = getPageRange(currentPage, totalPages);
+  let pagesHTML = '';
+
+  pages.forEach(page => {
+    if (page === '...') {
+      pagesHTML += `<span style="padding: 0 6px; color: var(--text-muted); display:inline-flex; align-items:center;">…</span>`;
+    } else {
+      const isActive = page === currentPage;
+      // Added accessibility aria-current="page" and keyboard navigation support
+      pagesHTML += `
+        <button class="page-number-btn ${isActive ? 'active' : ''}" 
+                onclick="goToPage(${page})" 
+                ${isActive ? 'aria-current="page"' : ''} 
+                aria-label="Page ${page}">
+          ${page}
+        </button>
+      `;
+    }
+  });
+
   pageNumbersContainer.innerHTML = pagesHTML;
 }
 
 function changePage(direction) {
   currentPage += direction;
+  updateURL();
   renderCards();
   scrollToResourceGrid();
 }
 
 function goToPage(pageNumber) {
   currentPage = pageNumber;
+  updateURL();
   renderCards();
   scrollToResourceGrid();
 }
@@ -298,7 +422,7 @@ function updateStatsCounters() {
 
   if (statTotal) statTotal.textContent = allResources.length;
   if (statSupport) {
-    const count = allResources.filter(r => r.category === 'Support File' || (r.fileUrl && (r.fileUrl.endsWith('.xlsx') || r.fileUrl.endsWith('.accdb')))).length;
+    const count = allResources.filter(r => r.category === 'Support File' || (r.fileUrl && (r.fileUrl.endsWith('.xlsx') || r.fileUrl.endsWith('.accdb') || r.fileUrl.endsWith('.zip') || r.fileUrl.endsWith('.rar') || r.fileUrl.endsWith('.7z')))).length;
     statSupport.textContent = count;
   }
   if (statPapers) {
