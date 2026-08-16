@@ -711,7 +711,7 @@ function renderAssessments() {
     return;
   }
 
-  container.innerHTML = assessments.map(a => {
+ container.innerHTML = assessments.map(a => {
     const deadlineDate = new Date(a.deadline);
     const isExpired = now > deadlineDate;
     
@@ -720,6 +720,27 @@ function renderAssessments() {
       : null;
     
     const safeTitle = encodeURIComponent(a.title);
+
+    let actionHTML = '';
+    if (currentUser && currentUser.role === 'Student') {
+        if (studentSub) {
+            actionHTML = `<span style="color:#16a34a; font-size:0.85rem; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Submitted (${studentSub.fileName})</span>`;
+            if (!isExpired) {
+                actionHTML += `
+                    <button type="button" onclick="openSubmissionModalWithDetails('${a.id}', '${safeTitle}')" class="btn-action btn-edit"><i class="fa-solid fa-arrows-rotate"></i> Replace</button>
+                    <button type="button" onclick="cancelSubmission('${a.id}')" class="btn-action btn-danger"><i class="fa-solid fa-trash-can"></i></button>
+                `;
+            } else {
+                actionHTML += `<span style="font-size:0.75rem; color:#94a3b8;">(Locked)</span>`;
+            }
+        } else {
+            if (isExpired) {
+                actionHTML = `<button disabled class="btn-action btn-disabled"><i class="fa-solid fa-lock"></i> Deadline Passed</button>`;
+            } else {
+                actionHTML = `<button type="button" onclick="openSubmissionModalWithDetails('${a.id}', '${safeTitle}')" class="btn-action btn-upload"><i class="fa-solid fa-file-arrow-up"></i> Upload Answer</button>`;
+            }
+        }
+    }
 
     return `
       <div class="test-card" data-assessment-id="${a.id}">
@@ -732,25 +753,11 @@ function renderAssessments() {
         <p style="font-size:0.85rem; color:#475569; margin:0.5rem 0;">${a.description || 'No instructions provided.'}</p>
         <div class="test-actions">
           <a href="${a.fileUrl}" download class="btn-action btn-download"><i class="fa-solid fa-file-arrow-down"></i> Download Paper</a>
-
-          {(currentUser && currentUser.role === 'Student') ? `
-            ${studentSub ? `
-              <span style="color:#16a34a; font-size:0.85rem; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Submitted (${studentSub.fileName})</span>
-              ${!isExpired ? `
-                <button type="button" onclick="openSubmissionModalWithDetails('${a.id}', '${safeTitle}')" class="btn-action btn-edit"><i class="fa-solid fa-arrows-rotate"></i> Replace</button>
-                <button type="button" onclick="cancelSubmission('${a.id}')" class="btn-action btn-danger"><i class="fa-solid fa-trash-can"></i></button>
-              ` : `<span style="font-size:0.75rem; color:#94a3b8;">(Locked)</span>`}
-            ` : `
-              ${isExpired ? `<button disabled class="btn-action btn-disabled"><i class="fa-solid fa-lock"></i> Deadline Passed</button>` : `
-                <button type="button" onclick="openSubmissionModalWithDetails('${a.id}', '${safeTitle}')" class="btn-action btn-upload"><i class="fa-solid fa-file-arrow-up"></i> Upload Answer</button>
-              `}
-            `}
-          ` : ''}
+          ${actionHTML}
         </div>
       </div>
     `;
-  }).join('');
-}
+}).join('');
 
 // Live Countdown Timer Update Helper
 function updateCountdowns() {
