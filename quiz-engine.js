@@ -278,16 +278,20 @@ function renderQuizCardsPage() {
   const quizListContainer = document.getElementById('quizList');
   const paginationContainer = document.getElementById('quizzesPagination');
   
+  if (!quizListContainer) return;
+
   if (!globalFilteredQuizzes || globalFilteredQuizzes.length === 0) {
     if (paginationContainer) paginationContainer.style.display = 'none';
     return;
   }
 
-  if (paginationContainer) paginationContainer.style.display = 'flex';
-
   const totalPages = Math.ceil(globalFilteredQuizzes.length / quizzesPerPage) || 1;
+  
+  // Safe bounds check
   if (currentQuizzesPage > totalPages) currentQuizzesPage = totalPages;
   if (currentQuizzesPage < 1) currentQuizzesPage = 1;
+
+  if (paginationContainer) paginationContainer.style.display = 'flex';
 
   const start = (currentQuizzesPage - 1) * quizzesPerPage;
   const end = start + quizzesPerPage;
@@ -396,8 +400,17 @@ function renderQuizCardsPage() {
 
   if (infoEl) infoEl.innerText = `Showing ${start + 1} to ${Math.min(end, globalFilteredQuizzes.length)} of ${globalFilteredQuizzes.length} quizzes`;
   if (pageIndEl) pageIndEl.innerText = `Page ${currentQuizzesPage} of ${totalPages}`;
-  if (prevBtn) prevBtn.disabled = currentQuizzesPage === 1;
-  if (nextBtn) nextBtn.disabled = currentQuizzesPage === totalPages;
+  
+  if (prevBtn) {
+    prevBtn.disabled = currentQuizzesPage === 1;
+    prevBtn.style.opacity = currentQuizzesPage === 1 ? '0.5' : '1';
+    prevBtn.style.cursor = currentQuizzesPage === 1 ? 'not-allowed' : 'pointer';
+  }
+  if (nextBtn) {
+    nextBtn.disabled = currentQuizzesPage === totalPages;
+    nextBtn.style.opacity = currentQuizzesPage === totalPages ? '0.5' : '1';
+    nextBtn.style.cursor = currentQuizzesPage === totalPages ? 'not-allowed' : 'pointer';
+  }
 }
 
 // Triggered by Next / Prev buttons in HTML for Available Assessments
@@ -405,7 +418,6 @@ function changeQuizzesPage(direction) {
   currentQuizzesPage += direction;
   renderQuizCardsPage();
 }
-
 // ==========================================================================
 // DELETE QUIZ HANDLER
 // ==========================================================================
@@ -849,7 +861,8 @@ async function fetchQuizResults() {
 
   if (!db) {
     resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:1rem;">Live results database unreachable.</td></tr>`;
-    document.getElementById('submissionsPagination').style.display = 'none';
+    const paginationContainer = document.getElementById('submissionsPagination');
+    if (paginationContainer) paginationContainer.style.display = 'none';
     return;
   }
 
@@ -857,7 +870,8 @@ async function fetchQuizResults() {
     const snapshot = await db.collection('quiz_results').orderBy('submittedAt', 'desc').get();
     if (snapshot.empty) {
       resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:1rem;">No submissions registered yet.</td></tr>`;
-      document.getElementById('submissionsPagination').style.display = 'none';
+      const paginationContainer = document.getElementById('submissionsPagination');
+      if (paginationContainer) paginationContainer.style.display = 'none';
       return;
     }
 
@@ -873,7 +887,8 @@ async function fetchQuizResults() {
   } catch (err) {
     console.error("Error fetching submission results:", err);
     resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:1rem;">Failed to load submission results.</td></tr>`;
-    document.getElementById('submissionsPagination').style.display = 'none';
+    const paginationContainer = document.getElementById('submissionsPagination');
+    if (paginationContainer) paginationContainer.style.display = 'none';
   }
 }
 
@@ -882,6 +897,8 @@ function renderSubmissionsTablePage() {
   const resultsContainer = document.getElementById('teacherResultsTable');
   const paginationContainer = document.getElementById('submissionsPagination');
   
+  if (!resultsContainer) return;
+
   if (!globalTeacherResults || globalTeacherResults.length === 0) {
     resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:1rem;">No submissions registered yet.</td></tr>`;
     if (paginationContainer) paginationContainer.style.display = 'none';
@@ -953,8 +970,17 @@ function renderSubmissionsTablePage() {
 
   if (infoEl) infoEl.innerText = `Showing ${start + 1} to ${Math.min(end, globalTeacherResults.length)} of ${globalTeacherResults.length} entries`;
   if (pageIndEl) pageIndEl.innerText = `Page ${currentSubmissionsPage} of ${totalPages}`;
-  if (prevBtn) prevBtn.disabled = currentSubmissionsPage === 1;
-  if (nextBtn) nextBtn.disabled = currentSubmissionsPage === totalPages;
+  
+  if (prevBtn) {
+    prevBtn.disabled = currentSubmissionsPage === 1;
+    prevBtn.style.opacity = currentSubmissionsPage === 1 ? '0.5' : '1';
+    prevBtn.style.cursor = currentSubmissionsPage === 1 ? 'not-allowed' : 'pointer';
+  }
+  if (nextBtn) {
+    nextBtn.disabled = currentSubmissionsPage === totalPages;
+    nextBtn.style.opacity = currentSubmissionsPage === totalPages ? '0.5' : '1';
+    nextBtn.style.cursor = currentSubmissionsPage === totalPages ? 'not-allowed' : 'pointer';
+  }
 }
 
 // Triggered by Next / Prev buttons in HTML
@@ -1063,15 +1089,8 @@ async function deleteQuizSubmission(docId) {
     // Remove from the global tracking array
     globalTeacherResults = globalTeacherResults.filter(s => s.id !== docId);
 
-    // Remove the row dynamically from the HTML table without reloading
-    const row = document.getElementById(`submissionRow_${docId}`);
-    if (row) row.remove();
-
-    // Check if table is empty now and show empty state if necessary
-    const resultsContainer = document.getElementById('teacherResultsTable');
-    if (resultsContainer && resultsContainer.children.length === 0) {
-      resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:1rem;">No submissions registered yet.</td></tr>`;
-    }
+    // Re-render the current page to safely adjust total pages and row elements
+    renderSubmissionsTablePage();
 
   } catch (err) {
     console.error("Error deleting quiz submission:", err);
