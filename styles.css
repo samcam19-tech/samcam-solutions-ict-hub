@@ -129,22 +129,24 @@ body {
   border: 1px solid rgba(37, 99, 235, 0.25);
 }
 
-.nav-portal-btn {
-  background-color: var(--accent);
-  color: #ffffff;
-  padding: 0.45rem 0.85rem;
-  border-radius: var(--radius-sm);
+.nav-clean-link {
+  color: #475569; /* Muted professional text color */
   text-decoration: none;
-  font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 500;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  transition: background-color 0.2s ease;
+  gap: 0.5rem;
+  transition: color 0.2s ease;
 }
 
-.nav-portal-btn:hover {
-  background-color: var(--accent-hover);
+.nav-clean-link i {
+  color: #0284c7; /* Accent color for icons */
+  font-size: 0.9rem;
+}
+
+.nav-clean-link:hover {
+  color: #0284c7; /* Highlights text on hover */
 }
 
 /* Theme Toggle Button */
