@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Learner Discussion Forum - SAMCAM SOLUTIONS ICT HUB</title>
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="forum.css">
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <div class="forum-wrapper">
+    <!-- Header Section -->
+    <header class="forum-header">
+      <div>
+        <h2><i class="fa-solid fa-comments"></i> Learner Discussion Forum</h2>
+        <p>Engage in academic discourse, ask questions, and collaborate with peers.</p>
+      </div>
+      <!-- Button for Teachers to post a new prompt (can be toggled via JS based on user role) -->
+      <button class="btn btn-primary" id="openNewThreadModalBtn" onclick="openNewThreadModal()">
+        <i class="fa-solid fa-plus"></i> New Discussion Question
+      </button>
+    </header>
+
+    <!-- Search and Filter Bar -->
+    <div class="forum-controls">
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="forumSearchInput" placeholder="Search discussion topics..." onkeyup="filterForumThreads()">
+      </div>
+      <div class="filter-box">
+        <select id="classFilterSelect" onchange="filterForumThreads()">
+          <option value="">All Classes / Levels</option>
+          <option value="Senior 1">Senior 1</option>
+          <option value="Senior 2">Senior 2</option>
+          <option value="Senior 3">Senior 3</option>
+          <option value="Senior 4">Senior 4</option>
+          <option value="Senior 5">Senior 5</option>
+          <option value="Senior 6">Senior 6</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="forum-container">
+      <!-- Threads List Feed -->
+      <div class="threads-feed" id="threadsFeedContainer">
+        <div class="loading-state">
+          <i class="fa-solid fa-spinner fa-spin"></i> Loading discussions...
+        </div>
+      </div>
+
+      <!-- Active Thread Detail Pane -->
+      <div class="thread-detail-pane" id="threadDetailPane">
+        <div class="no-thread-selected">
+          <i class="fa-regular fa-comment-dots"></i>
+          <p>Select a discussion topic from the left to view replies and join the conversation.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create New Discussion Thread -->
+  <div class="forum-modal-overlay" id="newThreadModal">
+    <div class="forum-modal">
+      <div class="forum-modal-header">
+        <h3>Post New Discussion Question</h3>
+        <button onclick="closeNewThreadModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="newThreadForm" onsubmit="handleCreateThread(event)">
+        <div class="form-group">
+          <label>Topic Title</label>
+          <input type="text" id="threadTitleInput" required placeholder="e.g., Understanding XLOOKUP vs VLOOKUP">
+        </div>
+        <div class="form-group">
+          <label>Target Class</label>
+          <select id="threadClassInput" required>
+            <option value="General">General / All Classes</option>
+            <option value="Senior 1">Senior 1</option>
+            <option value="Senior 2">Senior 2</option>
+            <option value="Senior 3">Senior 3</option>
+            <option value="Senior 4">Senior 4</option>
+            <option value="Senior 5">Senior 5</option>
+            <option value="Senior 6">Senior 6</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Question / Prompt Details</label>
+          <textarea id="threadBodyInput" rows="5" required placeholder="Type your question or discussion guidelines here..."></textarea>
+        </div>
+        <div class="forum-modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeNewThreadModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Post Question</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Firebase and Forum Engine Scripts -->
+  <!-- Ensure your firebase app initialization scripts are included here -->
+  <script src="forum-engine.js"></script>
+</body>
+</html>
