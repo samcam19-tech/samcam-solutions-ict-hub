@@ -711,7 +711,7 @@ function renderAssessments() {
     return;
   }
 
- container.innerHTML = assessments.map(a => {
+  container.innerHTML = assessments.map(a => {
     const deadlineDate = new Date(a.deadline);
     const isExpired = now > deadlineDate;
     
@@ -757,7 +757,8 @@ function renderAssessments() {
         </div>
       </div>
     `;
-}).join('');
+  }).join('');
+}
 
 // Live Countdown Timer Update Helper
 function updateCountdowns() {
