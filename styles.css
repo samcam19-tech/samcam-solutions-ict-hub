@@ -738,6 +738,37 @@ body {
   border-color: var(--accent);
 }
 
+.nav-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--surface-alt);
+  color: var(--primary);
+  border: 1px solid var(--border);
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.nav-action-btn i {
+  color: var(--accent);
+  font-size: 0.85rem;
+}
+
+.nav-action-btn:hover {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+  text-decoration: none;
+}
+
+.nav-action-btn:hover i {
+  color: #ffffff; /* Turns icon white on hover when the background fills with accent color */
+}
+
 /* ==========================================================================
    MEDIA QUERIES FOR TABLETS AND DESKTOPS
    ========================================================================== */
