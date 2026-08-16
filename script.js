@@ -177,6 +177,12 @@ window.executeLogin = async function() {
     passEl.value = '';
 
     if (typeof updatePortalUI === 'function') updatePortalUI();
+    
+    // Clean up any trailing hashes like #login from the URL bar
+    if (window.location.hash) {
+      history.replaceState(null, document.title, window.location.pathname + window.location.search);
+    }
+
     navigateToView('dashboard', true);
   } else {
     if (errEl) {
