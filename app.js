@@ -7,6 +7,10 @@ let currentClass = 'ALL';
 let currentCategory = 'ALL';
 let searchQuery = '';
 
+// --- PAGINATION STATE ---
+let currentPage = 1;
+const itemsPerPage = 9; // Number of resource cards per page
+
 document.addEventListener("DOMContentLoaded", () => {
   // Initialize Theme
   initTheme();
@@ -60,6 +64,7 @@ function initPortal() {
    1. SEARCH & FILTERING LOGIC
    ========================================================================== */
 function handleSearchInput(e) {
+  currentPage = 1; // Reset to page 1 on search
   searchQuery = e.target.value.toLowerCase().trim();
   const clearBtn = document.getElementById('clearSearchBtn');
   if (clearBtn) {
@@ -69,6 +74,7 @@ function handleSearchInput(e) {
 }
 
 function clearSearch() {
+  currentPage = 1; // Reset to page 1 on clearing search
   const searchInput = document.getElementById('searchInput');
   if (searchInput) {
     searchInput.value = '';
@@ -80,12 +86,14 @@ function clearSearch() {
 }
 
 function filterClass(cls, event) {
+  currentPage = 1; // Reset to page 1 on class filter
   currentClass = cls;
   updateActiveButtons('#classFilterGroup .segment-btn', event ? event.currentTarget || event.target : null);
   renderCards();
 }
 
 function filterCategory(cat, event) {
+  currentPage = 1; // Reset to page 1 on category filter
   currentCategory = cat;
   updateActiveButtons('#categoryFilterGroup .segment-btn', event ? event.currentTarget || event.target : null);
   renderCards();
@@ -102,6 +110,7 @@ function updateActiveButtons(selector, targetBtn) {
 }
 
 function resetFilters() {
+  currentPage = 1; // Reset to page 1 on reset
   currentClass = 'ALL';
   currentCategory = 'ALL';
   clearSearch();
@@ -148,11 +157,12 @@ function getFileTypeIcon(url) {
 }
 
 /* ==========================================================================
-   3. RESOURCE CARDS RENDERER
+   3. RESOURCE CARDS RENDERER & PAGINATION
    ========================================================================== */
 function renderCards() {
   const container = document.getElementById('resource-grid');
   const countBadge = document.getElementById('resource-count');
+  const paginationContainer = document.getElementById('paginationContainer');
   if (!container) return;
 
   container.innerHTML = '';
@@ -175,17 +185,27 @@ function renderCards() {
 
   if (filtered.length === 0) {
     container.innerHTML = `
-      <div class="no-data-card">
+      <div class="no-data-card" style="grid-column: 1 / -1; text-align: center; padding: 40px;">
         <i class="fa-solid fa-folder-open" style="font-size:2.5rem; color:var(--text-muted, #94a3b8); margin-bottom:1rem;"></i>
         <h3>No materials found</h3>
         <p style="color: #64748b;">No resources match your selected search or filter criteria.</p>
         <button onclick="resetFilters()" class="btn-action btn-upload" style="margin-top:1rem;">Reset Filters</button>
       </div>
     `;
+    if (paginationContainer) paginationContainer.style.display = 'none';
     return;
   }
 
-  filtered.forEach(item => {
+  // --- PAGINATION CALCULATIONS ---
+  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedItems = filtered.slice(startIndex, endIndex);
+
+  paginatedItems.forEach(item => {
     const fileMeta = getFileTypeIcon(item.fileUrl);
     const isALevel = item.class === 'S5' || item.class === 'S6';
     const classTagStyle = isALevel ? 'tag-alevel' : 'tag-olevel';
@@ -217,6 +237,58 @@ function renderCards() {
     `;
     container.appendChild(card);
   });
+
+  // --- SHOW / HIDE & RENDER PAGINATION CONTROLS ---
+  if (paginationContainer) {
+    if (totalPages > 1) {
+      paginationContainer.style.display = 'flex';
+      renderPaginationControls(totalPages);
+    } else {
+      paginationContainer.style.display = 'none';
+    }
+  }
+}
+
+function renderPaginationControls(totalPages) {
+  const pageNumbersContainer = document.getElementById('pageNumbers');
+  const prevBtn = document.getElementById('prevPageBtn');
+  const nextBtn = document.getElementById('nextPageBtn');
+
+  if (!pageNumbersContainer) return;
+
+  prevBtn.disabled = currentPage === 1;
+  nextBtn.disabled = currentPage === totalPages;
+
+  let pagesHTML = '';
+  for (let i = 1; i <= totalPages; i++) {
+    pagesHTML += `
+      <button class="page-number-btn ${i === currentPage ? 'active' : ''}" onclick="goToPage(${i})">
+        ${i}
+      </button>
+    `;
+  }
+  pageNumbersContainer.innerHTML = pagesHTML;
+}
+
+function changePage(direction) {
+  currentPage += direction;
+  renderCards();
+  scrollToResourceGrid();
+}
+
+function goToPage(pageNumber) {
+  currentPage = pageNumber;
+  renderCards();
+  scrollToResourceGrid();
+}
+
+function scrollToResourceGrid() {
+  const gridSection = document.getElementById('resource-grid');
+  if (gridSection) {
+    const yOffset = -100;
+    const y = gridSection.getBoundingClientRect().top + window.pageYOffset + yOffset;
+    window.scrollTo({ top: y, behavior: 'smooth' });
+  }
 }
 
 function updateStatsCounters() {
@@ -250,7 +322,7 @@ function openPreviewModal(encodedItem) {
     <span class="tag tag-cat" style="margin-bottom:0.5rem; display:inline-block;">${item.class} • ${item.category}</span>
     <h2 style="font-size:1.25rem; margin-bottom:0.75rem;">${item.title}</h2>
     <p style="color:#475569; font-size:0.9rem; margin-bottom:1.25rem;">${item.description || 'No detailed description available.'}</p>
-    <div style="display:flex; justify-style:space-between; align-items:center; border-top:1px solid #e2e8f0; padding-top:1rem;">
+    <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #e2e8f0; padding-top:1rem;">
       <small style="color:#64748b;"><i class="fa-solid fa-file"></i> Format: ${fileMeta.label}</small>
       <a href="${item.fileUrl || '#'}" download class="download-btn">
         <i class="fa-solid ${fileMeta.icon}"></i> Download File
