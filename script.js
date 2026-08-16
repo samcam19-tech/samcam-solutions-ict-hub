@@ -176,6 +176,12 @@ window.executeLogin = async function() {
     userEl.value = '';
     passEl.value = '';
 
+    // Reveal protected navigation links upon successful login
+    const navActions = document.getElementById('authNavActions');
+    if (navActions) {
+      navActions.style.display = 'flex';
+    }
+
     if (typeof updatePortalUI === 'function') updatePortalUI();
     
     // Clean up any trailing hashes like #login from the URL bar
@@ -196,7 +202,6 @@ window.handleLogin = function(e) {
   if (e && e.preventDefault) e.preventDefault();
   window.executeLogin();
 };
-
 window.handleLogout = function() {
   localStorage.removeItem('portal_session');
   broadcastSessionUpdate(null);
