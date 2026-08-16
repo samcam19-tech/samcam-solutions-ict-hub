@@ -9,7 +9,7 @@ let searchQuery = '';
 
 // --- PAGINATION STATE ---
 let currentPage = 1;
-const itemsPerPage = 9; // Number of resource cards per page
+const itemsPerPage = 6; // Number of resource cards per page
 
 document.addEventListener("DOMContentLoaded", () => {
   // Initialize Theme
