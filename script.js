@@ -5,6 +5,8 @@
 // Shared Portal State
 window.currentUser = null;
 let editingUsername = null;
+let currentStudentSubmissionsPage = 1;
+const ITEMS_PER_PAGE = 5;
 
 const initialAssessments = [
   {
@@ -45,6 +47,45 @@ function broadcastSessionUpdate(user) {
   // Dispatch custom event for real-time listeners on the same page
   window.dispatchEvent(new CustomEvent('portalSessionChanged', { detail: user }));
 }
+
+/* ==========================================================================
+   URL ROUTING (HISTORY API) & VIEW STATE MANAGEMENT
+   ========================================================================== */
+window.navigateToView = function(viewName, pushState = true) {
+  const loginSec = document.getElementById('loginSection');
+  const dashSec = document.getElementById('dashboardSection');
+  const assessmentsSec = document.getElementById('assessmentsSection');
+  const submissionsSec = document.getElementById('submissionsSection');
+  const studentsSec = document.getElementById('studentsSection');
+
+  // Hide all sections first
+  if (loginSec) loginSec.style.display = 'none';
+  if (dashSec) dashSec.style.display = 'none';
+  if (assessmentsSec) assessmentsSec.style.display = 'none';
+  if (submissionsSec) submissionsSec.style.display = 'none';
+  if (studentsSec) studentsSec.style.display = 'none';
+
+  if (!currentUser) {
+    if (loginSec) loginSec.style.display = 'block';
+    if (pushState) history.pushState({ view: 'login' }, '', '#login');
+    return;
+  }
+
+  if (dashSec) dashSec.style.display = 'block';
+
+  if (pushState) {
+    history.pushState({ view: viewName }, '', `#${viewName}`);
+  }
+};
+
+window.addEventListener('popstate', (event) => {
+  if (event.state && event.state.view) {
+    navigateToView(event.state.view, false);
+  } else {
+    updatePortalUI();
+  }
+});
+
 /* ==========================================================================
    INITIALIZATION & SESSION PERSISTENCE
    ========================================================================== */
@@ -61,10 +102,15 @@ document.addEventListener("DOMContentLoaded", () => {
   const session = loadSessionFromStorage();
   broadcastSessionUpdate(session);
 
-  // 3. Refresh UI
+  // 3. Refresh UI & handle initial route
   if (typeof updatePortalUI === 'function') {
     updatePortalUI();
   }
+
+  // Live countdown timer interval (updates every second)
+  setInterval(() => {
+    updateCountdowns();
+  }, 1000);
 });
 
 /* ==========================================================================
@@ -131,6 +177,7 @@ window.executeLogin = async function() {
     passEl.value = '';
 
     if (typeof updatePortalUI === 'function') updatePortalUI();
+    navigateToView('dashboard', true);
   } else {
     if (errEl) {
       errEl.textContent = 'Invalid username or password!';
@@ -157,6 +204,7 @@ window.handleLogout = function() {
   if (errEl) errEl.style.display = 'none';
 
   if (typeof updatePortalUI === 'function') updatePortalUI();
+  navigateToView('login', true);
 };
 
 /* ==========================================================================
@@ -326,7 +374,7 @@ window.downloadStudentCSV = async function() {
 };
 
 /* ==========================================================================
-   3. STUDENT MANAGEMENT MODAL
+   3. STUDENT MANAGEMENT MODAL & PAGINATION WITH ELLIPSIS
    ========================================================================== */
 window.openManageStudentsModal = function() {
   const modal = document.getElementById('manageStudentsModal');
@@ -336,6 +384,7 @@ window.openManageStudentsModal = function() {
     console.error("Element #manageStudentsModal not found in DOM.");
   }
   editingUsername = null;
+  currentStudentSubmissionsPage = 1;
   renderStudentModalTable();
 };
 
@@ -347,9 +396,13 @@ window.closeManageStudentsModal = function() {
   editingUsername = null;
 };
 
-// Backwards compatibility alias in case old handlers are referenced
 window.openStudentModal = window.openManageStudentsModal;
 window.closeStudentModal = window.closeManageStudentsModal;
+
+window.changeStudentPage = function(newPage) {
+  currentStudentSubmissionsPage = newPage;
+  renderStudentModalTable();
+};
 
 window.renderStudentModalTable = async function() {
   const tbody = document.getElementById('studentModalTableBody');
@@ -379,17 +432,27 @@ window.renderStudentModalTable = async function() {
     (u.username || '').toLowerCase().includes(searchFilter)
   ));
 
-  if (filteredStudents.length === 0) {
+  const totalItems = filteredStudents.length;
+  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
+  if (currentStudentSubmissionsPage > totalPages) currentStudentSubmissionsPage = totalPages;
+  if (currentStudentSubmissionsPage < 1) currentStudentSubmissionsPage = 1;
+
+  const startIndex = (currentStudentSubmissionsPage - 1) * ITEMS_PER_PAGE;
+  const paginatedStudents = filteredStudents.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+
+  if (paginatedStudents.length === 0) {
     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#64748b;">No matching students found.</td></tr>';
+    renderStudentPaginationControls(0, 1);
     return;
   }
 
-  tbody.innerHTML = filteredStudents.map((s, index) => {
+  tbody.innerHTML = paginatedStudents.map((s, index) => {
+    const absoluteIndex = startIndex + index + 1;
     const isEditing = editingUsername === s.username;
     if (isEditing) {
       return `
         <tr>
-          <td>${index + 1}</td>
+          <td>${absoluteIndex}</td>
           <td><input type="text" id="editFullName" value="${s.fullName}"></td>
           <td>
             <select id="editClass">
@@ -413,7 +476,7 @@ window.renderStudentModalTable = async function() {
 
     return `
       <tr>
-        <td>${index + 1}</td>
+        <td>${absoluteIndex}</td>
         <td><strong>${s.fullName}</strong></td>
         <td>${s.class}</td>
         <td><code>${s.username}</code></td>
@@ -425,7 +488,53 @@ window.renderStudentModalTable = async function() {
       </tr>
     `;
   }).join('');
+
+  renderStudentPaginationControls(totalPages, currentStudentSubmissionsPage);
 };
+
+// Advanced Pagination with Ellipsis (...) generator
+function renderStudentPaginationControls(totalPages, currentPage) {
+  let pagContainer = document.getElementById('studentPaginationContainer');
+  if (!pagContainer) {
+    const tableContainer = document.querySelector('#manageStudentsModal .modal-body') || document.getElementById('studentModalTableBody');
+    if (tableContainer) {
+      pagContainer = document.createElement('div');
+      pagContainer.id = 'studentPaginationContainer';
+      pagContainer.style.cssText = 'display:flex; justify-content:center; align-items:center; gap:0.5rem; margin-top:1rem;';
+      tableContainer.parentNode.appendChild(pagContainer);
+    } else {
+      return;
+    }
+  }
+
+  if (totalPages <= 1) {
+    pagContainer.innerHTML = '';
+    return;
+  }
+
+  let pages = [];
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    if (currentPage <= 4) {
+      pages = [1, 2, 3, 4, 5, '...', totalPages];
+    } else if (currentPage >= totalPages - 3) {
+      pages = [1, '...', totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages];
+    } else {
+      pages = [1, '...', currentPage - 1, currentPage, currentPage + 1, '...', totalPages];
+    }
+  }
+
+  pagContainer.innerHTML = `
+    <button onclick="changeStudentPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} class="btn-action btn-secondary"><i class="fa-solid fa-chevron-left"></i></button>
+    ${pages.map(p => {
+      if (p === '...') return `<span style="padding:0.4rem 0.6rem; color:#64748b;">...</span>`;
+      const isActive = p === currentPage;
+      return `<button onclick="changeStudentPage(${p})" class="btn-action ${isActive ? 'btn-upload' : 'btn-secondary'}" ${isActive ? 'style="background:#2563eb; color:#fff;"' : ''}>${p}</button>`;
+    }).join('')}
+    <button onclick="changeStudentPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} class="btn-action btn-secondary"><i class="fa-solid fa-chevron-right"></i></button>
+  `;
+}
 
 window.enableStudentEdit = function(username) {
   editingUsername = username;
@@ -530,7 +639,7 @@ window.handleCreateAssessment = function(e) {
 };
 
 /* ==========================================================================
-   5. PORTAL UI RENDERERS
+   5. PORTAL UI RENDERERS & CLASS FILTER DROPDOWN
    ========================================================================== */
 function updatePortalUI() {
   const loginSec = document.getElementById('loginSection');
@@ -573,6 +682,10 @@ function updatePortalUI() {
   renderAssessments();
 }
 
+window.filterAssessmentsByClass = function() {
+  renderAssessments();
+};
+
 function renderAssessments() {
   const container = document.getElementById('assessmentsContainer');
   if (!container) return;
@@ -581,9 +694,16 @@ function renderAssessments() {
   const submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
   const now = new Date();
 
+  // Class Filter Dropdown element check
+  let classFilterEl = document.getElementById('assessmentClassFilter');
+  let selectedClassFilter = classFilterEl ? classFilterEl.value : 'ALL';
+
   let assessments = resources.filter(r => r.category === "Question Paper");
+  
   if (currentUser && currentUser.role === 'Student') {
     assessments = assessments.filter(a => a.class === currentUser.class);
+  } else if (selectedClassFilter && selectedClassFilter !== 'ALL') {
+    assessments = assessments.filter(a => a.class === selectedClassFilter);
   }
 
   if (assessments.length === 0) {
@@ -602,10 +722,10 @@ function renderAssessments() {
     const safeTitle = encodeURIComponent(a.title);
 
     return `
-      <div class="test-card">
+      <div class="test-card" data-assessment-id="${a.id}">
         <div class="test-header">
           <span class="test-title">${a.title} <small style="color:#64748b;">(${a.class})</small></span>
-          <span class="deadline-badge ${isExpired ? 'deadline-expired' : 'deadline-active'}">
+          <span class="deadline-badge ${isExpired ? 'deadline-expired' : 'deadline-active'}" data-deadline="${a.deadline}">
             ${isExpired ? 'Expired' : 'Active until: ' + deadlineDate.toLocaleString()}
           </span>
         </div>
@@ -613,7 +733,7 @@ function renderAssessments() {
         <div class="test-actions">
           <a href="${a.fileUrl}" download class="btn-action btn-download"><i class="fa-solid fa-file-arrow-down"></i> Download Paper</a>
 
-          ${(currentUser && currentUser.role === 'Student') ? `
+          {(currentUser && currentUser.role === 'Student') ? `
             ${studentSub ? `
               <span style="color:#16a34a; font-size:0.85rem; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Submitted (${studentSub.fileName})</span>
               ${!isExpired ? `
@@ -632,8 +752,42 @@ function renderAssessments() {
   }).join('');
 }
 
+// Live Countdown Timer Update Helper
+function updateCountdowns() {
+  const badges = document.querySelectorAll('.deadline-badge[data-deadline]');
+  const now = new Date();
+
+  badges.forEach(badge => {
+    const deadlineStr = badge.getAttribute('data-deadline');
+    if (!deadlineStr) return;
+    const deadlineDate = new Date(deadlineStr);
+    const diff = deadlineDate - now;
+
+    if (diff <= 0) {
+      if (!badge.classList.contains('deadline-expired')) {
+        badge.className = 'deadline-badge deadline-expired';
+        badge.textContent = 'Expired';
+        renderAssessments(); // Re-render to lock action buttons
+      }
+      return;
+    }
+
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+    const mins = Math.floor((diff / 1000 / 60) % 60);
+    const secs = Math.floor((diff / 1000) % 60);
+
+    let timeRemainingStr = '';
+    if (days > 0) timeRemainingStr += `${days}d `;
+    timeRemainingStr += `${String(hours).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m ${String(secs).padStart(2, '0')}s`;
+
+    badge.className = 'deadline-badge deadline-active';
+    badge.innerHTML = `<i class="fa-regular fa-clock"></i> Ends in: ${timeRemainingStr}`;
+  });
+}
+
 /* ==========================================================================
-   STUDENT SUBMISSION HANDLERS
+   STUDENT SUBMISSION HANDLERS & SUBMISSION HISTORY
    ========================================================================== */
 window.handleFormSubmission = function(event) {
   event.preventDefault();
@@ -660,7 +814,7 @@ window.handleFormSubmission = function(event) {
     const fileDataUrl = e.target.result;
     const testIdVal = testIdEl ? testIdEl.value : null;
     const studentNameVal = nameEl ? nameEl.value.trim() : (currentUser ? currentUser.fullName : '');
-    const submissionId = `sub_${testIdVal}_${studentNameVal.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
+    const submissionId = `sub_${testIdVal}_${studentNameVal.toLowerCase().replace(/[^a-z0-9]/g, '')}_${Date.now()}`;
 
     const newSubmission = {
       id: submissionId,
@@ -671,7 +825,9 @@ window.handleFormSubmission = function(event) {
       testTitle: titleEl ? titleEl.value.trim() : '',
       fileName: file.name,
       fileUrl: fileDataUrl,
-      submittedAt: new Date().toISOString()
+      submittedAt: new Date().toISOString(),
+      grade: null,
+      feedback: null
     };
 
     if (window.db) {
@@ -683,7 +839,6 @@ window.handleFormSubmission = function(event) {
     }
 
     let localSubmissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
-    localSubmissions = localSubmissions.filter(s => !(String(s.testId) === String(testIdVal) && s.studentName.toLowerCase() === studentNameVal.toLowerCase()));
     localSubmissions.unshift(newSubmission);
     localStorage.setItem('portal_submissions', JSON.stringify(localSubmissions));
 
@@ -705,11 +860,13 @@ window.cancelSubmission = async function(testId) {
   if (!confirm("Are you sure you want to cancel your submission?")) return;
 
   const studentName = currentUser.fullName;
-  const submissionId = `sub_${testId}_${studentName.toLowerCase().replace(/[^a-z0-9]/g, '')}`;
 
   if (window.db) {
     try {
-      await window.db.collection('submissions').doc(submissionId).delete();
+      const snap = await window.db.collection('submissions').where('testId', '==', String(testId)).where('studentName', '==', studentName).get();
+      const batch = window.db.batch();
+      snap.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
     } catch (err) {
       console.error('Firestore delete error:', err);
     }
@@ -720,6 +877,87 @@ window.cancelSubmission = async function(testId) {
   localStorage.setItem('portal_submissions', JSON.stringify(submissions));
 
   renderAssessments();
+};
+
+/* ==========================================================================
+   TEACHER GRADING & FEEDBACK MODULE
+   ========================================================================== */
+window.openGradingModal = function(submissionId) {
+  let modal = document.getElementById('gradingModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'gradingModal';
+    modal.className = 'modal-backdrop';
+    modal.style.cssText = 'display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:1000;';
+    modal.innerHTML = `
+      <div class="modal-content" style="background:#fff; padding:2rem; border-radius:12px; width:90%; max-width:500px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+          <h3 style="margin:0; color:#1e293b;">Grade Student Submission</h3>
+          <button onclick="closeGradingModal()" style="background:none; border:none; font-size:1.2rem; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <form id="gradingForm" onsubmit="saveSubmissionGrade(event)">
+          <input type="hidden" id="gradingSubmissionId">
+          <div style="margin-bottom:1rem;">
+            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.3rem;">Grade / Score</label>
+            <input type="text" id="gradeScoreInput" placeholder="e.g. 85/100 or Distinction" required style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px;">
+          </div>
+          <div style="margin-bottom:1rem;">
+            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.3rem;">Teacher Feedback / Comments</label>
+            <textarea id="gradeFeedbackInput" rows="4" placeholder="Provide constructive feedback..." style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px;"></textarea>
+          </div>
+          <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
+            <button type="button" onclick="closeGradingModal()" class="btn-action btn-secondary">Cancel</button>
+            <button type="submit" class="btn-action btn-upload">Save Grade & Feedback</button>
+          </div>
+        </form>
+      </div>
+    `;
+    document.body.appendChild(modal);
+  }
+
+  document.getElementById('gradingSubmissionId').value = submissionId;
+  
+  // Load existing grade if available
+  let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+  const sub = submissions.find(s => s.id === submissionId);
+  if (sub) {
+    document.getElementById('gradeScoreInput').value = sub.grade || '';
+    document.getElementById('gradeFeedbackInput').value = sub.feedback || '';
+  }
+
+  modal.style.display = 'flex';
+};
+
+window.closeGradingModal = function() {
+  const modal = document.getElementById('gradingModal');
+  if (modal) modal.style.display = 'none';
+};
+
+window.saveSubmissionGrade = async function(e) {
+  e.preventDefault();
+  const subId = document.getElementById('gradingSubmissionId').value;
+  const grade = document.getElementById('gradeScoreInput').value.trim();
+  const feedback = document.getElementById('gradeFeedbackInput').value.trim();
+
+  let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+  const idx = submissions.findIndex(s => s.id === subId);
+  if (idx !== -1) {
+    submissions[idx].grade = grade;
+    submissions[idx].feedback = feedback;
+    localStorage.setItem('portal_submissions', JSON.stringify(submissions));
+
+    if (window.db) {
+      try {
+        await window.db.collection('submissions').doc(subId).set({ grade, feedback }, { merge: true });
+      } catch (err) {
+        console.error('Firestore grade sync error:', err);
+      }
+    }
+  }
+
+  alert('Grade and feedback saved successfully!');
+  closeGradingModal();
+  renderSubmissions();
 };
 
 window.renderSubmissions = async function() {
@@ -751,11 +989,17 @@ window.renderSubmissions = async function() {
     <div class="sub-item" style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem; border-bottom:1px solid #e2e8f0;">
       <div>
         <strong>${sub.studentName}</strong> <small style="color:#2563eb;">(${sub.studentClass})</small><br>
-        <span style="color:#64748b; font-size:0.85rem;">${sub.testTitle}</span>
+        <span style="color:#64748b; font-size:0.85rem;">${sub.testTitle} - <em>${sub.fileName}</em></span>
+        ${sub.grade ? `<br><span style="color:#16a34a; font-size:0.8rem; font-weight:600;"><i class="fa-solid fa-award"></i> Grade: ${sub.grade}</span>` : ''}
       </div>
-      <a href="${sub.fileUrl}" download="${sub.fileName || 'submission'}" class="btn-action btn-download" style="padding:0.3rem 0.6rem; font-size:0.75rem;">
-        <i class="fa-solid fa-download"></i> Get File
-      </a>
+      <div style="display:flex; gap:0.4rem; align-items:center;">
+        <a href="${sub.fileUrl}" download="${sub.fileName || 'submission'}" class="btn-action btn-download" style="padding:0.3rem 0.6rem; font-size:0.75rem;">
+          <i class="fa-solid fa-download"></i> Get File
+        </a>
+        <button onclick="openGradingModal('${sub.id}')" class="btn-action btn-edit" style="padding:0.3rem 0.6rem; font-size:0.75rem;">
+          <i class="fa-solid fa-star"></i> Grade
+        </button>
+      </div>
     </div>
   `).join('');
 };
@@ -784,7 +1028,6 @@ window.openSubmissionModalWithDetails = function(testId, encodedTitle) {
     if (classEl) classEl.value = currentUser.class || '';
   }
 
-  // FIXED TARGET FIELD ID
   const titleEl = document.getElementById('submissionTestTitle');
   if (titleEl) titleEl.value = decodedTitle;
 
