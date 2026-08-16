@@ -113,6 +113,17 @@ document.addEventListener("DOMContentLoaded", () => {
   }, 1000);
 });
 
+document.addEventListener("DOMContentLoaded", () => {
+  // Check if a user session already exists in localStorage on page load
+  const session = localStorage.getItem('portal_session');
+  if (session) {
+    const navActions = document.getElementById('authNavActions');
+    if (navActions) {
+      navActions.style.display = 'flex';
+    }
+  }
+});
+
 /* ==========================================================================
    1. AUTHENTICATION MODULE
    ========================================================================== */
