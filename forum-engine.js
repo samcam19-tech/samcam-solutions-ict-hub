@@ -18,10 +18,13 @@ if (typeof firebase !== "undefined" && !firebase.apps.length) {
 const db = typeof firebase !== "undefined" ? firebase.firestore() : null;
 
 // ==========================================================================
-// 2. STATE MANAGEMENT & SESSION HANDLING
+// 2. STATE MANAGEMENT, REAL-TIME LISTENERS & SESSION HANDLING
 // ==========================================================================
 let globalThreads = [];
 let activeThreadId = null;
+let unsubscribeThreads = null;
+let unsubscribeReplies = null;
+let typingTimeout = null;
 
 // Listen for live session changes broadcasted by global auth scripts
 window.addEventListener('portalSessionChanged', (e) => {
@@ -49,17 +52,16 @@ function syncForumEngineSession(user) {
     el.style.display = isTeacherOrAdmin ? (el.id === 'newThreadModal' ? 'none' : 'inline-flex') : 'none';
   });
 
-  // Re-filter threads whenever session syncs
-  fetchForumThreads();
+  filterForumThreads();
 }
 
-// Initialize forum data fetch on load and sync initial session
+// Initialize real-time forum listeners on load and sync initial session
 document.addEventListener("DOMContentLoaded", () => {
   syncForumEngineSession();
-  fetchForumThreads();
+  initRealtimeForumThreads();
 });
 
-// Helper function to extract user session details safely from portal_session or fallback keys
+// Helper function to extract user session details safely
 function getCurrentUserSession() {
   let role = '';
   let name = '';
@@ -76,15 +78,14 @@ function getCurrentUserSession() {
     console.warn("Could not parse portal_session JSON:", e);
   }
 
-  // Fallback checks
   if (!role) role = localStorage.getItem('userRole') || sessionStorage.getItem('userRole') || '';
   if (!name) name = localStorage.getItem('userName') || sessionStorage.getItem('userName') || '';
 
   return { role: role.toLowerCase(), name, userClass };
 }
 
-// Fetch all discussion threads from Firestore and enforce class-based visibility
-async function fetchForumThreads() {
+// Feature 1: Real-time Listener for Threads Feed
+function initRealtimeForumThreads() {
   const feedContainer = document.getElementById('threadsFeedContainer');
   if (!feedContainer) return;
 
@@ -93,23 +94,20 @@ async function fetchForumThreads() {
     return;
   }
 
-  try {
-    const snapshot = await db.collection('forum_threads').orderBy('createdAt', 'desc').get();
-    if (snapshot.empty) {
-      feedContainer.innerHTML = `<div class="loading-state">No discussion questions posted yet.</div>`;
-      return;
-    }
+  if (unsubscribeThreads) unsubscribeThreads();
 
-    globalThreads = [];
-    snapshot.forEach(doc => {
-      globalThreads.push({ id: doc.id, ...doc.data() });
+  unsubscribeThreads = db.collection('forum_threads')
+    .orderBy('createdAt', 'desc')
+    .onSnapshot(snapshot => {
+      globalThreads = [];
+      snapshot.forEach(doc => {
+        globalThreads.push({ id: doc.id, ...doc.data() });
+      });
+      filterForumThreads();
+    }, err => {
+      console.error("Real-time thread error:", err);
+      feedContainer.innerHTML = `<div class="loading-state" style="color:#ef4444;">Failed to sync live discussions.</div>`;
     });
-
-    filterForumThreads();
-  } catch (err) {
-    console.error("Error loading discussion threads:", err);
-    feedContainer.innerHTML = `<div class="loading-state" style="color:#ef4444;">Failed to load discussions.</div>`;
-  }
 }
 
 // Render threads feed list
@@ -129,15 +127,16 @@ function renderThreadsList(threads) {
       : 'Recent';
 
     const isActive = activeThreadId === thread.id ? 'active' : '';
+    const upvotesCount = (thread.upvotedBy || []).length;
 
     html += `
       <div class="thread-card ${isActive}" onclick="selectThread('${thread.id}')">
         <div class="thread-meta-top">
-          <span class="class-badge">${thread.classTarget || 'General'}</span>
-          <span class="thread-time">${timeAgo}</span>
+          <span class="class-badge">${escapeHtml(thread.classTarget || 'General')}</span>
+          <span class="thread-time"><i class="fa-solid fa-thumbs-up"></i> ${upvotesCount} • ${timeAgo}</span>
         </div>
         <h4>${escapeHtml(thread.title)}</h4>
-        <div class="thread-snippet">${escapeHtml(thread.body)}</div>
+        <div class="thread-snippet">${formatRichContent(thread.body)}</div>
       </div>
     `;
   });
@@ -157,7 +156,6 @@ function filterForumThreads() {
                            combinedCheck.includes('instructor');
 
   const filtered = globalThreads.filter(t => {
-    // 1. Enforce Role-Based Class restriction: Students only see General or their exact class match
     if (!isTeacherOrAdmin) {
       const target = (t.classTarget || 'General').trim().toLowerCase();
       const studentCls = (session.userClass || '').trim().toLowerCase();
@@ -165,10 +163,7 @@ function filterForumThreads() {
       if (!matchesStudentClass) return false;
     }
 
-    // 2. Search query filter
     const matchesQuery = t.title.toLowerCase().includes(query) || t.body.toLowerCase().includes(query);
-
-    // 3. Dropdown filter selection
     const matchesClassDropdown = !selectedClass || t.classTarget === selectedClass || t.classTarget === 'General';
 
     return matchesQuery && matchesClassDropdown;
@@ -177,74 +172,176 @@ function filterForumThreads() {
   renderThreadsList(filtered);
 }
 
-// Select a thread to view details and replies
+// Select a thread to view details, replies, and presence indicators
 async function selectThread(threadId) {
   activeThreadId = threadId;
-  filterForumThreads(); // Refresh list to maintain active highlight
+  filterForumThreads();
 
   const thread = globalThreads.find(t => t.id === threadId);
   const detailPane = document.getElementById('threadDetailPane');
   if (!thread || !detailPane) return;
 
+  const session = getCurrentUserSession();
+  const userId = session.name || 'Anonymous';
+  const hasUpvoted = (thread.upvotedBy || []).includes(userId);
+  const upvotesCount = (thread.upvotedBy || []).length;
+
   detailPane.innerHTML = `
     <div class="active-thread-header">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-        <span class="class-badge">${thread.classTarget || 'General'}</span>
-        <span style="font-size:0.75rem; color:#64748b;">Posted by <strong>${escapeHtml(thread.authorName || 'Instructor')}</strong></span>
+        <span class="class-badge">${escapeHtml(thread.classTarget || 'General')}</span>
+        <div>
+          <button class="btn btn-sm ${hasUpvoted ? 'btn-primary' : 'btn-outline'}" onclick="toggleThreadUpvote('${thread.id}')">
+            <i class="fa-solid fa-thumbs-up"></i> <span id="threadUpvoteCount">${upvotesCount}</span>
+          </button>
+          <span style="font-size:0.75rem; color:#64748b; margin-left:0.5rem;">Posted by <strong>${escapeHtml(thread.authorName || 'Instructor')}</strong></span>
+        </div>
       </div>
       <h3>${escapeHtml(thread.title)}</h3>
-      <div class="active-thread-body">${escapeHtml(thread.body)}</div>
+      <div class="active-thread-body">${formatRichContent(thread.body)}</div>
     </div>
 
     <div class="replies-list-container" id="repliesListContainer">
-      <div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading replies...</div>
+      <div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading live replies...</div>
     </div>
 
+    <div id="typingIndicator" style="font-size:0.75rem; color:#64748b; font-style:italic; padding:0 0.5rem 0.25rem 0.5rem; min-height:1.2rem;"></div>
+
     <div class="reply-input-box">
-      <textarea id="replyMessageInput" placeholder="Write your reply or feedback here..."></textarea>
+      <textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use ```code``` for blocks)..." oninput="handleTypingInput('${thread.id}')"></textarea>
       <button class="btn btn-primary" onclick="submitReply('${thread.id}')"><i class="fa-solid fa-paper-plane"></i> Reply</button>
     </div>
   `;
 
-  loadThreadReplies(thread.id);
+  loadThreadRepliesRealtime(thread.id);
+  listenToTypingIndicator(thread.id);
 }
 
-// Load real-time or snapshot replies for a specific thread
-async function loadThreadReplies(threadId) {
+// Feature 1 & 3 & 4: Real-Time Replies with Upvoting and Best Answer Marking
+function loadThreadRepliesRealtime(threadId) {
   const repliesContainer = document.getElementById('repliesListContainer');
   if (!repliesContainer) return;
 
-  try {
-    const snapshot = await db.collection('forum_threads').doc(threadId).collection('replies').orderBy('submittedAt', 'asc').get();
-    
-    if (snapshot.empty) {
-      repliesContainer.innerHTML = `<div class="loading-state" style="padding:1.5rem;">No replies yet. Be the first to contribute to this discussion!</div>`;
-      return;
-    }
+  if (unsubscribeReplies) unsubscribeReplies();
 
-    let html = '';
-    snapshot.forEach(doc => {
-      const rep = doc.data();
-      const repTime = rep.submittedAt && rep.submittedAt.toDate 
-        ? new Date(rep.submittedAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
-        : 'Just now';
+  const session = getCurrentUserSession();
+  const combinedCheck = `${session.role} ${session.name}`.toLowerCase();
+  const isTeacherOrAdmin = combinedCheck.includes('teacher') || combinedCheck.includes('admin') || combinedCheck.includes('instructor');
 
-      html += `
-        <div class="reply-item">
-          <div class="reply-meta">
-            <span class="reply-author">${escapeHtml(rep.studentName)} <span style="font-weight:normal; color:#64748b;">(${rep.studentClass || 'Student'})</span></span>
-            <span style="font-size:0.75rem; color:#64748b;">${repTime}</span>
+  unsubscribeReplies = db.collection('forum_threads')
+    .doc(threadId)
+    .collection('replies')
+    .orderBy('submittedAt', 'asc')
+    .onSnapshot(snapshot => {
+      if (snapshot.empty) {
+        repliesContainer.innerHTML = `<div class="loading-state" style="padding:1.5rem;">No replies yet. Be the first to contribute!</div>`;
+        return;
+      }
+
+      let html = '';
+      snapshot.forEach(doc => {
+        const rep = doc.data();
+        const repId = doc.id;
+        const repTime = rep.submittedAt && rep.submittedAt.toDate 
+          ? new Date(rep.submittedAt.toDate()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) 
+          : 'Just now';
+
+        const upvotes = rep.upvotedBy ? rep.upvotedBy.length : 0;
+        const isBest = rep.isBestAnswer ? `<span class="badge-best" style="background:#10b981; color:#fff; padding:0.1rem 0.5rem; border-radius:4px; font-size:0.7rem; margin-left:0.5rem;"><i class="fa-solid fa-check-circle"></i> Best Answer</span>` : '';
+        const bestAnswerBtn = isTeacherOrAdmin && !rep.isBestAnswer ? `<button class="btn btn-xs btn-outline" style="font-size:0.7rem; padding:0.1rem 0.3rem;" onclick="markBestAnswer('${threadId}', '${repId}')">Mark Best</button>` : '';
+
+        html += `
+          <div class="reply-item ${rep.isBestAnswer ? 'best-answer-card' : ''}" style="${rep.isBestAnswer ? 'border-left: 4px solid #10b981; background: #f0fdf4;' : ''}">
+            <div class="reply-meta">
+              <span class="reply-author">${escapeHtml(rep.studentName)} <span style="font-weight:normal; color:#64748b;">(${rep.studentClass || 'Student'})</span> ${isBest}</span>
+              <span style="font-size:0.75rem; color:#64748b;">${repTime}</span>
+            </div>
+            <div class="reply-body">${formatRichContent(rep.replyBody)}</div>
+            <div class="reply-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem;">
+              <button class="btn btn-sm btn-outline" style="font-size:0.75rem;" onclick="toggleReplyUpvote('${threadId}', '${repId}')">
+                <i class="fa-solid fa-thumbs-up"></i> ${upvotes} Helpful
+              </button>
+              ${bestAnswerBtn}
+            </div>
           </div>
-          <div class="reply-body">${escapeHtml(rep.replyBody)}</div>
-        </div>
-      `;
-    });
+        `;
+      });
 
-    repliesContainer.innerHTML = html;
-    repliesContainer.scrollTop = repliesContainer.scrollHeight;
+      repliesContainer.innerHTML = html;
+      repliesContainer.scrollTop = repliesContainer.scrollHeight;
+    }, err => {
+      console.error("Replies sync error:", err);
+      repliesContainer.innerHTML = `<div class="loading-state" style="color:#ef4444;">Failed to sync replies.</div>`;
+    });
+}
+
+// Feature 3: Upvote Thread
+async function toggleThreadUpvote(threadId) {
+  const session = getCurrentUserSession();
+  const userId = session.name;
+  if (!userId) {
+    alert("Please sign in to upvote discussions.");
+    return;
+  }
+
+  const threadRef = db.collection('forum_threads').doc(threadId);
+  const thread = globalThreads.find(t => t.id === threadId);
+  if (!thread) return;
+
+  let upvotedBy = thread.upvotedBy || [];
+  if (upvotedBy.includes(userId)) {
+    upvotedBy = upvotedBy.filter(id => id !== userId);
+  } else {
+    upvotedBy.push(userId);
+  }
+
+  try {
+    await threadRef.update({ upvotedBy });
   } catch (err) {
-    console.error("Error loading replies:", err);
-    repliesContainer.innerHTML = `<div class="loading-state" style="color:#ef4444;">Failed to load conversation replies.</div>`;
+    console.error("Error updating upvote:", err);
+  }
+}
+
+// Feature 3: Upvote Reply
+async function toggleReplyUpvote(threadId, replyId) {
+  const session = getCurrentUserSession();
+  const userId = session.name;
+  if (!userId) {
+    alert("Please sign in to vote.");
+    return;
+  }
+
+  const replyRef = db.collection('forum_threads').doc(threadId).collection('replies').doc(replyId);
+  try {
+    await db.runTransaction(async (transaction) => {
+      const doc = await transaction.get(replyRef);
+      if (!doc.exists) return;
+      let upvotedBy = doc.data().upvotedBy || [];
+      if (upvotedBy.includes(userId)) {
+        upvotedBy = upvotedBy.filter(id => id !== userId);
+      } else {
+        upvotedBy.push(userId);
+      }
+      transaction.update(replyRef, { upvotedBy });
+    });
+  } catch (err) {
+    console.error("Error upvoting reply:", err);
+  }
+}
+
+// Feature 3: Teacher Marks Best Answer
+async function markBestAnswer(threadId, replyId) {
+  const repliesRef = db.collection('forum_threads').doc(threadId).collection('replies');
+  try {
+    const snapshot = await repliesRef.get();
+    const batch = db.batch();
+    snapshot.forEach(doc => {
+      batch.update(doc.ref, { isBestAnswer: doc.id === replyId });
+    });
+    await batch.commit();
+  } catch (err) {
+    console.error("Error setting best answer:", err);
+    alert("Failed to designate best answer.");
   }
 }
 
@@ -268,15 +365,73 @@ async function submitReply(threadId) {
       studentName: studentName,
       studentClass: studentClass,
       replyBody: replyBody,
+      upvotedBy: [],
+      isBestAnswer: false,
       submittedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     inputEl.value = '';
-    loadThreadReplies(threadId);
+    clearTypingIndicator(threadId);
   } catch (err) {
     console.error("Error submitting reply:", err);
     alert("Failed to post reply: " + err.message);
   }
+}
+
+// Feature 4: Typing Indicator Handlers
+function handleTypingInput(threadId) {
+  const session = getCurrentUserSession();
+  const name = session.name || 'Someone';
+  const typingRef = db.collection('forum_threads').doc(threadId).collection('presence').doc('typing');
+
+  typingRef.set({ user: name, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }).catch(() => {});
+
+  if (typingTimeout) clearTimeout(typingTimeout);
+  typingTimeout = setTimeout(() => {
+    clearTypingIndicator(threadId);
+  }, 3000);
+}
+
+function clearTypingIndicator(threadId) {
+  db.collection('forum_threads').doc(threadId).collection('presence').doc('typing').delete().catch(() => {});
+}
+
+function listenToTypingIndicator(threadId) {
+  db.collection('forum_threads').doc(threadId).collection('presence').doc('typing')
+    .onSnapshot(doc => {
+      const indicatorEl = document.getElementById('typingIndicator');
+      if (!indicatorEl) return;
+      if (!doc.exists) {
+        indicatorEl.innerHTML = '';
+        return;
+      }
+      const data = doc.data();
+      const session = getCurrentUserSession();
+      if (data.user && data.user !== session.name) {
+        indicatorEl.innerHTML = `<i class="fa-solid fa-pen-nib fa-bounce"></i> ${escapeHtml(data.user)} is typing a response...`;
+      } else {
+        indicatorEl.innerHTML = '';
+      }
+    });
+}
+
+// Feature 2: Rich Text & Code Snippets Formatting Helper
+function formatRichContent(text) {
+  if (!strSafe(text)) return '';
+  let escaped = escapeHtml(text);
+
+  // Format Code Blocks ```code```
+  escaped = escaped.replace(/```([\s\S]*?)```/g, '<pre style="background:#1e293b; color:#e2e8f0; padding:0.75rem; border-radius:6px; font-family:monospace; overflow-x:auto; margin:0.5rem 0;"><code>$1</code></pre>');
+  
+  // Format Inline Code `code`
+  escaped = escaped.replace(/`([^`]+)`/g, '<code style="background:#e2e8f0; padding:0.1rem 0.3rem; border-radius:4px; font-family:monospace; font-size:0.85em; color:#0f172a;">$1</code>');
+  
+  // Convert line breaks to HTML breaks
+  return escaped.replace(/\n/g, '<br>');
+}
+
+function strSafe(str) {
+  return typeof str === 'string';
 }
 
 // Modal Controls for Creating a New Discussion
@@ -292,13 +447,12 @@ function closeNewThreadModal() {
   if (form) form.reset();
 }
 
-// Handle Teacher Creation of New Discussion (With role verification security check)
+// Handle Teacher Creation of New Discussion
 async function handleCreateThread(e) {
   e.preventDefault();
 
   const session = getCurrentUserSession();
   const combinedCheck = `${session.role} ${session.name}`.toLowerCase();
-  
   const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
                            combinedCheck.includes('admin') || 
                            combinedCheck.includes('instructor');
@@ -322,17 +476,13 @@ async function handleCreateThread(e) {
       classTarget,
       body,
       authorName,
+      upvotedBy: [],
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
     const docRef = await db.collection('forum_threads').add(newDoc);
     closeNewThreadModal();
-    
-    // Prepend and select the new thread
-    globalThreads.unshift({ id: docRef.id, ...newDoc });
-    filterForumThreads();
     selectThread(docRef.id);
-
   } catch (err) {
     console.error("Error creating discussion thread:", err);
     alert("Failed to create thread: " + err.message);
