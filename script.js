@@ -52,6 +52,12 @@ function broadcastSessionUpdate(user) {
    URL ROUTING (HISTORY API) & VIEW STATE MANAGEMENT
    ========================================================================== */
 window.navigateToView = function(viewName, pushState = true) {
+  // If the user clicks the Forum view, redirect to the separate forum page file
+  if (viewName === 'forum') {
+    window.location.href = 'forum.html';
+    return;
+  }
+
   const loginSec = document.getElementById('loginSection');
   const dashSec = document.getElementById('dashboardSection');
   const assessmentsSec = document.getElementById('assessmentsSection');
