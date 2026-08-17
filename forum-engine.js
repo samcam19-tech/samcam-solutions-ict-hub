@@ -33,16 +33,7 @@ window.addEventListener('portalSessionChanged', (e) => {
 
 // Synchronize user session state and toggle teacher-only controls live
 function syncForumEngineSession(user) {
-  if (!user) {
-    try {
-      const stored = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
-      if (stored) user = JSON.parse(stored);
-    } catch (e) {
-      console.warn("Could not parse portal session:", e);
-    }
-  }
-
-  const session = getCurrentUserSession();
+  const session = getCurrentUserSession(user);
   const combinedCheck = `${session.role} ${session.name}`.toLowerCase();
   const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
                            combinedCheck.includes('admin') || 
@@ -61,27 +52,37 @@ document.addEventListener("DOMContentLoaded", () => {
   initRealtimeForumThreads();
 });
 
-// Helper function to extract user session details safely
-function getCurrentUserSession() {
+// Helper function using your exact user schema ({ fullName, class, username, role })
+function getCurrentUserSession(userParam) {
+  let activeUser = userParam || window.currentUser;
+
+  if (!activeUser) {
+    const sessionData = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
+    if (sessionData) {
+      try {
+        activeUser = JSON.parse(sessionData);
+      } catch (e) {
+        console.error("Error parsing portal_session from localStorage:", e);
+        activeUser = null;
+      }
+    }
+  }
+
   let role = '';
   let name = '';
   let userClass = 'Senior ICT';
 
-  try {
-    const sessionData = JSON.parse(localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session') || '{}');
-    if (sessionData && Object.keys(sessionData).length > 0) {
-      role = sessionData.role || sessionData.type || sessionData.accountType || '';
-      name = sessionData.username || sessionData.name || sessionData.fullName || '';
-      userClass = sessionData.class || sessionData.userClass || sessionData.studentClass || 'Senior ICT';
-    }
-  } catch (e) {
-    console.warn("Could not parse portal_session JSON:", e);
+  if (activeUser && typeof activeUser === 'object') {
+    role = activeUser.role || '';
+    name = activeUser.fullName || activeUser.username || '';
+    userClass = activeUser.class || 'Senior ICT';
   }
 
-  if (!role) role = localStorage.getItem('userRole') || sessionStorage.getItem('userRole') || '';
-  if (!name) name = localStorage.getItem('userName') || sessionStorage.getItem('userName') || '';
-
-  return { role: role.toLowerCase(), name, userClass };
+  return {
+    role: (role || '').trim().toLowerCase(),
+    name: (name || '').trim(),
+    userClass: (userClass || 'Senior ICT').trim()
+  };
 }
 
 // Feature 1: Real-time Listener for Threads Feed
@@ -357,8 +358,8 @@ async function submitReply(threadId) {
   }
 
   const session = getCurrentUserSession();
-  const studentName = localStorage.getItem('activeStudentName') || session.name || 'Learner';
-  const studentClass = localStorage.getItem('activeStudentClass') || session.userClass;
+  const studentName = session.name || 'Learner';
+  const studentClass = session.userClass || 'Senior ICT';
 
   try {
     await db.collection('forum_threads').doc(threadId).collection('replies').add({
