@@ -6,6 +6,30 @@ document.addEventListener("DOMContentLoaded", () => {
   fetchForumThreads();
 });
 
+// Helper function to extract user session details safely from portal_session or fallback keys
+function getCurrentUserSession() {
+  let role = '';
+  let name = '';
+  let userClass = 'Senior ICT';
+
+  try {
+    const sessionData = JSON.parse(localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session') || '{}');
+    if (sessionData && Object.keys(sessionData).length > 0) {
+      role = sessionData.role || sessionData.type || sessionData.accountType || '';
+      name = sessionData.username || sessionData.name || sessionData.fullName || '';
+      userClass = sessionData.class || sessionData.userClass || 'Senior ICT';
+    }
+  } catch (e) {
+    console.warn("Could not parse portal_session JSON:", e);
+  }
+
+  // Fallback checks
+  if (!role) role = localStorage.getItem('userRole') || sessionStorage.getItem('userRole') || '';
+  if (!name) name = localStorage.getItem('userName') || sessionStorage.getItem('userName') || '';
+
+  return { role: role.toLowerCase(), name, userClass };
+}
+
 // Fetch all discussion threads from Firestore
 async function fetchForumThreads() {
   const feedContainer = document.getElementById('threadsFeedContainer');
@@ -164,9 +188,9 @@ async function submitReply(threadId) {
     return;
   }
 
-  // Retrieve active user info from localStorage or session (fallback to defaults if testing)
-  const studentName = localStorage.getItem('activeStudentName') || sessionStorage.getItem('userName') || localStorage.getItem('userName') || 'Learner';
-  const studentClass = localStorage.getItem('activeStudentClass') || sessionStorage.getItem('userClass') || 'Senior ICT';
+  const session = getCurrentUserSession();
+  const studentName = localStorage.getItem('activeStudentName') || session.name || 'Learner';
+  const studentClass = localStorage.getItem('activeStudentClass') || session.userClass;
 
   try {
     await db.collection('forum_threads').doc(threadId).collection('replies').add({
@@ -201,11 +225,12 @@ function closeNewThreadModal() {
 async function handleCreateThread(e) {
   e.preventDefault();
 
-  // Double-check role security before processing database write
-  const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole') || '';
-  const userName = localStorage.getItem('userName') || sessionStorage.getItem('userName') || '';
-  const isTeacherOrAdmin = (userRole.toLowerCase() === 'teacher' || userRole.toLowerCase() === 'admin') || 
-                           (userName.toLowerCase().includes('teacher'));
+  const session = getCurrentUserSession();
+  const combinedCheck = `${session.role} ${session.name}`.toLowerCase();
+  
+  const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
+                           combinedCheck.includes('admin') || 
+                           combinedCheck.includes('instructor');
 
   if (!isTeacherOrAdmin) {
     alert("Access Denied: Only teachers or administrators can post new discussion questions.");
@@ -216,7 +241,7 @@ async function handleCreateThread(e) {
   const title = document.getElementById('threadTitleInput').value.trim();
   const classTarget = document.getElementById('threadClassInput').value;
   const body = document.getElementById('threadBodyInput').value.trim();
-  const authorName = userName || 'ICT Instructor';
+  const authorName = session.name || 'ICT Instructor';
 
   if (!title || !body) return;
 
