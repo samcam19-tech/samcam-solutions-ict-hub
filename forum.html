@@ -18,7 +18,7 @@
         <h2><i class="fa-solid fa-comments"></i> Learner Discussion Forum</h2>
         <p>Engage in academic discourse, ask questions, and collaborate with peers.</p>
       </div>
-      <!-- Button for Teachers to post a new prompt (restricted via teacher-only class) -->
+      <!-- Button for Teachers to post a new prompt -->
       <button class="btn btn-primary teacher-only" id="openNewThreadModalBtn" onclick="openNewThreadModal()" style="display: none;">
         <i class="fa-solid fa-plus"></i> New Discussion Question
       </button>
@@ -62,8 +62,8 @@
     </div>
   </div>
 
-  <!-- Modal: Create New Discussion Thread (Restricted to Teachers/Admins) -->
-  <div class="forum-modal-overlay teacher-only" id="newThreadModal" style="display: none;">
+  <!-- Modal: Create New Discussion Thread (Controlled via JS functions) -->
+  <div class="forum-modal-overlay" id="newThreadModal" style="display: none;">
     <div class="forum-modal">
       <div class="forum-modal-header">
         <h3>Post New Discussion Question</h3>
@@ -98,12 +98,8 @@
     </div>
   </div>
 
- 
-
   <!-- Firebase and Forum Engine Scripts -->
-  <!-- Firebase App (Core SDK) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <!-- Firebase Firestore (Database SDK) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="forum-engine.js"></script>
 </body>
