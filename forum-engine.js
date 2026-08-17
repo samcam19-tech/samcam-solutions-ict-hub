@@ -31,10 +31,9 @@ window.addEventListener('portalSessionChanged', (e) => {
   syncForumEngineSession(e.detail);
 });
 
-// Synchronize user session state and toggle teacher-only controls live
 function syncForumEngineSession(user) {
   const session = getCurrentUserSession(user);
-  console.log("Synced Forum Session:", session); // Check console to verify detected role & name
+  console.log("Synced Forum Session:", session);
 
   const combinedCheck = `${session.role} ${session.name} ${session.userClass}`.toLowerCase();
   const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
@@ -42,14 +41,9 @@ function syncForumEngineSession(user) {
                            combinedCheck.includes('instructor') ||
                            combinedCheck.includes('staff');
 
+  // Show or hide teacher-only action buttons
   document.querySelectorAll('.teacher-only').forEach(el => {
-    if (el.id === 'newThreadModal') {
-      // Modals should remain hidden by default until explicitly opened via openNewThreadModal()
-      el.style.display = 'none'; 
-    } else {
-      // Action buttons / trigger elements get displayed
-      el.style.display = isTeacherOrAdmin ? 'inline-flex' : 'none';
-    }
+    el.style.display = isTeacherOrAdmin ? 'inline-flex' : 'none';
   });
 
   filterForumThreads();
