@@ -34,13 +34,22 @@ window.addEventListener('portalSessionChanged', (e) => {
 // Synchronize user session state and toggle teacher-only controls live
 function syncForumEngineSession(user) {
   const session = getCurrentUserSession(user);
-  const combinedCheck = `${session.role} ${session.name}`.toLowerCase();
+  console.log("Synced Forum Session:", session); // Check console to verify detected role & name
+
+  const combinedCheck = `${session.role} ${session.name} ${session.userClass}`.toLowerCase();
   const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
                            combinedCheck.includes('admin') || 
-                           combinedCheck.includes('instructor');
+                           combinedCheck.includes('instructor') ||
+                           combinedCheck.includes('staff');
 
   document.querySelectorAll('.teacher-only').forEach(el => {
-    el.style.display = isTeacherOrAdmin ? (el.id === 'newThreadModal' ? 'none' : 'inline-flex') : 'none';
+    if (el.id === 'newThreadModal') {
+      // Modals should remain hidden by default until explicitly opened via openNewThreadModal()
+      el.style.display = 'none'; 
+    } else {
+      // Action buttons / trigger elements get displayed
+      el.style.display = isTeacherOrAdmin ? 'inline-flex' : 'none';
+    }
   });
 
   filterForumThreads();
@@ -52,7 +61,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initRealtimeForumThreads();
 });
 
-// Helper function using your exact user schema ({ fullName, class, username, role })
+// Helper function using robust schema fallbacks
 function getCurrentUserSession(userParam) {
   let activeUser = userParam || window.currentUser;
 
@@ -73,9 +82,9 @@ function getCurrentUserSession(userParam) {
   let userClass = 'Senior ICT';
 
   if (activeUser && typeof activeUser === 'object') {
-    role = activeUser.role || '';
-    name = activeUser.fullName || activeUser.username || '';
-    userClass = activeUser.class || 'Senior ICT';
+    role = activeUser.role || activeUser.userType || activeUser.type || activeUser.accessLevel || '';
+    name = activeUser.fullName || activeUser.name || activeUser.username || '';
+    userClass = activeUser.class || activeUser.userClass || 'Senior ICT';
   }
 
   return {
@@ -154,7 +163,8 @@ function filterForumThreads() {
   const combinedCheck = `${session.role} ${session.name}`.toLowerCase();
   const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
                            combinedCheck.includes('admin') || 
-                           combinedCheck.includes('instructor');
+                           combinedCheck.includes('instructor') ||
+                           combinedCheck.includes('staff');
 
   const filtered = globalThreads.filter(t => {
     if (!isTeacherOrAdmin) {
@@ -227,7 +237,7 @@ function loadThreadRepliesRealtime(threadId) {
 
   const session = getCurrentUserSession();
   const combinedCheck = `${session.role} ${session.name}`.toLowerCase();
-  const isTeacherOrAdmin = combinedCheck.includes('teacher') || combinedCheck.includes('admin') || combinedCheck.includes('instructor');
+  const isTeacherOrAdmin = combinedCheck.includes('teacher') || combinedCheck.includes('admin') || combinedCheck.includes('instructor') || combinedCheck.includes('staff');
 
   unsubscribeReplies = db.collection('forum_threads')
     .doc(threadId)
@@ -423,10 +433,10 @@ function formatRichContent(text) {
 
   // Format Code Blocks ```code```
   escaped = escaped.replace(/```([\s\S]*?)```/g, '<pre style="background:#1e293b; color:#e2e8f0; padding:0.75rem; border-radius:6px; font-family:monospace; overflow-x:auto; margin:0.5rem 0;"><code>$1</code></pre>');
-  
+
   // Format Inline Code `code`
   escaped = escaped.replace(/`([^`]+)`/g, '<code style="background:#e2e8f0; padding:0.1rem 0.3rem; border-radius:4px; font-family:monospace; font-size:0.85em; color:#0f172a;">$1</code>');
-  
+
   // Convert line breaks to HTML breaks
   return escaped.replace(/\n/g, '<br>');
 }
@@ -456,7 +466,8 @@ async function handleCreateThread(e) {
   const combinedCheck = `${session.role} ${session.name}`.toLowerCase();
   const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
                            combinedCheck.includes('admin') || 
-                           combinedCheck.includes('instructor');
+                           combinedCheck.includes('instructor') ||
+                           combinedCheck.includes('staff');
 
   if (!isTeacherOrAdmin) {
     alert("Access Denied: Only teachers or administrators can post new discussion questions.");
