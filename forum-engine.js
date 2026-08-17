@@ -165,7 +165,7 @@ async function submitReply(threadId) {
   }
 
   // Retrieve active user info from localStorage or session (fallback to defaults if testing)
-  const studentName = localStorage.getItem('activeStudentName') || sessionStorage.getItem('userName') || 'Learner';
+  const studentName = localStorage.getItem('activeStudentName') || sessionStorage.getItem('userName') || localStorage.getItem('userName') || 'Learner';
   const studentClass = localStorage.getItem('activeStudentClass') || sessionStorage.getItem('userClass') || 'Senior ICT';
 
   try {
@@ -193,17 +193,30 @@ function openNewThreadModal() {
 function closeNewThreadModal() {
   const modal = document.getElementById('newThreadModal');
   if (modal) modal.style.display = 'none';
-  document.getElementById('newThreadForm').reset();
+  const form = document.getElementById('newThreadForm');
+  if (form) form.reset();
 }
 
-// Handle Teacher Creation of New Discussion
+// Handle Teacher Creation of New Discussion (With role verification security check)
 async function handleCreateThread(e) {
   e.preventDefault();
+
+  // Double-check role security before processing database write
+  const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole') || '';
+  const userName = localStorage.getItem('userName') || sessionStorage.getItem('userName') || '';
+  const isTeacherOrAdmin = (userRole.toLowerCase() === 'teacher' || userRole.toLowerCase() === 'admin') || 
+                           (userName.toLowerCase().includes('teacher'));
+
+  if (!isTeacherOrAdmin) {
+    alert("Access Denied: Only teachers or administrators can post new discussion questions.");
+    closeNewThreadModal();
+    return;
+  }
 
   const title = document.getElementById('threadTitleInput').value.trim();
   const classTarget = document.getElementById('threadClassInput').value;
   const body = document.getElementById('threadBodyInput').value.trim();
-  const authorName = localStorage.getItem('userName') || 'ICT Instructor';
+  const authorName = userName || 'ICT Instructor';
 
   if (!title || !body) return;
 
