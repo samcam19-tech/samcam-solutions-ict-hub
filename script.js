@@ -225,6 +225,12 @@ window.handleLogout = function() {
   if (passEl) passEl.value = '';
   if (errEl) errEl.style.display = 'none';
 
+  // Explicitly hide the authenticated navigation links on logout
+  const authNavActions = document.getElementById('authNavActions');
+  if (authNavActions) {
+    authNavActions.style.display = 'none';
+  }
+
   if (typeof updatePortalUI === 'function') updatePortalUI();
   navigateToView('login', true);
 };
