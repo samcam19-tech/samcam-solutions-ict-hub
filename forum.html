@@ -98,26 +98,7 @@
     </div>
   </div>
 
-  <!-- Role-Based Restriction Script -->
-  <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      // Check user role from storage (adjust keys if your app uses different property names)
-      const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
-      const userName = localStorage.getItem('userName') || sessionStorage.getItem('userName');
-      
-      // Define condition for whether user is a teacher or admin
-      const isTeacherOrAdmin = (userRole && (userRole.toLowerCase() === 'teacher' || userRole.toLowerCase() === 'admin')) || 
-                               (userName && userName.toLowerCase().includes('teacher')); // Fallback check
-
-      if (isTeacherOrAdmin) {
-        // Reveal elements marked as teacher-only
-        document.querySelectorAll('.teacher-only').forEach(el => {
-          // Preserve proper display property (flex for buttons/modals depending on layout needs)
-          el.style.display = el.id === 'newThreadModal' ? 'none' : 'inline-flex'; 
-        });
-      }
-    });
-  </script>
+ 
 
   <!-- Firebase and Forum Engine Scripts -->
   <script src="forum-engine.js"></script>
