@@ -18,8 +18,8 @@
         <h2><i class="fa-solid fa-comments"></i> Learner Discussion Forum</h2>
         <p>Engage in academic discourse, ask questions, and collaborate with peers.</p>
       </div>
-      <!-- Button for Teachers to post a new prompt (can be toggled via JS based on user role) -->
-      <button class="btn btn-primary" id="openNewThreadModalBtn" onclick="openNewThreadModal()">
+      <!-- Button for Teachers to post a new prompt (restricted via teacher-only class) -->
+      <button class="btn btn-primary teacher-only" id="openNewThreadModalBtn" onclick="openNewThreadModal()" style="display: none;">
         <i class="fa-solid fa-plus"></i> New Discussion Question
       </button>
     </header>
@@ -62,8 +62,8 @@
     </div>
   </div>
 
-  <!-- Modal: Create New Discussion Thread -->
-  <div class="forum-modal-overlay" id="newThreadModal">
+  <!-- Modal: Create New Discussion Thread (Restricted to Teachers/Admins) -->
+  <div class="forum-modal-overlay teacher-only" id="newThreadModal" style="display: none;">
     <div class="forum-modal">
       <div class="forum-modal-header">
         <h3>Post New Discussion Question</h3>
@@ -98,8 +98,28 @@
     </div>
   </div>
 
+  <!-- Role-Based Restriction Script -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // Check user role from storage (adjust keys if your app uses different property names)
+      const userRole = localStorage.getItem('userRole') || sessionStorage.getItem('userRole');
+      const userName = localStorage.getItem('userName') || sessionStorage.getItem('userName');
+      
+      // Define condition for whether user is a teacher or admin
+      const isTeacherOrAdmin = (userRole && (userRole.toLowerCase() === 'teacher' || userRole.toLowerCase() === 'admin')) || 
+                               (userName && userName.toLowerCase().includes('teacher')); // Fallback check
+
+      if (isTeacherOrAdmin) {
+        // Reveal elements marked as teacher-only
+        document.querySelectorAll('.teacher-only').forEach(el => {
+          // Preserve proper display property (flex for buttons/modals depending on layout needs)
+          el.style.display = el.id === 'newThreadModal' ? 'none' : 'inline-flex'; 
+        });
+      }
+    });
+  </script>
+
   <!-- Firebase and Forum Engine Scripts -->
-  <!-- Ensure your firebase app initialization scripts are included here -->
   <script src="forum-engine.js"></script>
 </body>
 </html>
