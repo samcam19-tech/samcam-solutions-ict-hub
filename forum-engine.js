@@ -1,8 +1,36 @@
 let globalThreads = [];
 let activeThreadId = null;
 
-// Initialize forum data fetch on load
+// Listen for live session changes broadcasted by global auth scripts (borrowed from quiz-engine pattern)
+window.addEventListener('portalSessionChanged', (e) => {
+  syncForumEngineSession(e.detail);
+});
+
+// Synchronize user session state and toggle teacher-only controls live
+function syncForumEngineSession(user) {
+  if (!user) {
+    try {
+      const stored = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
+      if (stored) user = JSON.parse(stored);
+    } catch (e) {
+      console.warn("Could not parse portal session:", e);
+    }
+  }
+
+  const session = getCurrentUserSession();
+  const combinedCheck = `${session.role} ${session.name}`.toLowerCase();
+  const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
+                           combinedCheck.includes('admin') || 
+                           combinedCheck.includes('instructor');
+
+  document.querySelectorAll('.teacher-only').forEach(el => {
+    el.style.display = isTeacherOrAdmin ? (el.id === 'newThreadModal' ? 'none' : 'inline-flex') : 'none';
+  });
+}
+
+// Initialize forum data fetch on load and sync initial session
 document.addEventListener("DOMContentLoaded", () => {
+  syncForumEngineSession();
   fetchForumThreads();
 });
 
@@ -17,7 +45,7 @@ function getCurrentUserSession() {
     if (sessionData && Object.keys(sessionData).length > 0) {
       role = sessionData.role || sessionData.type || sessionData.accountType || '';
       name = sessionData.username || sessionData.name || sessionData.fullName || '';
-      userClass = sessionData.class || sessionData.userClass || 'Senior ICT';
+      userClass = sessionData.class || sessionData.userClass || sessionData.studentClass || 'Senior ICT';
     }
   } catch (e) {
     console.warn("Could not parse portal_session JSON:", e);
