@@ -48,6 +48,9 @@ function syncForumEngineSession(user) {
   document.querySelectorAll('.teacher-only').forEach(el => {
     el.style.display = isTeacherOrAdmin ? (el.id === 'newThreadModal' ? 'none' : 'inline-flex') : 'none';
   });
+
+  // Re-filter threads whenever session syncs
+  fetchForumThreads();
 }
 
 // Initialize forum data fetch on load and sync initial session
@@ -80,7 +83,7 @@ function getCurrentUserSession() {
   return { role: role.toLowerCase(), name, userClass };
 }
 
-// Fetch all discussion threads from Firestore
+// Fetch all discussion threads from Firestore and enforce class-based visibility
 async function fetchForumThreads() {
   const feedContainer = document.getElementById('threadsFeedContainer');
   if (!feedContainer) return;
@@ -102,7 +105,7 @@ async function fetchForumThreads() {
       globalThreads.push({ id: doc.id, ...doc.data() });
     });
 
-    renderThreadsList(globalThreads);
+    filterForumThreads();
   } catch (err) {
     console.error("Error loading discussion threads:", err);
     feedContainer.innerHTML = `<div class="loading-state" style="color:#ef4444;">Failed to load discussions.</div>`;
@@ -115,7 +118,7 @@ function renderThreadsList(threads) {
   if (!feedContainer) return;
 
   if (threads.length === 0) {
-    feedContainer.innerHTML = `<div class="loading-state">No matching discussions found.</div>`;
+    feedContainer.innerHTML = `<div class="loading-state">No matching discussions found for your class level.</div>`;
     return;
   }
 
@@ -142,15 +145,33 @@ function renderThreadsList(threads) {
   feedContainer.innerHTML = html;
 }
 
-// Filter threads by search query and class selection
+// Filter threads by search query, class dropdown selection, and student session restriction
 function filterForumThreads() {
-  const query = document.getElementById('forumSearchInput').value.toLowerCase();
-  const selectedClass = document.getElementById('classFilterSelect').value;
+  const query = document.getElementById('forumSearchInput')?.value.toLowerCase() || '';
+  const selectedClass = document.getElementById('classFilterSelect')?.value || '';
+  const session = getCurrentUserSession();
+
+  const combinedCheck = `${session.role} ${session.name}`.toLowerCase();
+  const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
+                           combinedCheck.includes('admin') || 
+                           combinedCheck.includes('instructor');
 
   const filtered = globalThreads.filter(t => {
+    // 1. Enforce Role-Based Class restriction: Students only see General or their exact class match
+    if (!isTeacherOrAdmin) {
+      const target = (t.classTarget || 'General').trim().toLowerCase();
+      const studentCls = (session.userClass || '').trim().toLowerCase();
+      const matchesStudentClass = target === 'general' || target === studentCls;
+      if (!matchesStudentClass) return false;
+    }
+
+    // 2. Search query filter
     const matchesQuery = t.title.toLowerCase().includes(query) || t.body.toLowerCase().includes(query);
-    const matchesClass = !selectedClass || t.classTarget === selectedClass || t.classTarget === 'General';
-    return matchesQuery && matchesClass;
+
+    // 3. Dropdown filter selection
+    const matchesClassDropdown = !selectedClass || t.classTarget === selectedClass || t.classTarget === 'General';
+
+    return matchesQuery && matchesClassDropdown;
   });
 
   renderThreadsList(filtered);
@@ -159,7 +180,7 @@ function filterForumThreads() {
 // Select a thread to view details and replies
 async function selectThread(threadId) {
   activeThreadId = threadId;
-  renderThreadsList(globalThreads); // Update active state border highlight
+  filterForumThreads(); // Refresh list to maintain active highlight
 
   const thread = globalThreads.find(t => t.id === threadId);
   const detailPane = document.getElementById('threadDetailPane');
@@ -309,7 +330,7 @@ async function handleCreateThread(e) {
     
     // Prepend and select the new thread
     globalThreads.unshift({ id: docRef.id, ...newDoc });
-    renderThreadsList(globalThreads);
+    filterForumThreads();
     selectThread(docRef.id);
 
   } catch (err) {
