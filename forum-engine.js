@@ -1,7 +1,29 @@
+// ==========================================================================
+// 1. FIREBASE INITIALIZATION & MOCK DATA
+// ==========================================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
+  authDomain: "samcam-system.firebaseapp.com",
+  projectId: "samcam-system",
+  storageBucket: "samcam-system.firebasestorage.app",
+  messagingSenderId: "74940789582",
+  appId: "1:74940789582:web:f159688165a194e841241f",
+  measurementId: "G-L2H4V8Y050"
+};
+
+if (typeof firebase !== "undefined" && !firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+
+const db = typeof firebase !== "undefined" ? firebase.firestore() : null;
+
+// ==========================================================================
+// 2. STATE MANAGEMENT & SESSION HANDLING
+// ==========================================================================
 let globalThreads = [];
 let activeThreadId = null;
 
-// Listen for live session changes broadcasted by global auth scripts (borrowed from quiz-engine pattern)
+// Listen for live session changes broadcasted by global auth scripts
 window.addEventListener('portalSessionChanged', (e) => {
   syncForumEngineSession(e.detail);
 });
