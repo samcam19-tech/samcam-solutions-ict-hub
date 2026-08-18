@@ -644,6 +644,60 @@ function loadThreadRepliesRealtime(threadId) {
     });
 }
 
+// 2. Open Edit Thread Modal using Custom Modal Prompt
+window.openEditThreadModal = function(threadId) {
+  const thread = globalThreads.find(t => t.id === threadId);
+  if (!thread) return;
+
+  if (typeof showSystemModal === 'function') {
+    showSystemModal({
+      title: "Edit Discussion Title",
+      message: "Update the title for this discussion topic:",
+      isPrompt: true,
+      onConfirm: async (newTitle) => {
+        if (!newTitle || !newTitle.trim()) return;
+        try {
+          await db.collection('forum_threads').doc(threadId).update({ title: newTitle.trim() });
+          thread.title = newTitle.trim();
+          selectThread(threadId);
+          if (typeof loadForumThreads === 'function') loadForumThreads();
+        } catch (err) {
+          console.error("Error updating thread title:", err);
+          showSystemModal({ title: "Error", message: "Failed to update discussion: " + err.message });
+        }
+      }
+    });
+  }
+};
+
+// 3. Confirm & Delete Discussion Thread using Custom Modal Confirmation
+window.confirmDeleteThread = function(threadId) {
+  if (typeof showSystemModal === 'function') {
+    showSystemModal({
+      title: "Confirm Deletion",
+      message: "Are you sure you want to delete this discussion thread? All associated replies will also be removed.",
+      onConfirm: async () => {
+        try {
+          await db.collection('forum_threads').doc(threadId).delete();
+          const detailPane = document.getElementById('threadDetailPane');
+          if (detailPane) {
+            detailPane.innerHTML = `
+              <div class="no-thread-selected" style="text-align:center; padding:3rem; color:#64748b;">
+                <i class="fa-regular fa-comment-dots" style="font-size:2rem; margin-bottom:0.5rem;"></i>
+                <p>Discussion thread deleted successfully.</p>
+              </div>
+            `;
+          }
+          if (typeof loadForumThreads === 'function') loadForumThreads();
+        } catch (err) {
+          console.error("Error deleting thread:", err);
+          showSystemModal({ title: "Error", message: "Failed to delete thread: " + err.message });
+        }
+      }
+    });
+  }
+};
+
 async function toggleThreadUpvote(threadId) {
   const session = getCurrentUserSession();
   const userId = session.name;
