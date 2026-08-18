@@ -223,7 +223,7 @@ async function selectThread(threadId) {
 }
   loadThreadRepliesRealtime(thread.id);
   listenToTypingIndicator(thread.id);
-}
+
 
 // Feature 1 & 3 & 4: Real-Time Replies with Upvoting and Best Answer Marking
 function loadThreadRepliesRealtime(threadId) {
