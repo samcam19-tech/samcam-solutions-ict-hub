@@ -304,13 +304,6 @@ async function selectThread(threadId) {
       '<textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use @ to tag peers)..." oninput="handleTypingInput(\'' + thread.id + '\'); autoResizeTextarea(this);" rows="1" aria-label="Write a reply"></textarea>' +
       '<div class="markdown-preview-pane" id="markdownPreviewPane" style="display:none; border:1px solid var(--border); padding:0.5rem; border-radius:4px; min-height:60px; background:var(--surface);"></div>' +
       '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-        '<div style="display:flex; gap:0.5rem; align-items:center;">' +
-          '<label class="btn btn-xs btn-outline" style="cursor:pointer; font-size:0.75rem;">' +
-            '<i class="fa-solid fa-image"></i> Add Image/File <input type="file" id="replyAttachmentInput" style="display:none;" onchange="previewAttachmentName()">' +
-          '</label>' +
-          '<span id="attachmentFileName" style="font-size:0.75rem; color:#64748b;"></span>' +
-          '<button type="button" class="btn btn-xs btn-outline" id="recordAudioBtn" onclick="toggleAudioRecording()" style="font-size:0.75rem;"><i class="fa-solid fa-microphone"></i> Voice Note</button>' +
-        '</div>' +
         '<button type="button" class="btn btn-primary" onclick="submitReplyOptimistic(\'' + thread.id + '\')" aria-label="Send reply">' +
           '<i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Send' +
         '</button>' +
