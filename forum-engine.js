@@ -254,18 +254,19 @@ async function selectThread(threadId) {
     '<div class="active-thread-header">' +
       '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">' +
         '<span class="class-badge">' + escapeHtml(thread.classTarget || 'General') + '</span>' +
+        // Top discussion action buttons styled uniformly as clean outline buttons (no background fill)
         '<div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">' +
-          '<button class="btn btn-sm ' + (isBookmarked ? 'btn-primary' : 'btn-outline') + '" onclick="toggleBookmark(\'' + thread.id + '\')" title="Save for later">' +
-            '<i class="fa-' + (isBookmarked ? 'solid' : 'regular') + ' fa-bookmark" aria-hidden="true"></i> ' + (isBookmarked ? 'Saved' : 'Save') +
+          '<button class="btn btn-sm btn-outline" onclick="toggleBookmark(\'' + thread.id + '\')" title="Save for later" style="background:transparent;">' +
+            '<i class="fa-' + (isBookmarked ? 'solid' : 'regular') + ' fa-bookmark" aria-hidden="true" style="' + (isBookmarked ? 'color:#2563eb;' : '') + '"></i> ' + (isBookmarked ? 'Saved' : 'Save') +
           '</button>' +
-          '<button class="btn btn-sm btn-outline" onclick="generateAiSummary(\'' + thread.id + '\')" title="AI Summary & Hint">' +
+          '<button class="btn btn-sm btn-outline" onclick="generateAiSummary(\'' + thread.id + '\')" title="AI Summary & Hint" style="background:transparent;">' +
             '<i class="fa-solid fa-wand-magic-sparkles" style="color:#8b5cf6;" aria-hidden="true"></i> AI Assistant' +
           '</button>' +
-          '<button class="btn btn-sm ' + (hasUpvoted ? 'btn-primary' : 'btn-outline') + '" onclick="toggleThreadUpvote(\'' + thread.id + '\')" title="Upvote discussion">' +
-            '<i class="fa-solid fa-thumbs-up" aria-hidden="true"></i> <span id="threadUpvoteCount">' + upvotesCount + '</span>' +
+          '<button class="btn btn-sm btn-outline" onclick="toggleThreadUpvote(\'' + thread.id + '\')" title="Upvote discussion" style="background:transparent;">' +
+            '<i class="fa-solid fa-thumbs-up" aria-hidden="true" style="' + (hasUpvoted ? 'color:#2563eb;' : '') + '"></i> <span id="threadUpvoteCount">' + upvotesCount + '</span>' +
           '</button>' +
-          (isAuthor || isTeacherOrAdmin ? '<button class="btn btn-sm btn-outline" onclick="openEditThreadModal(\'' + thread.id + '\')" title="Edit Thread"><i class="fa-solid fa-pen-to-square"></i></button>' : '') +
-          (isAuthor || isTeacherOrAdmin ? '<button class="btn btn-sm btn-outline" style="color:#ef4444; border-color:#fca5a5;" onclick="confirmDeleteThread(\'' + thread.id + '\')" title="Delete Thread"><i class="fa-solid fa-trash"></i></button>' : '') +
+          (isAuthor || isTeacherOrAdmin ? '<button class="btn btn-sm btn-outline" onclick="openEditThreadModal(\'' + thread.id + '\')" title="Edit Thread" style="background:transparent;"><i class="fa-solid fa-pen-to-square"></i></button>' : '') +
+          (isAuthor || isTeacherOrAdmin ? '<button class="btn btn-sm btn-outline" onclick="confirmDeleteThread(\'' + thread.id + '\')" title="Delete Thread" style="background:transparent; color:#ef4444; border-color:#fca5a5;"><i class="fa-solid fa-trash"></i></button>' : '') +
           '<span style="font-size:0.75rem; color:#64748b; margin-left:0.25rem;">Posted by <strong>' + escapeHtml(thread.authorName || 'Instructor') + '</strong></span>' +
         '</div>' +
       '</div>' +
