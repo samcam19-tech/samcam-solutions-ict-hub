@@ -389,7 +389,7 @@ async function selectThread(threadId) {
     <div class="comment-input-wrapper">
       <textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use &#96;&#96;&#96;code&#96;&#96;&#96; for blocks)..." oninput="handleTypingInput('${thread.id}')" rows="1"></textarea>
       <button type="button" class="btn-comment-submit" onclick="submitReply('${thread.id}')">
-        <i class="fa-solid fa-paper-plane"></i> Reply
+        <i class="fa-solid fa-paper-plane"></i> Send
       </button>
     </div>
   `;
