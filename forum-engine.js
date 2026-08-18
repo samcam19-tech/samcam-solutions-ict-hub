@@ -399,7 +399,7 @@ window.generateAiSummary = async function(threadId) {
 
     // Directly added your API key string here
     const ai = new GoogleGenAI({ 
-      apiKey: "YOUR_ACTUAL_GEMINI_API_KEY", 
+      apiKey: "AQ.Ab8RN6J2wGYo9rbjfkqQDFyIybqltvN3gFh7HIFAIve9Awve1A", 
       dangerouslyAllowBrowser: true 
     });
 
