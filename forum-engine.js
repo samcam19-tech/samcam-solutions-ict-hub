@@ -435,10 +435,6 @@ function formatRichContent(text) {
   return escaped.replace(/\n/g, '<br>');
 }
 
-function strSafe(str) {
-  return typeof str === 'string';
-}
-
 // Modal Controls for Creating a New Discussion
 function openNewThreadModal() {
   const modal = document.getElementById('newThreadModal');
