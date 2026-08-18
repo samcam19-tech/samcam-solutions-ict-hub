@@ -16,6 +16,7 @@ if (typeof firebase !== "undefined" && !firebase.apps.length) {
 }
 
 const db = typeof firebase !== "undefined" ? firebase.firestore() : null;
+const storage = typeof firebase !== "undefined" && firebase.storage ? firebase.storage() : null;
 
 // ==========================================================================
 // 2. STATE MANAGEMENT, REAL-TIME LISTENERS & SESSION HANDLING
@@ -59,17 +60,17 @@ function updateClassFilterDropdown(session, isTeacherOrAdmin) {
     optionsHtml = `
       <option value="">All Classes (General & Specific)</option>
       <option value="General">General</option>
-      <option value="Senior 1">Senior 1</option>
-      <option value="Senior 2">Senior 2</option>
-      <option value="Senior 3">Senior 3</option>
-      <option value="Senior 4">Senior 4</option>
-      <option value="Senior 5">Senior 5</option>
-      <option value="Senior 6">Senior 6</option>
+      <option value="S.1">Senior One (S.1)</option>
+      <option value="S.2">Senior Two (S.2)</option>
+      <option value="S.3">Senior Three (S.3)</option>
+      <option value="S.4">Senior Four (S.4)</option>
+      <option value="S.5">Senior Five (S.5)</option>
+      <option value="S.6">Senior Six (S.6)</option>
     `;
   } else {
-    const userCls = (session.userClass || 'Senior 1').trim();
+    const userCls = (session.userClass || 'S.1').trim();
     optionsHtml = `
-      <option value="">All Available (${escapeHtml(userCls)} & General)</option>
+      <option value="">All Available (${userCls} & General)</option>
       <option value="${escapeHtml(userCls)}">${escapeHtml(userCls)}</option>
       <option value="General">General</option>
     `;
@@ -134,115 +135,6 @@ function getCurrentUserSession(userParam) {
   };
 }
 
-// ==========================================================================
-// 3. CUSTOM SYSTEM MODAL DIALOGS (REPLACING NATIVE ALERT & CONFIRM)
-// ==========================================================================
-let modalResolveCallback = null;
-
-function showSystemAlert(message, title = "Notice") {
-  return new Promise((resolve) => {
-    const modal = document.getElementById('systemModal');
-    if (!modal) {
-      alert(message);
-      resolve(true);
-      return;
-    }
-    
-    document.getElementById('systemModalTitleText').innerText = title;
-    document.getElementById('systemModalMessage').innerText = message;
-    
-    const icon = document.getElementById('systemModalIcon');
-    if (icon) {
-      icon.className = "fa-solid fa-circle-info";
-      icon.style.color = "#3b82f6";
-    }
-
-    const promptContainer = document.getElementById('systemModalPromptContainer');
-    if (promptContainer) promptContainer.style.display = 'none';
-    
-    const cancelBtn = document.getElementById('systemModalCancelBtn');
-    if (cancelBtn) cancelBtn.style.display = 'none';
-    
-    const okBtn = document.getElementById('systemModalOkBtn');
-    if (okBtn) {
-      okBtn.innerText = "OK";
-      okBtn.className = "btn btn-sm btn-primary";
-    }
-
-    modal.style.display = 'flex';
-    modalResolveCallback = () => resolve(true);
-  });
-}
-
-function showSystemConfirm(message, title = "Confirm Action", confirmText = "Confirm", isDanger = false) {
-  return new Promise((resolve) => {
-    const modal = document.getElementById('systemModal');
-    if (!modal) {
-      const res = confirm(message);
-      resolve(res);
-      return;
-    }
-
-    document.getElementById('systemModalTitleText').innerText = title;
-    document.getElementById('systemModalMessage').innerText = message;
-    
-    const icon = document.getElementById('systemModalIcon');
-    if (icon) {
-      icon.className = isDanger ? "fa-solid fa-triangle-exclamation" : "fa-solid fa-circle-question";
-      icon.style.color = isDanger ? "#ef4444" : "#f59e0b";
-    }
-
-    const promptContainer = document.getElementById('systemModalPromptContainer');
-    if (promptContainer) promptContainer.style.display = 'none';
-    
-    const cancelBtn = document.getElementById('systemModalCancelBtn');
-    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
-    
-    const okBtn = document.getElementById('systemModalOkBtn');
-    if (okBtn) {
-      okBtn.innerText = confirmText;
-      okBtn.className = isDanger ? "btn btn-sm btn-danger" : "btn btn-sm btn-primary";
-    }
-
-    modal.style.display = 'flex';
-    modalResolveCallback = resolve;
-  });
-}
-
-function closeSystemModal(result) {
-  const modal = document.getElementById('systemModal');
-  if (modal) modal.style.display = 'none';
-  if (modalResolveCallback) {
-    modalResolveCallback(result);
-    modalResolveCallback = null;
-  }
-}
-
-// ==========================================================================
-// 4. THREADS & REAL-TIME FORUM LOGIC
-// ==========================================================================
-
-// Add this event listener or helper function to handle auto-resizing
-document.addEventListener('input', function (event) {
-  if (event.target && event.target.id === 'replyMessageInput') {
-    event.target.style.height = 'auto';
-    event.target.style.height = (event.target.scrollHeight) + 'px';
-  }
-});
-
-document.addEventListener('keydown', function (event) {
-  if (event.target && event.target.id === 'replyMessageInput') {
-    if (event.key === 'Enter' && !event.shiftKey) {
-      event.preventDefault();
-      // Trigger the submit button click if activeThreadId is present
-      if (typeof activeThreadId !== 'undefined' && activeThreadId) {
-        submitReply(activeThreadId);
-      }
-    }
-  }
-});
-
-
 function initRealtimeForumThreads() {
   const feedContainer = document.getElementById('threadsFeedContainer');
   if (!feedContainer) return;
@@ -298,7 +190,7 @@ function renderThreadsList(threads) {
             <button class="btn btn-xs btn-outline" style="border:none; padding:0.1rem 0.3rem;" onclick="event.stopPropagation(); toggleBookmark('${thread.id}')" title="Bookmark Thread">
               <i class="fa-${isBookmarked ? 'solid' : 'regular'} fa-bookmark" style="${isBookmarked ? 'color:#10b981;' : ''}"></i>
             </button>
-            <span class="thread-time" style="margin-left:0.3rem;"><i class="fa-solid fa-thumbs-up"></i> ${upvotesCount} • ${timeAgo}</span>
+            <span class="thread-time" style="margin-left:0.3rem;"><i class="fa-solid fa-thumbs-up"></i> ${upvotesCount} â€¢ ${timeAgo}</span>
           </div>
         </div>
         <h4>${escapeHtml(thread.title)}</h4>
@@ -349,155 +241,62 @@ async function selectThread(threadId) {
 
   const session = getCurrentUserSession();
   const userId = session.name || 'Anonymous';
-  const role = (session.role || session.userType || session.type || '').toLowerCase();
-  const isTeacherOrAdmin = role.includes('teacher') || role.includes('admin') || role.includes('instructor') || role.includes('staff');
-  const isAuthor = thread.authorName === session.name;
-
   const hasUpvoted = (thread.upvotedBy || []).includes(userId);
   const upvotesCount = (thread.upvotedBy || []).length;
   const bookmarks = JSON.parse(localStorage.getItem(`samcam_bookmarks_${session.name}`) || '[]');
   const isBookmarked = bookmarks.includes(thread.id);
 
-  detailPane.innerHTML = 
-    '<div class="active-thread-header">' +
-      '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">' +
-        '<span class="class-badge">' + escapeHtml(thread.classTarget || 'General') + '</span>' +
-        '<div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">' +
-          // Save / Bookmark Button
-          '<button class="btn btn-sm ' + (isBookmarked ? 'btn-primary' : 'btn-outline') + '" onclick="toggleBookmark(\'' + thread.id + '\')" title="Save for later">' +
-            '<i class="fa-' + (isBookmarked ? 'solid' : 'regular') + ' fa-bookmark" aria-hidden="true"></i> ' + (isBookmarked ? 'Saved' : 'Save') +
-          '</button>' +
-          // AI Assistant Button
-          '<button class="btn btn-sm btn-outline" onclick="generateAiSummary(\'' + thread.id + '\')" title="AI Summary & Hint">' +
-            '<i class="fa-solid fa-wand-magic-sparkles" style="color:#8b5cf6;" aria-hidden="true"></i> AI Assistant' +
-          '</button>' +
-          // Like / Upvote Button
-          '<button class="btn btn-sm ' + (hasUpvoted ? 'btn-primary' : 'btn-outline') + '" onclick="toggleThreadUpvote(\'' + thread.id + '\')" title="Upvote discussion">' +
-            '<i class="fa-solid fa-thumbs-up" aria-hidden="true"></i> <span id="threadUpvoteCount">' + upvotesCount + '</span>' +
-          '</button>' +
-          // Edit Thread (Author or Staff only)
-          (isAuthor || isTeacherOrAdmin ? '<button class="btn btn-sm btn-outline" onclick="openEditThreadModal(\'' + thread.id + '\')" title="Edit Thread"><i class="fa-solid fa-pen-to-square"></i></button>' : '') +
-          // Delete Thread (Author or Staff only)
-          (isAuthor || isTeacherOrAdmin ? '<button class="btn btn-sm btn-outline" style="color:#ef4444; border-color:#fca5a5;" onclick="confirmDeleteThread(\'' + thread.id + '\')" title="Delete Thread"><i class="fa-solid fa-trash"></i></button>' : '') +
-          '<span style="font-size:0.75rem; color:#64748b; margin-left:0.25rem;">Posted by <strong>' + escapeHtml(thread.authorName || 'Instructor') + '</strong></span>' +
-        '</div>' +
-      '</div>' +
-      '<h3>' + escapeHtml(thread.title) + '</h3>' +
-      '<div class="active-thread-body">' + formatRichContent(thread.body) + '</div>' +
-    '</div>' +
+  detailPane.innerHTML = `
+    <div class="active-thread-header">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+        <span class="class-badge">${escapeHtml(thread.classTarget || 'General')}</span>
+        <div>
+          <button class="btn btn-sm ${isBookmarked ? 'btn-primary' : 'btn-outline'}" onclick="toggleBookmark('${thread.id}')" title="Save for later">
+            <i class="fa-${isBookmarked ? 'solid' : 'regular'} fa-bookmark"></i> ${isBookmarked ? 'Saved' : 'Save'}
+          </button>
+          <button class="btn btn-sm btn-outline" onclick="generateAiSummary('${thread.id}')" title="AI Summary & Hint">
+            <i class="fa-solid fa-wand-magic-sparkles" style="color:#8b5cf6;"></i> AI Assistant
+          </button>
+          <button class="btn btn-sm ${hasUpvoted ? 'btn-primary' : 'btn-outline'}" onclick="toggleThreadUpvote('${thread.id}')">
+            <i class="fa-solid fa-thumbs-up"></i> <span id="threadUpvoteCount">${upvotesCount}</span>
+          </button>
+          <span style="font-size:0.75rem; color:#64748b; margin-left:0.5rem;">Posted by <strong>${escapeHtml(thread.authorName || 'Instructor')}</strong></span>
+        </div>
+      </div>
+      <h3>${escapeHtml(thread.title)}</h3>
+      <div class="active-thread-body">${formatRichContent(thread.body)}</div>
+      ${thread.mediaUrl ? `<div style="margin-top:0.5rem;"><a href="${thread.mediaUrl}" target="_blank" class="btn btn-xs btn-outline"><i class="fa-solid fa-paperclip"></i> View Attached File / Screenshot</a></div>` : ''}
+    </div>
 
-    '<div id="aiSummaryBox" style="display:none; background:#f5f3ff; border:1px solid #c4b5fd; padding:0.75rem; border-radius:6px; margin-bottom:1rem; font-size:0.85rem; color:#4c1d95;">' +
-      '<div style="font-weight:bold; margin-bottom:0.25rem;"><i class="fa-solid fa-robot"></i> AI Summary & Hints</div>' +
-      '<div id="aiSummaryContent">Analyzing discussion...</div>' +
-    '</div>' +
+    <div id="aiSummaryBox" style="display:none; background:#f5f3ff; border:1px solid #c4b5fd; padding:0.75rem; border-radius:6px; margin-bottom:1rem; font-size:0.85rem; color:#4c1d95;">
+      <div style="font-weight:bold; margin-bottom:0.25rem;"><i class="fa-solid fa-robot"></i> AI Summary & Hints</div>
+      <div id="aiSummaryContent">Analyzing discussion...</div>
+    </div>
 
-    '<!-- Skeleton Pulse Shimmer Loader -->' +
-    '<div class="replies-list-container" id="repliesListContainer">' +
-      '<div class="skeleton-loader" style="width: 100%;"></div>' +
-      '<div class="skeleton-loader" style="width: 80%;"></div>' +
-      '<div class="skeleton-loader" style="width: 60%;"></div>' +
-    '</div>' +
+    <div class="replies-list-container" id="repliesListContainer">
+      <div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading live replies...</div>
+    </div>
 
-    '<div id="typingIndicator" style="font-size:0.75rem; color:#64748b; font-style:italic; padding:0 0.5rem 0.25rem 0.5rem; min-height:1.2rem;"></div>' +
+    <div id="typingIndicator" style="font-size:0.75rem; color:#64748b; font-style:italic; padding:0 0.5rem 0.25rem 0.5rem; min-height:1.2rem;"></div>
 
-    '<!-- Formatting Toolbar -->' +
-    '<div style="display:flex; justify-content:space-between; align-items:center; padding:0 0.25rem;">' +
-      '<div class="comment-toolbar" style="display:flex; gap:0.4rem;">' +
-        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'**\', \'**\')" title="Bold"><i class="fa-solid fa-bold"></i></button>' +
-        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'*\', \'*\')" title="Italic"><i class="fa-solid fa-italic"></i></button>' +
-        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'`\', \'`\')" title="Code"><i class="fa-solid fa-code"></i></button>' +
-        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'\\n```\\n\', \'\\n```\\n\')" title="Code Block"><i class="fa-solid fa-file-code"></i></button>' +
-      '</div>' +
-      '<div class="input-tabs">' +
-        '<button type="button" class="input-tab-btn active" id="writeTabBtn" onclick="switchInputTab(\'write\')">Write</button>' +
-        '<button type="button" class="input-tab-btn" id="previewTabBtn" onclick="switchInputTab(\'preview\')">Preview</button>' +
-      '</div>' +
-    '</div>' +
-
-    '<div class="comment-input-wrapper" id="commentInputWrapperContainer">' +
-      '<textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use @ to tag peers)..." oninput="handleTypingInput(\'' + thread.id + '\'); autoResizeTextarea(this);" rows="1" aria-label="Write a reply"></textarea>' +
-      '<div class="markdown-preview-pane" id="markdownPreviewPane"></div>' +
-      '<button type="button" class="btn-comment-submit" onclick="submitReplyOptimistic(\'' + thread.id + '\')" aria-label="Send reply">' +
-        '<i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Send' +
-      '</button>' +
-    '</div>';
+    <div class="reply-input-box" style="display:flex; flex-direction:column; gap:0.5rem;">
+      <textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use &#96;&#96;&#96;code&#96;&#96;&#96; for blocks)..." oninput="handleTypingInput('${thread.id}')"></textarea>
+      
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <label class="btn btn-xs btn-outline" style="cursor:pointer; font-size:0.75rem;">
+            <i class="fa-solid fa-image"></i> Add Image/File <input type="file" id="replyAttachmentInput" style="display:none;" onchange="previewAttachmentName()">
+          </label>
+          <span id="attachmentFileName" style="font-size:0.75rem; color:#64748b;"></span>
+          <button type="button" class="btn btn-xs btn-outline" id="recordAudioBtn" onclick="toggleAudioRecording()" style="font-size:0.75rem;"><i class="fa-solid fa-microphone"></i> Voice Note</button>
+        </div>
+        <button class="btn btn-primary" onclick="submitReply('${thread.id}')"><i class="fa-solid fa-paper-plane"></i> Reply</button>
+      </div>
+    </div>
+  `;
 
   loadThreadRepliesRealtime(thread.id);
   listenToTypingIndicator(thread.id);
-}
-
-// 2. Formatting Toolbar Injection
-function insertMarkdown(wrapperStart, wrapperEnd) {
-  const textarea = document.getElementById('replyMessageInput');
-  if (!textarea) return;
-  
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const text = textarea.value;
-  const selectedText = text.substring(start, end) || 'text';
-  
-  textarea.value = text.substring(0, start) + wrapperStart + selectedText + wrapperEnd + text.substring(end);
-  textarea.focus();
-  textarea.setSelectionRange(start + wrapperStart.length, start + wrapperStart.length + selectedText.length);
-}
-
-// 3. Write / Preview Tab Switcher
-function switchInputTab(mode) {
-  const textarea = document.getElementById('replyMessageInput');
-  const previewPane = document.getElementById('markdownPreviewPane');
-  const writeBtn = document.getElementById('writeTabBtn');
-  const previewBtn = document.getElementById('previewTabBtn');
-
-  if (mode === 'preview') {
-    previewPane.innerHTML = formatRichContent(textarea.value || '*Nothing to preview yet.*');
-    textarea.style.display = 'none';
-    previewPane.style.display = 'block';
-    writeBtn.classList.remove('active');
-    previewBtn.classList.add('active');
-  } else {
-    previewPane.style.display = 'none';
-    textarea.style.display = 'block';
-    writeBtn.classList.add('active');
-    previewBtn.classList.remove('active');
-    textarea.focus();
-  }
-}
-
-// 4. Optimistic UI Reply Submission (Instant Feedback)
-async function submitReplyOptimistic(threadId) {
-  const textarea = document.getElementById('replyMessageInput');
-  if (!textarea || !textarea.value.trim()) return;
-
-  const replyText = textarea.value.trim();
-  textarea.value = '';
-  textarea.style.height = 'auto';
-
-  // Switch back to write mode if preview was active
-  switchInputTab('write');
-
-  // Optimistically inject into DOM immediately before Firebase confirms
-  const container = document.getElementById('repliesListContainer');
-  if (container) {
-    const session = getCurrentUserSession();
-    const tempHtml = `
-      <div class="reply-item optimistic-fade" style="opacity:0.7; padding:0.75rem; border-bottom:1px solid #e2e8f0;">
-        <div style="font-size:0.75rem; color:#64748b; margin-bottom:0.25rem;"><strong>${escapeHtml(session.name || 'You')}</strong> (Sending...)</div>
-        <div>${formatRichContent(replyText)}</div>
-      </div>
-    `;
-    // Remove loading state if present
-    if (container.querySelector('.skeleton-loader') || container.querySelector('.loading-state')) {
-      container.innerHTML = '';
-    }
-    container.insertAdjacentHTML('beforeend', tempHtml);
-  }
-
-  // Call your existing backend submission function
-  if (typeof submitReply === 'function') {
-    // Pass the message directly or hook into your existing parameter setup
-    window._lastOptimisticMessage = replyText;
-    await submitReply(threadId, replyText);
-  }
 }
 
 async function generateAiSummary(threadId) {
@@ -532,10 +331,10 @@ async function generateAiSummary(threadId) {
   }
 }
 
-async function toggleBookmark(threadId) {
+function toggleBookmark(threadId) {
   const session = getCurrentUserSession();
   if (!session.name) {
-    await showSystemAlert("Please sign in to bookmark discussions.", "Authentication Required");
+    alert("Please sign in to bookmark discussions.");
     return;
   }
   const key = `samcam_bookmarks_${session.name}`;
@@ -551,6 +350,43 @@ async function toggleBookmark(threadId) {
   filterForumThreads();
   if (activeThreadId === threadId) {
     selectThread(threadId);
+  }
+}
+
+let mediaRecorder = null;
+let audioChunks = [];
+let recordedAudioBlob = null;
+
+function toggleAudioRecording() {
+  const btn = document.getElementById('recordAudioBtn');
+  const fileLabel = document.getElementById('attachmentFileName');
+
+  if (!mediaRecorder || mediaRecorder.state === "inactive") {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        recordedAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        fileLabel.innerHTML = `<i class="fa-solid fa-microphone-lines text-success"></i> Voice note recorded (ready to send)`;
+        btn.innerHTML = `<i class="fa-solid fa-microphone"></i> Re-record`;
+      };
+      mediaRecorder.start();
+      btn.innerHTML = `<i class="fa-solid fa-stop" style="color:red;"></i> Stop Recording`;
+      fileLabel.innerHTML = `Recording voice note...`;
+    }).catch(err => {
+      alert("Microphone access denied or unsupported.");
+    });
+  } else {
+    mediaRecorder.stop();
+  }
+}
+
+function previewAttachmentName() {
+  const fileInput = document.getElementById('replyAttachmentInput');
+  const fileLabel = document.getElementById('attachmentFileName');
+  if (fileInput && fileInput.files[0]) {
+    fileLabel.innerText = fileInput.files[0].name;
   }
 }
 
@@ -590,7 +426,7 @@ async function saveEditedComment(threadId, replyId) {
   const updatedBody = textarea.value.trim();
 
   if (!updatedBody) {
-    await showSystemAlert("Comment cannot be empty.", "Validation Warning");
+    alert("Comment cannot be empty.");
     return;
   }
 
@@ -601,7 +437,7 @@ async function saveEditedComment(threadId, replyId) {
     });
   } catch (err) {
     console.error("Error updating comment:", err);
-    await showSystemAlert("Failed to update comment: " + err.message, "Error");
+    alert("Failed to update comment: " + err.message);
   }
 }
 
@@ -616,23 +452,17 @@ async function deleteComment(threadId, replyId, authorName) {
   const isOwner = session.name && session.name.toLowerCase() === authorName.toLowerCase();
 
   if (!isTeacherOrAdmin && !isOwner) {
-    await showSystemAlert("You do not have permission to delete this comment.", "Access Denied");
+    alert("You do not have permission to delete this comment.");
     return;
   }
 
-  const confirmed = await showSystemConfirm(
-    "Are you sure you want to delete this comment? This action cannot be undone.", 
-    "Delete Comment", 
-    "Delete", 
-    true
-  );
-  if (!confirmed) return;
+  if (!confirm("Are you sure you want to delete this comment?")) return;
 
   try {
     await db.collection('forum_threads').doc(threadId).collection('replies').doc(replyId).delete();
   } catch (err) {
     console.error("Error deleting comment:", err);
-    await showSystemAlert("Failed to delete comment: " + err.message, "Error");
+    alert("Failed to delete comment: " + err.message);
   }
 }
 
@@ -674,6 +504,16 @@ function loadThreadRepliesRealtime(threadId) {
         const editBtnHtml = showActionButtons ? `<button class="btn btn-xs btn-outline" style="font-size:0.7rem; padding:0.1rem 0.3rem;" onclick="enableEditComment('${threadId}', '${repId}', \`${escapeHtml(rep.replyBody).replace(/\\/g, '\\\\').replace(/`/g, '\\`')}\`)"><i class="fa-solid fa-pen"></i> Edit</button>` : '';
         const deleteBtnHtml = showActionButtons ? `<button class="btn btn-xs btn-outline" style="font-size:0.7rem; padding:0.1rem 0.3rem; color:#ef4444; border-color:#fca5a5;" onclick="deleteComment('${threadId}', '${repId}', '${escapeHtml(rep.studentName)}')"><i class="fa-solid fa-trash"></i> Delete</button>` : '';
 
+        // Robust Voice Note & Attachment Render Check
+        let mediaHtml = '';
+        if (rep.mediaUrl) {
+          if (rep.mediaUrl.includes('forum_audio') || rep.mediaUrl.includes('.webm') || rep.mediaUrl.includes('.mp3')) {
+            mediaHtml = `<div style="margin-top:0.5rem; background:#f1f5f9; padding:0.5rem; border-radius:6px; display:inline-block; width:100%; max-width:340px;"><audio controls style="height:36px; width:100%; display:block;"><source src="${rep.mediaUrl}" type="audio/webm">Your browser does not support the audio element.</audio></div>`;
+          } else {
+            mediaHtml = `<div style="margin-top:0.4rem;"><a href="${rep.mediaUrl}" target="_blank" class="btn btn-xs btn-outline"><i class="fa-solid fa-paperclip"></i> View Attached File / Screenshot</a></div>`;
+          }
+        }
+
         let badgeHtml = '';
         if (upvotes >= 5) {
           badgeHtml = `<span style="background:#fef3c7; color:#d97706; padding:0.05rem 0.3rem; border-radius:3px; font-size:0.65rem; margin-left:0.3rem; font-weight:600;"><i class="fa-solid fa-medal"></i> Code Wizard</span>`;
@@ -688,6 +528,7 @@ function loadThreadRepliesRealtime(threadId) {
               <span style="font-size:0.75rem; color:#64748b;">${repTime} ${rep.editedAt ? '(Edited)' : ''}</span>
             </div>
             <div class="reply-body" id="reply-body-${repId}">${formatRichContent(rep.replyBody)}</div>
+            ${mediaHtml}
             <div class="reply-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem;">
               <div style="display:flex; gap:0.5rem; align-items:center;">
                 <button class="btn btn-sm btn-outline" style="font-size:0.75rem;" onclick="toggleReplyUpvote('${threadId}', '${repId}')">
@@ -719,7 +560,7 @@ async function toggleThreadUpvote(threadId) {
   const session = getCurrentUserSession();
   const userId = session.name;
   if (!userId) {
-    await showSystemAlert("Please sign in to upvote discussions.", "Authentication Required");
+    alert("Please sign in to upvote discussions.");
     return;
   }
 
@@ -745,7 +586,7 @@ async function toggleReplyUpvote(threadId, replyId) {
   const session = getCurrentUserSession();
   const userId = session.name;
   if (!userId) {
-    await showSystemAlert("Please sign in to vote.", "Authentication Required");
+    alert("Please sign in to vote.");
     return;
   }
 
@@ -778,7 +619,7 @@ async function markBestAnswer(threadId, replyId) {
     await batch.commit();
   } catch (err) {
     console.error("Error setting best answer:", err);
-    await showSystemAlert("Failed to designate best answer.", "Error");
+    alert("Failed to designate best answer.");
   }
 }
 
@@ -793,13 +634,13 @@ async function submitReply(threadId) {
   if (!inputEl) return;
   const replyBody = inputEl.value.trim();
 
-  if (!replyBody) {
-    await showSystemAlert("Please enter a reply message before submitting.", "Required Field");
+  if (!replyBody && !recordedAudioBlob && !document.getElementById('replyAttachmentInput')?.files[0]) {
+    alert("Please enter a reply message or attach a file/voice note before submitting.");
     return;
   }
 
-  if (containsInappropriateContent(replyBody)) {
-    await showSystemAlert("Your reply contains flagged words that violate school forum guidelines. Please revise your message.", "Content Moderation");
+  if (replyBody && containsInappropriateContent(replyBody)) {
+    alert("Your reply contains flagged words that violate school forum guidelines. Please revise your message.");
     return;
   }
 
@@ -808,20 +649,45 @@ async function submitReply(threadId) {
   const studentClass = session.userClass || 'Senior ICT';
 
   try {
+    let mediaUrl = '';
+    const fileInput = document.getElementById('replyAttachmentInput');
+
+    if (storage && fileInput && fileInput.files[0]) {
+      const file = fileInput.files[0];
+      const storageRef = storage.ref().child(`forum_attachments/${Date.now()}_${file.name}`);
+      const snapshot = await storageRef.put(file);
+      mediaUrl = await snapshot.ref.getDownloadURL();
+    } else if (storage && recordedAudioBlob) {
+      const storageRef = storage.ref().child(`forum_audio/${Date.now()}_voicenote.webm`);
+      const snapshot = await storageRef.put(recordedAudioBlob);
+      mediaUrl = await snapshot.ref.getDownloadURL();
+    }
+
+    // Set fallback text if only a voice note or attachment was sent
+    const finalBody = replyBody || (recordedAudioBlob ? 'ðŸŽ¤ [Voice Note]' : '[Attached File]');
+
     await db.collection('forum_threads').doc(threadId).collection('replies').add({
       studentName: studentName,
       studentClass: studentClass,
-      replyBody: replyBody,
+      replyBody: finalBody,
+      mediaUrl: mediaUrl,
       upvotedBy: [],
       isBestAnswer: false,
       submittedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     inputEl.value = '';
+    if (fileInput) fileInput.value = '';
+    recordedAudioBlob = null;
+    const fileLabel = document.getElementById('attachmentFileName');
+    if (fileLabel) fileLabel.innerHTML = '';
+    const audioBtn = document.getElementById('recordAudioBtn');
+    if (audioBtn) audioBtn.innerHTML = `<i class="fa-solid fa-microphone"></i> Voice Note`;
+
     clearTypingIndicator(threadId);
   } catch (err) {
     console.error("Error submitting reply:", err);
-    await showSystemAlert("Failed to post reply: " + err.message, "Error");
+    alert("Failed to post reply: " + err.message);
   }
 }
 
@@ -898,7 +764,7 @@ async function handleCreateThread(e) {
                            combinedCheck.includes('staff');
 
   if (!isTeacherOrAdmin) {
-    await showSystemAlert("Access Denied: Only teachers or administrators can post new discussion questions.", "Restricted Action");
+    alert("Access Denied: Only teachers or administrators can post new discussion questions.");
     closeNewThreadModal();
     return;
   }
@@ -911,7 +777,7 @@ async function handleCreateThread(e) {
   if (!title || !body) return;
 
   if (containsInappropriateContent(title) || containsInappropriateContent(body)) {
-    await showSystemAlert("Thread title or content violates school content moderation standards.", "Content Moderation");
+    alert("Thread title or content violates school content moderation standards.");
     return;
   }
 
@@ -930,17 +796,10 @@ async function handleCreateThread(e) {
     selectThread(docRef.id);
   } catch (err) {
     console.error("Error creating discussion thread:", err);
-    await showSystemAlert("Failed to create thread: " + err.message, "Error");
+    alert("Failed to create thread: " + err.message);
   }
 }
 
-
-function autoResizeTextarea(element) {
-  // Reset height temporarily to correctly calculate the new scroll height
-  element.style.height = 'auto';
-  // Set the height to match the content scroll height (with a maximum cap if desired)
-  element.style.height = (element.scrollHeight) + 'px';
-}
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str).replace(/&/g, "&amp;")
