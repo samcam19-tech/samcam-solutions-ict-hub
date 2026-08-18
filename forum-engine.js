@@ -373,11 +373,8 @@ window.generateAiSummary = async function(threadId) {
   content.innerHTML = `<i class="fa-solid fa-spinner fa-spin fa-bounce"></i> Querying Gemini AI to synthesize discussion and student responses...`;
 
   try {
-    // Dynamically load GoogleGenAI right when the button is clicked
-    const { GoogleGenAI } = await import("https://esm.run/@genai/sdk" /* or "@google/genai" */);
-    
-    // Alternative CDN import for dynamic loading:
-    // const { GoogleGenAI } = await import("https://esm.run/@google/genai");
+    // Correct dynamic import for the Google Gen AI SDK
+    const { GoogleGenAI } = await import("https://esm.run/@google/genai");
 
     const thread = globalThreads.find(t => t.id === threadId);
     if (!thread) {
@@ -402,7 +399,11 @@ window.generateAiSummary = async function(threadId) {
       repliesText = "No student responses submitted yet.";
     }
 
-    const ai = new GoogleGenAI({ apiKey: "YOUR_GEMINI_API_KEY", dangerouslyAllowBrowser: true });
+    // Securely initialized using your environment variable
+    const ai = new GoogleGenAI({ 
+      apiKey: import.meta.env.VITE_GEMINI_API_KEY, 
+      dangerouslyAllowBrowser: true 
+    });
 
     const prompt = `
       You are an expert ICT educator specializing in the Ugandan Lower Secondary Curriculum and UNEB standards.
