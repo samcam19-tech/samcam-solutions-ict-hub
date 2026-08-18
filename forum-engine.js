@@ -60,7 +60,6 @@ function updateClassFilterDropdown(session, isTeacherOrAdmin) {
   let optionsHtml = '';
 
   if (isTeacherOrAdmin) {
-    // Teachers and admins can filter across all classes
     optionsHtml = `
       <option value="">All Classes (General & Specific)</option>
       <option value="General">General</option>
@@ -72,7 +71,6 @@ function updateClassFilterDropdown(session, isTeacherOrAdmin) {
       <option value="S.6">Senior Six (S.6)</option>
     `;
   } else {
-    // Students are restricted to their own class and General
     const userCls = (session.userClass || 'S.1').trim();
     optionsHtml = `
       <option value="">All Available (${userCls} & General)</option>
@@ -83,7 +81,6 @@ function updateClassFilterDropdown(session, isTeacherOrAdmin) {
 
   classFilterSelect.innerHTML = optionsHtml;
 
-  // Restore previous selection if still valid, otherwise default to empty
   if (Array.from(classFilterSelect.options).some(opt => opt.value === currentSelection)) {
     classFilterSelect.value = currentSelection;
   } else {
@@ -93,14 +90,12 @@ function updateClassFilterDropdown(session, isTeacherOrAdmin) {
 
 // Initialize real-time forum listeners on load and sync initial session
 document.addEventListener("DOMContentLoaded", () => {
-  // Restore saved filter from localStorage if available
   const savedFilter = localStorage.getItem('samcam_forum_class_filter');
   const classFilterSelect = document.getElementById('classFilterSelect');
   if (savedFilter && classFilterSelect) {
     classFilterSelect.value = savedFilter;
   }
 
-  // Add change listener to persist filter selections across page refreshes
   if (classFilterSelect) {
     classFilterSelect.addEventListener('change', (e) => {
       localStorage.setItem('samcam_forum_class_filter', e.target.value);
@@ -112,7 +107,6 @@ document.addEventListener("DOMContentLoaded", () => {
   initRealtimeForumThreads();
 });
 
-// Helper function using robust schema fallbacks
 function getCurrentUserSession(userParam) {
   let activeUser = userParam || window.currentUser;
 
@@ -145,7 +139,7 @@ function getCurrentUserSession(userParam) {
   };
 }
 
-// Feature 1: Real-time Listener for Threads Feed
+// Real-time Listener for Threads Feed
 function initRealtimeForumThreads() {
   const feedContainer = document.getElementById('threadsFeedContainer');
   if (!feedContainer) return;
@@ -171,7 +165,6 @@ function initRealtimeForumThreads() {
     });
 }
 
-// Render threads feed list
 function renderThreadsList(threads) {
   const feedContainer = document.getElementById('threadsFeedContainer');
   if (!feedContainer) return;
@@ -214,7 +207,6 @@ function renderThreadsList(threads) {
   feedContainer.innerHTML = html;
 }
 
-// Filter threads by search query, class dropdown selection, and student session restriction
 function filterForumThreads() {
   const query = document.getElementById('forumSearchInput')?.value.toLowerCase() || '';
   const selectedClass = document.getElementById('classFilterSelect')?.value || '';
@@ -229,7 +221,6 @@ function filterForumThreads() {
   const filtered = globalThreads.filter(t => {
     const target = (t.classTarget || 'General').trim().toLowerCase();
 
-    // Restrict students strictly to their class or General
     if (!isTeacherOrAdmin) {
       const studentCls = (session.userClass || '').trim().toLowerCase();
       const matchesStudentClass = target === 'general' || target === studentCls;
@@ -245,7 +236,6 @@ function filterForumThreads() {
   renderThreadsList(filtered);
 }
 
-// Select a thread to view details, replies, and presence indicators
 async function selectThread(threadId) {
   activeThreadId = threadId;
   filterForumThreads();
@@ -283,7 +273,6 @@ async function selectThread(threadId) {
       ${thread.mediaUrl ? `<div style="margin-top:0.5rem;"><a href="${thread.mediaUrl}" target="_blank" class="btn btn-xs btn-outline"><i class="fa-solid fa-paperclip"></i> View Attached File / Screenshot</a></div>` : ''}
     </div>
 
-    <!-- Feature 1: AI Summary Container -->
     <div id="aiSummaryBox" style="display:none; background:#f5f3ff; border:1px solid #c4b5fd; padding:0.75rem; border-radius:6px; margin-bottom:1rem; font-size:0.85rem; color:#4c1d95;">
       <div style="font-weight:bold; margin-bottom:0.25rem;"><i class="fa-solid fa-robot"></i> AI Summary & Hints</div>
       <div id="aiSummaryContent">Analyzing discussion...</div>
@@ -298,7 +287,6 @@ async function selectThread(threadId) {
     <div class="reply-input-box" style="display:flex; flex-direction:column; gap:0.5rem;">
       <textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use &#96;&#96;&#96;code&#96;&#96;&#96; for blocks)..." oninput="handleTypingInput('${thread.id}')"></textarea>
       
-      <!-- Feature 3: Multimedia Attachments Toolbar -->
       <div style="display:flex; justify-content:space-between; align-items:center;">
         <div style="display:flex; gap:0.5rem; align-items:center;">
           <label class="btn btn-xs btn-outline" style="cursor:pointer; font-size:0.75rem;">
@@ -316,7 +304,6 @@ async function selectThread(threadId) {
   listenToTypingIndicator(thread.id);
 }
 
-// Feature 1: AI Summary & Hint Generator
 async function generateAiSummary(threadId) {
   const box = document.getElementById('aiSummaryBox');
   const content = document.getElementById('aiSummaryContent');
@@ -349,7 +336,6 @@ async function generateAiSummary(threadId) {
   }
 }
 
-// Feature 2: Thread Bookmarking / Read Later
 function toggleBookmark(threadId) {
   const session = getCurrentUserSession();
   if (!session.name) {
@@ -372,7 +358,6 @@ function toggleBookmark(threadId) {
   }
 }
 
-// Feature 3: Audio Recording State Variables & Handlers
 let mediaRecorder = null;
 let audioChunks = [];
 let recordedAudioBlob = null;
@@ -410,7 +395,6 @@ function previewAttachmentName() {
   }
 }
 
-// Feature: Direct Reply to Someone's Comment
 function setDirectReply(authorName, commentSnippet) {
   const inputEl = document.getElementById('replyMessageInput');
   if (!inputEl) return;
@@ -419,7 +403,50 @@ function setDirectReply(authorName, commentSnippet) {
   inputEl.focus();
 }
 
-// Feature: Delete Comment (Admin or Author Only)
+// Enable Inline Comment Editing
+function enableEditComment(threadId, replyId, currentBody) {
+  const bodyDiv = document.getElementById(`reply-body-${replyId}`);
+  if (!bodyDiv) return;
+
+  bodyDiv.innerHTML = `
+    <div style="display:flex; flex-direction:column; gap:0.4rem; margin:0.3rem 0;">
+      <textarea id="edit-textarea-${replyId}" style="width:100%; min-height:60px; padding:0.4rem; border:1px solid #cbd5e1; border-radius:4px; font-size:0.9rem;">${currentBody}</textarea>
+      <div style="display:flex; gap:0.4rem;">
+        <button class="btn btn-xs btn-primary" onclick="saveEditedComment('${threadId}', '${replyId}')"><i class="fa-solid fa-check"></i> Save</button>
+        <button class="btn btn-xs btn-outline" onclick="cancelEditComment('${threadId}', '${replyId}', \`${escapeHtml(currentBody).replace(/\\/g, '\\\\').replace(/`/g, '\\`')}\`)">Cancel</button>
+      </div>
+    </div>
+  `;
+}
+
+function cancelEditComment(threadId, replyId, originalBody) {
+  const bodyDiv = document.getElementById(`reply-body-${replyId}`);
+  if (bodyDiv) {
+    bodyDiv.innerHTML = formatRichContent(originalBody);
+  }
+}
+
+async function saveEditedComment(threadId, replyId) {
+  const textarea = document.getElementById(`edit-textarea-${replyId}`);
+  if (!textarea) return;
+  const updatedBody = textarea.value.trim();
+
+  if (!updatedBody) {
+    alert("Comment cannot be empty.");
+    return;
+  }
+
+  try {
+    await db.collection('forum_threads').doc(threadId).collection('replies').doc(replyId).update({
+      replyBody: updatedBody,
+      editedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (err) {
+    console.error("Error updating comment:", err);
+    alert("Failed to update comment: " + err.message);
+  }
+}
+
 async function deleteComment(threadId, replyId, authorName) {
   const session = getCurrentUserSession();
   const combinedCheck = `${session.role} ${session.name}`.toLowerCase();
@@ -445,7 +472,6 @@ async function deleteComment(threadId, replyId, authorName) {
   }
 }
 
-// Feature 1 & 3 & 4: Real-Time Replies with Upvoting, Voice Player, and Deletion
 function loadThreadRepliesRealtime(threadId) {
   const repliesContainer = document.getElementById('repliesListContainer');
   if (!repliesContainer) return;
@@ -478,22 +504,22 @@ function loadThreadRepliesRealtime(threadId) {
         const isBest = rep.isBestAnswer ? `<span class="badge-best" style="background:#10b981; color:#fff; padding:0.1rem 0.5rem; border-radius:4px; font-size:0.7rem; margin-left:0.5rem;"><i class="fa-solid fa-check-circle"></i> Best Answer</span>` : '';
         const bestAnswerBtn = isTeacherOrAdmin && !rep.isBestAnswer ? `<button class="btn btn-xs btn-outline" style="font-size:0.7rem; padding:0.1rem 0.3rem;" onclick="markBestAnswer('${threadId}', '${repId}')">Mark Best</button>` : '';
 
-        // Check if current user can delete this comment (Admin/Teacher or the Owner)
         const isOwner = session.name && session.name.toLowerCase() === (rep.studentName || '').toLowerCase();
-        const showDeleteBtn = isTeacherOrAdmin || isOwner;
-        const deleteBtnHtml = showDeleteBtn ? `<button class="btn btn-xs btn-outline" style="font-size:0.7rem; padding:0.1rem 0.3rem; color:#ef4444; border-color:#fca5a5;" onclick="deleteComment('${threadId}', '${repId}', '${escapeHtml(rep.studentName)}')"><i class="fa-solid fa-trash"></i> Delete</button>` : '';
+        const showActionButtons = isTeacherOrAdmin || isOwner;
+        
+        const editBtnHtml = showActionButtons ? `<button class="btn btn-xs btn-outline" style="font-size:0.7rem; padding:0.1rem 0.3rem;" onclick="enableEditComment('${threadId}', '${repId}', \`${escapeHtml(rep.replyBody).replace(/\\/g, '\\\\').replace(/`/g, '\\`')}\`)"><i class="fa-solid fa-pen"></i> Edit</button>` : '';
+        const deleteBtnHtml = showActionButtons ? `<button class="btn btn-xs btn-outline" style="font-size:0.7rem; padding:0.1rem 0.3rem; color:#ef4444; border-color:#fca5a5;" onclick="deleteComment('${threadId}', '${repId}', '${escapeHtml(rep.studentName)}')"><i class="fa-solid fa-trash"></i> Delete</button>` : '';
 
-        // Render audio player if attachment is a voice note or audio format
+        // Fixed Voice Note Player Controls with explicit width, height and background for full visibility
         let mediaHtml = '';
         if (rep.mediaUrl) {
           if (rep.mediaUrl.includes('forum_audio') || rep.mediaUrl.includes('.webm') || rep.mediaUrl.includes('.mp3')) {
-            mediaHtml = `<div style="margin-top:0.5rem;"><audio controls style="height:32px; width:100%; max-width:300px;"><source src="${rep.mediaUrl}" type="audio/webm">Your browser does not support the audio element.</audio></div>`;
+            mediaHtml = `<div style="margin-top:0.5rem; background:#f1f5f9; padding:0.4rem; border-radius:6px; display:inline-block; width:100%; max-width:340px;"><audio controls style="height:36px; width:100%; display:block;"><source src="${rep.mediaUrl}" type="audio/webm">Your browser does not support the audio element.</audio></div>`;
           } else {
             mediaHtml = `<div style="margin-top:0.4rem;"><a href="${rep.mediaUrl}" target="_blank" class="btn btn-xs btn-outline"><i class="fa-solid fa-paperclip"></i> View Attached File / Screenshot</a></div>`;
           }
         }
 
-        // Gamification Badge Logic
         let badgeHtml = '';
         if (upvotes >= 5) {
           badgeHtml = `<span style="background:#fef3c7; color:#d97706; padding:0.05rem 0.3rem; border-radius:3px; font-size:0.65rem; margin-left:0.3rem; font-weight:600;"><i class="fa-solid fa-medal"></i> Code Wizard</span>`;
@@ -505,9 +531,9 @@ function loadThreadRepliesRealtime(threadId) {
           <div class="reply-item ${rep.isBestAnswer ? 'best-answer-card' : ''}" style="${rep.isBestAnswer ? 'border-left: 4px solid #10b981; background: #f0fdf4;' : ''}">
             <div class="reply-meta">
               <span class="reply-author">${escapeHtml(rep.studentName)} <span style="font-weight:normal; color:#64748b;">(${escapeHtml(rep.studentClass || 'Student')})</span> ${badgeHtml} ${isBest}</span>
-              <span style="font-size:0.75rem; color:#64748b;">${repTime}</span>
+              <span style="font-size:0.75rem; color:#64748b;">${repTime} ${rep.editedAt ? '(Edited)' : ''}</span>
             </div>
-            <div class="reply-body">${formatRichContent(rep.replyBody)}</div>
+            <div class="reply-body" id="reply-body-${repId}">${formatRichContent(rep.replyBody)}</div>
             ${mediaHtml}
             <div class="reply-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem;">
               <div style="display:flex; gap:0.5rem; align-items:center;">
@@ -520,6 +546,7 @@ function loadThreadRepliesRealtime(threadId) {
               </div>
               <div style="display:flex; gap:0.3rem;">
                 ${bestAnswerBtn}
+                ${editBtnHtml}
                 ${deleteBtnHtml}
               </div>
             </div>
@@ -535,7 +562,6 @@ function loadThreadRepliesRealtime(threadId) {
     });
 }
 
-// Feature 3: Upvote Thread
 async function toggleThreadUpvote(threadId) {
   const session = getCurrentUserSession();
   const userId = session.name;
@@ -562,7 +588,6 @@ async function toggleThreadUpvote(threadId) {
   }
 }
 
-// Feature 3: Upvote Reply
 async function toggleReplyUpvote(threadId, replyId) {
   const session = getCurrentUserSession();
   const userId = session.name;
@@ -589,7 +614,6 @@ async function toggleReplyUpvote(threadId, replyId) {
   }
 }
 
-// Feature 3: Teacher Marks Best Answer
 async function markBestAnswer(threadId, replyId) {
   const repliesRef = db.collection('forum_threads').doc(threadId).collection('replies');
   try {
@@ -605,14 +629,12 @@ async function markBestAnswer(threadId, replyId) {
   }
 }
 
-// Feature 4: Automated Content Moderation & Toxicity Filter Check
 function containsInappropriateContent(text) {
   const bannedKeywords = ['spam', 'abusekeyword1', 'abusekeyword2'];
   const lower = text.toLowerCase();
   return bannedKeywords.some(word => lower.includes(word));
 }
 
-// Submit a student/teacher reply with attachments & moderation support
 async function submitReply(threadId) {
   const inputEl = document.getElementById('replyMessageInput');
   if (!inputEl) return;
@@ -672,7 +694,6 @@ async function submitReply(threadId) {
   }
 }
 
-// Feature 4: Typing Indicator Handlers
 function handleTypingInput(threadId) {
   const session = getCurrentUserSession();
   const name = session.name || 'Someone';
@@ -709,27 +730,20 @@ function listenToTypingIndicator(threadId) {
     });
 }
 
-// Utility: Safe String Check Helper
 function strSafe(val) {
   return val !== null && val !== undefined && String(val).trim() !== '';
 }
 
-// Feature 2: Rich Text & Code Snippets Formatting Helper
 function formatRichContent(text) {
   if (!strSafe(text)) return '';
   let escaped = escapeHtml(text);
 
-  // Format Code Blocks ```code```
   escaped = escaped.replace(/```([\s\S]*?)```/g, '<pre style="background:#1e293b; color:#e2e8f0; padding:0.75rem; border-radius:6px; font-family:monospace; overflow-x:auto; margin:0.5rem 0;"><code>$1</code></pre>');
-
-  // Format Inline Code `code`
   escaped = escaped.replace(/`([^`]+)`/g, '<code style="background:#e2e8f0; padding:0.1rem 0.3rem; border-radius:4px; font-family:monospace; font-size:0.85em; color:#0f172a;">$1</code>');
 
-  // Convert line breaks to HTML breaks
   return escaped.replace(/\n/g, '<br>');
 }
 
-// Modal Controls for Creating a New Discussion
 function openNewThreadModal() {
   const modal = document.getElementById('newThreadModal');
   if (modal) modal.style.display = 'flex';
@@ -742,7 +756,6 @@ function closeNewThreadModal() {
   if (form) form.reset();
 }
 
-// Handle Teacher Creation of New Discussion with Safety check
 async function handleCreateThread(e) {
   e.preventDefault();
 
@@ -790,7 +803,6 @@ async function handleCreateThread(e) {
   }
 }
 
-// Utility to prevent XSS injection
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str).replace(/&/g, "&amp;")
