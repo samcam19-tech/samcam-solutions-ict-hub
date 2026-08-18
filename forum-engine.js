@@ -46,7 +46,48 @@ function syncForumEngineSession(user) {
     el.style.display = isTeacherOrAdmin ? 'inline-flex' : 'none';
   });
 
+  updateClassFilterDropdown(session, isTeacherOrAdmin);
   filterForumThreads();
+}
+
+// Dynamically populate or restrict the class filter dropdown based on user role and class
+function updateClassFilterDropdown(session, isTeacherOrAdmin) {
+  const classFilterSelect = document.getElementById('classFilterSelect');
+  if (!classFilterSelect) return;
+
+  const currentSelection = classFilterSelect.value;
+  let optionsHtml = '';
+
+  if (isTeacherOrAdmin) {
+    // Teachers and admins can filter across all classes
+    optionsHtml = `
+      <option value="">All Classes (General & Specific)</option>
+      <option value="General">General</option>
+      <option value="S.1">Senior One (S.1)</option>
+      <option value="S.2">Senior Two (S.2)</option>
+      <option value="S.3">Senior Three (S.3)</option>
+      <option value="S.4">Senior Four (S.4)</option>
+      <option value="S.5">Senior Five (S.5)</option>
+      <option value="S.6">Senior Six (S.6)</option>
+    `;
+  } else {
+    // Students are restricted to their own class and General
+    const userCls = (session.userClass || 'S.1').trim();
+    optionsHtml = `
+      <option value="">All Available (${userCls} & General)</option>
+      <option value="${escapeHtml(userCls)}">${escapeHtml(userCls)}</option>
+      <option value="General">General</option>
+    `;
+  }
+
+  classFilterSelect.innerHTML = optionsHtml;
+
+  // Restore previous selection if still valid, otherwise default to empty
+  if (Array.from(classFilterSelect.options).some(opt => opt.value === currentSelection)) {
+    classFilterSelect.value = currentSelection;
+  } else {
+    classFilterSelect.value = '';
+  }
 }
 
 // Initialize real-time forum listeners on load and sync initial session
@@ -176,15 +217,17 @@ function filterForumThreads() {
                            combinedCheck.includes('staff');
 
   const filtered = globalThreads.filter(t => {
+    const target = (t.classTarget || 'General').trim().toLowerCase();
+
+    // Restrict students strictly to their class or General
     if (!isTeacherOrAdmin) {
-      const target = (t.classTarget || 'General').trim().toLowerCase();
       const studentCls = (session.userClass || '').trim().toLowerCase();
       const matchesStudentClass = target === 'general' || target === studentCls;
       if (!matchesStudentClass) return false;
     }
 
     const matchesQuery = t.title.toLowerCase().includes(query) || t.body.toLowerCase().includes(query);
-    const matchesClassDropdown = !selectedClass || t.classTarget === selectedClass || t.classTarget === 'General';
+    const matchesClassDropdown = !selectedClass || target === selectedClass.trim().toLowerCase();
 
     return matchesQuery && matchesClassDropdown;
   });
