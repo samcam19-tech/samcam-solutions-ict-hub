@@ -452,6 +452,21 @@ body {
   padding-top: 1rem;
 }
 
+.comment-input-wrapper textarea {
+  flex: 1;
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 0.5rem 0;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: transparent;
+  min-height: 24px;
+  max-height: 150px; /* Caps the maximum height so it doesn't take over the whole screen */
+  overflow-y: auto;
+  transition: height 0.1s ease;
+}
+
 /* ==========================================================================
    RESPONSIVE DESKTOP LAYOUT
    ========================================================================== */
