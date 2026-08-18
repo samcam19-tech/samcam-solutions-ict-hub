@@ -13,15 +13,29 @@
 
   <div class="forum-wrapper">
     <!-- Header Section -->
-    <header class="forum-header">
+    <header class="forum-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
       <div>
         <h2><i class="fa-solid fa-comments"></i> Learner Discussion Forum</h2>
         <p>Engage in academic discourse, ask questions, and collaborate with peers.</p>
       </div>
-      <!-- Button for Teachers to post a new prompt -->
-      <button class="btn btn-primary teacher-only" id="openNewThreadModalBtn" onclick="openNewThreadModal()" style="display: none;">
-        <i class="fa-solid fa-plus"></i> New Discussion Question
-      </button>
+
+      <!-- Action buttons & role-based back links container -->
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <!-- Button for Teachers to post a new prompt -->
+        <button class="btn btn-primary teacher-only" id="openNewThreadModalBtn" onclick="openNewThreadModal()" style="display: none;">
+          <i class="fa-solid fa-plus"></i> New Discussion Question
+        </button>
+
+        <!-- Back Link for Staff (appears right after the new discussion button) -->
+        <a href="dashboard.html" class="btn btn-outline teacher-only back-link-staff" id="staffBackLink" style="display: none;">
+          <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+        </a>
+
+        <!-- Back Link for Students (appears on the right when not staff) -->
+        <a href="portal.html" class="btn btn-outline student-only back-link-student" id="studentBackLink" style="display: inline-flex;">
+          <i class="fa-solid fa-arrow-left"></i> Back to Portal
+        </a>
+      </div>
     </header>
 
     <!-- Search and Filter Bar -->
@@ -103,5 +117,51 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="script.js"></script>
   <script src="forum-engine.js"></script>
+
+  <!-- Role-based Back Link Controller Script -->
+  <script>
+    window.addEventListener('portalSessionChanged', (e) => {
+      updateHeaderBackLinks(e.detail);
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+      // Evaluate session on initial load
+      let activeUser = window.currentUser;
+      if (!activeUser) {
+        const sessionData = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
+        if (sessionData) {
+          try { activeUser = JSON.parse(sessionData); } catch (err) {}
+        }
+      }
+      updateHeaderBackLinks(activeUser);
+    });
+
+    function updateHeaderBackLinks(user) {
+      let role = '';
+      let name = '';
+      if (user && typeof user === 'object') {
+        role = user.role || user.userType || user.type || user.accessLevel || '';
+        name = user.fullName || user.name || user.username || '';
+      }
+      const combined = `${role} ${name}`.toLowerCase();
+      const isTeacherOrAdmin = combined.includes('teacher') || 
+                               combined.includes('admin') || 
+                               combined.includes('instructor') ||
+                               combined.includes('staff');
+
+      const staffLink = document.getElementById('staffBackLink');
+      const studentLink = document.getElementById('studentBackLink');
+
+      if (staffLink && studentLink) {
+        if (isTeacherOrAdmin) {
+          staffLink.style.display = 'inline-flex';
+          studentLink.style.display = 'none';
+        } else {
+          staffLink.style.display = 'none';
+          studentLink.style.display = 'inline-flex';
+        }
+      }
+    }
+  </script>
 </body>
 </html>
