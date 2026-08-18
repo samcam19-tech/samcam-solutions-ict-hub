@@ -221,9 +221,6 @@ async function selectThread(threadId) {
   loadThreadRepliesRealtime(thread.id);
   listenToTypingIndicator(thread.id);
 }
-  loadThreadRepliesRealtime(thread.id);
-  listenToTypingIndicator(thread.id);
-
 
 // Feature 1 & 3 & 4: Real-Time Replies with Upvoting and Best Answer Marking
 function loadThreadRepliesRealtime(threadId) {
@@ -421,6 +418,11 @@ function listenToTypingIndicator(threadId) {
         indicatorEl.innerHTML = '';
       }
     });
+}
+
+// Utility: Safe String Check Helper
+function strSafe(val) {
+  return val !== null && val !== undefined && String(val).trim() !== '';
 }
 
 // Feature 2: Rich Text & Code Snippets Formatting Helper
