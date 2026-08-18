@@ -541,14 +541,16 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script>
     const firebaseConfig = {
-      apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
-      authDomain: "samcam-system.firebaseapp.com",
-      projectId: "samcam-system",
-      storageBucket: "samcam-system.firebasestorage.app",
-      messagingSenderId: "74940789582",
-      appId: "1:74940789582:web:f159688165a194e841241f",
-      measurementId: "G-L2H4V8Y050"
-    };
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+};
+
+    // Initialize Firebase
     firebase.initializeApp(firebaseConfig);
     window.db = firebase.firestore();
   </script>
