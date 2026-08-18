@@ -609,3 +609,8 @@ body {
 .comment-input-wrapper .btn-comment-submit:hover {
   background-color: var(--primary-dark, #1d4ed8);
 }
+
+.comment-input-wrapper:focus-within {
+  border-color: var(--primary-color, #2563eb);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
