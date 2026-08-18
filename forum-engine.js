@@ -51,6 +51,21 @@ function syncForumEngineSession(user) {
 
 // Initialize real-time forum listeners on load and sync initial session
 document.addEventListener("DOMContentLoaded", () => {
+  // Restore saved filter from localStorage if available
+  const savedFilter = localStorage.getItem('samcam_forum_class_filter');
+  const classFilterSelect = document.getElementById('classFilterSelect');
+  if (savedFilter && classFilterSelect) {
+    classFilterSelect.value = savedFilter;
+  }
+
+  // Add change listener to persist filter selections across page refreshes
+  if (classFilterSelect) {
+    classFilterSelect.addEventListener('change', (e) => {
+      localStorage.setItem('samcam_forum_class_filter', e.target.value);
+      filterForumThreads();
+    });
+  }
+
   syncForumEngineSession();
   initRealtimeForumThreads();
 });
