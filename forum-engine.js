@@ -231,7 +231,7 @@ function filterForumThreads() {
   renderThreadsList(filtered);
 }
 
-async function selectThread(threadId) {
+window.selectThread = async function(threadId) {
   activeThreadId = threadId;
   filterForumThreads();
 
@@ -254,7 +254,6 @@ async function selectThread(threadId) {
     '<div class="active-thread-header">' +
       '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">' +
         '<span class="class-badge">' + escapeHtml(thread.classTarget || 'General') + '</span>' +
-        // Top discussion action buttons styled uniformly as clean outline buttons (no background fill)
         '<div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">' +
           '<button class="btn btn-sm btn-outline" onclick="toggleBookmark(\'' + thread.id + '\')" title="Save for later" style="background:transparent;">' +
             '<i class="fa-' + (isBookmarked ? 'solid' : 'regular') + ' fa-bookmark" aria-hidden="true" style="' + (isBookmarked ? 'color:#2563eb;' : '') + '"></i> ' + (isBookmarked ? 'Saved' : 'Save') +
@@ -311,7 +310,7 @@ async function selectThread(threadId) {
 
   loadThreadRepliesRealtime(thread.id);
   listenToTypingIndicator(thread.id);
-}
+};
 
 function insertMarkdown(wrapperStart, wrapperEnd) {
   const textarea = document.getElementById('replyMessageInput');
