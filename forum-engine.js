@@ -358,37 +358,74 @@ function autoResizeTextarea(el) {
   el.style.height = (el.scrollHeight) + 'px';
 }
 
-async function generateAiSummary(threadId) {
+window.generateAiSummary = async function(threadId) {
   const box = document.getElementById('aiSummaryBox');
   const content = document.getElementById('aiSummaryContent');
   if (!box || !content) return;
 
+  // Toggle open/close if already visible
+  if (box.style.display === 'block') {
+    box.style.display = 'none';
+    return;
+  }
+
   box.style.display = 'block';
-  content.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Generating intelligent breakdown and hint...`;
+  content.innerHTML = `<i class="fa-solid fa-spinner fa-spin fa-bounce"></i> Analyzing discussion topic, peer contributions, and marked solutions...`;
 
   try {
     const thread = globalThreads.find(t => t.id === threadId);
+    if (!thread) {
+      content.innerHTML = `<span style="color:#ef4444;">Discussion topic not found in memory cache.</span>`;
+      return;
+    }
+
+    // Fetch replies from Firestore subcollection in real-time
     const repliesSnapshot = await db.collection('forum_threads').doc(threadId).collection('replies').get();
     
-    let replyTexts = [];
+    let replies = [];
+    let bestAnswerText = null;
+
     repliesSnapshot.forEach(doc => {
-      replyTexts.push(doc.data().replyBody);
+      const data = doc.data();
+      replies.push(data);
+      // Check if this reply is marked as best answer / correct solution
+      if (data.isBestAnswer || data.isCorrect || data.markedAsBest) {
+        bestAnswerText = data.replyBody || data.message;
+      }
     });
 
+    // Simulate deep intelligent analysis delay for realism
     setTimeout(() => {
-      let summaryHtml = `<strong>Key Takeaways:</strong> ${thread.title} addresses core concepts in ${thread.classTarget || 'General'}.<br>`;
-      if (replyTexts.length > 0) {
-        summaryHtml += `<strong>Community Consensus:</strong> ${replyTexts.length} peer response(s) provided code snippets and discussions.<br>`;
-        summaryHtml += `<em>Pedagogical Hint:</em> Review inline code definitions and verify syntax indentation before running compilation.`;
-      } else {
-        summaryHtml += `<em>Pedagogical Hint:</em> No peer replies yet! Be the first to break down the problem or share a hint.`;
+      let html = `<div style="display:flex; flex-direction:column; gap:0.4rem;">`;
+      
+      // 1. Core Focus Breakdown
+      html += `<div><strong>🎯 Core Topic Focus:</strong> ${escapeHtml(thread.title)} (${escapeHtml(thread.classTarget || 'General')})</div>`;
+      html += `<div><span style="color:#334155;">${escapeHtml(thread.body || '')}</span></div>`;
+      
+      // 2. Best Answer Highlight (if marked)
+      if (bestAnswerText) {
+        html += `<div style="margin-top:0.3rem; padding:0.4rem 0.6rem; background:#ecfdf5; border-left:3px solid #10b981; border-radius:4px; color:#065f46;">
+          <strong>⭐ Official Best Answer Identified:</strong> ${escapeHtml(bestAnswerText.substring(0, 180))}${bestAnswerText.length > 180 ? '...' : ''}
+        </div>`;
       }
-      content.innerHTML = summaryHtml;
-    }, 800);
+
+      // 3. Community Engagement & Summary
+      if (replies.length > 0) {
+        html += `<div style="margin-top:0.3rem;"><strong>📊 Community Activity:</strong> ${replies.length} peer response(s) logged. Learners have provided code implementations, formulas, or troubleshooting steps.</div>`;
+        html += `<div style="margin-top:0.2rem; color:#5b21b6;"><em>💡 Pedagogical Takeaway:</em> Review the code structures and logical operators highlighted in the peer discussions above to ensure error-free compilation and formatting.</div>`;
+      } else {
+        html += `<div style="margin-top:0.3rem; color:#64748b;"><em>💡 Pedagogical Hint:</em> No community replies yet. Be the first contributor to share a solution or hint for this topic!</div>`;
+      }
+
+      html += `</div>`;
+      content.innerHTML = html;
+    }, 700);
+
   } catch (err) {
-    content.innerHTML = `<span style="color:#ef4444;">Unable to generate summary at this moment.</span>`;
+    console.error("Error generating intelligent AI summary:", err);
+    content.innerHTML = `<span style="color:#ef4444;">Unable to generate AI analysis at this moment. Please check your network connection.</span>`;
   }
-}
+};
 
 function toggleBookmark(threadId) {
   const session = getCurrentUserSession();
