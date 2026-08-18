@@ -732,13 +732,27 @@ function strSafe(val) {
 }
 
 function formatRichContent(text) {
-  if (!strSafe(text)) return '';
-  let escaped = escapeHtml(text);
+  if (!text) return '';
 
-  escaped = escaped.replace(/```([\s\S]*?)```/g, '<pre style="background:#1e293b; color:#e2e8f0; padding:0.75rem; border-radius:6px; font-family:monospace; overflow-x:auto; margin:0.5rem 0;"><code>$1</code></pre>');
-  escaped = escaped.replace(/`([^`]+)`/g, '<code style="background:#e2e8f0; padding:0.1rem 0.3rem; border-radius:4px; font-family:monospace; font-size:0.85em; color:#0f172a;">$1</code>');
+  // 1. Escape HTML to prevent injection
+  let safeText = escapeHtml(text);
 
-  return escaped.replace(/\n/g, '<br>');
+  // 2. Code blocks (```code```)
+  safeText = safeText.replace(/```([\s\S]*?)```/g, '<pre style="background:#1e293b; color:#f8fafc; padding:0.75rem; border-radius:6px; overflow-x:auto; margin:0.5rem 0;"><code>$1</code></pre>');
+
+  // 3. Inline code (`code`)
+  safeText = safeText.replace(/`([^`]+)`/g, '<code style="background:#f1f5f9; color:#0f172a; padding:0.15rem 0.3rem; border-radius:4px; font-family:monospace; font-size:0.85rem;">$1</code>');
+
+  // 4. Bold (**text**)
+  safeText = safeText.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+
+  // 5. Italics (*text*)
+  safeText = safeText.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+
+  // 6. Convert newlines to line breaks
+  safeText = safeText.replace(/\n/g, '<br>');
+
+  return safeText;
 }
 
 function openNewThreadModal() {
