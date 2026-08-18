@@ -356,6 +356,23 @@ function toggleBookmark(threadId) {
 let mediaRecorder = null;
 let audioChunks = [];
 let recordedAudioBlob = null;
+let selectedAudioMimeType = 'audio/webm';
+
+function getSupportedAudioMimeType() {
+  const types = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/ogg;codecs=opus',
+    'audio/mp4',
+    'audio/aac'
+  ];
+  for (let type of types) {
+    if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type)) {
+      return type;
+    }
+  }
+  return '';
+}
 
 function toggleAudioRecording() {
   const btn = document.getElementById('recordAudioBtn');
@@ -363,22 +380,37 @@ function toggleAudioRecording() {
 
   if (!mediaRecorder || mediaRecorder.state === "inactive") {
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-      mediaRecorder = new MediaRecorder(stream);
+      selectedAudioMimeType = getSupportedAudioMimeType();
+      const options = selectedAudioMimeType ? { mimeType: selectedAudioMimeType } : {};
+      
+      mediaRecorder = new MediaRecorder(stream, options);
       audioChunks = [];
-      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      
+      mediaRecorder.ondataavailable = e => {
+        if (e.data && e.data.size > 0) {
+          audioChunks.push(e.data);
+        }
+      };
+      
       mediaRecorder.onstop = () => {
-        recordedAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-        fileLabel.innerHTML = `<i class="fa-solid fa-microphone-lines text-success"></i> Voice note recorded (ready to send)`;
+        const mime = selectedAudioMimeType || 'audio/webm';
+        recordedAudioBlob = new Blob(audioChunks, { type: mime });
+        fileLabel.innerHTML = `<i class="fa-solid fa-microphone-lines" style="color:#10b981;"></i> Voice note recorded (${Math.round(recordedAudioBlob.size / 1024)} KB)`;
         btn.innerHTML = `<i class="fa-solid fa-microphone"></i> Re-record`;
       };
+      
       mediaRecorder.start();
       btn.innerHTML = `<i class="fa-solid fa-stop" style="color:red;"></i> Stop Recording`;
       fileLabel.innerHTML = `Recording voice note...`;
     }).catch(err => {
-      alert("Microphone access denied or unsupported.");
+      console.error("Microphone access error:", err);
+      alert("Microphone access denied or unsupported on this browser.");
     });
   } else {
     mediaRecorder.stop();
+    if (mediaRecorder.stream) {
+      mediaRecorder.stream.getTracks().forEach(track => track.stop());
+    }
   }
 }
 
@@ -507,8 +539,24 @@ function loadThreadRepliesRealtime(threadId) {
         // Robust Voice Note & Attachment Render Check
         let mediaHtml = '';
         if (rep.mediaUrl) {
-          if (rep.mediaUrl.includes('forum_audio') || rep.mediaUrl.includes('.webm') || rep.mediaUrl.includes('.mp3')) {
-            mediaHtml = `<div style="margin-top:0.5rem; background:#f1f5f9; padding:0.5rem; border-radius:6px; display:inline-block; width:100%; max-width:340px;"><audio controls style="height:36px; width:100%; display:block;"><source src="${rep.mediaUrl}" type="audio/webm">Your browser does not support the audio element.</audio></div>`;
+          const urlLower = rep.mediaUrl.toLowerCase();
+          const isAudio = urlLower.includes('forum_audio') || 
+                          urlLower.includes('.webm') || 
+                          urlLower.includes('.mp3') || 
+                          urlLower.includes('.ogg') || 
+                          urlLower.includes('.mp4') ||
+                          urlLower.includes('audio');
+
+          if (isAudio) {
+            mediaHtml = `
+              <div style="margin-top:0.5rem; background:#f1f5f9; padding:0.5rem; border-radius:6px; display:flex; align-items:center; width:100%; max-width:340px;">
+                <audio controls style="height:36px; width:100%;">
+                  <source src="${rep.mediaUrl}" type="audio/webm">
+                  <source src="${rep.mediaUrl}" type="audio/mp4">
+                  <source src="${rep.mediaUrl}" type="audio/ogg">
+                  Your browser does not support the audio element.
+                </audio>
+              </div>`;
           } else {
             mediaHtml = `<div style="margin-top:0.4rem;"><a href="${rep.mediaUrl}" target="_blank" class="btn btn-xs btn-outline"><i class="fa-solid fa-paperclip"></i> View Attached File / Screenshot</a></div>`;
           }
@@ -658,12 +706,14 @@ async function submitReply(threadId) {
       const snapshot = await storageRef.put(file);
       mediaUrl = await snapshot.ref.getDownloadURL();
     } else if (storage && recordedAudioBlob) {
-      const storageRef = storage.ref().child(`forum_audio/${Date.now()}_voicenote.webm`);
-      const snapshot = await storageRef.put(recordedAudioBlob);
+      const ext = selectedAudioMimeType.includes('mp4') ? 'mp4' : 'webm';
+      const storageRef = storage.ref().child(`forum_audio/${Date.now()}_voicenote.${ext}`);
+      
+      const metadata = { contentType: recordedAudioBlob.type || 'audio/webm' };
+      const snapshot = await storageRef.put(recordedAudioBlob, metadata);
       mediaUrl = await snapshot.ref.getDownloadURL();
     }
 
-    // Set fallback text if only a voice note or attachment was sent
     const finalBody = replyBody || (recordedAudioBlob ? '🎤 [Voice Note]' : '[Attached File]');
 
     await db.collection('forum_threads').doc(threadId).collection('replies').add({
