@@ -938,6 +938,50 @@ async function handleCreateThread(e) {
   }
 }
 
+let currentModalCallback = null;
+
+function showSystemModal({ title, message, isPrompt = false, onConfirm }) {
+  const modal = document.getElementById('systemModal');
+  const titleText = document.getElementById('systemModalTitleText');
+  const messageEl = document.getElementById('systemModalMessage');
+  const promptContainer = document.getElementById('systemModalPromptContainer');
+  const promptInput = document.getElementById('systemModalPromptInput');
+  const cancelBtn = document.getElementById('systemModalCancelBtn');
+  
+  if (!modal) return;
+
+  if (titleText) titleText.textContent = title || 'Notification';
+  if (messageEl) messageEl.textContent = message || '';
+  
+  if (isPrompt) {
+    if (promptContainer) promptContainer.style.display = 'block';
+    if (promptInput) promptInput.value = '';
+  } else {
+    if (promptContainer) promptContainer.style.display = 'none';
+  }
+
+  // Show Cancel button only if there is a confirm callback or it's a prompt
+  if (cancelBtn) {
+    cancelBtn.style.display = (onConfirm || isPrompt) ? 'inline-block' : 'none';
+  }
+
+  currentModalCallback = onConfirm;
+  modal.style.display = 'flex';
+}
+
+function closeSystemModal(confirmed) {
+  const modal = document.getElementById('systemModal');
+  const promptInput = document.getElementById('systemModalPromptInput');
+  
+  if (modal) modal.style.display = 'none';
+
+  if (confirmed && typeof currentModalCallback === 'function') {
+    const promptValue = promptInput ? promptInput.value : null;
+    currentModalCallback(promptValue);
+  }
+  currentModalCallback = null;
+}
+
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str).replace(/&/g, "&amp;")
