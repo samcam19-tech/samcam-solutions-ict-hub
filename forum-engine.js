@@ -359,14 +359,14 @@ async function selectThread(threadId) {
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
         <span class="class-badge">${escapeHtml(thread.classTarget || 'General')}</span>
         <div>
-          <button class="btn btn-sm ${isBookmarked ? 'btn-primary' : 'btn-outline'}" onclick="toggleBookmark('${thread.id}')" title="Save for later">
-            <i class="fa-${isBookmarked ? 'solid' : 'regular'} fa-bookmark"></i> ${isBookmarked ? 'Saved' : 'Save'}
+          <button class="btn btn-sm ${isBookmarked ? 'btn-primary' : 'btn-outline'}" onclick="toggleBookmark('${thread.id}')" title="Save for later" aria-label="Save discussion for later">
+            <i class="fa-${isBookmarked ? 'solid' : 'regular'} fa-bookmark" aria-hidden="true"></i> ${isBookmarked ? 'Saved' : 'Save'}
           </button>
-          <button class="btn btn-sm btn-outline" onclick="generateAiSummary('${thread.id}')" title="AI Summary & Hint">
-            <i class="fa-solid fa-wand-magic-sparkles" style="color:#8b5cf6;"></i> AI Assistant
+          <button class="btn btn-sm btn-outline" onclick="generateAiSummary('${thread.id}')" title="AI Summary & Hint" aria-label="Generate AI summary and hints">
+            <i class="fa-solid fa-wand-magic-sparkles" style="color:#8b5cf6;" aria-hidden="true"></i> AI Assistant
           </button>
-          <button class="btn btn-sm ${hasUpvoted ? 'btn-primary' : 'btn-outline'}" onclick="toggleThreadUpvote('${thread.id}')">
-            <i class="fa-solid fa-thumbs-up"></i> <span id="threadUpvoteCount">${upvotesCount}</span>
+          <button class="btn btn-sm ${hasUpvoted ? 'btn-primary' : 'btn-outline'}" onclick="toggleThreadUpvote('${thread.id}')" aria-label="Upvote thread">
+            <i class="fa-solid fa-thumbs-up" aria-hidden="true"></i> <span id="threadUpvoteCount">${upvotesCount}</span>
           </button>
           <span style="font-size:0.75rem; color:#64748b; margin-left:0.5rem;">Posted by <strong>${escapeHtml(thread.authorName || 'Instructor')}</strong></span>
         </div>
@@ -380,16 +380,34 @@ async function selectThread(threadId) {
       <div id="aiSummaryContent">Analyzing discussion...</div>
     </div>
 
+    <!-- 2026 Standard: Skeleton Pulse Shimmer Loader -->
     <div class="replies-list-container" id="repliesListContainer">
-      <div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i> Loading live replies...</div>
+      <div class="skeleton-loader" style="width: 100%;"></div>
+      <div class="skeleton-loader" style="width: 80%;"></div>
+      <div class="skeleton-loader" style="width: 60%;"></div>
     </div>
 
     <div id="typingIndicator" style="font-size:0.75rem; color:#64748b; font-style:italic; padding:0 0.5rem 0.25rem 0.5rem; min-height:1.2rem;"></div>
 
-    <div class="comment-input-wrapper">
-      <textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use &#96;&#96;&#96;code&#96;&#96;&#96; for blocks)..." oninput="handleTypingInput('${thread.id}'); autoResizeTextarea(this);" rows="1"></textarea>
-      <button type="button" class="btn-comment-submit" onclick="submitReply('${thread.id}')">
-        <i class="fa-solid fa-paper-plane"></i> Send
+    <!-- 2026 Standard: Write/Preview Tabs & Formatting Toolbar -->
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:0 0.25rem;">
+      <div class="comment-toolbar" style="display:flex; gap:0.4rem;">
+        <button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown('**', '**')" title="Bold" aria-label="Format bold"><i class="fa-solid fa-bold" aria-hidden="true"></i></button>
+        <button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown('*', '*')" title="Italic" aria-label="Format italic"><i class="fa-solid fa-italic" aria-hidden="true"></i></button>
+        <button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown('`', '`')" title="Code / Formula" aria-label="Format code"><i class="fa-solid fa-code" aria-hidden="true"></i></button>
+        <button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown('\\n```\\n', '\\n```\\n')" title="Code Block" aria-label="Format code block"><i class="fa-solid fa-file-code" aria-hidden="true"></i></button>
+      </div>
+      <div class="input-tabs">
+        <button type="button" class="input-tab-btn active" id="writeTabBtn" onclick="switchInputTab('write')">Write</button>
+        <button type="button" class="input-tab-btn" id="previewTabBtn" onclick="switchInputTab('preview')">Preview</button>
+      </div>
+    </div>
+
+    <div class="comment-input-wrapper" id="commentInputWrapperContainer">
+      <textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use @ to tag peers)..." oninput="handleTypingInput('${thread.id}'); autoResizeTextarea(this);" rows="1" aria-label="Write a reply"></textarea>
+      <div class="markdown-preview-pane" id="markdownPreviewPane"></div>
+      <button type="button" class="btn-comment-submit" onclick="submitReplyOptimistic('${thread.id}')" aria-label="Send reply">
+        <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Send
       </button>
     </div>
   `;
@@ -397,6 +415,81 @@ async function selectThread(threadId) {
   loadThreadRepliesRealtime(thread.id);
   listenToTypingIndicator(thread.id);
 }
+
+// 2. Formatting Toolbar Injection
+function insertMarkdown(wrapperStart, wrapperEnd) {
+  const textarea = document.getElementById('replyMessageInput');
+  if (!textarea) return;
+  
+  const start = textarea.selectionStart;
+  const end = textarea.selectionEnd;
+  const text = textarea.value;
+  const selectedText = text.substring(start, end) || 'text';
+  
+  textarea.value = text.substring(0, start) + wrapperStart + selectedText + wrapperEnd + text.substring(end);
+  textarea.focus();
+  textarea.setSelectionRange(start + wrapperStart.length, start + wrapperStart.length + selectedText.length);
+}
+
+// 3. Write / Preview Tab Switcher
+function switchInputTab(mode) {
+  const textarea = document.getElementById('replyMessageInput');
+  const previewPane = document.getElementById('markdownPreviewPane');
+  const writeBtn = document.getElementById('writeTabBtn');
+  const previewBtn = document.getElementById('previewTabBtn');
+
+  if (mode === 'preview') {
+    previewPane.innerHTML = formatRichContent(textarea.value || '*Nothing to preview yet.*');
+    textarea.style.display = 'none';
+    previewPane.style.display = 'block';
+    writeBtn.classList.remove('active');
+    previewBtn.classList.add('active');
+  } else {
+    previewPane.style.display = 'none';
+    textarea.style.display = 'block';
+    writeBtn.classList.add('active');
+    previewBtn.classList.remove('active');
+    textarea.focus();
+  }
+}
+
+// 4. Optimistic UI Reply Submission (Instant Feedback)
+async function submitReplyOptimistic(threadId) {
+  const textarea = document.getElementById('replyMessageInput');
+  if (!textarea || !textarea.value.trim()) return;
+
+  const replyText = textarea.value.trim();
+  textarea.value = '';
+  textarea.style.height = 'auto';
+
+  // Switch back to write mode if preview was active
+  switchInputTab('write');
+
+  // Optimistically inject into DOM immediately before Firebase confirms
+  const container = document.getElementById('repliesListContainer');
+  if (container) {
+    const session = getCurrentUserSession();
+    const tempHtml = `
+      <div class="reply-item optimistic-fade" style="opacity:0.7; padding:0.75rem; border-bottom:1px solid #e2e8f0;">
+        <div style="font-size:0.75rem; color:#64748b; margin-bottom:0.25rem;"><strong>${escapeHtml(session.name || 'You')}</strong> (Sending...)</div>
+        <div>${formatRichContent(replyText)}</div>
+      </div>
+    `;
+    // Remove loading state if present
+    if (container.querySelector('.skeleton-loader') || container.querySelector('.loading-state')) {
+      container.innerHTML = '';
+    }
+    container.insertAdjacentHTML('beforeend', tempHtml);
+  }
+
+  // Call your existing backend submission function
+  if (typeof submitReply === 'function') {
+    // Pass the message directly or hook into your existing parameter setup
+    window._lastOptimisticMessage = replyText;
+    await submitReply(threadId, replyText);
+  }
+}
+
 async function generateAiSummary(threadId) {
   const box = document.getElementById('aiSummaryBox');
   const content = document.getElementById('aiSummaryContent');
