@@ -685,13 +685,27 @@ async function submitReplyOptimistic(threadId) {
   if (!inputEl) return;
   const replyBody = inputEl.value.trim();
 
+  // Helper for triggering your custom system modal
+  const showCustomAlert = (title, message) => {
+    if (typeof showSystemModal === 'function') {
+      showSystemModal({
+        title: title,
+        message: message,
+        isPrompt: false,
+        onConfirm: () => {}
+      });
+    } else {
+      alert(message); // Fallback if modal helper isn't globally exposed
+    }
+  };
+
   if (!replyBody && !recordedAudioBlob && !document.getElementById('replyAttachmentInput')?.files[0]) {
-    alert("Please enter a reply message or attach a file/voice note before submitting.");
+    showCustomAlert("Notice", "Please enter a reply message or attach a file/voice note before submitting.");
     return;
   }
 
   if (replyBody && containsInappropriateContent(replyBody)) {
-    alert("Your reply contains flagged words that violate school forum guidelines. Please revise your message.");
+    showCustomAlert("Content Warning", "Your reply contains flagged words that violate school forum guidelines. Please revise your message.");
     return;
   }
 
@@ -755,10 +769,9 @@ async function submitReplyOptimistic(threadId) {
     clearTypingIndicator(threadId);
   } catch (err) {
     console.error("Error submitting reply:", err);
-    alert("Failed to post reply: " + err.message);
+    showCustomAlert("Submission Error", "Failed to post reply: " + err.message);
   }
 }
-
 function handleTypingInput(threadId) {
   const session = getCurrentUserSession();
   const name = session.name || 'Someone';
