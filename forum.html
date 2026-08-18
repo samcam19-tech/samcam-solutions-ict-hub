@@ -159,24 +159,24 @@
     </div>
   </div>
 
-  !-- Custom System Dialog Modal -->
-<div id="systemModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); z-index:9999; justify-content:center; align-items:center; backdrop-filter:blur(2px);">
-  <div style="background:#ffffff; padding:1.5rem; border-radius:10px; width:100%; max-width:400px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);">
-    <h3 id="systemModalTitle" style="margin-top:0; margin-bottom:0.5rem; font-size:1.1rem; color:#0f172a; display:flex; align-items:center; gap:0.5rem;">
-      <i id="systemModalIcon" class="fa-solid fa-circle-info" style="color:#3b82f6;"></i> <span id="systemModalTitleText">Confirmation</span>
-    </h3>
-    <p id="systemModalMessage" style="color:#475569; font-size:0.9rem; margin-bottom:1.25rem; line-height:1.4;"></p>
-    
-    <div id="systemModalPromptContainer" style="margin-bottom:1.25rem; display:none;">
-      <input type="text" id="systemModalPromptInput" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;" />
-    </div>
+  <!-- Custom System Dialog Modal -->
+  <div id="systemModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); z-index:9999; justify-content:center; align-items:center; backdrop-filter:blur(2px);">
+    <div style="background:#ffffff; padding:1.5rem; border-radius:10px; width:100%; max-width:400px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);">
+      <h3 id="systemModalTitle" style="margin-top:0; margin-bottom:0.5rem; font-size:1.1rem; color:#0f172a; display:flex; align-items:center; gap:0.5rem;">
+        <i id="systemModalIcon" class="fa-solid fa-circle-info" style="color:#3b82f6;"></i> <span id="systemModalTitleText">Confirmation</span>
+      </h3>
+      <p id="systemModalMessage" style="color:#475569; font-size:0.9rem; margin-bottom:1.25rem; line-height:1.4;"></p>
+      
+      <div id="systemModalPromptContainer" style="margin-bottom:1.25rem; display:none;">
+        <input type="text" id="systemModalPromptInput" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;" />
+      </div>
 
-    <div style="display:flex; justify-content:flex-end; gap:0.5rem;" id="systemModalButtons">
-      <button id="systemModalCancelBtn" class="btn btn-sm btn-outline" style="display:none;" onclick="closeSystemModal(false)">Cancel</button>
-      <button id="systemModalOkBtn" class="btn btn-sm btn-primary" onclick="closeSystemModal(true)">OK</button>
+      <div style="display:flex; justify-content:flex-end; gap:0.5rem;" id="systemModalButtons">
+        <button id="systemModalCancelBtn" class="btn btn-sm btn-outline" style="display:none;" onclick="closeSystemModal(false)">Cancel</button>
+        <button id="systemModalOkBtn" class="btn btn-sm btn-primary" onclick="closeSystemModal(true)">OK</button>
+      </div>
     </div>
   </div>
-</div>
 
   <!-- Firebase and Forum Engine Scripts -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
@@ -204,7 +204,6 @@
     });
 
     document.addEventListener("DOMContentLoaded", () => {
-      // Evaluate session on initial load
       let activeUser = window.currentUser;
       if (!activeUser) {
         const sessionData = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
