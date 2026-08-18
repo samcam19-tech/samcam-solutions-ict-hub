@@ -364,7 +364,6 @@ window.generateAiSummary = async function(threadId) {
   const content = document.getElementById('aiSummaryContent');
   if (!box || !content) return;
 
-  // Toggle open/close if already visible
   if (box.style.display === 'block') {
     box.style.display = 'none';
     return;
@@ -374,18 +373,22 @@ window.generateAiSummary = async function(threadId) {
   content.innerHTML = `<i class="fa-solid fa-spinner fa-spin fa-bounce"></i> Querying Gemini AI to synthesize discussion and student responses...`;
 
   try {
-    // 1. Find the discussion thread from your global cache
+    // Dynamically load GoogleGenAI right when the button is clicked
+    const { GoogleGenAI } = await import("https://esm.run/@genai/sdk" /* or "@google/genai" */);
+    
+    // Alternative CDN import for dynamic loading:
+    // const { GoogleGenAI } = await import("https://esm.run/@google/genai");
+
     const thread = globalThreads.find(t => t.id === threadId);
     if (!thread) {
       content.innerHTML = `<span style="color:#ef4444;">Discussion topic not found.</span>`;
       return;
     }
 
-    // 2. Fetch all replies from your Firestore subcollection in real-time
     const repliesSnapshot = await db.collection('forum_threads').doc(threadId).collection('replies').get();
     let repliesText = "";
-    
     let count = 0;
+    
     repliesSnapshot.forEach(doc => {
       const data = doc.data();
       count++;
@@ -399,9 +402,6 @@ window.generateAiSummary = async function(threadId) {
       repliesText = "No student responses submitted yet.";
     }
 
-    // 3. Call Gemini API directly using the official SDK import
-    // Note: Make sure to import GoogleGenAI at the top of your JS file: 
-    // import { GoogleGenAI } from "https://esm.run/@google/genai";
     const ai = new GoogleGenAI({ apiKey: "YOUR_GEMINI_API_KEY", dangerouslyAllowBrowser: true });
 
     const prompt = `
@@ -426,7 +426,6 @@ window.generateAiSummary = async function(threadId) {
       contents: prompt,
     });
 
-    // 4. Render the output inside your summary box
     content.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:0.4rem;">
         <div><strong>🤖 Gemini AI Curriculum Synthesis:</strong></div>
