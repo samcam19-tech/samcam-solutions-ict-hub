@@ -354,63 +354,62 @@ async function selectThread(threadId) {
   const bookmarks = JSON.parse(localStorage.getItem(`samcam_bookmarks_${session.name}`) || '[]');
   const isBookmarked = bookmarks.includes(thread.id);
 
-  detailPane.innerHTML = `
-    <div class="active-thread-header">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
-        <span class="class-badge">${escapeHtml(thread.classTarget || 'General')}</span>
-        <div>
-          <button class="btn btn-sm ${isBookmarked ? 'btn-primary' : 'btn-outline'}" onclick="toggleBookmark('${thread.id}')" title="Save for later" aria-label="Save discussion for later">
-            <i class="fa-${isBookmarked ? 'solid' : 'regular'} fa-bookmark" aria-hidden="true"></i> ${isBookmarked ? 'Saved' : 'Save'}
-          </button>
-          <button class="btn btn-sm btn-outline" onclick="generateAiSummary('${thread.id}')" title="AI Summary & Hint" aria-label="Generate AI summary and hints">
-            <i class="fa-solid fa-wand-magic-sparkles" style="color:#8b5cf6;" aria-hidden="true"></i> AI Assistant
-          </button>
-          <button class="btn btn-sm ${hasUpvoted ? 'btn-primary' : 'btn-outline'}" onclick="toggleThreadUpvote('${thread.id}')" aria-label="Upvote thread">
-            <i class="fa-solid fa-thumbs-up" aria-hidden="true"></i> <span id="threadUpvoteCount">${upvotesCount}</span>
-          </button>
-          <span style="font-size:0.75rem; color:#64748b; margin-left:0.5rem;">Posted by <strong>${escapeHtml(thread.authorName || 'Instructor')}</strong></span>
-        </div>
-      </div>
-      <h3>${escapeHtml(thread.title)}</h3>
-      <div class="active-thread-body">${formatRichContent(thread.body)}</div>
-    </div>
+  detailPane.innerHTML = 
+    '<div class="active-thread-header">' +
+      '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">' +
+        '<span class="class-badge">' + escapeHtml(thread.classTarget || 'General') + '</span>' +
+        '<div>' +
+          '<button class="btn btn-sm ' + (isBookmarked ? 'btn-primary' : 'btn-outline') + '" onclick="toggleBookmark(\'' + thread.id + '\')" title="Save for later" aria-label="Save discussion for later">' +
+            '<i class="fa-' + (isBookmarked ? 'solid' : 'regular') + ' fa-bookmark" aria-hidden="true"></i> ' + (isBookmarked ? 'Saved' : 'Save') +
+          '</button>' +
+          '<button class="btn btn-sm btn-outline" onclick="generateAiSummary(\'' + thread.id + '\')" title="AI Summary & Hint" aria-label="Generate AI summary and hints">' +
+            '<i class="fa-solid fa-wand-magic-sparkles" style="color:#8b5cf6;" aria-hidden="true"></i> AI Assistant' +
+          '</button>' +
+          '<button class="btn btn-sm ' + (hasUpvoted ? 'btn-primary' : 'btn-outline') + '" onclick="toggleThreadUpvote(\'' + thread.id + '\')" aria-label="Upvote thread">' +
+            '<i class="fa-solid fa-thumbs-up" aria-hidden="true"></i> <span id="threadUpvoteCount">' + upvotesCount + '</span>' +
+          '</button>' +
+          '<span style="font-size:0.75rem; color:#64748b; margin-left:0.5rem;">Posted by <strong>' + escapeHtml(thread.authorName || 'Instructor') + '</strong></span>' +
+        '</div>' +
+      '</div>' +
+      '<h3>' + escapeHtml(thread.title) + '</h3>' +
+      '<div class="active-thread-body">' + formatRichContent(thread.body) + '</div>' +
+    '</div>' +
 
-    <div id="aiSummaryBox" style="display:none; background:#f5f3ff; border:1px solid #c4b5fd; padding:0.75rem; border-radius:6px; margin-bottom:1rem; font-size:0.85rem; color:#4c1d95;">
-      <div style="font-weight:bold; margin-bottom:0.25rem;"><i class="fa-solid fa-robot"></i> AI Summary & Hints</div>
-      <div id="aiSummaryContent">Analyzing discussion...</div>
-    </div>
+    '<div id="aiSummaryBox" style="display:none; background:#f5f3ff; border:1px solid #c4b5fd; padding:0.75rem; border-radius:6px; margin-bottom:1rem; font-size:0.85rem; color:#4c1d95;">' +
+      '<div style="font-weight:bold; margin-bottom:0.25rem;"><i class="fa-solid fa-robot"></i> AI Summary & Hints</div>' +
+      '<div id="aiSummaryContent">Analyzing discussion...</div>' +
+    '</div>' +
 
-    <!-- 2026 Standard: Skeleton Pulse Shimmer Loader -->
-    <div class="replies-list-container" id="repliesListContainer">
-      <div class="skeleton-loader" style="width: 100%;"></div>
-      <div class="skeleton-loader" style="width: 80%;"></div>
-      <div class="skeleton-loader" style="width: 60%;"></div>
-    </div>
+    '<!-- 2026 Standard: Skeleton Pulse Shimmer Loader -->' +
+    '<div class="replies-list-container" id="repliesListContainer">' +
+      '<div class="skeleton-loader" style="width: 100%;"></div>' +
+      '<div class="skeleton-loader" style="width: 80%;"></div>' +
+      '<div class="skeleton-loader" style="width: 60%;"></div>' +
+    '</div>' +
 
-    <div id="typingIndicator" style="font-size:0.75rem; color:#64748b; font-style:italic; padding:0 0.5rem 0.25rem 0.5rem; min-height:1.2rem;"></div>
+    '<div id="typingIndicator" style="font-size:0.75rem; color:#64748b; font-style:italic; padding:0 0.5rem 0.25rem 0.5rem; min-height:1.2rem;"></div>' +
 
-    <!-- 2026 Standard: Write/Preview Tabs & Formatting Toolbar -->
-    <div style="display:flex; justify-content:space-between; align-items:center; padding:0 0.25rem;">
-      <div class="comment-toolbar" style="display:flex; gap:0.4rem;">
-        <button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown('**', '**')" title="Bold" aria-label="Format bold"><i class="fa-solid fa-bold" aria-hidden="true"></i></button>
-        <button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown('*', '*')" title="Italic" aria-label="Format italic"><i class="fa-solid fa-italic" aria-hidden="true"></i></button>
-        <button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown('`', '`')" title="Code / Formula" aria-label="Format code"><i class="fa-solid fa-code" aria-hidden="true"></i></button>
-        <button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown('\\n```\\n', '\\n```\\n')" title="Code Block" aria-label="Format code block"><i class="fa-solid fa-file-code" aria-hidden="true"></i></button>
-      </div>
-      <div class="input-tabs">
-        <button type="button" class="input-tab-btn active" id="writeTabBtn" onclick="switchInputTab('write')">Write</button>
-        <button type="button" class="input-tab-btn" id="previewTabBtn" onclick="switchInputTab('preview')">Preview</button>
-      </div>
-    </div>
+    '<!-- 2026 Standard: Write/Preview Tabs & Formatting Toolbar -->' +
+    '<div style="display:flex; justify-content:space-between; align-items:center; padding:0 0.25rem;">' +
+      '<div class="comment-toolbar" style="display:flex; gap:0.4rem;">' +
+        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'**\', \'**\')" title="Bold" aria-label="Format bold"><i class="fa-solid fa-bold" aria-hidden="true"></i></button>' +
+        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'*\', \'*\')" title="Italic" aria-label="Format italic"><i class="fa-solid fa-italic" aria-hidden="true"></i></button>' +
+        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'`\', \'`\')" title="Code / Formula" aria-label="Format code"><i class="fa-solid fa-code" aria-hidden="true"></i></button>' +
+        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'\\n```\\n\', \'\\n```\\n\')" title="Code Block" aria-label="Format code block"><i class="fa-solid fa-file-code" aria-hidden="true"></i></button>' +
+      '</div>' +
+      '<div class="input-tabs">' +
+        '<button type="button" class="input-tab-btn active" id="writeTabBtn" onclick="switchInputTab(\'write\')">Write</button>' +
+        '<button type="button" class="input-tab-btn" id="previewTabBtn" onclick="switchInputTab(\'preview\')">Preview</button>' +
+      '</div>' +
+    '</div>' +
 
-    <div class="comment-input-wrapper" id="commentInputWrapperContainer">
-      <textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use @ to tag peers)..." oninput="handleTypingInput('${thread.id}'); autoResizeTextarea(this);" rows="1" aria-label="Write a reply"></textarea>
-      <div class="markdown-preview-pane" id="markdownPreviewPane"></div>
-      <button type="button" class="btn-comment-submit" onclick="submitReplyOptimistic('${thread.id}')" aria-label="Send reply">
-        <i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Send
-      </button>
-    </div>
-  `;
+    '<div class="comment-input-wrapper" id="commentInputWrapperContainer">' +
+      '<textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use @ to tag peers)..." oninput="handleTypingInput(\'' + thread.id + '\'); autoResizeTextarea(this);" rows="1" aria-label="Write a reply"></textarea>' +
+      '<div class="markdown-preview-pane" id="markdownPreviewPane"></div>' +
+      '<button type="button" class="btn-comment-submit" onclick="submitReplyOptimistic(\'' + thread.id + '\')" aria-label="Send reply">' +
+        '<i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Send' +
+      '</button>' +
+    '</div>';
 
   loadThreadRepliesRealtime(thread.id);
   listenToTypingIndicator(thread.id);
