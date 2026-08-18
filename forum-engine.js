@@ -425,7 +425,6 @@ async function selectThread(threadId) {
   loadThreadRepliesRealtime(thread.id);
   listenToTypingIndicator(thread.id);
 }
-
 // 2. Formatting Toolbar Injection
 function insertMarkdown(wrapperStart, wrapperEnd) {
   const textarea = document.getElementById('replyMessageInput');
