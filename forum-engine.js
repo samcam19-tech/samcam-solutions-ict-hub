@@ -27,7 +27,6 @@ let unsubscribeThreads = null;
 let unsubscribeReplies = null;
 let typingTimeout = null;
 
-// Listen for live session changes broadcasted by global auth scripts
 window.addEventListener('portalSessionChanged', (e) => {
   syncForumEngineSession(e.detail);
 });
@@ -42,7 +41,6 @@ function syncForumEngineSession(user) {
                            combinedCheck.includes('instructor') ||
                            combinedCheck.includes('staff');
 
-  // Show or hide teacher-only action buttons
   document.querySelectorAll('.teacher-only').forEach(el => {
     el.style.display = isTeacherOrAdmin ? 'inline-flex' : 'none';
   });
@@ -51,7 +49,6 @@ function syncForumEngineSession(user) {
   filterForumThreads();
 }
 
-// Dynamically populate or restrict the class filter dropdown based on user role and class
 function updateClassFilterDropdown(session, isTeacherOrAdmin) {
   const classFilterSelect = document.getElementById('classFilterSelect');
   if (!classFilterSelect) return;
@@ -88,7 +85,6 @@ function updateClassFilterDropdown(session, isTeacherOrAdmin) {
   }
 }
 
-// Initialize real-time forum listeners on load and sync initial session
 document.addEventListener("DOMContentLoaded", () => {
   const savedFilter = localStorage.getItem('samcam_forum_class_filter');
   const classFilterSelect = document.getElementById('classFilterSelect');
@@ -139,7 +135,6 @@ function getCurrentUserSession(userParam) {
   };
 }
 
-// Real-time Listener for Threads Feed
 function initRealtimeForumThreads() {
   const feedContainer = document.getElementById('threadsFeedContainer');
   if (!feedContainer) return;
@@ -403,7 +398,6 @@ function setDirectReply(authorName, commentSnippet) {
   inputEl.focus();
 }
 
-// Enable Inline Comment Editing
 function enableEditComment(threadId, replyId, currentBody) {
   const bodyDiv = document.getElementById(`reply-body-${replyId}`);
   if (!bodyDiv) return;
@@ -510,11 +504,11 @@ function loadThreadRepliesRealtime(threadId) {
         const editBtnHtml = showActionButtons ? `<button class="btn btn-xs btn-outline" style="font-size:0.7rem; padding:0.1rem 0.3rem;" onclick="enableEditComment('${threadId}', '${repId}', \`${escapeHtml(rep.replyBody).replace(/\\/g, '\\\\').replace(/`/g, '\\`')}\`)"><i class="fa-solid fa-pen"></i> Edit</button>` : '';
         const deleteBtnHtml = showActionButtons ? `<button class="btn btn-xs btn-outline" style="font-size:0.7rem; padding:0.1rem 0.3rem; color:#ef4444; border-color:#fca5a5;" onclick="deleteComment('${threadId}', '${repId}', '${escapeHtml(rep.studentName)}')"><i class="fa-solid fa-trash"></i> Delete</button>` : '';
 
-        // Fixed Voice Note Player Controls with explicit width, height and background for full visibility
+        // Robust Voice Note & Attachment Render Check
         let mediaHtml = '';
         if (rep.mediaUrl) {
           if (rep.mediaUrl.includes('forum_audio') || rep.mediaUrl.includes('.webm') || rep.mediaUrl.includes('.mp3')) {
-            mediaHtml = `<div style="margin-top:0.5rem; background:#f1f5f9; padding:0.4rem; border-radius:6px; display:inline-block; width:100%; max-width:340px;"><audio controls style="height:36px; width:100%; display:block;"><source src="${rep.mediaUrl}" type="audio/webm">Your browser does not support the audio element.</audio></div>`;
+            mediaHtml = `<div style="margin-top:0.5rem; background:#f1f5f9; padding:0.5rem; border-radius:6px; display:inline-block; width:100%; max-width:340px;"><audio controls style="height:36px; width:100%; display:block;"><source src="${rep.mediaUrl}" type="audio/webm">Your browser does not support the audio element.</audio></div>`;
           } else {
             mediaHtml = `<div style="margin-top:0.4rem;"><a href="${rep.mediaUrl}" target="_blank" class="btn btn-xs btn-outline"><i class="fa-solid fa-paperclip"></i> View Attached File / Screenshot</a></div>`;
           }
@@ -645,7 +639,7 @@ async function submitReply(threadId) {
     return;
   }
 
-  if (containsInappropriateContent(replyBody)) {
+  if (replyBody && containsInappropriateContent(replyBody)) {
     alert("Your reply contains flagged words that violate school forum guidelines. Please revise your message.");
     return;
   }
@@ -669,10 +663,13 @@ async function submitReply(threadId) {
       mediaUrl = await snapshot.ref.getDownloadURL();
     }
 
+    // Set fallback text if only a voice note or attachment was sent
+    const finalBody = replyBody || (recordedAudioBlob ? '🎤 [Voice Note]' : '[Attached File]');
+
     await db.collection('forum_threads').doc(threadId).collection('replies').add({
       studentName: studentName,
       studentClass: studentClass,
-      replyBody: replyBody || '(Voice Note)',
+      replyBody: finalBody,
       mediaUrl: mediaUrl,
       upvotedBy: [],
       isBestAnswer: false,
