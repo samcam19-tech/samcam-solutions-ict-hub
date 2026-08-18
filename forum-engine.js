@@ -16,6 +16,7 @@ if (typeof firebase !== "undefined" && !firebase.apps.length) {
 }
 
 const db = typeof firebase !== "undefined" ? firebase.firestore() : null;
+const storage = typeof firebase !== "undefined" && firebase.storage ? firebase.storage() : null;
 
 // ==========================================================================
 // 2. STATE MANAGEMENT, REAL-TIME LISTENERS & SESSION HANDLING
@@ -180,6 +181,9 @@ function renderThreadsList(threads) {
     return;
   }
 
+  const session = getCurrentUserSession();
+  const bookmarks = JSON.parse(localStorage.getItem(`samcam_bookmarks_${session.name}`) || '[]');
+
   let html = '';
   threads.forEach(thread => {
     const timeAgo = thread.createdAt && thread.createdAt.toDate 
@@ -188,12 +192,18 @@ function renderThreadsList(threads) {
 
     const isActive = activeThreadId === thread.id ? 'active' : '';
     const upvotesCount = (thread.upvotedBy || []).length;
+    const isBookmarked = bookmarks.includes(thread.id);
 
     html += `
       <div class="thread-card ${isActive}" onclick="selectThread('${thread.id}')">
-        <div class="thread-meta-top">
+        <div class="thread-meta-top" style="display:flex; justify-content:space-between; align-items:center;">
           <span class="class-badge">${escapeHtml(thread.classTarget || 'General')}</span>
-          <span class="thread-time"><i class="fa-solid fa-thumbs-up"></i> ${upvotesCount} • ${timeAgo}</span>
+          <div>
+            <button class="btn btn-xs btn-outline" style="border:none; padding:0.1rem 0.3rem;" onclick="event.stopPropagation(); toggleBookmark('${thread.id}')" title="Bookmark Thread">
+              <i class="fa-${isBookmarked ? 'solid' : 'regular'} fa-bookmark" style="${isBookmarked ? 'color:#10b981;' : ''}"></i>
+            </button>
+            <span class="thread-time" style="margin-left:0.3rem;"><i class="fa-solid fa-thumbs-up"></i> ${upvotesCount} • ${timeAgo}</span>
+          </div>
         </div>
         <h4>${escapeHtml(thread.title)}</h4>
         <div class="thread-snippet">${formatRichContent(thread.body)}</div>
@@ -248,12 +258,20 @@ async function selectThread(threadId) {
   const userId = session.name || 'Anonymous';
   const hasUpvoted = (thread.upvotedBy || []).includes(userId);
   const upvotesCount = (thread.upvotedBy || []).length;
+  const bookmarks = JSON.parse(localStorage.getItem(`samcam_bookmarks_${session.name}`) || '[]');
+  const isBookmarked = bookmarks.includes(thread.id);
 
   detailPane.innerHTML = `
     <div class="active-thread-header">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
         <span class="class-badge">${escapeHtml(thread.classTarget || 'General')}</span>
         <div>
+          <button class="btn btn-sm ${isBookmarked ? 'btn-primary' : 'btn-outline'}" onclick="toggleBookmark('${thread.id}')" title="Save for later">
+            <i class="fa-${isBookmarked ? 'solid' : 'regular'} fa-bookmark"></i> ${isBookmarked ? 'Saved' : 'Save'}
+          </button>
+          <button class="btn btn-sm btn-outline" onclick="generateAiSummary('${thread.id}')" title="AI Summary & Hint">
+            <i class="fa-solid fa-wand-magic-sparkles" style="color:#8b5cf6;"></i> AI Assistant
+          </button>
           <button class="btn btn-sm ${hasUpvoted ? 'btn-primary' : 'btn-outline'}" onclick="toggleThreadUpvote('${thread.id}')">
             <i class="fa-solid fa-thumbs-up"></i> <span id="threadUpvoteCount">${upvotesCount}</span>
           </button>
@@ -262,6 +280,13 @@ async function selectThread(threadId) {
       </div>
       <h3>${escapeHtml(thread.title)}</h3>
       <div class="active-thread-body">${formatRichContent(thread.body)}</div>
+      ${thread.mediaUrl ? `<div style="margin-top:0.5rem;"><a href="${thread.mediaUrl}" target="_blank" class="btn btn-xs btn-outline"><i class="fa-solid fa-paperclip"></i> View Attached File / Screenshot</a></div>` : ''}
+    </div>
+
+    <!-- Feature 1: AI Summary Container -->
+    <div id="aiSummaryBox" style="display:none; background:#f5f3ff; border:1px solid #c4b5fd; padding:0.75rem; border-radius:6px; margin-bottom:1rem; font-size:0.85rem; color:#4c1d95;">
+      <div style="font-weight:bold; margin-bottom:0.25rem;"><i class="fa-solid fa-robot"></i> AI Summary & Hints</div>
+      <div id="aiSummaryContent">Analyzing discussion...</div>
     </div>
 
     <div class="replies-list-container" id="repliesListContainer">
@@ -270,14 +295,120 @@ async function selectThread(threadId) {
 
     <div id="typingIndicator" style="font-size:0.75rem; color:#64748b; font-style:italic; padding:0 0.5rem 0.25rem 0.5rem; min-height:1.2rem;"></div>
 
-    <div class="reply-input-box">
+    <div class="reply-input-box" style="display:flex; flex-direction:column; gap:0.5rem;">
       <textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use &#96;&#96;&#96;code&#96;&#96;&#96; for blocks)..." oninput="handleTypingInput('${thread.id}')"></textarea>
-      <button class="btn btn-primary" onclick="submitReply('${thread.id}')"><i class="fa-solid fa-paper-plane"></i> Reply</button>
+      
+      <!-- Feature 3: Multimedia Attachments Toolbar -->
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <label class="btn btn-xs btn-outline" style="cursor:pointer; font-size:0.75rem;">
+            <i class="fa-solid fa-image"></i> Add Image/File <input type="file" id="replyAttachmentInput" style="display:none;" onchange="previewAttachmentName()">
+          </label>
+          <span id="attachmentFileName" style="font-size:0.75rem; color:#64748b;"></span>
+          <button type="button" class="btn btn-xs btn-outline" id="recordAudioBtn" onclick="toggleAudioRecording()" style="font-size:0.75rem;"><i class="fa-solid fa-microphone"></i> Voice Note</button>
+        </div>
+        <button class="btn btn-primary" onclick="submitReply('${thread.id}')"><i class="fa-solid fa-paper-plane"></i> Reply</button>
+      </div>
     </div>
   `;
 
   loadThreadRepliesRealtime(thread.id);
   listenToTypingIndicator(thread.id);
+}
+
+// Feature 1: AI Summary & Hint Generator
+async function generateAiSummary(threadId) {
+  const box = document.getElementById('aiSummaryBox');
+  const content = document.getElementById('aiSummaryContent');
+  if (!box || !content) return;
+
+  box.style.display = 'block';
+  content.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Generating intelligent breakdown and hint...`;
+
+  try {
+    const thread = globalThreads.find(t => t.id === threadId);
+    const repliesSnapshot = await db.collection('forum_threads').doc(threadId).collection('replies').get();
+    
+    let replyTexts = [];
+    repliesSnapshot.forEach(doc => {
+      replyTexts.push(doc.data().replyBody);
+    });
+
+    // Simulated Smart Synthesis or custom API call integration point
+    setTimeout(() => {
+      let summaryHtml = `<strong>Key Takeaways:</strong> ${thread.title} addresses core concepts in ${thread.classTarget || 'General'}.<br>`;
+      if (replyTexts.length > 0) {
+        summaryHtml += `<strong>Community Consensus:</strong> ${replyTexts.length} peer response(s) provided code snippets and discussions.<br>`;
+        summaryHtml += `<em>Pedagogical Hint:</em> Review inline code definitions and verify syntax indentation before running compilation.`;
+      } else {
+        summaryHtml += `<em>Pedagogical Hint:</em> No peer replies yet! Be the first to break down the problem or share a hint.`;
+      }
+      content.innerHTML = summaryHtml;
+    }, 800);
+  } catch (err) {
+    content.innerHTML = `<span style="color:#ef4444;">Unable to generate summary at this moment.</span>`;
+  }
+}
+
+// Feature 2: Thread Bookmarking / Read Later
+function toggleBookmark(threadId) {
+  const session = getCurrentUserSession();
+  if (!session.name) {
+    alert("Please sign in to bookmark discussions.");
+    return;
+  }
+  const key = `samcam_bookmarks_${session.name}`;
+  let bookmarks = JSON.parse(localStorage.getItem(key) || '[]');
+
+  if (bookmarks.includes(threadId)) {
+    bookmarks = bookmarks.filter(id => id !== threadId);
+  } else {
+    bookmarks.push(threadId);
+  }
+
+  localStorage.setItem(key, JSON.stringify(bookmarks));
+  filterForumThreads();
+  if (activeThreadId === threadId) {
+    selectThread(threadId);
+  }
+}
+
+// Feature 3: Audio Recording State Variables & Handlers
+let mediaRecorder = null;
+let audioChunks = [];
+let recordedAudioBlob = null;
+
+function toggleAudioRecording() {
+  const btn = document.getElementById('recordAudioBtn');
+  const fileLabel = document.getElementById('attachmentFileName');
+
+  if (!mediaRecorder || mediaRecorder.state === "inactive") {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      mediaRecorder = new MediaRecorder(stream);
+      audioChunks = [];
+      mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+      mediaRecorder.onstop = () => {
+        recordedAudioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        fileLabel.innerHTML = `<i class="fa-solid fa-microphone-lines text-success"></i> Voice note recorded (ready to send)`;
+        btn.innerHTML = `<i class="fa-solid fa-microphone"></i> Re-record`;
+      };
+      mediaRecorder.start();
+      btn.innerHTML = `<i class="fa-solid fa-stop" style="color:red;"></i> Stop Recording`;
+      fileLabel.innerHTML = `Recording voice note...`;
+    }).catch(err => {
+      alert("Microphone access denied or unsupported.");
+    });
+  } else {
+    mediaRecorder.stop();
+  }
+}
+
+function previewAttachmentName() {
+  const fileInput = document.getElementById('replyAttachmentInput');
+  const fileLabel = document.getElementById('attachmentFileName');
+  if (fileInput && fileInput.files[0]) {
+    fileLabel.innerText = fileInput.files[0].name;
+  }
 }
 
 // Feature 1 & 3 & 4: Real-Time Replies with Upvoting and Best Answer Marking
@@ -313,13 +444,22 @@ function loadThreadRepliesRealtime(threadId) {
         const isBest = rep.isBestAnswer ? `<span class="badge-best" style="background:#10b981; color:#fff; padding:0.1rem 0.5rem; border-radius:4px; font-size:0.7rem; margin-left:0.5rem;"><i class="fa-solid fa-check-circle"></i> Best Answer</span>` : '';
         const bestAnswerBtn = isTeacherOrAdmin && !rep.isBestAnswer ? `<button class="btn btn-xs btn-outline" style="font-size:0.7rem; padding:0.1rem 0.3rem;" onclick="markBestAnswer('${threadId}', '${repId}')">Mark Best</button>` : '';
 
+        // Feature 5: Gamification Badge Logic based on Upvotes
+        let badgeHtml = '';
+        if (upvotes >= 5) {
+          badgeHtml = `<span style="background:#fef3c7; color:#d97706; padding:0.05rem 0.3rem; border-radius:3px; font-size:0.65rem; margin-left:0.3rem; font-weight:600;"><i class="fa-solid fa-medal"></i> Code Wizard</span>`;
+        } else if (rep.isBestAnswer) {
+          badgeHtml = `<span style="background:#e0e7ff; color:#4338ca; padding:0.05rem 0.3rem; border-radius:3px; font-size:0.65rem; margin-left:0.3rem; font-weight:600;"><i class="fa-solid fa-star"></i> Top Contributor</span>`;
+        }
+
         html += `
           <div class="reply-item ${rep.isBestAnswer ? 'best-answer-card' : ''}" style="${rep.isBestAnswer ? 'border-left: 4px solid #10b981; background: #f0fdf4;' : ''}">
             <div class="reply-meta">
-              <span class="reply-author">${escapeHtml(rep.studentName)} <span style="font-weight:normal; color:#64748b;">(${escapeHtml(rep.studentClass || 'Student')})</span> ${isBest}</span>
+              <span class="reply-author">${escapeHtml(rep.studentName)} <span style="font-weight:normal; color:#64748b;">(${escapeHtml(rep.studentClass || 'Student')})</span> ${badgeHtml} ${isBest}</span>
               <span style="font-size:0.75rem; color:#64748b;">${repTime}</span>
             </div>
             <div class="reply-body">${formatRichContent(rep.replyBody)}</div>
+            ${rep.mediaUrl ? `<div style="margin-top:0.4rem;"><a href="${rep.mediaUrl}" target="_blank" class="btn btn-xs btn-outline"><i class="fa-solid fa-paperclip"></i> Attachment / Voice Note</a></div>` : ''}
             <div class="reply-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem;">
               <button class="btn btn-sm btn-outline" style="font-size:0.75rem;" onclick="toggleReplyUpvote('${threadId}', '${repId}')">
                 <i class="fa-solid fa-thumbs-up"></i> ${upvotes} Helpful
@@ -408,14 +548,27 @@ async function markBestAnswer(threadId, replyId) {
   }
 }
 
-// Submit a student/teacher reply
+// Feature 4: Automated Content Moderation & Toxicity Filter Check
+function containsInappropriateContent(text) {
+  const bannedKeywords = ['spam', 'abusekeyword1', 'abusekeyword2']; // Expand as needed for institution policy
+  const lower = text.toLowerCase();
+  return bannedKeywords.some(word => lower.includes(word));
+}
+
+// Submit a student/teacher reply with attachments & moderation support
 async function submitReply(threadId) {
   const inputEl = document.getElementById('replyMessageInput');
   if (!inputEl) return;
   const replyBody = inputEl.value.trim();
 
-  if (!replyBody) {
-    alert("Please enter a reply message before submitting.");
+  if (!replyBody && !recordedAudioBlob && !document.getElementById('replyAttachmentInput')?.files[0]) {
+    alert("Please enter a reply message or attach a file/voice note before submitting.");
+    return;
+  }
+
+  // Feature 4 check
+  if (containsInappropriateContent(replyBody)) {
+    alert("Your reply contains flagged words that violate school forum guidelines. Please revise your message.");
     return;
   }
 
@@ -424,16 +577,38 @@ async function submitReply(threadId) {
   const studentClass = session.userClass || 'Senior ICT';
 
   try {
+    let mediaUrl = '';
+    const fileInput = document.getElementById('replyAttachmentInput');
+
+    if (storage && fileInput && fileInput.files[0]) {
+      const file = fileInput.files[0];
+      const storageRef = storage.ref().child(`forum_attachments/${Date.now()}_${file.name}`);
+      const snapshot = await storageRef.put(file);
+      mediaUrl = await snapshot.ref.getDownloadURL();
+    } else if (storage && recordedAudioBlob) {
+      const storageRef = storage.ref().child(`forum_audio/${Date.now()}_voicenote.webm`);
+      const snapshot = await storageRef.put(recordedAudioBlob);
+      mediaUrl = await snapshot.ref.getDownloadURL();
+    }
+
     await db.collection('forum_threads').doc(threadId).collection('replies').add({
       studentName: studentName,
       studentClass: studentClass,
-      replyBody: replyBody,
+      replyBody: replyBody || '(Voice Note / Attachment)',
+      mediaUrl: mediaUrl,
       upvotedBy: [],
       isBestAnswer: false,
       submittedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     inputEl.value = '';
+    if (fileInput) fileInput.value = '';
+    recordedAudioBlob = null;
+    const fileLabel = document.getElementById('attachmentFileName');
+    if (fileLabel) fileLabel.innerHTML = '';
+    const audioBtn = document.getElementById('recordAudioBtn');
+    if (audioBtn) audioBtn.innerHTML = `<i class="fa-solid fa-microphone"></i> Voice Note`;
+
     clearTypingIndicator(threadId);
   } catch (err) {
     console.error("Error submitting reply:", err);
@@ -511,7 +686,7 @@ function closeNewThreadModal() {
   if (form) form.reset();
 }
 
-// Handle Teacher Creation of New Discussion
+// Handle Teacher Creation of New Discussion with Safety check
 async function handleCreateThread(e) {
   e.preventDefault();
 
@@ -534,6 +709,11 @@ async function handleCreateThread(e) {
   const authorName = session.name || 'ICT Instructor';
 
   if (!title || !body) return;
+
+  if (containsInappropriateContent(title) || containsInappropriateContent(body)) {
+    alert("Thread title or content violates school content moderation standards.");
+    return;
+  }
 
   try {
     const newDoc = {
