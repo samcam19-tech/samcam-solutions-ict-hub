@@ -1,245 +1,490 @@
-<!DOCTYPE html>
 <html lang="en">
+
 <head>
+
   <meta charset="UTF-8">
+
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
   <title>Learner Discussion Forum - SAMCAM SOLUTIONS ICT HUB</title>
+
   <!-- Stylesheets -->
+
   <link rel="stylesheet" href="forum.css">
+
   <!-- FontAwesome for Icons -->
+
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
   <style>
+
     /* Mobile Menu Responsive Styling */
+
     @media (max-width: 768px) {
+
       .header-actions-wrapper {
+
         display: none !important;
+
         width: 100%;
+
         flex-direction: column;
+
         align-items: stretch !important;
+
         gap: 0.5rem !important;
+
         margin-top: 0.75rem;
+
         padding-top: 0.75rem;
+
         border-top: 1px solid rgba(255, 255, 255, 0.15);
+
       }
+
       .header-actions-wrapper.mobile-open {
+
         display: flex !important;
+
       }
+
       .mobile-menu-toggle {
+
         display: inline-flex !important;
+
       }
+
       .forum-header {
+
         flex-direction: column;
+
         align-items: stretch !important;
+
       }
+
       .forum-header > div:first-child {
+
         display: flex;
+
         justify-content: space-between;
+
         align-items: center;
+
         width: 100%;
+
       }
+
     }
+
     .mobile-menu-toggle {
+
       display: none;
+
       background: none;
+
       border: 1px solid var(--border-color, #cbd5e1);
+
       color: inherit;
+
       padding: 0.5rem 0.75rem;
+
       border-radius: 6px;
+
       cursor: pointer;
+
       font-size: 1rem;
+
     }
+
   </style>
+
 </head>
+
 <body>
 
+
+
   <div class="forum-wrapper">
+
     <!-- Header Section -->
+
     <header class="forum-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+
       <div>
+
         <div>
+
           <h2><i class="fa-solid fa-comments"></i> Learner Discussion Forum</h2>
+
           <!-- Mobile Menu Hamburger Button -->
+
           <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle Navigation Menu">
+
             <i class="fa-solid fa-bars" id="mobileMenuIcon"></i>
+
           </button>
+
         </div>
+
         <p>Engage in academic discourse, ask questions, and collaborate with peers.</p>
+
       </div>
+
+
 
       <!-- Action buttons & role-based back links container -->
+
       <div class="header-actions-wrapper" style="display: flex; align-items: center; gap: 0.75rem;">
+
         <!-- Button for Teachers to post a new prompt -->
+
         <button class="btn btn-primary teacher-only" id="openNewThreadModalBtn" onclick="openNewThreadModal()" style="display: none;">
+
           <i class="fa-solid fa-plus"></i> New Discussion Question
+
         </button>
 
+
+
         <!-- Back Link for Staff (appears right after the new discussion button) -->
+
         <a href="assessments.html" class="btn btn-outline teacher-only back-link-staff" id="staffBackLink" style="display: none;">
+
           <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+
         </a>
+
+
 
         <!-- Back Link for Students (appears on the right when not staff) -->
+
         <a href="assessments.html" class="btn btn-outline student-only back-link-student" id="studentBackLink" style="display: inline-flex;">
+
           <i class="fa-solid fa-arrow-left"></i> Back to Portal
+
         </a>
+
       </div>
+
     </header>
 
+
+
     <!-- Search and Filter Bar -->
+
     <div class="forum-controls">
+
       <div class="search-box">
+
         <i class="fa-solid fa-magnifying-glass"></i>
+
         <input type="text" id="forumSearchInput" placeholder="Search discussion topics..." onkeyup="filterForumThreads()">
+
       </div>
+
       <div class="filter-box">
+
         <select id="classFilterSelect" onchange="filterForumThreads()">
+
           <option value="">All Classes / Levels</option>
+
           <option value="Senior 1">Senior 1</option>
+
           <option value="Senior 2">Senior 2</option>
+
           <option value="Senior 3">Senior 3</option>
+
           <option value="Senior 4">Senior 4</option>
+
           <option value="Senior 5">Senior 5</option>
+
           <option value="Senior 6">Senior 6</option>
+
         </select>
+
       </div>
+
     </div>
+
+
 
     <!-- Main Content Grid -->
+
     <div class="forum-container">
+
       <!-- Threads List Feed -->
+
       <div class="threads-feed" id="threadsFeedContainer">
+
         <div class="loading-state">
+
           <i class="fa-solid fa-spinner fa-spin"></i> Loading discussions...
+
         </div>
+
       </div>
+
+
 
       <!-- Active Thread Detail Pane -->
+
       <div class="thread-detail-pane" id="threadDetailPane">
+
         <div class="no-thread-selected">
+
           <i class="fa-regular fa-comment-dots"></i>
+
           <p>Select a discussion topic from the left to view replies and join the conversation.</p>
+
         </div>
+
       </div>
+
     </div>
+
   </div>
+
+
 
   <!-- Modal: Create New Discussion Thread (Controlled via JS functions) -->
+
   <div class="forum-modal-overlay" id="newThreadModal" style="display: none;">
+
     <div class="forum-modal">
+
       <div class="forum-modal-header">
+
         <h3>Post New Discussion Question</h3>
+
         <button onclick="closeNewThreadModal()"><i class="fa-solid fa-xmark"></i></button>
+
       </div>
+
       <form id="newThreadForm" onsubmit="handleCreateThread(event)">
+
         <div class="form-group">
+
           <label>Topic Title</label>
+
           <input type="text" id="threadTitleInput" required placeholder="e.g., Understanding XLOOKUP vs VLOOKUP">
+
         </div>
+
         <div class="form-group">
+
           <label>Target Class</label>
+
           <select id="threadClassInput" required>
+
             <option value="General">General / All Classes</option>
+
             <option value="Senior 1">Senior 1</option>
+
             <option value="Senior 2">Senior 2</option>
+
             <option value="Senior 3">Senior 3</option>
+
             <option value="Senior 4">Senior 4</option>
+
             <option value="Senior 5">Senior 5</option>
+
             <option value="Senior 6">Senior 6</option>
+
           </select>
+
         </div>
+
         <div class="form-group">
+
           <label>Question / Prompt Details</label>
+
           <textarea id="threadBodyInput" rows="5" required placeholder="Type your question or discussion guidelines here..."></textarea>
+
         </div>
+
         <div class="forum-modal-footer">
+
           <button type="button" class="btn btn-secondary" onclick="closeNewThreadModal()">Cancel</button>
+
           <button type="submit" class="btn btn-primary">Post Question</button>
+
         </div>
+
       </form>
+
     </div>
+
   </div>
 
-  <!-- Custom System Dialog Modal -->
-  <div id="systemModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); z-index:9999; justify-content:center; align-items:center; backdrop-filter:blur(2px);">
-    <div style="background:#ffffff; padding:1.5rem; border-radius:10px; width:100%; max-width:400px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);">
-      <h3 id="systemModalTitle" style="margin-top:0; margin-bottom:0.5rem; font-size:1.1rem; color:#0f172a; display:flex; align-items:center; gap:0.5rem;">
-        <i id="systemModalIcon" class="fa-solid fa-circle-info" style="color:#3b82f6;"></i> <span id="systemModalTitleText">Confirmation</span>
-      </h3>
-      <p id="systemModalMessage" style="color:#475569; font-size:0.9rem; margin-bottom:1.25rem; line-height:1.4;"></p>
-      
-      <div id="systemModalPromptContainer" style="margin-bottom:1.25rem; display:none;">
-        <input type="text" id="systemModalPromptInput" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;" />
-      </div>
 
-      <div style="display:flex; justify-content:flex-end; gap:0.5rem;" id="systemModalButtons">
-        <button id="systemModalCancelBtn" class="btn btn-sm btn-outline" style="display:none;" onclick="closeSystemModal(false)">Cancel</button>
-        <button id="systemModalOkBtn" class="btn btn-sm btn-primary" onclick="closeSystemModal(true)">OK</button>
-      </div>
+
+  !-- Custom System Dialog Modal -->
+
+<div id="systemModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); z-index:9999; justify-content:center; align-items:center; backdrop-filter:blur(2px);">
+
+  <div style="background:#ffffff; padding:1.5rem; border-radius:10px; width:100%; max-width:400px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);">
+
+    <h3 id="systemModalTitle" style="margin-top:0; margin-bottom:0.5rem; font-size:1.1rem; color:#0f172a; display:flex; align-items:center; gap:0.5rem;">
+
+      <i id="systemModalIcon" class="fa-solid fa-circle-info" style="color:#3b82f6;"></i> <span id="systemModalTitleText">Confirmation</span>
+
+    </h3>
+
+    <p id="systemModalMessage" style="color:#475569; font-size:0.9rem; margin-bottom:1.25rem; line-height:1.4;"></p>
+
+    
+
+    <div id="systemModalPromptContainer" style="margin-bottom:1.25rem; display:none;">
+
+      <input type="text" id="systemModalPromptInput" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;" />
+
     </div>
+
+
+
+    <div style="display:flex; justify-content:flex-end; gap:0.5rem;" id="systemModalButtons">
+
+      <button id="systemModalCancelBtn" class="btn btn-sm btn-outline" style="display:none;" onclick="closeSystemModal(false)">Cancel</button>
+
+      <button id="systemModalOkBtn" class="btn btn-sm btn-primary" onclick="closeSystemModal(true)">OK</button>
+
+    </div>
+
   </div>
+
+</div>
+
+
 
   <!-- Firebase and Forum Engine Scripts -->
+
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
   <script src="script.js"></script>
+
   <script src="forum-engine.js"></script>
 
+
+
   <!-- Role-based Back Link & Mobile Menu Controller Script -->
+
   <script>
+
     function toggleMobileMenu() {
+
       const actionsWrapper = document.querySelector('.header-actions-wrapper');
+
       const menuIcon = document.getElementById('mobileMenuIcon');
+
       if (actionsWrapper) {
+
         actionsWrapper.classList.toggle('mobile-open');
+
         if (actionsWrapper.classList.contains('mobile-open')) {
+
           menuIcon.className = "fa-solid fa-xmark";
+
         } else {
+
           menuIcon.className = "fa-solid fa-bars";
+
         }
+
       }
+
     }
+
+
 
     window.addEventListener('portalSessionChanged', (e) => {
+
       updateHeaderBackLinks(e.detail);
+
     });
+
+
 
     document.addEventListener("DOMContentLoaded", () => {
+
+      // Evaluate session on initial load
+
       let activeUser = window.currentUser;
+
       if (!activeUser) {
+
         const sessionData = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
+
         if (sessionData) {
+
           try { activeUser = JSON.parse(sessionData); } catch (err) {}
+
         }
+
       }
+
       updateHeaderBackLinks(activeUser);
+
     });
 
+
+
     function updateHeaderBackLinks(user) {
+
       let role = '';
+
       let name = '';
+
       if (user && typeof user === 'object') {
+
         role = user.role || user.userType || user.type || user.accessLevel || '';
+
         name = user.fullName || user.name || user.username || '';
+
       }
+
       const combined = `${role} ${name}`.toLowerCase();
+
       const isTeacherOrAdmin = combined.includes('teacher') || 
+
                                combined.includes('admin') || 
+
                                combined.includes('instructor') ||
+
                                combined.includes('staff');
 
+
+
       const staffLink = document.getElementById('staffBackLink');
+
       const studentLink = document.getElementById('studentBackLink');
 
+
+
       if (staffLink && studentLink) {
+
         if (isTeacherOrAdmin) {
+
           staffLink.style.display = 'inline-flex';
+
           studentLink.style.display = 'none';
+
         } else {
+
           staffLink.style.display = 'none';
+
           studentLink.style.display = 'inline-flex';
+
         }
+
       }
+
     }
+
   </script>
+
 </body>
-</html>
+
+</html> 
+
