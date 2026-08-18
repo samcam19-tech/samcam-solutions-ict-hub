@@ -302,8 +302,8 @@ async function selectThread(threadId) {
 
     '<div class="reply-input-box" style="display:flex; flex-direction:column; gap:0.5rem;">' +
       '<textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use ```code``` for blocks)..." oninput="handleTypingInput(\'' + thread.id + '\')"></textarea>' +
-      '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-        '<button class="btn btn-primary" onclick="submitReply(\'' + thread.id + '\')"><i class="fa-solid fa-paper-plane"></i> Reply</button>' +
+      '<div style="display:flex; justify-content:flex-end; align-items:center;">' +
+        '<button class="btn btn-primary" onclick="submitReply(\'' + thread.id + '\')"><i class="fa-solid fa-paper-plane"></i> Send</button>' +
       '</div>' +
     '</div>';
 
