@@ -300,15 +300,13 @@ async function selectThread(threadId) {
       '</div>' +
     '</div>' +
 
-    '<div class="comment-input-wrapper" id="commentInputWrapperContainer" style="display:flex; flex-direction:column; gap:0.5rem;">' +
-      '<textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use @ to tag peers)..." oninput="handleTypingInput(\'' + thread.id + '\'); autoResizeTextarea(this);" rows="1" aria-label="Write a reply"></textarea>' +
-      '<div class="markdown-preview-pane" id="markdownPreviewPane" style="display:none; border:1px solid var(--border); padding:0.5rem; border-radius:4px; min-height:60px; background:var(--surface);"></div>' +
-      '<div style="display:flex; justify-content:space-between; align-items:center;">' +
-        '<button type="button" class="btn btn-primary" onclick="submitReplyOptimistic(\'' + thread.id + '\')" aria-label="Send reply">' +
-          '<i class="fa-solid fa-paper-plane" aria-hidden="true"></i> Send' +
-        '</button>' +
-      '</div>' +
-    '</div>';
+    '<div class="reply-input-box" style="display:flex; flex-direction:column; gap:0.5rem;">
+      <textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use &#96;&#96;&#96;code&#96;&#96;&#96; for blocks)..." oninput="handleTypingInput('${thread.id}')"></textarea>
+      
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <button class="btn btn-primary" onclick="submitReply('${thread.id}')"><i class="fa-solid fa-paper-plane"></i> Reply</button>
+      </div>
+    </div>';
 
   loadThreadRepliesRealtime(thread.id);
   listenToTypingIndicator(thread.id);
