@@ -1,7 +1,7 @@
 // ==========================================================================
 // 1. FIREBASE INITIALIZATION & MOCK DATA
 // ==========================================================================
-import { GoogleGenAI } from "https://esm.run/@google/genai";
+//import { GoogleGenAI } from "https://esm.run/@google/genai";
 const firebaseConfig = {
   apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
   authDomain: "samcam-system.firebaseapp.com",
