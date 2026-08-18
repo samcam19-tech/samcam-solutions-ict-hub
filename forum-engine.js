@@ -682,10 +682,14 @@ function containsInappropriateContent(text) {
 
 async function submitReplyOptimistic(threadId) {
   const inputEl = document.getElementById('replyMessageInput');
+  const fileInput = document.getElementById('replyAttachmentInput');
   if (!inputEl) return;
+  
   const replyBody = inputEl.value.trim();
+  const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
+  const hasAudio = typeof recordedAudioBlob !== 'undefined' && recordedAudioBlob !== null;
 
-  // Helper for triggering your custom system modal
+  // Helper for triggering your custom system modal correctly
   const showCustomAlert = (title, message) => {
     if (typeof showSystemModal === 'function') {
       showSystemModal({
@@ -694,24 +698,32 @@ async function submitReplyOptimistic(threadId) {
         isPrompt: false,
         onConfirm: () => {}
       });
+    } else if (typeof window.showSystemModal === 'function') {
+      window.showSystemModal({
+        title: title,
+        message: message,
+        isPrompt: false,
+        onConfirm: () => {}
+      });
     } else {
-      alert(message); // Fallback if modal helper isn't globally exposed
+      console.warn(message); // Avoid blocking native alert if custom modal is missing
     }
   };
 
-  if (!replyBody && !recordedAudioBlob && !document.getElementById('replyAttachmentInput')?.files[0]) {
+  // Only alert if truly nothing is provided
+  if (!replyBody && !hasAudio && !hasFile) {
     showCustomAlert("Notice", "Please enter a reply message or attach a file/voice note before submitting.");
     return;
   }
 
-  if (replyBody && containsInappropriateContent(replyBody)) {
+  if (replyBody && typeof containsInappropriateContent === 'function' && containsInappropriateContent(replyBody)) {
     showCustomAlert("Content Warning", "Your reply contains flagged words that violate school forum guidelines. Please revise your message.");
     return;
   }
 
-  const session = getCurrentUserSession();
-  const studentName = session.name || 'Learner';
-  const studentClass = session.userClass || 'Senior ICT';
+  const session = (typeof getCurrentUserSession === 'function') ? getCurrentUserSession() : {};
+  const studentName = session.name || session.fullName || 'Learner';
+  const studentClass = session.userClass || session.classLevel || 'Senior ICT';
 
   // Optimistic UI injection
   const container = document.getElementById('repliesListContainer');
@@ -719,7 +731,7 @@ async function submitReplyOptimistic(threadId) {
     const tempHtml = `
       <div class="reply-item optimistic-fade" style="opacity:0.7; padding:0.75rem; border-bottom:1px solid #e2e8f0;">
         <div style="font-size:0.75rem; color:#64748b; margin-bottom:0.25rem;"><strong>${escapeHtml(studentName)}</strong> (Sending...)</div>
-        <div>${formatRichContent(replyBody)}</div>
+        <div>${formatRichContent(replyBody || (hasAudio ? '🎤 [Voice Note]' : '[Attached File]'))}</div>
       </div>
     `;
     if (container.querySelector('.skeleton-loader') || container.querySelector('.loading-state')) {
@@ -731,20 +743,21 @@ async function submitReplyOptimistic(threadId) {
 
   try {
     let mediaUrl = '';
-    const fileInput = document.getElementById('replyAttachmentInput');
 
-    if (storage && fileInput && fileInput.files[0]) {
-      const file = fileInput.files[0];
-      const storageRef = storage.ref().child(`forum_attachments/${Date.now()}_${file.name}`);
-      const snapshot = await storageRef.put(file);
-      mediaUrl = await snapshot.ref.getDownloadURL();
-    } else if (storage && recordedAudioBlob) {
-      const storageRef = storage.ref().child(`forum_audio/${Date.now()}_voicenote.webm`);
-      const snapshot = await storageRef.put(recordedAudioBlob);
-      mediaUrl = await snapshot.ref.getDownloadURL();
+    if (typeof storage !== 'undefined' && storage) {
+      if (hasFile) {
+        const file = fileInput.files[0];
+        const storageRef = storage.ref().child(`forum_attachments/${Date.now()}_${file.name}`);
+        const snapshot = await storageRef.put(file);
+        mediaUrl = await snapshot.ref.getDownloadURL();
+      } else if (hasAudio) {
+        const storageRef = storage.ref().child(`forum_audio/${Date.now()}_voicenote.webm`);
+        const snapshot = await storageRef.put(recordedAudioBlob);
+        mediaUrl = await snapshot.ref.getDownloadURL();
+      }
     }
 
-    const finalBody = replyBody || (recordedAudioBlob ? '🎤 [Voice Note]' : '[Attached File]');
+    const finalBody = replyBody || (hasAudio ? '🎤 [Voice Note]' : '[Attached File]');
 
     await db.collection('forum_threads').doc(threadId).collection('replies').add({
       studentName: studentName,
@@ -758,15 +771,17 @@ async function submitReplyOptimistic(threadId) {
 
     inputEl.value = '';
     inputEl.style.height = 'auto';
-    switchInputTab('write');
+    if (typeof switchInputTab === 'function') switchInputTab('write');
     if (fileInput) fileInput.value = '';
-    recordedAudioBlob = null;
+    if (typeof recordedAudioBlob !== 'undefined') recordedAudioBlob = null;
+    
     const fileLabel = document.getElementById('attachmentFileName');
     if (fileLabel) fileLabel.innerHTML = '';
+    
     const audioBtn = document.getElementById('recordAudioBtn');
     if (audioBtn) audioBtn.innerHTML = `<i class="fa-solid fa-microphone"></i> Voice Note`;
 
-    clearTypingIndicator(threadId);
+    if (typeof clearTypingIndicator === 'function') clearTypingIndicator(threadId);
   } catch (err) {
     console.error("Error submitting reply:", err);
     showCustomAlert("Submission Error", "Failed to post reply: " + err.message);
