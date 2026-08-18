@@ -364,19 +364,17 @@ async function selectThread(threadId) {
 
     <div id="typingIndicator" style="font-size:0.75rem; color:#64748b; font-style:italic; padding:0 0.5rem 0.25rem 0.5rem; min-height:1.2rem;"></div>
 
-    <div class="reply-input-box" style="display:flex; flex-direction:column; gap:0.5rem;">
-      <textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use &#96;&#96;&#96;code&#96;&#96;&#96; for blocks)..." oninput="handleTypingInput('${thread.id}')"></textarea>
-      
-      <div style="display:flex; justify-content:flex-end; align-items:center;">
-        <button class="btn btn-primary" onclick="submitReply('${thread.id}')"><i class="fa-solid fa-paper-plane"></i> Reply</button>
-      </div>
+    <div class="comment-input-wrapper">
+      <textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use &#96;&#96;&#96;code&#96;&#96;&#96; for blocks)..." oninput="handleTypingInput('${thread.id}')" rows="1"></textarea>
+      <button type="button" class="btn-comment-submit" onclick="submitReply('${thread.id}')">
+        <i class="fa-solid fa-paper-plane"></i> Reply
+      </button>
     </div>
   `;
 
   loadThreadRepliesRealtime(thread.id);
   listenToTypingIndicator(thread.id);
 }
-
 async function generateAiSummary(threadId) {
   const box = document.getElementById('aiSummaryBox');
   const content = document.getElementById('aiSummaryContent');
