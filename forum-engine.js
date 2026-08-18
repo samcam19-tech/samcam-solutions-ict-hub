@@ -16,7 +16,6 @@ if (typeof firebase !== "undefined" && !firebase.apps.length) {
 }
 
 const db = typeof firebase !== "undefined" ? firebase.firestore() : null;
-const storage = typeof firebase !== "undefined" && firebase.storage ? firebase.storage() : null;
 
 // ==========================================================================
 // 2. STATE MANAGEMENT, REAL-TIME LISTENERS & SESSION HANDLING
@@ -60,17 +59,17 @@ function updateClassFilterDropdown(session, isTeacherOrAdmin) {
     optionsHtml = `
       <option value="">All Classes (General & Specific)</option>
       <option value="General">General</option>
-      <option value="S.1">Senior One (S.1)</option>
-      <option value="S.2">Senior Two (S.2)</option>
-      <option value="S.3">Senior Three (S.3)</option>
-      <option value="S.4">Senior Four (S.4)</option>
-      <option value="S.5">Senior Five (S.5)</option>
-      <option value="S.6">Senior Six (S.6)</option>
+      <option value="Senior 1">Senior 1</option>
+      <option value="Senior 2">Senior 2</option>
+      <option value="Senior 3">Senior 3</option>
+      <option value="Senior 4">Senior 4</option>
+      <option value="Senior 5">Senior 5</option>
+      <option value="Senior 6">Senior 6</option>
     `;
   } else {
-    const userCls = (session.userClass || 'S.1').trim();
+    const userCls = (session.userClass || 'Senior 1').trim();
     optionsHtml = `
-      <option value="">All Available (${userCls} & General)</option>
+      <option value="">All Available (${escapeHtml(userCls)} & General)</option>
       <option value="${escapeHtml(userCls)}">${escapeHtml(userCls)}</option>
       <option value="General">General</option>
     `;
@@ -136,7 +135,7 @@ function getCurrentUserSession(userParam) {
 }
 
 // ==========================================================================
-// 3. CUSTOM SYSTEM MODAL DIALOGS (REPLACING ALERT / CONFIRM)
+// 3. CUSTOM SYSTEM MODAL DIALOGS (REPLACING NATIVE ALERT & CONFIRM)
 // ==========================================================================
 let modalResolveCallback = null;
 
@@ -148,15 +147,27 @@ function showSystemAlert(message, title = "Notice") {
       resolve(true);
       return;
     }
+    
     document.getElementById('systemModalTitleText').innerText = title;
     document.getElementById('systemModalMessage').innerText = message;
-    document.getElementById('systemModalIcon').className = "fa-solid fa-circle-info";
-    document.getElementById('systemModalIcon').style.color = "#3b82f6";
+    
+    const icon = document.getElementById('systemModalIcon');
+    if (icon) {
+      icon.className = "fa-solid fa-circle-info";
+      icon.style.color = "#3b82f6";
+    }
 
-    document.getElementById('systemModalPromptContainer').style.display = 'none';
-    document.getElementById('systemModalCancelBtn').style.display = 'none';
-    document.getElementById('systemModalOkBtn').innerText = "OK";
-    document.getElementById('systemModalOkBtn').className = "btn btn-sm btn-primary";
+    const promptContainer = document.getElementById('systemModalPromptContainer');
+    if (promptContainer) promptContainer.style.display = 'none';
+    
+    const cancelBtn = document.getElementById('systemModalCancelBtn');
+    if (cancelBtn) cancelBtn.style.display = 'none';
+    
+    const okBtn = document.getElementById('systemModalOkBtn');
+    if (okBtn) {
+      okBtn.innerText = "OK";
+      okBtn.className = "btn btn-sm btn-primary";
+    }
 
     modal.style.display = 'flex';
     modalResolveCallback = () => resolve(true);
@@ -171,19 +182,27 @@ function showSystemConfirm(message, title = "Confirm Action", confirmText = "Con
       resolve(res);
       return;
     }
+
     document.getElementById('systemModalTitleText').innerText = title;
     document.getElementById('systemModalMessage').innerText = message;
     
     const icon = document.getElementById('systemModalIcon');
-    icon.className = isDanger ? "fa-solid fa-triangle-exclamation" : "fa-solid fa-circle-question";
-    icon.style.color = isDanger ? "#ef4444" : "#f59e0b";
+    if (icon) {
+      icon.className = isDanger ? "fa-solid fa-triangle-exclamation" : "fa-solid fa-circle-question";
+      icon.style.color = isDanger ? "#ef4444" : "#f59e0b";
+    }
 
-    document.getElementById('systemModalPromptContainer').style.display = 'none';
-    document.getElementById('systemModalCancelBtn').style.display = 'inline-flex';
+    const promptContainer = document.getElementById('systemModalPromptContainer');
+    if (promptContainer) promptContainer.style.display = 'none';
+    
+    const cancelBtn = document.getElementById('systemModalCancelBtn');
+    if (cancelBtn) cancelBtn.style.display = 'inline-flex';
     
     const okBtn = document.getElementById('systemModalOkBtn');
-    okBtn.innerText = confirmText;
-    okBtn.className = isDanger ? "btn btn-sm btn-danger" : "btn btn-sm btn-primary";
+    if (okBtn) {
+      okBtn.innerText = confirmText;
+      okBtn.className = isDanger ? "btn btn-sm btn-danger" : "btn btn-sm btn-primary";
+    }
 
     modal.style.display = 'flex';
     modalResolveCallback = resolve;
@@ -332,7 +351,6 @@ async function selectThread(threadId) {
       </div>
       <h3>${escapeHtml(thread.title)}</h3>
       <div class="active-thread-body">${formatRichContent(thread.body)}</div>
-      ${thread.mediaUrl ? `<div style="margin-top:0.5rem;"><a href="${thread.mediaUrl}" target="_blank" class="btn btn-xs btn-outline"><i class="fa-solid fa-paperclip"></i> View Attached File / Screenshot</a></div>` : ''}
     </div>
 
     <div id="aiSummaryBox" style="display:none; background:#f5f3ff; border:1px solid #c4b5fd; padding:0.75rem; border-radius:6px; margin-bottom:1rem; font-size:0.85rem; color:#4c1d95;">
@@ -349,14 +367,7 @@ async function selectThread(threadId) {
     <div class="reply-input-box" style="display:flex; flex-direction:column; gap:0.5rem;">
       <textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use &#96;&#96;&#96;code&#96;&#96;&#96; for blocks)..." oninput="handleTypingInput('${thread.id}')"></textarea>
       
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <div style="display:flex; gap:0.5rem; align-items:center;">
-          <label class="btn btn-xs btn-outline" style="cursor:pointer; font-size:0.75rem;">
-            <i class="fa-solid fa-image"></i> Add Image/File <input type="file" id="replyAttachmentInput" style="display:none;" onchange="previewAttachmentName()">
-          </label>
-          <span id="attachmentFileName" style="font-size:0.75rem; color:#64748b;"></span>
-          <button type="button" class="btn btn-xs btn-outline" id="recordAudioBtn" onclick="toggleAudioRecording()" style="font-size:0.75rem;"><i class="fa-solid fa-microphone"></i> Voice Note</button>
-        </div>
+      <div style="display:flex; justify-content:flex-end; align-items:center;">
         <button class="btn btn-primary" onclick="submitReply('${thread.id}')"><i class="fa-solid fa-paper-plane"></i> Reply</button>
       </div>
     </div>
@@ -398,10 +409,10 @@ async function generateAiSummary(threadId) {
   }
 }
 
-function toggleBookmark(threadId) {
+async function toggleBookmark(threadId) {
   const session = getCurrentUserSession();
   if (!session.name) {
-    showSystemAlert("Please sign in to bookmark discussions.", "Authentication Required");
+    await showSystemAlert("Please sign in to bookmark discussions.", "Authentication Required");
     return;
   }
   const key = `samcam_bookmarks_${session.name}`;
@@ -417,78 +428,6 @@ function toggleBookmark(threadId) {
   filterForumThreads();
   if (activeThreadId === threadId) {
     selectThread(threadId);
-  }
-}
-
-// ==========================================================================
-// 5. AUDIO RECORDING & VOICE NOTE CONTROLS
-// ==========================================================================
-let mediaRecorder = null;
-let audioChunks = [];
-let recordedAudioBlob = null;
-let selectedAudioMimeType = 'audio/webm';
-
-function getSupportedAudioMimeType() {
-  const types = [
-    'audio/webm;codecs=opus',
-    'audio/webm',
-    'audio/ogg;codecs=opus',
-    'audio/mp4',
-    'audio/aac'
-  ];
-  for (let type of types) {
-    if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(type)) {
-      return type;
-    }
-  }
-  return '';
-}
-
-function toggleAudioRecording() {
-  const btn = document.getElementById('recordAudioBtn');
-  const fileLabel = document.getElementById('attachmentFileName');
-
-  if (!mediaRecorder || mediaRecorder.state === "inactive") {
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-      selectedAudioMimeType = getSupportedAudioMimeType();
-      const options = selectedAudioMimeType ? { mimeType: selectedAudioMimeType } : {};
-      
-      mediaRecorder = new MediaRecorder(stream, options);
-      audioChunks = [];
-      
-      mediaRecorder.ondataavailable = e => {
-        if (e.data && e.data.size > 0) {
-          audioChunks.push(e.data);
-        }
-      };
-      
-      mediaRecorder.onstop = () => {
-        const mime = selectedAudioMimeType || 'audio/webm';
-        recordedAudioBlob = new Blob(audioChunks, { type: mime });
-        fileLabel.innerHTML = `<i class="fa-solid fa-microphone-lines" style="color:#10b981;"></i> Voice note recorded (${Math.round(recordedAudioBlob.size / 1024)} KB)`;
-        btn.innerHTML = `<i class="fa-solid fa-microphone"></i> Re-record`;
-      };
-      
-      mediaRecorder.start();
-      btn.innerHTML = `<i class="fa-solid fa-stop" style="color:red;"></i> Stop Recording`;
-      fileLabel.innerHTML = `Recording voice note...`;
-    }).catch(err => {
-      console.error("Microphone access error:", err);
-      showSystemAlert("Microphone access denied or unsupported on this browser.", "Hardware Access Error");
-    });
-  } else {
-    mediaRecorder.stop();
-    if (mediaRecorder.stream) {
-      mediaRecorder.stream.getTracks().forEach(track => track.stop());
-    }
-  }
-}
-
-function previewAttachmentName() {
-  const fileInput = document.getElementById('replyAttachmentInput');
-  const fileLabel = document.getElementById('attachmentFileName');
-  if (fileInput && fileInput.files[0]) {
-    fileLabel.innerText = fileInput.files[0].name;
   }
 }
 
@@ -528,7 +467,7 @@ async function saveEditedComment(threadId, replyId) {
   const updatedBody = textarea.value.trim();
 
   if (!updatedBody) {
-    showSystemAlert("Comment cannot be empty.", "Validation Warning");
+    await showSystemAlert("Comment cannot be empty.", "Validation Warning");
     return;
   }
 
@@ -539,7 +478,7 @@ async function saveEditedComment(threadId, replyId) {
     });
   } catch (err) {
     console.error("Error updating comment:", err);
-    showSystemAlert("Failed to update comment: " + err.message, "Error");
+    await showSystemAlert("Failed to update comment: " + err.message, "Error");
   }
 }
 
@@ -554,7 +493,7 @@ async function deleteComment(threadId, replyId, authorName) {
   const isOwner = session.name && session.name.toLowerCase() === authorName.toLowerCase();
 
   if (!isTeacherOrAdmin && !isOwner) {
-    showSystemAlert("You do not have permission to delete this comment.", "Access Denied");
+    await showSystemAlert("You do not have permission to delete this comment.", "Access Denied");
     return;
   }
 
@@ -570,7 +509,7 @@ async function deleteComment(threadId, replyId, authorName) {
     await db.collection('forum_threads').doc(threadId).collection('replies').doc(replyId).delete();
   } catch (err) {
     console.error("Error deleting comment:", err);
-    showSystemAlert("Failed to delete comment: " + err.message, "Error");
+    await showSystemAlert("Failed to delete comment: " + err.message, "Error");
   }
 }
 
@@ -612,32 +551,6 @@ function loadThreadRepliesRealtime(threadId) {
         const editBtnHtml = showActionButtons ? `<button class="btn btn-xs btn-outline" style="font-size:0.7rem; padding:0.1rem 0.3rem;" onclick="enableEditComment('${threadId}', '${repId}', \`${escapeHtml(rep.replyBody).replace(/\\/g, '\\\\').replace(/`/g, '\\`')}\`)"><i class="fa-solid fa-pen"></i> Edit</button>` : '';
         const deleteBtnHtml = showActionButtons ? `<button class="btn btn-xs btn-outline" style="font-size:0.7rem; padding:0.1rem 0.3rem; color:#ef4444; border-color:#fca5a5;" onclick="deleteComment('${threadId}', '${repId}', '${escapeHtml(rep.studentName)}')"><i class="fa-solid fa-trash"></i> Delete</button>` : '';
 
-        // Robust Voice Note & Attachment Render Check
-        let mediaHtml = '';
-        if (rep.mediaUrl) {
-          const urlLower = rep.mediaUrl.toLowerCase();
-          const isAudio = urlLower.includes('forum_audio') || 
-                          urlLower.includes('.webm') || 
-                          urlLower.includes('.mp3') || 
-                          urlLower.includes('.ogg') || 
-                          urlLower.includes('.mp4') ||
-                          urlLower.includes('audio');
-
-          if (isAudio) {
-            mediaHtml = `
-              <div style="margin-top:0.5rem; background:#f1f5f9; padding:0.5rem; border-radius:6px; display:flex; align-items:center; width:100%; max-width:340px;">
-                <audio controls style="height:36px; width:100%;">
-                  <source src="${rep.mediaUrl}" type="audio/webm">
-                  <source src="${rep.mediaUrl}" type="audio/mp4">
-                  <source src="${rep.mediaUrl}" type="audio/ogg">
-                  Your browser does not support the audio element.
-                </audio>
-              </div>`;
-          } else {
-            mediaHtml = `<div style="margin-top:0.4rem;"><a href="${rep.mediaUrl}" target="_blank" class="btn btn-xs btn-outline"><i class="fa-solid fa-paperclip"></i> View Attached File / Screenshot</a></div>`;
-          }
-        }
-
         let badgeHtml = '';
         if (upvotes >= 5) {
           badgeHtml = `<span style="background:#fef3c7; color:#d97706; padding:0.05rem 0.3rem; border-radius:3px; font-size:0.65rem; margin-left:0.3rem; font-weight:600;"><i class="fa-solid fa-medal"></i> Code Wizard</span>`;
@@ -652,7 +565,6 @@ function loadThreadRepliesRealtime(threadId) {
               <span style="font-size:0.75rem; color:#64748b;">${repTime} ${rep.editedAt ? '(Edited)' : ''}</span>
             </div>
             <div class="reply-body" id="reply-body-${repId}">${formatRichContent(rep.replyBody)}</div>
-            ${mediaHtml}
             <div class="reply-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem;">
               <div style="display:flex; gap:0.5rem; align-items:center;">
                 <button class="btn btn-sm btn-outline" style="font-size:0.75rem;" onclick="toggleReplyUpvote('${threadId}', '${repId}')">
@@ -684,7 +596,7 @@ async function toggleThreadUpvote(threadId) {
   const session = getCurrentUserSession();
   const userId = session.name;
   if (!userId) {
-    showSystemAlert("Please sign in to upvote discussions.", "Authentication Required");
+    await showSystemAlert("Please sign in to upvote discussions.", "Authentication Required");
     return;
   }
 
@@ -710,7 +622,7 @@ async function toggleReplyUpvote(threadId, replyId) {
   const session = getCurrentUserSession();
   const userId = session.name;
   if (!userId) {
-    showSystemAlert("Please sign in to vote.", "Authentication Required");
+    await showSystemAlert("Please sign in to vote.", "Authentication Required");
     return;
   }
 
@@ -743,7 +655,7 @@ async function markBestAnswer(threadId, replyId) {
     await batch.commit();
   } catch (err) {
     console.error("Error setting best answer:", err);
-    showSystemAlert("Failed to designate best answer.", "Error");
+    await showSystemAlert("Failed to designate best answer.", "Error");
   }
 }
 
@@ -758,13 +670,13 @@ async function submitReply(threadId) {
   if (!inputEl) return;
   const replyBody = inputEl.value.trim();
 
-  if (!replyBody && !recordedAudioBlob && !document.getElementById('replyAttachmentInput')?.files[0]) {
-    showSystemAlert("Please enter a reply message or attach a file/voice note before submitting.", "Required Field");
+  if (!replyBody) {
+    await showSystemAlert("Please enter a reply message before submitting.", "Required Field");
     return;
   }
 
-  if (replyBody && containsInappropriateContent(replyBody)) {
-    showSystemAlert("Your reply contains flagged words that violate school forum guidelines. Please revise your message.", "Content Moderation");
+  if (containsInappropriateContent(replyBody)) {
+    await showSystemAlert("Your reply contains flagged words that violate school forum guidelines. Please revise your message.", "Content Moderation");
     return;
   }
 
@@ -773,47 +685,20 @@ async function submitReply(threadId) {
   const studentClass = session.userClass || 'Senior ICT';
 
   try {
-    let mediaUrl = '';
-    const fileInput = document.getElementById('replyAttachmentInput');
-
-    if (storage && fileInput && fileInput.files[0]) {
-      const file = fileInput.files[0];
-      const storageRef = storage.ref().child(`forum_attachments/${Date.now()}_${file.name}`);
-      const snapshot = await storageRef.put(file);
-      mediaUrl = await snapshot.ref.getDownloadURL();
-    } else if (storage && recordedAudioBlob) {
-      const ext = selectedAudioMimeType.includes('mp4') ? 'mp4' : 'webm';
-      const storageRef = storage.ref().child(`forum_audio/${Date.now()}_voicenote.${ext}`);
-      
-      const metadata = { contentType: recordedAudioBlob.type || 'audio/webm' };
-      const snapshot = await storageRef.put(recordedAudioBlob, metadata);
-      mediaUrl = await snapshot.ref.getDownloadURL();
-    }
-
-    const finalBody = replyBody || (recordedAudioBlob ? '🎤 [Voice Note]' : '[Attached File]');
-
     await db.collection('forum_threads').doc(threadId).collection('replies').add({
       studentName: studentName,
       studentClass: studentClass,
-      replyBody: finalBody,
-      mediaUrl: mediaUrl,
+      replyBody: replyBody,
       upvotedBy: [],
       isBestAnswer: false,
       submittedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     inputEl.value = '';
-    if (fileInput) fileInput.value = '';
-    recordedAudioBlob = null;
-    const fileLabel = document.getElementById('attachmentFileName');
-    if (fileLabel) fileLabel.innerHTML = '';
-    const audioBtn = document.getElementById('recordAudioBtn');
-    if (audioBtn) audioBtn.innerHTML = `<i class="fa-solid fa-microphone"></i> Voice Note`;
-
     clearTypingIndicator(threadId);
   } catch (err) {
     console.error("Error submitting reply:", err);
-    showSystemAlert("Failed to post reply: " + err.message, "Error");
+    await showSystemAlert("Failed to post reply: " + err.message, "Error");
   }
 }
 
@@ -890,7 +775,7 @@ async function handleCreateThread(e) {
                            combinedCheck.includes('staff');
 
   if (!isTeacherOrAdmin) {
-    showSystemAlert("Access Denied: Only teachers or administrators can post new discussion questions.", "Restricted Action");
+    await showSystemAlert("Access Denied: Only teachers or administrators can post new discussion questions.", "Restricted Action");
     closeNewThreadModal();
     return;
   }
@@ -903,7 +788,7 @@ async function handleCreateThread(e) {
   if (!title || !body) return;
 
   if (containsInappropriateContent(title) || containsInappropriateContent(body)) {
-    showSystemAlert("Thread title or content violates school content moderation standards.", "Content Moderation");
+    await showSystemAlert("Thread title or content violates school content moderation standards.", "Content Moderation");
     return;
   }
 
@@ -922,7 +807,7 @@ async function handleCreateThread(e) {
     selectThread(docRef.id);
   } catch (err) {
     console.error("Error creating discussion thread:", err);
-    showSystemAlert("Failed to create thread: " + err.message, "Error");
+    await showSystemAlert("Failed to create thread: " + err.message, "Error");
   }
 }
 
