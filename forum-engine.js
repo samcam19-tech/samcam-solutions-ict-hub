@@ -509,18 +509,48 @@ async function deleteComment(threadId, replyId, authorName) {
   
   const isOwner = session.name && session.name.toLowerCase() === authorName.toLowerCase();
 
+  const showCustomAlert = (title, message) => {
+    if (typeof showSystemModal === 'function') {
+      showSystemModal({
+        title: title,
+        message: message,
+        isPrompt: false,
+        onConfirm: () => {}
+      });
+    } else {
+      alert(message);
+    }
+  };
+
   if (!isTeacherOrAdmin && !isOwner) {
-    alert("You do not have permission to delete this comment.");
+    showCustomAlert("Permission Denied", "You do not have permission to delete this comment.");
     return;
   }
 
-  if (!confirm("Are you sure you want to delete this comment?")) return;
-
-  try {
-    await db.collection('forum_threads').doc(threadId).collection('replies').doc(replyId).delete();
-  } catch (err) {
-    console.error("Error deleting comment:", err);
-    alert("Failed to delete comment: " + err.message);
+  // Use custom confirmation modal if available
+  if (typeof showSystemModal === 'function') {
+    showSystemModal({
+      title: "Confirm Deletion",
+      message: "Are you sure you want to delete this comment? This action cannot be undone.",
+      isPrompt: false,
+      onConfirm: async () => {
+        try {
+          await db.collection('forum_threads').doc(threadId).collection('replies').doc(replyId).delete();
+        } catch (err) {
+          console.error("Error deleting comment:", err);
+          showCustomAlert("Deletion Error", "Failed to delete comment: " + err.message);
+        }
+      }
+    });
+  } else {
+    // Fallback if custom modal helper is missing
+    if (!confirm("Are you sure you want to delete this comment?")) return;
+    try {
+      await db.collection('forum_threads').doc(threadId).collection('replies').doc(replyId).delete();
+    } catch (err) {
+      console.error("Error deleting comment:", err);
+      alert("Failed to delete comment: " + err.message);
+    }
   }
 }
 
