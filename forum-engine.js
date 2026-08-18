@@ -644,30 +644,73 @@ function loadThreadRepliesRealtime(threadId) {
     });
 }
 
-// 2. Open Edit Thread Modal using Custom Modal Prompt
 window.openEditThreadModal = function(threadId) {
   const thread = globalThreads.find(t => t.id === threadId);
   if (!thread) return;
 
-  if (typeof showSystemModal === 'function') {
-    showSystemModal({
-      title: "Edit Discussion Title",
-      message: "Update the title for this discussion topic:",
-      isPrompt: true,
-      onConfirm: async (newTitle) => {
-        if (!newTitle || !newTitle.trim()) return;
-        try {
-          await db.collection('forum_threads').doc(threadId).update({ title: newTitle.trim() });
-          thread.title = newTitle.trim();
-          selectThread(threadId);
-          if (typeof loadForumThreads === 'function') loadForumThreads();
-        } catch (err) {
-          console.error("Error updating thread title:", err);
-          showSystemModal({ title: "Error", message: "Failed to update discussion: " + err.message });
-        }
-      }
-    });
+  const modal = document.getElementById('systemModal');
+  const titleText = document.getElementById('systemModalTitleText');
+  const messageEl = document.getElementById('systemModalMessage');
+  const promptContainer = document.getElementById('systemModalPromptContainer');
+  const cancelBtn = document.getElementById('systemModalCancelBtn');
+  
+  if (!modal) return;
+
+  if (titleText) titleText.textContent = "Edit Discussion";
+  if (messageEl) messageEl.textContent = "Update the title and question details below:";
+  
+  // Inject custom form inputs for Title and Body into the prompt container
+  if (promptContainer) {
+    promptContainer.style.display = 'block';
+    promptContainer.innerHTML = `
+      <div style="display: flex; flex-direction: column; gap: 0.75rem; text-align: left; margin-top: 0.5rem;">
+        <label style="font-size: 0.8rem; font-weight: 600; color: #475569;">Discussion Title:</label>
+        <input type="text" id="customEditTitleInput" value="${escapeHtml(thread.title || '')}" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.9rem;" />
+        
+        <label style="font-size: 0.8rem; font-weight: 600; color: #475569;">Discussion Question / Body:</label>
+        <textarea id="customEditBodyInput" rows="5" style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 0.9rem; resize: vertical;">${escapeHtml(thread.body || '')}</textarea>
+      </div>
+    `;
   }
+
+  if (cancelBtn) cancelBtn.style.display = 'inline-block';
+
+  // Override the confirmation callback to save both fields to Firestore
+  currentModalCallback = async () => {
+    const titleInput = document.getElementById('customEditTitleInput');
+    const bodyInput = document.getElementById('customEditBodyInput');
+    
+    if (!titleInput || !bodyInput) return;
+    
+    const newTitle = titleInput.value.trim();
+    const newBody = bodyInput.value.trim();
+    
+    if (!newTitle) {
+      alert("Discussion title cannot be empty.");
+      return;
+    }
+
+    try {
+      await db.collection('forum_threads').doc(threadId).update({
+        title: newTitle,
+        body: newBody,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      thread.title = newTitle;
+      thread.body = newBody;
+      
+      selectThread(threadId);
+      if (typeof loadForumThreads === 'function') loadForumThreads();
+    } catch (err) {
+      console.error("Error updating discussion thread:", err);
+      if (typeof showSystemModal === 'function') {
+        showSystemModal({ title: "Error", message: "Failed to update discussion: " + err.message });
+      }
+    }
+  };
+
+  modal.style.display = 'flex';
 };
 
 // 3. Confirm & Delete Discussion Thread using Custom Modal Confirmation
