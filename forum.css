@@ -564,3 +564,48 @@ body {
 .reply-input-container .btn-send-reply:hover {
   background-color: var(--primary-dark, #1d4ed8);
 }
+
+/* Unified Comment / Reply Input Box with Button on the Right */
+.comment-input-wrapper {
+  display: flex;
+  align-items: center;
+  background: #ffffff;
+  border: 1px solid var(--border-color, #cbd5e1);
+  border-radius: 8px;
+  padding: 0.35rem 0.35rem 0.35rem 0.75rem;
+  margin-top: 1rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.comment-input-wrapper textarea {
+  flex: 1;
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 0.5rem 0;
+  font-size: 0.95rem;
+  font-family: inherit;
+  background: transparent;
+  min-height: 24px;
+  max-height: 120px;
+}
+
+.comment-input-wrapper .btn-comment-submit {
+  background-color: var(--primary-color, #2563eb);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+.comment-input-wrapper .btn-comment-submit:hover {
+  background-color: var(--primary-dark, #1d4ed8);
+}
