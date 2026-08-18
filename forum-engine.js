@@ -831,6 +831,13 @@ async function handleCreateThread(e) {
   }
 }
 
+
+function autoResizeTextarea(element) {
+  // Reset height temporarily to correctly calculate the new scroll height
+  element.style.height = 'auto';
+  // Set the height to match the content scroll height (with a maximum cap if desired)
+  element.style.height = (element.scrollHeight) + 'px';
+}
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str).replace(/&/g, "&amp;")
