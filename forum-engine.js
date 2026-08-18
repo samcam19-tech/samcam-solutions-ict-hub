@@ -4,7 +4,7 @@
 const firebaseConfig = {
   apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
   authDomain: "samcam-system.firebaseapp.com",
-  projectId: "samcam-system",fAISUMM
+  projectId: "samcam-system",
   storageBucket: "samcam-system.firebasestorage.app",
   messagingSenderId: "74940789582",
   appId: "1:74940789582:web:f159688165a194e841241f",
