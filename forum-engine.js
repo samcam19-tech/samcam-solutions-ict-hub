@@ -370,52 +370,72 @@ window.generateAiSummary = async function(threadId) {
   }
 
   box.style.display = 'block';
-  content.innerHTML = `<i class="fa-solid fa-spinner fa-spin fa-bounce"></i> Querying Gemini AI to synthesize discussion scenario and student responses...`;
+  content.innerHTML = `<i class="fa-solid fa-spinner fa-spin fa-bounce"></i> Querying Gemini AI to synthesize discussion and student responses...`;
 
   try {
-    // 1. Fetch thread details from memory cache or Firestore
+    // 1. Find the discussion thread from your global cache
     const thread = globalThreads.find(t => t.id === threadId);
     if (!thread) {
       content.innerHTML = `<span style="color:#ef4444;">Discussion topic not found.</span>`;
       return;
     }
 
-    // 2. Fetch all student/teacher replies from the Firestore subcollection
+    // 2. Fetch all replies from your Firestore subcollection in real-time
     const repliesSnapshot = await db.collection('forum_threads').doc(threadId).collection('replies').get();
-    let repliesData = [];
+    let repliesText = "";
     
+    let count = 0;
     repliesSnapshot.forEach(doc => {
       const data = doc.data();
-      repliesData.push({
-        author: data.authorName || 'Student',
-        body: data.replyBody || data.message || '',
-        isBestAnswer: data.isBestAnswer || data.isCorrect || data.markedAsBest || false
-      });
+      count++;
+      const author = data.authorName || 'Student';
+      const body = data.replyBody || data.message || '';
+      const isBest = data.isBestAnswer || data.isCorrect || data.markedAsBest ? " [VERIFIED BEST ANSWER]" : "";
+      repliesText += `${count}. ${author}: ${body}${isBest}\n`;
     });
 
-    // 3. Call your Firebase Cloud Function (or backend API)
-    // You can use Firebase Functions callable or fetch endpoint
-    const summarizeFunction = firebase.functions().httpsCallable('generateDiscussionSummary');
-    const response = await summarizeFunction({
-      title: thread.title,
-      body: thread.body,
-      classTarget: thread.classTarget || 'Secondary ICT',
-      replies: repliesData
+    if (count === 0) {
+      repliesText = "No student responses submitted yet.";
+    }
+
+    // 3. Call Gemini API directly using the official SDK import
+    // Note: Make sure to import GoogleGenAI at the top of your JS file: 
+    // import { GoogleGenAI } from "https://esm.run/@google/genai";
+    const ai = new GoogleGenAI({ apiKey: "YOUR_GEMINI_API_KEY", dangerouslyAllowBrowser: true });
+
+    const prompt = `
+      You are an expert ICT educator specializing in the Ugandan Lower Secondary Curriculum and UNEB standards.
+      Analyze the following secondary ICT classroom discussion topic and student responses.
+      Provide a concise, structured pedagogical summary covering:
+      1. **Core Concept & Objective:** What specific ICT competency or practical task is being addressed?
+      2. **Student Progress & Insights:** Summary of how learners approached the problem based on their responses.
+      3. **Verified Solution / Best Practice:** Highlight the correct approach or any marked best answers.
+      4. **Pedagogical Takeaway:** A brief recommendation for the teacher.
+
+      Class Level: ${thread.classTarget || 'Secondary ICT'}
+      Discussion Title: ${thread.title}
+      Scenario / Question: ${thread.body || ''}
+      
+      Student Responses:
+      ${repliesText}
+    `;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
     });
 
-    const aiSummaryText = response.data.summary;
-
-    // 4. Render the Gemini output in the AI box
+    // 4. Render the output inside your summary box
     content.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:0.4rem;">
         <div><strong>🤖 Gemini AI Curriculum Synthesis:</strong></div>
-        <div style="color:#334155; line-height:1.4; font-size:0.85rem;">${formatRichContent(aiSummaryText)}</div>
+        <div style="color:#334155; line-height:1.4; font-size:0.85rem;">${formatRichContent(response.text)}</div>
       </div>
     `;
 
   } catch (err) {
-    console.error("Error communicating with Gemini via Firebase:", err);
-    content.innerHTML = `<span style="color:#ef4444;">Failed to generate AI summary. Please check your network or cloud function configuration.</span>`;
+    console.error("Gemini AI error:", err);
+    content.innerHTML = `<span style="color:#ef4444;">Failed to generate AI summary. Please check your API configuration.</span>`;
   }
 };
 
