@@ -349,6 +349,10 @@ async function selectThread(threadId) {
 
   const session = getCurrentUserSession();
   const userId = session.name || 'Anonymous';
+  const role = (session.role || session.userType || session.type || '').toLowerCase();
+  const isTeacherOrAdmin = role.includes('teacher') || role.includes('admin') || role.includes('instructor') || role.includes('staff');
+  const isAuthor = thread.authorName === session.name;
+
   const hasUpvoted = (thread.upvotedBy || []).includes(userId);
   const upvotesCount = (thread.upvotedBy || []).length;
   const bookmarks = JSON.parse(localStorage.getItem(`samcam_bookmarks_${session.name}`) || '[]');
@@ -356,19 +360,26 @@ async function selectThread(threadId) {
 
   detailPane.innerHTML = 
     '<div class="active-thread-header">' +
-      '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">' +
+      '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">' +
         '<span class="class-badge">' + escapeHtml(thread.classTarget || 'General') + '</span>' +
-        '<div>' +
-          '<button class="btn btn-sm ' + (isBookmarked ? 'btn-primary' : 'btn-outline') + '" onclick="toggleBookmark(\'' + thread.id + '\')" title="Save for later" aria-label="Save discussion for later">' +
+        '<div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">' +
+          // Save / Bookmark Button
+          '<button class="btn btn-sm ' + (isBookmarked ? 'btn-primary' : 'btn-outline') + '" onclick="toggleBookmark(\'' + thread.id + '\')" title="Save for later">' +
             '<i class="fa-' + (isBookmarked ? 'solid' : 'regular') + ' fa-bookmark" aria-hidden="true"></i> ' + (isBookmarked ? 'Saved' : 'Save') +
           '</button>' +
-          '<button class="btn btn-sm btn-outline" onclick="generateAiSummary(\'' + thread.id + '\')" title="AI Summary & Hint" aria-label="Generate AI summary and hints">' +
+          // AI Assistant Button
+          '<button class="btn btn-sm btn-outline" onclick="generateAiSummary(\'' + thread.id + '\')" title="AI Summary & Hint">' +
             '<i class="fa-solid fa-wand-magic-sparkles" style="color:#8b5cf6;" aria-hidden="true"></i> AI Assistant' +
           '</button>' +
-          '<button class="btn btn-sm ' + (hasUpvoted ? 'btn-primary' : 'btn-outline') + '" onclick="toggleThreadUpvote(\'' + thread.id + '\')" aria-label="Upvote thread">' +
+          // Like / Upvote Button
+          '<button class="btn btn-sm ' + (hasUpvoted ? 'btn-primary' : 'btn-outline') + '" onclick="toggleThreadUpvote(\'' + thread.id + '\')" title="Upvote discussion">' +
             '<i class="fa-solid fa-thumbs-up" aria-hidden="true"></i> <span id="threadUpvoteCount">' + upvotesCount + '</span>' +
           '</button>' +
-          '<span style="font-size:0.75rem; color:#64748b; margin-left:0.5rem;">Posted by <strong>' + escapeHtml(thread.authorName || 'Instructor') + '</strong></span>' +
+          // Edit Thread (Author or Staff only)
+          (isAuthor || isTeacherOrAdmin ? '<button class="btn btn-sm btn-outline" onclick="openEditThreadModal(\'' + thread.id + '\')" title="Edit Thread"><i class="fa-solid fa-pen-to-square"></i></button>' : '') +
+          // Delete Thread (Author or Staff only)
+          (isAuthor || isTeacherOrAdmin ? '<button class="btn btn-sm btn-outline" style="color:#ef4444; border-color:#fca5a5;" onclick="confirmDeleteThread(\'' + thread.id + '\')" title="Delete Thread"><i class="fa-solid fa-trash"></i></button>' : '') +
+          '<span style="font-size:0.75rem; color:#64748b; margin-left:0.25rem;">Posted by <strong>' + escapeHtml(thread.authorName || 'Instructor') + '</strong></span>' +
         '</div>' +
       '</div>' +
       '<h3>' + escapeHtml(thread.title) + '</h3>' +
@@ -380,7 +391,7 @@ async function selectThread(threadId) {
       '<div id="aiSummaryContent">Analyzing discussion...</div>' +
     '</div>' +
 
-    '<!-- 2026 Standard: Skeleton Pulse Shimmer Loader -->' +
+    '<!-- Skeleton Pulse Shimmer Loader -->' +
     '<div class="replies-list-container" id="repliesListContainer">' +
       '<div class="skeleton-loader" style="width: 100%;"></div>' +
       '<div class="skeleton-loader" style="width: 80%;"></div>' +
@@ -389,13 +400,13 @@ async function selectThread(threadId) {
 
     '<div id="typingIndicator" style="font-size:0.75rem; color:#64748b; font-style:italic; padding:0 0.5rem 0.25rem 0.5rem; min-height:1.2rem;"></div>' +
 
-    '<!-- 2026 Standard: Write/Preview Tabs & Formatting Toolbar -->' +
+    '<!-- Formatting Toolbar -->' +
     '<div style="display:flex; justify-content:space-between; align-items:center; padding:0 0.25rem;">' +
       '<div class="comment-toolbar" style="display:flex; gap:0.4rem;">' +
-        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'**\', \'**\')" title="Bold" aria-label="Format bold"><i class="fa-solid fa-bold" aria-hidden="true"></i></button>' +
-        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'*\', \'*\')" title="Italic" aria-label="Format italic"><i class="fa-solid fa-italic" aria-hidden="true"></i></button>' +
-        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'`\', \'`\')" title="Code / Formula" aria-label="Format code"><i class="fa-solid fa-code" aria-hidden="true"></i></button>' +
-        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'\\n```\\n\', \'\\n```\\n\')" title="Code Block" aria-label="Format code block"><i class="fa-solid fa-file-code" aria-hidden="true"></i></button>' +
+        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'**\', \'**\')" title="Bold"><i class="fa-solid fa-bold"></i></button>' +
+        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'*\', \'*\')" title="Italic"><i class="fa-solid fa-italic"></i></button>' +
+        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'`\', \'`\')" title="Code"><i class="fa-solid fa-code"></i></button>' +
+        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'\\n```\\n\', \'\\n```\\n\')" title="Code Block"><i class="fa-solid fa-file-code"></i></button>' +
       '</div>' +
       '<div class="input-tabs">' +
         '<button type="button" class="input-tab-btn active" id="writeTabBtn" onclick="switchInputTab(\'write\')">Write</button>' +
