@@ -213,11 +213,14 @@ async function selectThread(threadId) {
     <div id="typingIndicator" style="font-size:0.75rem; color:#64748b; font-style:italic; padding:0 0.5rem 0.25rem 0.5rem; min-height:1.2rem;"></div>
 
     <div class="reply-input-box">
-      <textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use ```code``` for blocks)..." oninput="handleTypingInput('${thread.id}')"></textarea>
+      <textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use &#96;&#96;&#96;code&#96;&#96;&#96; for blocks)..." oninput="handleTypingInput('${thread.id}')"></textarea>
       <button class="btn btn-primary" onclick="submitReply('${thread.id}')"><i class="fa-solid fa-paper-plane"></i> Reply</button>
     </div>
   `;
 
+  loadThreadRepliesRealtime(thread.id);
+  listenToTypingIndicator(thread.id);
+}
   loadThreadRepliesRealtime(thread.id);
   listenToTypingIndicator(thread.id);
 }
