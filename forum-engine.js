@@ -135,6 +135,73 @@ function getCurrentUserSession(userParam) {
   };
 }
 
+// ==========================================================================
+// 3. CUSTOM SYSTEM MODAL DIALOGS (REPLACING ALERT / CONFIRM)
+// ==========================================================================
+let modalResolveCallback = null;
+
+function showSystemAlert(message, title = "Notice") {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('systemModal');
+    if (!modal) {
+      alert(message);
+      resolve(true);
+      return;
+    }
+    document.getElementById('systemModalTitleText').innerText = title;
+    document.getElementById('systemModalMessage').innerText = message;
+    document.getElementById('systemModalIcon').className = "fa-solid fa-circle-info";
+    document.getElementById('systemModalIcon').style.color = "#3b82f6";
+
+    document.getElementById('systemModalPromptContainer').style.display = 'none';
+    document.getElementById('systemModalCancelBtn').style.display = 'none';
+    document.getElementById('systemModalOkBtn').innerText = "OK";
+    document.getElementById('systemModalOkBtn').className = "btn btn-sm btn-primary";
+
+    modal.style.display = 'flex';
+    modalResolveCallback = () => resolve(true);
+  });
+}
+
+function showSystemConfirm(message, title = "Confirm Action", confirmText = "Confirm", isDanger = false) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('systemModal');
+    if (!modal) {
+      const res = confirm(message);
+      resolve(res);
+      return;
+    }
+    document.getElementById('systemModalTitleText').innerText = title;
+    document.getElementById('systemModalMessage').innerText = message;
+    
+    const icon = document.getElementById('systemModalIcon');
+    icon.className = isDanger ? "fa-solid fa-triangle-exclamation" : "fa-solid fa-circle-question";
+    icon.style.color = isDanger ? "#ef4444" : "#f59e0b";
+
+    document.getElementById('systemModalPromptContainer').style.display = 'none';
+    document.getElementById('systemModalCancelBtn').style.display = 'inline-flex';
+    
+    const okBtn = document.getElementById('systemModalOkBtn');
+    okBtn.innerText = confirmText;
+    okBtn.className = isDanger ? "btn btn-sm btn-danger" : "btn btn-sm btn-primary";
+
+    modal.style.display = 'flex';
+    modalResolveCallback = resolve;
+  });
+}
+
+function closeSystemModal(result) {
+  const modal = document.getElementById('systemModal');
+  if (modal) modal.style.display = 'none';
+  if (modalResolveCallback) {
+    modalResolveCallback(result);
+    modalResolveCallback = null;
+  }
+}
+
+// ==========================================================================
+// 4. THREADS & REAL-TIME FORUM LOGIC
+// ==========================================================================
 function initRealtimeForumThreads() {
   const feedContainer = document.getElementById('threadsFeedContainer');
   if (!feedContainer) return;
@@ -334,7 +401,7 @@ async function generateAiSummary(threadId) {
 function toggleBookmark(threadId) {
   const session = getCurrentUserSession();
   if (!session.name) {
-    alert("Please sign in to bookmark discussions.");
+    showSystemAlert("Please sign in to bookmark discussions.", "Authentication Required");
     return;
   }
   const key = `samcam_bookmarks_${session.name}`;
@@ -353,6 +420,9 @@ function toggleBookmark(threadId) {
   }
 }
 
+// ==========================================================================
+// 5. AUDIO RECORDING & VOICE NOTE CONTROLS
+// ==========================================================================
 let mediaRecorder = null;
 let audioChunks = [];
 let recordedAudioBlob = null;
@@ -404,7 +474,7 @@ function toggleAudioRecording() {
       fileLabel.innerHTML = `Recording voice note...`;
     }).catch(err => {
       console.error("Microphone access error:", err);
-      alert("Microphone access denied or unsupported on this browser.");
+      showSystemAlert("Microphone access denied or unsupported on this browser.", "Hardware Access Error");
     });
   } else {
     mediaRecorder.stop();
@@ -458,7 +528,7 @@ async function saveEditedComment(threadId, replyId) {
   const updatedBody = textarea.value.trim();
 
   if (!updatedBody) {
-    alert("Comment cannot be empty.");
+    showSystemAlert("Comment cannot be empty.", "Validation Warning");
     return;
   }
 
@@ -469,7 +539,7 @@ async function saveEditedComment(threadId, replyId) {
     });
   } catch (err) {
     console.error("Error updating comment:", err);
-    alert("Failed to update comment: " + err.message);
+    showSystemAlert("Failed to update comment: " + err.message, "Error");
   }
 }
 
@@ -484,17 +554,23 @@ async function deleteComment(threadId, replyId, authorName) {
   const isOwner = session.name && session.name.toLowerCase() === authorName.toLowerCase();
 
   if (!isTeacherOrAdmin && !isOwner) {
-    alert("You do not have permission to delete this comment.");
+    showSystemAlert("You do not have permission to delete this comment.", "Access Denied");
     return;
   }
 
-  if (!confirm("Are you sure you want to delete this comment?")) return;
+  const confirmed = await showSystemConfirm(
+    "Are you sure you want to delete this comment? This action cannot be undone.", 
+    "Delete Comment", 
+    "Delete", 
+    true
+  );
+  if (!confirmed) return;
 
   try {
     await db.collection('forum_threads').doc(threadId).collection('replies').doc(replyId).delete();
   } catch (err) {
     console.error("Error deleting comment:", err);
-    alert("Failed to delete comment: " + err.message);
+    showSystemAlert("Failed to delete comment: " + err.message, "Error");
   }
 }
 
@@ -608,7 +684,7 @@ async function toggleThreadUpvote(threadId) {
   const session = getCurrentUserSession();
   const userId = session.name;
   if (!userId) {
-    alert("Please sign in to upvote discussions.");
+    showSystemAlert("Please sign in to upvote discussions.", "Authentication Required");
     return;
   }
 
@@ -634,7 +710,7 @@ async function toggleReplyUpvote(threadId, replyId) {
   const session = getCurrentUserSession();
   const userId = session.name;
   if (!userId) {
-    alert("Please sign in to vote.");
+    showSystemAlert("Please sign in to vote.", "Authentication Required");
     return;
   }
 
@@ -667,7 +743,7 @@ async function markBestAnswer(threadId, replyId) {
     await batch.commit();
   } catch (err) {
     console.error("Error setting best answer:", err);
-    alert("Failed to designate best answer.");
+    showSystemAlert("Failed to designate best answer.", "Error");
   }
 }
 
@@ -683,12 +759,12 @@ async function submitReply(threadId) {
   const replyBody = inputEl.value.trim();
 
   if (!replyBody && !recordedAudioBlob && !document.getElementById('replyAttachmentInput')?.files[0]) {
-    alert("Please enter a reply message or attach a file/voice note before submitting.");
+    showSystemAlert("Please enter a reply message or attach a file/voice note before submitting.", "Required Field");
     return;
   }
 
   if (replyBody && containsInappropriateContent(replyBody)) {
-    alert("Your reply contains flagged words that violate school forum guidelines. Please revise your message.");
+    showSystemAlert("Your reply contains flagged words that violate school forum guidelines. Please revise your message.", "Content Moderation");
     return;
   }
 
@@ -737,7 +813,7 @@ async function submitReply(threadId) {
     clearTypingIndicator(threadId);
   } catch (err) {
     console.error("Error submitting reply:", err);
-    alert("Failed to post reply: " + err.message);
+    showSystemAlert("Failed to post reply: " + err.message, "Error");
   }
 }
 
@@ -814,7 +890,7 @@ async function handleCreateThread(e) {
                            combinedCheck.includes('staff');
 
   if (!isTeacherOrAdmin) {
-    alert("Access Denied: Only teachers or administrators can post new discussion questions.");
+    showSystemAlert("Access Denied: Only teachers or administrators can post new discussion questions.", "Restricted Action");
     closeNewThreadModal();
     return;
   }
@@ -827,7 +903,7 @@ async function handleCreateThread(e) {
   if (!title || !body) return;
 
   if (containsInappropriateContent(title) || containsInappropriateContent(body)) {
-    alert("Thread title or content violates school content moderation standards.");
+    showSystemAlert("Thread title or content violates school content moderation standards.", "Content Moderation");
     return;
   }
 
@@ -846,7 +922,7 @@ async function handleCreateThread(e) {
     selectThread(docRef.id);
   } catch (err) {
     console.error("Error creating discussion thread:", err);
-    alert("Failed to create thread: " + err.message);
+    showSystemAlert("Failed to create thread: " + err.message, "Error");
   }
 }
 
