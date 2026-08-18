@@ -4,7 +4,7 @@
 const firebaseConfig = {
   apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
   authDomain: "samcam-system.firebaseapp.com",
-  projectId: "samcam-system",
+  projectId: "samcam-system",fAISUMM
   storageBucket: "samcam-system.firebasestorage.app",
   messagingSenderId: "74940789582",
   appId: "1:74940789582:web:f159688165a194e841241f",
@@ -399,7 +399,7 @@ window.generateAiSummary = async function(threadId) {
 
     // Directly added your API key string here
     const ai = new GoogleGenAI({ 
-      apiKey: "AQ.Ab8RN6J2wGYo9rbjfkqQDFyIybqltvN3gFh7HIFAIve9Awve1A", 
+      apiKey: "AQ.Ab8RN6JPbMg_NiacjSgAuv44bqdnR6cG5Raho4WkLCO3nNteNQ", 
       dangerouslyAllowBrowser: true 
     });
 
