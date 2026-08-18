@@ -9,7 +9,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="styles.css">
- <style>
+  <style>
     .portal-container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; box-sizing: border-box; }
     .portal-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; }
     
@@ -161,8 +161,45 @@
       overflow-y: auto; box-sizing: border-box;
     }
 
-    /* --- ENHANCED MOBILE RESPONSIVE MEDIA QUERIES --- */
+    /* --- RESPONSIVE HAMBURGER MENU STYLES --- */
+    .mobile-menu-toggle {
+      display: none;
+      background: transparent;
+      border: none;
+      font-size: 1.35rem;
+      color: #334155;
+      cursor: pointer;
+      padding: 0.5rem;
+    }
+
     @media (max-width: 768px) {
+      .mobile-menu-toggle {
+        display: block;
+      }
+      #authNavActions {
+        display: none !important;
+        flex-direction: column;
+        width: 100%;
+        background: #ffffff;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        padding: 1rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        border-bottom: 1px solid #e2e8f0;
+        gap: 0.75rem !important;
+      }
+      #authNavActions.mobile-active {
+        display: flex !important;
+      }
+      #authNavActions .nav-clean-link {
+        width: 100%;
+        padding: 0.5rem 0;
+      }
+      .navbar .nav-container {
+        position: relative;
+        justify-content: space-between;
+      }
       .portal-grid { 
         grid-template-columns: 1fr; 
         gap: 1rem;
@@ -220,7 +257,7 @@
 
   <!-- NAVIGATION BAR -->
   <nav class="navbar">
-    <div class="nav-container">
+    <div class="nav-container" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
       <div class="brand">
         <a href="index.html" style="text-decoration:none; display:flex; align-items:center; gap:10px;">
           <img src="images/logo.png" alt="Samcam Solutions Logo" class="brand-logo">
@@ -230,17 +267,24 @@
           </div>
         </a>
       </div>
-     <div class="nav-actions" id="authNavActions" style="display: none; align-items: center; gap: 1.5rem;">
-  <a href="index.html" class="nav-clean-link" onclick="navigateTo(event, 'home')">
-    <i class="fa-solid fa-house"></i> Home Library
-  </a>
-  <a href="quiz.html" class="nav-clean-link" onclick="navigateTo(event, 'quiz')">
-    <i class="fa-solid fa-pen-to-square"></i> Online Quizzes
-  </a>
-  <a href="forum.html" class="nav-clean-link">
-  <i class="fa-solid fa-comments"></i> Discussion Forum
-</a>
-</div>
+      
+      <!-- Mobile Menu Hamburger Button -->
+      <button type="button" class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle Navigation Menu">
+        <i class="fa-solid fa-bars" id="menuToggleIcon"></i>
+      </button>
+
+      <!-- Navigation Links -->
+      <div class="nav-actions" id="authNavActions" style="display: none; align-items: center; gap: 1.5rem;">
+        <a href="index.html" class="nav-clean-link" onclick="navigateTo(event, 'home')">
+          <i class="fa-solid fa-house"></i> Home Library
+        </a>
+        <a href="quiz.html" class="nav-clean-link" onclick="navigateTo(event, 'quiz')">
+          <i class="fa-solid fa-pen-to-square"></i> Online Quizzes
+        </a>
+        <a href="forum.html" class="nav-clean-link">
+          <i class="fa-solid fa-comments"></i> Discussion Forum
+        </a>
+      </div>
     </div>
   </nav>
 
@@ -521,6 +565,18 @@
 
     let studentCurrentPage = 1;
     const studentPerPage = 8;
+
+    // Mobile Menu Toggle Function
+    function toggleMobileMenu() {
+      const navActions = document.getElementById('authNavActions');
+      const menuIcon = document.getElementById('menuToggleIcon');
+      navActions.classList.toggle('mobile-active');
+      if (navActions.classList.contains('mobile-active')) {
+        menuIcon.className = "fa-solid fa-xmark";
+      } else {
+        menuIcon.className = "fa-solid fa-bars";
+      }
+    }
 
     // URL Routing / Optimization helper
     function navigateTo(e, routeKey) {
