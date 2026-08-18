@@ -370,60 +370,52 @@ window.generateAiSummary = async function(threadId) {
   }
 
   box.style.display = 'block';
-  content.innerHTML = `<i class="fa-solid fa-spinner fa-spin fa-bounce"></i> Analyzing discussion topic, peer contributions, and marked solutions...`;
+  content.innerHTML = `<i class="fa-solid fa-spinner fa-spin fa-bounce"></i> Querying Gemini AI to synthesize discussion scenario and student responses...`;
 
   try {
+    // 1. Fetch thread details from memory cache or Firestore
     const thread = globalThreads.find(t => t.id === threadId);
     if (!thread) {
-      content.innerHTML = `<span style="color:#ef4444;">Discussion topic not found in memory cache.</span>`;
+      content.innerHTML = `<span style="color:#ef4444;">Discussion topic not found.</span>`;
       return;
     }
 
-    // Fetch replies from Firestore subcollection in real-time
+    // 2. Fetch all student/teacher replies from the Firestore subcollection
     const repliesSnapshot = await db.collection('forum_threads').doc(threadId).collection('replies').get();
+    let repliesData = [];
     
-    let replies = [];
-    let bestAnswerText = null;
-
     repliesSnapshot.forEach(doc => {
       const data = doc.data();
-      replies.push(data);
-      // Check if this reply is marked as best answer / correct solution
-      if (data.isBestAnswer || data.isCorrect || data.markedAsBest) {
-        bestAnswerText = data.replyBody || data.message;
-      }
+      repliesData.push({
+        author: data.authorName || 'Student',
+        body: data.replyBody || data.message || '',
+        isBestAnswer: data.isBestAnswer || data.isCorrect || data.markedAsBest || false
+      });
     });
 
-    // Simulate deep intelligent analysis delay for realism
-    setTimeout(() => {
-      let html = `<div style="display:flex; flex-direction:column; gap:0.4rem;">`;
-      
-      // 1. Core Focus Breakdown
-      html += `<div><strong>🎯 Core Topic Focus:</strong> ${escapeHtml(thread.title)} (${escapeHtml(thread.classTarget || 'General')})</div>`;
-      html += `<div><span style="color:#334155;">${escapeHtml(thread.body || '')}</span></div>`;
-      
-      // 2. Best Answer Highlight (if marked)
-      if (bestAnswerText) {
-        html += `<div style="margin-top:0.3rem; padding:0.4rem 0.6rem; background:#ecfdf5; border-left:3px solid #10b981; border-radius:4px; color:#065f46;">
-          <strong>⭐ Official Best Answer Identified:</strong> ${escapeHtml(bestAnswerText.substring(0, 180))}${bestAnswerText.length > 180 ? '...' : ''}
-        </div>`;
-      }
+    // 3. Call your Firebase Cloud Function (or backend API)
+    // You can use Firebase Functions callable or fetch endpoint
+    const summarizeFunction = firebase.functions().httpsCallable('generateDiscussionSummary');
+    const response = await summarizeFunction({
+      title: thread.title,
+      body: thread.body,
+      classTarget: thread.classTarget || 'Secondary ICT',
+      replies: repliesData
+    });
 
-      // 3. Community Engagement & Summary
-      if (replies.length > 0) {
-        html += `<div style="margin-top:0.3rem;"><strong>📊 Community Activity:</strong> ${replies.length} peer response(s) logged. Learners have provided code implementations, formulas, or troubleshooting steps.</div>`;
-        html += `<div style="margin-top:0.2rem; color:#5b21b6;"><em>💡 Pedagogical Takeaway:</em> Review the code structures and logical operators highlighted in the peer discussions above to ensure error-free compilation and formatting.</div>`;
-      } else {
-        html += `<div style="margin-top:0.3rem; color:#64748b;"><em>💡 Pedagogical Hint:</em> No community replies yet. Be the first contributor to share a solution or hint for this topic!</div>`;
-      }
+    const aiSummaryText = response.data.summary;
 
-      html += `</div>`;
-      content.innerHTML = html;
-    }, 700);
+    // 4. Render the Gemini output in the AI box
+    content.innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:0.4rem;">
+        <div><strong>🤖 Gemini AI Curriculum Synthesis:</strong></div>
+        <div style="color:#334155; line-height:1.4; font-size:0.85rem;">${formatRichContent(aiSummaryText)}</div>
+      </div>
+    `;
 
   } catch (err) {
-    console.error("Error generating intelligent AI summary:", err);
-    content.innerHTML = `<span style="color:#ef4444;">Unable to generate AI analysis at this moment. Please check your network connection.</span>`;
+    console.error("Error communicating with Gemini via Firebase:", err);
+    content.innerHTML = `<span style="color:#ef4444;">Failed to generate AI summary. Please check your network or cloud function configuration.</span>`;
   }
 };
 
