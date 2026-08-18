@@ -258,7 +258,7 @@ function loadThreadRepliesRealtime(threadId) {
         html += `
           <div class="reply-item ${rep.isBestAnswer ? 'best-answer-card' : ''}" style="${rep.isBestAnswer ? 'border-left: 4px solid #10b981; background: #f0fdf4;' : ''}">
             <div class="reply-meta">
-              <span class="reply-author">${escapeHtml(rep.studentName)} <span style="font-weight:normal; color:#64748b;">(${rep.studentClass || 'Student'})</span> ${isBest}</span>
+              <span class="reply-author">${escapeHtml(rep.studentName)} <span style="font-weight:normal; color:#64748b;">(${escapeHtml(rep.studentClass || 'Student')})</span> ${isBest}</span>
               <span style="font-size:0.75rem; color:#64748b;">${repTime}</span>
             </div>
             <div class="reply-body">${formatRichContent(rep.replyBody)}</div>
@@ -495,12 +495,12 @@ async function handleCreateThread(e) {
   }
 }
 
-// Utility to prevent XSS injection
+// Utility to prevent XSS injection (Safely handles null, undefined, and numbers)
 function escapeHtml(str) {
-  if (!str) return '';
-  return str.replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
 }
