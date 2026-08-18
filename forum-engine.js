@@ -221,6 +221,28 @@ function closeSystemModal(result) {
 // ==========================================================================
 // 4. THREADS & REAL-TIME FORUM LOGIC
 // ==========================================================================
+
+// Add this event listener or helper function to handle auto-resizing
+document.addEventListener('input', function (event) {
+  if (event.target && event.target.id === 'replyMessageInput') {
+    event.target.style.height = 'auto';
+    event.target.style.height = (event.target.scrollHeight) + 'px';
+  }
+});
+
+document.addEventListener('keydown', function (event) {
+  if (event.target && event.target.id === 'replyMessageInput') {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      // Trigger the submit button click if activeThreadId is present
+      if (typeof activeThreadId !== 'undefined' && activeThreadId) {
+        submitReply(activeThreadId);
+      }
+    }
+  }
+});
+
+
 function initRealtimeForumThreads() {
   const feedContainer = document.getElementById('threadsFeedContainer');
   if (!feedContainer) return;
