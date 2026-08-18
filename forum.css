@@ -521,3 +521,46 @@ body {
     transform: translateY(0) scale(1);
   }
 }
+
+/* Reply Input Box with Button on the Right */
+.reply-input-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: #ffffff;
+  border: 1px solid var(--border-color, #cbd5e1);
+  border-radius: 8px;
+  padding: 0.5rem;
+  margin-top: 1rem;
+}
+
+.reply-input-container textarea,
+.reply-input-container input[type="text"] {
+  flex: 1;
+  border: none;
+  outline: none;
+  resize: none;
+  padding: 0.5rem;
+  font-size: 0.95rem;
+  background: transparent;
+  font-family: inherit;
+}
+
+.reply-input-container .btn-send-reply {
+  background-color: var(--primary-color, #2563eb);
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.reply-input-container .btn-send-reply:hover {
+  background-color: var(--primary-dark, #1d4ed8);
+}
