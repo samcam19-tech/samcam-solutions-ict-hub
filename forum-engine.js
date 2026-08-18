@@ -334,7 +334,6 @@ async function generateAiSummary(threadId) {
       replyTexts.push(doc.data().replyBody);
     });
 
-    // Simulated Smart Synthesis or custom API call integration point
     setTimeout(() => {
       let summaryHtml = `<strong>Key Takeaways:</strong> ${thread.title} addresses core concepts in ${thread.classTarget || 'General'}.<br>`;
       if (replyTexts.length > 0) {
@@ -411,7 +410,42 @@ function previewAttachmentName() {
   }
 }
 
-// Feature 1 & 3 & 4: Real-Time Replies with Upvoting and Best Answer Marking
+// Feature: Direct Reply to Someone's Comment
+function setDirectReply(authorName, commentSnippet) {
+  const inputEl = document.getElementById('replyMessageInput');
+  if (!inputEl) return;
+  const cleanSnippet = commentSnippet.length > 50 ? commentSnippet.substring(0, 50) + '...' : commentSnippet;
+  inputEl.value = `> Replying to @${authorName}: "${cleanSnippet}"\n`;
+  inputEl.focus();
+}
+
+// Feature: Delete Comment (Admin or Author Only)
+async function deleteComment(threadId, replyId, authorName) {
+  const session = getCurrentUserSession();
+  const combinedCheck = `${session.role} ${session.name}`.toLowerCase();
+  const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
+                           combinedCheck.includes('admin') || 
+                           combinedCheck.includes('instructor') ||
+                           combinedCheck.includes('staff');
+  
+  const isOwner = session.name && session.name.toLowerCase() === authorName.toLowerCase();
+
+  if (!isTeacherOrAdmin && !isOwner) {
+    alert("You do not have permission to delete this comment.");
+    return;
+  }
+
+  if (!confirm("Are you sure you want to delete this comment?")) return;
+
+  try {
+    await db.collection('forum_threads').doc(threadId).collection('replies').doc(replyId).delete();
+  } catch (err) {
+    console.error("Error deleting comment:", err);
+    alert("Failed to delete comment: " + err.message);
+  }
+}
+
+// Feature 1 & 3 & 4: Real-Time Replies with Upvoting, Voice Player, and Deletion
 function loadThreadRepliesRealtime(threadId) {
   const repliesContainer = document.getElementById('repliesListContainer');
   if (!repliesContainer) return;
@@ -444,7 +478,22 @@ function loadThreadRepliesRealtime(threadId) {
         const isBest = rep.isBestAnswer ? `<span class="badge-best" style="background:#10b981; color:#fff; padding:0.1rem 0.5rem; border-radius:4px; font-size:0.7rem; margin-left:0.5rem;"><i class="fa-solid fa-check-circle"></i> Best Answer</span>` : '';
         const bestAnswerBtn = isTeacherOrAdmin && !rep.isBestAnswer ? `<button class="btn btn-xs btn-outline" style="font-size:0.7rem; padding:0.1rem 0.3rem;" onclick="markBestAnswer('${threadId}', '${repId}')">Mark Best</button>` : '';
 
-        // Feature 5: Gamification Badge Logic based on Upvotes
+        // Check if current user can delete this comment (Admin/Teacher or the Owner)
+        const isOwner = session.name && session.name.toLowerCase() === (rep.studentName || '').toLowerCase();
+        const showDeleteBtn = isTeacherOrAdmin || isOwner;
+        const deleteBtnHtml = showDeleteBtn ? `<button class="btn btn-xs btn-outline" style="font-size:0.7rem; padding:0.1rem 0.3rem; color:#ef4444; border-color:#fca5a5;" onclick="deleteComment('${threadId}', '${repId}', '${escapeHtml(rep.studentName)}')"><i class="fa-solid fa-trash"></i> Delete</button>` : '';
+
+        // Render audio player if attachment is a voice note or audio format
+        let mediaHtml = '';
+        if (rep.mediaUrl) {
+          if (rep.mediaUrl.includes('forum_audio') || rep.mediaUrl.includes('.webm') || rep.mediaUrl.includes('.mp3')) {
+            mediaHtml = `<div style="margin-top:0.5rem;"><audio controls style="height:32px; width:100%; max-width:300px;"><source src="${rep.mediaUrl}" type="audio/webm">Your browser does not support the audio element.</audio></div>`;
+          } else {
+            mediaHtml = `<div style="margin-top:0.4rem;"><a href="${rep.mediaUrl}" target="_blank" class="btn btn-xs btn-outline"><i class="fa-solid fa-paperclip"></i> View Attached File / Screenshot</a></div>`;
+          }
+        }
+
+        // Gamification Badge Logic
         let badgeHtml = '';
         if (upvotes >= 5) {
           badgeHtml = `<span style="background:#fef3c7; color:#d97706; padding:0.05rem 0.3rem; border-radius:3px; font-size:0.65rem; margin-left:0.3rem; font-weight:600;"><i class="fa-solid fa-medal"></i> Code Wizard</span>`;
@@ -459,12 +508,20 @@ function loadThreadRepliesRealtime(threadId) {
               <span style="font-size:0.75rem; color:#64748b;">${repTime}</span>
             </div>
             <div class="reply-body">${formatRichContent(rep.replyBody)}</div>
-            ${rep.mediaUrl ? `<div style="margin-top:0.4rem;"><a href="${rep.mediaUrl}" target="_blank" class="btn btn-xs btn-outline"><i class="fa-solid fa-paperclip"></i> Attachment / Voice Note</a></div>` : ''}
+            ${mediaHtml}
             <div class="reply-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:0.5rem;">
-              <button class="btn btn-sm btn-outline" style="font-size:0.75rem;" onclick="toggleReplyUpvote('${threadId}', '${repId}')">
-                <i class="fa-solid fa-thumbs-up"></i> ${upvotes} Helpful
-              </button>
-              ${bestAnswerBtn}
+              <div style="display:flex; gap:0.5rem; align-items:center;">
+                <button class="btn btn-sm btn-outline" style="font-size:0.75rem;" onclick="toggleReplyUpvote('${threadId}', '${repId}')">
+                  <i class="fa-solid fa-thumbs-up"></i> ${upvotes} Helpful
+                </button>
+                <button class="btn btn-sm btn-outline" style="font-size:0.75rem;" onclick="setDirectReply('${escapeHtml(rep.studentName)}', '${escapeHtml(rep.replyBody)}')">
+                  <i class="fa-solid fa-reply"></i> Reply
+                </button>
+              </div>
+              <div style="display:flex; gap:0.3rem;">
+                ${bestAnswerBtn}
+                ${deleteBtnHtml}
+              </div>
             </div>
           </div>
         `;
@@ -550,7 +607,7 @@ async function markBestAnswer(threadId, replyId) {
 
 // Feature 4: Automated Content Moderation & Toxicity Filter Check
 function containsInappropriateContent(text) {
-  const bannedKeywords = ['spam', 'abusekeyword1', 'abusekeyword2']; // Expand as needed for institution policy
+  const bannedKeywords = ['spam', 'abusekeyword1', 'abusekeyword2'];
   const lower = text.toLowerCase();
   return bannedKeywords.some(word => lower.includes(word));
 }
@@ -566,7 +623,6 @@ async function submitReply(threadId) {
     return;
   }
 
-  // Feature 4 check
   if (containsInappropriateContent(replyBody)) {
     alert("Your reply contains flagged words that violate school forum guidelines. Please revise your message.");
     return;
@@ -594,7 +650,7 @@ async function submitReply(threadId) {
     await db.collection('forum_threads').doc(threadId).collection('replies').add({
       studentName: studentName,
       studentClass: studentClass,
-      replyBody: replyBody || '(Voice Note / Attachment)',
+      replyBody: replyBody || '(Voice Note)',
       mediaUrl: mediaUrl,
       upvotedBy: [],
       isBestAnswer: false,
@@ -734,7 +790,7 @@ async function handleCreateThread(e) {
   }
 }
 
-// Utility to prevent XSS injection (Safely handles null, undefined, and numbers)
+// Utility to prevent XSS injection
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str).replace(/&/g, "&amp;")
