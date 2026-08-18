@@ -398,9 +398,9 @@ window.generateAiSummary = async function(threadId) {
       repliesText = "No student responses submitted yet.";
     }
 
-    // Securely initialized using your environment variable
+    // Directly added your API key string here
     const ai = new GoogleGenAI({ 
-      apiKey: import.meta.env.VITE_GEMINI_API_KEY, 
+      apiKey: "YOUR_ACTUAL_GEMINI_API_KEY", 
       dangerouslyAllowBrowser: true 
     });
 
