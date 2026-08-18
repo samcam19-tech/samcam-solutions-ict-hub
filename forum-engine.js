@@ -332,20 +332,25 @@ function switchInputTab(mode) {
   const previewBtn = document.getElementById('previewTabBtn');
 
   if (mode === 'preview') {
-    previewPane.innerHTML = formatRichContent(textarea.value || '*Nothing to preview yet.*');
-    textarea.style.display = 'none';
-    previewPane.style.display = 'block';
-    writeBtn.classList.remove('active');
-    previewBtn.classList.add('active');
+    if (previewPane) {
+      previewPane.innerHTML = (typeof formatRichContent === 'function') 
+        ? formatRichContent(textarea ? textarea.value : '') || '*Nothing to preview yet.*'
+        : (textarea ? textarea.value : '*Nothing to preview yet.*');
+      previewPane.style.display = 'block';
+    }
+    if (textarea) textarea.style.display = 'none';
+    if (writeBtn) writeBtn.classList.remove('active');
+    if (previewBtn) previewBtn.classList.add('active');
   } else {
-    previewPane.style.display = 'none';
-    textarea.style.display = 'block';
-    writeBtn.classList.add('active');
-    previewBtn.classList.remove('active');
-    textarea.focus();
+    if (previewPane) previewPane.style.display = 'none';
+    if (textarea) {
+      textarea.style.display = 'block';
+      textarea.focus();
+    }
+    if (writeBtn) writeBtn.classList.add('active');
+    if (previewBtn) previewBtn.classList.remove('active');
   }
 }
-
 function autoResizeTextarea(el) {
   el.style.height = 'auto';
   el.style.height = (el.scrollHeight) + 'px';
