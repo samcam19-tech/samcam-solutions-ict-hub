@@ -614,7 +614,7 @@ function initTheme() {
   
   const themeBtn = document.getElementById('themeToggleBtn');
   if (themeBtn) {
-    themeBtn.innerHTML = savedTheme === 'dark' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+    updateThemeButtonUI(themeBtn, savedTheme);
     themeBtn.removeEventListener('click', toggleTheme); // Prevent duplicate event listeners
     themeBtn.addEventListener('click', toggleTheme);
   }
@@ -629,7 +629,14 @@ function toggleTheme() {
   
   const themeBtn = document.getElementById('themeToggleBtn');
   if (themeBtn) {
-    themeBtn.innerHTML = newTheme === 'dark' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+    updateThemeButtonUI(themeBtn, newTheme);
+  }
+}
+
+function updateThemeButtonUI(btn, theme) {
+  const icon = btn.querySelector('i');
+  if (icon) {
+    icon.className = theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
   }
 }
 
