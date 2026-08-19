@@ -615,6 +615,7 @@ function initTheme() {
   const themeBtn = document.getElementById('themeToggleBtn');
   if (themeBtn) {
     themeBtn.innerHTML = savedTheme === 'dark' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+    themeBtn.removeEventListener('click', toggleTheme); // Prevent duplicate event listeners
     themeBtn.addEventListener('click', toggleTheme);
   }
 }
