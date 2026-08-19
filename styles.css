@@ -168,7 +168,7 @@ body {
   border: 1px solid rgba(37, 99, 235, 0.25);
 }
 
-/* Clean Navigation Link Styles */
+/* Clean Navigation Link Styles (Updated with no background, clean link format, and text reveal on hover) */
 .nav-clean-link {
   color: var(--text-muted);
   text-decoration: none !important;
@@ -176,22 +176,29 @@ body {
   font-weight: 500;
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  background: none !important;
+  gap: 0.5rem;
+  background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  padding: 0 !important;
-  transition: color 0.15s ease;
+  padding: 0.35rem 0.5rem !important;
+  border-radius: var(--radius-sm);
+  transition: color 0.2s ease, background-color 0.2s ease;
 }
 
 .nav-clean-link i {
   color: var(--accent);
-  font-size: 0.85rem;
+  font-size: 0.9rem;
+  transition: transform 0.2s ease;
 }
 
 .nav-clean-link:hover {
   color: var(--accent);
+  background: var(--surface-alt) !important;
   text-decoration: none !important;
+}
+
+.nav-clean-link:hover span {
+  color: var(--accent);
 }
 
 /* Theme Toggle Button */
