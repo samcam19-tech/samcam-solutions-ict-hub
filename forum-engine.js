@@ -945,7 +945,9 @@ async function submitReplyOptimistic(threadId) {
 
   const session = (typeof getCurrentUserSession === 'function') ? getCurrentUserSession() : {};
   const studentName = session.name || session.fullName || 'Learner';
-  const studentClass = session.userClass || session.classLevel || 'Senior ICT';
+  const userRole = session.role || session.userType || session.type || '';
+  const studentClass = session.userClass || session.classLevel || session.classTarget || 'Senior ICT';
+  const studentStream = session.stream || session.userStream || '';
 
   // Optimistic UI injection
   const container = document.getElementById('repliesListContainer');
@@ -983,7 +985,9 @@ async function submitReplyOptimistic(threadId) {
 
     await db.collection('forum_threads').doc(threadId).collection('replies').add({
       studentName: studentName,
+      role: userRole,
       studentClass: studentClass,
+      studentStream: studentStream,
       replyBody: finalBody,
       mediaUrl: mediaUrl,
       upvotedBy: [],
