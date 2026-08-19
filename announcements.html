@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Announcements - SAMCAM SOLUTIONS ICT HUB</title>
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- External CSS -->
+  <link rel="stylesheet" href="announcements.css">
+</head>
+<body>
+
+  <div class="announcements-wrapper">
+    <!-- Header -->
+    <header class="announcements-header">
+      <div>
+        <h2>
+          <i class="fa-solid fa-bullhorn" style="color: var(--primary);"></i> LMS Announcements
+          <!-- Clickable Notification Badge Counter -->
+          <div class="notification-badge-container" onclick="toggleUnreadFilter()" title="Click to filter unread notices">
+            <span id="unreadBadgeCount" class="notification-counter">0</span>
+            <span class="badge-label">New</span>
+          </div>
+        </h2>
+        <p>Stay updated with institutional notices, exam timetables, and academic updates.</p>
+      </div>
+      <div>
+        <button class="btn btn-primary teacher-only" id="newAnnouncementBtn" onclick="openAnnouncementModal()" style="display: none;">
+          <i class="fa-solid fa-plus"></i> Post Announcement
+        </button>
+        <a href="assessments.html" class="btn btn-outline">
+          <i class="fa-solid fa-arrow-left"></i> Back to Portal
+        </a>
+      </div>
+    </header>
+
+    <!-- Controls Bar -->
+    <div class="announcements-controls">
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="announcementSearch" placeholder="Search announcements..." onkeyup="filterAnnouncements()">
+      </div>
+      <div class="filter-box">
+        <select id="priorityFilter" onchange="filterAnnouncements()">
+          <option value="">All Priorities / Categories</option>
+          <option value="General">General</option>
+          <option value="Urgent">Urgent</option>
+          <option value="Exam">Exam Schedule</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Feed List -->
+    <div class="announcements-feed" id="announcementsFeed">
+      <div class="empty-state">
+        <i class="fa-solid fa-spinner fa-spin"></i> Loading announcements from cloud...
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Post New Announcement -->
+  <div class="modal-overlay" id="announcementModal">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Post New Institutional Announcement</h3>
+        <button onclick="closeAnnouncementModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="announcementForm" onsubmit="handlePostAnnouncement(event)">
+        <div class="form-group">
+          <label>Announcement Title</label>
+          <input type="text" id="annTitle" required placeholder="e.g., End of Term 2 Examination Timetable Release">
+        </div>
+        <div class="form-group">
+          <label>Category / Priority</label>
+          <select id="annPriority" required>
+            <option value="General">General Notice</option>
+            <option value="Urgent">Urgent Alert</option>
+            <option value="Exam">Exam Schedule / Academic</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Message Content</label>
+          <textarea id="annBody" rows="5" required placeholder="Provide full details of the announcement here..."></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeAnnouncementModal()">Cancel</button>
+          <button type="submit" id="submitNoticeBtn" class="btn btn-primary">Publish Notice</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+  <!-- External JavaScript -->
+  <script src="announcements.js"></script>
+</body>
+</html>
