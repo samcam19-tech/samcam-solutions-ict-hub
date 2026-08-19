@@ -48,6 +48,55 @@
       cursor: pointer;
       font-size: 1rem;
     }
+
+    /* Pulsing notification icon counter badge */
+    .nav-notification-badge {
+      background: #ef4444;
+      color: #fff;
+      font-size: 0.65rem;
+      padding: 0.1rem 0.35rem;
+      border-radius: 10px;
+      font-weight: 700;
+      vertical-align: middle;
+      margin-left: 0.4rem;
+      animation: pulse-badge 2s infinite ease-in-out;
+      display: inline-block;
+    }
+
+    @keyframes pulse-badge {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.12); opacity: 0.85; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Modern Toast Notification Container */
+    #forumToastContainer {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      max-width: 320px;
+    }
+
+    .forum-toast {
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+      font-size: 0.85rem;
+      border-left: 4px solid #3b82f6;
+      animation: slide-in 0.3s ease-out forwards;
+      cursor: pointer;
+    }
+
+    @keyframes slide-in {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
   </style>
 </head>
 
@@ -58,7 +107,11 @@
     <header class="forum-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
       <div>
         <div>
-          <h2><i class="fa-solid fa-comments"></i> Learner Discussion Forum</h2>
+          <h2>
+            <i class="fa-solid fa-comments"></i> Learner Discussion Forum 
+            <!-- Global Unread Counter Badge Hook -->
+            <span id="globalForumCounter"></span>
+          </h2>
           <!-- Mobile Menu Hamburger Button -->
           <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle Navigation Menu">
             <i class="fa-solid fa-bars" id="mobileMenuIcon"></i>
@@ -87,21 +140,29 @@
     </header>
 
     <!-- Search and Filter Bar -->
-    <div class="forum-controls">
-      <div class="search-box">
+    <div class="forum-controls" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+      <div class="search-box" style="flex: 1; min-width: 200px;">
         <i class="fa-solid fa-magnifying-glass"></i>
         <input type="text" id="forumSearchInput" placeholder="Search discussion topics..." onkeyup="filterForumThreads()">
       </div>
-      <div class="filter-box">
-        <select id="classFilterSelect" onchange="filterForumThreads()">
-          <option value="">All Classes / Levels</option>
-          <option value="Senior 1">Senior 1</option>
-          <option value="Senior 2">Senior 2</option>
-          <option value="Senior 3">Senior 3</option>
-          <option value="Senior 4">Senior 4</option>
-          <option value="Senior 5">Senior 5</option>
-          <option value="Senior 6">Senior 6</option>
-        </select>
+      
+      <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+        <div class="filter-box">
+          <select id="classFilterSelect" onchange="filterForumThreads()">
+            <option value="">All Classes / Levels</option>
+            <option value="Senior 1">Senior 1</option>
+            <option value="Senior 2">Senior 2</option>
+            <option value="Senior 3">Senior 3</option>
+            <option value="Senior 4">Senior 4</option>
+            <option value="Senior 5">Senior 5</option>
+            <option value="Senior 6">Senior 6</option>
+          </select>
+        </div>
+
+        <!-- "Mark All Read" Button -->
+        <button class="btn btn-sm btn-outline" onclick="markAllThreadsAsRead()" title="Mark all discussions as read" style="white-space: nowrap; background: transparent; height: 38px;">
+          <i class="fa-solid fa-check-double" style="color: #10b981;"></i> Mark All Read
+        </button>
       </div>
     </div>
 
