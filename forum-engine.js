@@ -154,12 +154,24 @@ function initRealtimeForumThreads() {
         globalThreads.push({ id: doc.id, ...doc.data() });
       });
       filterForumThreads();
+
+      // Auto-restore the previously viewed thread (or default to the first one)
+      if (globalThreads.length > 0) {
+        const savedThreadId = localStorage.getItem('samcam_active_thread');
+        const targetId = (savedThreadId && globalThreads.some(t => t.id === savedThreadId)) 
+          ? savedThreadId 
+          : globalThreads[0].id;
+        
+        // Only trigger selection if not already active to prevent reload loops
+        if (typeof activeThreadId === 'undefined' || activeThreadId !== targetId) {
+          selectThread(targetId);
+        }
+      }
     }, err => {
       console.error("Real-time thread error:", err);
       feedContainer.innerHTML = `<div class="loading-state" style="color:#ef4444;">Failed to sync live discussions.</div>`;
     });
 }
-
 function renderThreadsList(threads) {
   const feedContainer = document.getElementById('threadsFeedContainer');
   if (!feedContainer) return;
