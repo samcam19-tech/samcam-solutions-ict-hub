@@ -66,6 +66,45 @@ body {
 }
 
 /* NAVBAR */
+
+/* ==========================================================================
+   UNIFORM NAVBAR ACTION ITEMS & BUTTONS
+   ========================================================================== */
+
+.nav-action-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  background: var(--surface-alt);
+  color: var(--text-main);
+  border: 1px solid var(--border);
+  padding: 0.45rem 0.85rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+}
+
+.nav-action-item i {
+  color: var(--accent);
+  font-size: 0.85rem;
+  transition: color 0.2s ease;
+}
+
+.nav-action-item:hover {
+  background: var(--accent);
+  color: #ffffff;
+  border-color: var(--accent);
+  text-decoration: none;
+}
+
+.nav-action-item:hover i {
+  color: #ffffff;
+}
 .navbar {
   background: var(--surface);
   border-bottom: 1px solid var(--border);
