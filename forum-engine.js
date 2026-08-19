@@ -668,10 +668,18 @@ function loadThreadRepliesRealtime(threadId) {
         const editBtnHtml = showActionButtons ? `<button class="btn btn-xs btn-outline" style="font-size:0.7rem; padding:0.1rem 0.3rem;" onclick="enableEditComment('${threadId}', '${repId}', \`${escapeHtml(rep.replyBody).replace(/\\/g, '\\\\').replace(/`/g, '\\`')}\`)"><i class="fa-solid fa-pen"></i> Edit</button>` : '';
         const deleteBtnHtml = showActionButtons ? `<button class="btn btn-xs btn-outline" style="font-size:0.7rem; padding:0.1rem 0.3rem; color:#ef4444; border-color:#fca5a5;" onclick="deleteComment('${threadId}', '${repId}', '${escapeHtml(rep.studentName)}')"><i class="fa-solid fa-trash"></i> Delete</button>` : '';
 
-        // Format student class and stream designation for the header
-        const studentClassInfo = rep.studentClass || rep.classTarget || 'Student';
-        const studentStreamInfo = rep.studentStream || rep.stream ? ` (${rep.studentStream || rep.stream})` : '';
-        const authorSubtext = `${escapeHtml(studentClassInfo)}${escapeHtml(studentStreamInfo)}`;
+        // Check if the author of the reply is a teacher/admin based on saved role or explicit tag
+        const repRole = (rep.role || rep.userType || '').toLowerCase();
+        const isRepTeacherOrAdmin = repRole.includes('teacher') || repRole.includes('admin') || repRole.includes('instructor') || repRole.includes('staff');
+
+        let authorSubtext = '';
+        if (isRepTeacherOrAdmin) {
+          authorSubtext = 'Teacher / Admin';
+        } else {
+          const studentClassInfo = rep.studentClass || rep.classTarget || 'Student';
+          const studentStreamInfo = rep.studentStream || rep.stream ? ` (${rep.studentStream || rep.stream})` : '';
+          authorSubtext = `${escapeHtml(studentClassInfo)}${escapeHtml(studentStreamInfo)}`;
+        }
 
         let mediaHtml = '';
         if (rep.mediaUrl) {
