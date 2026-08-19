@@ -119,10 +119,13 @@
           <i class="fa-solid fa-moon"></i> <span>Theme</span>
         </button>
 
-        <!-- Notification Bell Icon with Live Badge Counter -->
-        <button id="notificationsBellBtn" class="nav-action-item" onclick="toggleAnnouncementsDropdown(event)" aria-label="Institutional Announcements" title="Announcements & Notices" style="position: relative;">
-          <i class="fa-solid fa-bell"></i> <span>Notices</span>
-          <span id="navUnreadBadge" class="nav-badge-counter" style="display: none; position: absolute; top: -4px; right: -4px; background: #ef4444; color: white; font-size: 0.65rem; font-weight: 700; padding: 0.05rem 0.35rem; border-radius: 10px; min-width: 16px; text-align: center;">0</span>
+        <!-- Notification Bell Icon with Live Badge Counter positioned on the top right of the bell icon -->
+        <button id="notificationsBellBtn" class="nav-action-item" onclick="toggleAnnouncementsDropdown(event)" aria-label="Institutional Announcements" title="Announcements & Notices">
+          <span style="position: relative; display: inline-flex; align-items: center;">
+            <i class="fa-solid fa-bell" style="font-size: 1rem;"></i>
+            <span id="navUnreadBadge" class="nav-badge-counter" style="position: absolute; top: -8px; right: -10px; background: #ef4444; color: white; font-size: 0.6rem; font-weight: 700; padding: 0.05rem 0.3rem; border-radius: 10px; min-width: 15px; text-align: center; line-height: 1.2;">0</span>
+          </span>
+          <span>Notices</span>
         </button>
 
         <!-- Link to Assessment Portal -->
@@ -346,6 +349,9 @@
             updateNavBadgeCounter();
             renderNavAnnouncementsDropdownList();
           });
+      } else {
+        // Ensure counter displays 0 initially even if DB isn't loaded yet
+        updateNavBadgeCounter();
       }
 
       // Close popup dropdown when clicking outside
@@ -377,12 +383,9 @@
       
       const badgeEl = document.getElementById('navUnreadBadge');
       if (badgeEl) {
-        if (unreadCount > 0) {
-          badgeEl.textContent = unreadCount;
-          badgeEl.style.display = 'inline-block';
-        } else {
-          badgeEl.style.display = 'none';
-        }
+        // Always display the counter, showing '0' when there are no new announcements
+        badgeEl.textContent = unreadCount;
+        badgeEl.style.display = 'inline-block';
       }
     }
 
@@ -405,7 +408,6 @@
         if (item.priority === 'Urgent') { badgeColor = '#991b1b'; badgeBg = '#fee2e2'; }
         else if (item.priority === 'Exam') { badgeColor = '#92400e'; badgeBg = '#fef3c7'; }
 
-        // Added individual badge counter inside the modal feed header/item description block as requested
         html += `
           <div onclick="markNavNoticeAsRead('${item.id}')" style="padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border-color, #e2e8f0); cursor: pointer; transition: background 0.2s; background: ${isRead ? 'transparent' : 'rgba(37, 99, 235, 0.04)'};">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem; font-size: 0.7rem;">
@@ -421,7 +423,6 @@
         `;
       });
 
-      // Prepend a dynamic unread counter badge banner inside the modal dropdown list header view
       const unreadCount = navAnnouncementsCache.filter(item => !readList.includes(item.id)).length;
       let headerBannerHtml = '';
       if (unreadCount > 0) {
