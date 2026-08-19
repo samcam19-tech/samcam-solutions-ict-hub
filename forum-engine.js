@@ -259,6 +259,7 @@ function filterForumThreads() {
 
   renderThreadsList(enhancedFiltered);
 }
+
 window.selectThread = async function(threadId) {
   activeThreadId = threadId;
   
