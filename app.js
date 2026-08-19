@@ -11,6 +11,9 @@ let searchQuery = '';
 let currentPage = 1;
 const itemsPerPage = 6; // Number of resource cards per page
 
+// --- NOTIFICATIONS STATE ---
+let navAnnouncementsCache = [];
+
 document.addEventListener("DOMContentLoaded", () => {
   // Initialize Theme
   initTheme();
@@ -21,6 +24,9 @@ document.addEventListener("DOMContentLoaded", () => {
   // Always load fresh data from data.json first (bypasses local caching issues)
   fetchDataJSON();
 
+  // Initialize Firebase Real-Time Listener for Announcements / Notifications Badge
+  initNavAnnouncementsListener();
+
   // Scroll listener for Back to Top Button
   window.addEventListener('scroll', handleScroll);
 
@@ -29,6 +35,15 @@ document.addEventListener("DOMContentLoaded", () => {
     loadStateFromURL();
     renderCards();
     syncUIControls();
+  });
+
+  // Close announcement popup dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    const popup = document.getElementById('announcementsDropdownPopup');
+    const bellBtn = document.getElementById('notificationsBellBtn');
+    if (popup && popup.style.display === 'flex' && !popup.contains(e.target) && (!bellBtn || !bellBtn.contains(e.target))) {
+      popup.style.display = 'none';
+    }
   });
 });
 
@@ -377,7 +392,6 @@ function renderPaginationControls(totalPages) {
       pagesHTML += `<span style="padding: 0 6px; color: var(--text-muted); display:inline-flex; align-items:center;">…</span>`;
     } else {
       const isActive = page === currentPage;
-      // Added accessibility aria-current="page" and keyboard navigation support
       pagesHTML += `
         <button class="page-number-btn ${isActive ? 'active' : ''}" 
                 onclick="goToPage(${page})" 
@@ -432,7 +446,133 @@ function updateStatsCounters() {
 }
 
 /* ==========================================================================
-   4. MODAL & THEME UTILITIES
+   4. NOTIFICATIONS & ANNOUNCEMENTS INTEGRATION
+   ========================================================================== */
+function initNavAnnouncementsListener() {
+  if (typeof db !== 'undefined') {
+    db.collection('announcements')
+      .orderBy('createdAt', 'desc')
+      .onSnapshot((snapshot) => {
+        navAnnouncementsCache = [];
+        snapshot.forEach((doc) => {
+          const data = doc.data();
+          navAnnouncementsCache.push({
+            id: doc.id,
+            title: data.title,
+            priority: data.priority,
+            body: data.body,
+            author: data.author,
+            createdAt: data.createdAt ? data.createdAt.toDate().toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Just now'
+          });
+        });
+        updateNavBadgeCounter();
+        renderNavAnnouncementsDropdownList();
+      }, (error) => {
+        console.error("Error listening to announcements:", error);
+      });
+  }
+}
+
+function toggleAnnouncementsDropdown(e) {
+  if (e) e.stopPropagation();
+  const popup = document.getElementById('announcementsDropdownPopup');
+  if (!popup) return;
+  
+  if (popup.style.display === 'flex') {
+    popup.style.display = 'none';
+  } else {
+    popup.style.display = 'flex';
+    renderNavAnnouncementsDropdownList();
+  }
+}
+
+function updateNavBadgeCounter() {
+  const readList = getNavReadStorage();
+  const unreadCount = navAnnouncementsCache.filter(item => !readList.includes(item.id)).length;
+  
+  const badgeEl = document.getElementById('navUnreadBadge');
+  if (badgeEl) {
+    if (unreadCount > 0) {
+      badgeEl.textContent = unreadCount;
+      badgeEl.style.display = 'inline-block';
+    } else {
+      badgeEl.style.display = 'none';
+    }
+  }
+}
+
+function renderNavAnnouncementsDropdownList() {
+  const container = document.getElementById('navAnnouncementsFeedList');
+  if (!container) return;
+
+  if (navAnnouncementsCache.length === 0) {
+    container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #64748b; font-size: 0.85rem;">No announcements posted yet.</div>';
+    return;
+  }
+
+  const readList = getNavReadStorage();
+  let html = '';
+
+  navAnnouncementsCache.forEach(item => {
+    const isRead = readList.includes(item.id);
+    let badgeColor = '#0369a1';
+    let badgeBg = '#e0f2fe';
+    if (item.priority === 'Urgent') { badgeColor = '#991b1b'; badgeBg = '#fee2e2'; }
+    else if (item.priority === 'Exam') { badgeColor = '#92400e'; badgeBg = '#fef3c7'; }
+
+    html += `
+      <div onclick="markNavNoticeAsRead('${item.id}')" style="padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border-color, #e2e8f0); cursor: pointer; transition: background 0.2s; background: ${isRead ? 'transparent' : 'rgba(37, 99, 235, 0.04)'};">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem; font-size: 0.7rem;">
+          <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 0.1rem 0.35rem; border-radius: 4px; font-weight: 700; text-transform: uppercase;">${item.priority}</span>
+          <span style="color: #64748b;">${item.createdAt}</span>
+        </div>
+        <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-color, #0f172a); margin-bottom: 0.2rem;">${escapeHtmlText(item.title)}</div>
+        <div style="font-size: 0.78rem; color: #475569; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">${escapeHtmlText(item.body)}</div>
+      </div>
+    `;
+  });
+
+  container.innerHTML = html;
+}
+
+function markNavNoticeAsRead(id) {
+  let readList = getNavReadStorage();
+  if (!readList.includes(id)) {
+    readList.push(id);
+    const sessionName = getCurrentSessionName();
+    localStorage.setItem(`samcam_read_notices_${sessionName}`, JSON.stringify(readList));
+    updateNavBadgeCounter();
+    renderNavAnnouncementsDropdownList();
+  }
+}
+
+function getNavReadStorage() {
+  const sessionName = getCurrentSessionName();
+  try {
+    return JSON.parse(localStorage.getItem(`samcam_read_notices_${sessionName}`)) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function getCurrentSessionName() {
+  try {
+    const sessionData = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
+    if (sessionData) {
+      const parsed = JSON.parse(sessionData);
+      return parsed.name || parsed.fullName || 'guest';
+    }
+  } catch (e) {}
+  return 'guest';
+}
+
+function escapeHtmlText(str) {
+  if (!str) return '';
+  return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
+}
+
+/* ==========================================================================
+   5. MODAL & THEME UTILITIES
    ========================================================================== */
 function openPreviewModal(encodedItem) {
   const item = JSON.parse(decodeURIComponent(encodedItem));
