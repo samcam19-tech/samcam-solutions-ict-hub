@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="styles.css">
   
   <style>
-    /* --- MOBILE MENU RESPONSIVE STYLES --- */
+    /* --- UNIFORM NAVBAR ACTIONS & MOBILE STYLES --- */
     .mobile-menu-toggle {
       display: none;
       background: transparent;
@@ -25,6 +25,31 @@
       color: var(--text-color, #334155);
       cursor: pointer;
       padding: 0.5rem;
+    }
+
+    /* Standardized Unified Navbar Action Button/Link Style */
+    .nav-action-item {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      background: var(--bg-main, #f8fafc);
+      color: var(--text-color, #334155);
+      border: 1px solid var(--border-color, #e2e8f0);
+      padding: 0.45rem 0.85rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    }
+
+    .nav-action-item:hover {
+      background: var(--primary-light, #eff6ff);
+      color: var(--primary, #2563eb);
+      border-color: var(--primary, #2563eb);
     }
 
     @media (max-width: 768px) {
@@ -46,17 +71,18 @@
         padding: 1rem 1.25rem;
         box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
         border-bottom: 1px solid var(--border-color, #e2e8f0);
-        gap: 1rem !important;
-        align-items: flex-start !important;
+        gap: 0.75rem !important;
+        align-items: stretch !important;
         box-sizing: border-box;
         z-index: 1000;
       }
       .nav-actions.mobile-active {
         display: flex !important;
       }
-      .nav-actions .nav-clean-link {
+      .nav-action-item {
         width: 100%;
-        padding: 0.5rem 0;
+        justify-content: flex-start;
+        padding: 0.6rem 0.9rem;
       }
       .nav-actions .desktop-only {
         display: inline-flex !important;
@@ -86,25 +112,26 @@
         <i class="fa-solid fa-bars" id="menuToggleIcon"></i>
       </button>
 
-      <div class="nav-actions" id="navActionsContainer" style="display: flex; align-items: center; gap: 1rem;">
+      <div class="nav-actions" id="navActionsContainer" style="display: flex; align-items: center; gap: 0.75rem;">
+        
         <!-- Theme Toggle Button -->
-        <button id="themeToggleBtn" class="btn-icon" aria-label="Toggle Dark/Light Mode" title="Toggle Theme">
-          <i class="fa-solid fa-moon"></i>
+        <button id="themeToggleBtn" class="nav-action-item" aria-label="Toggle Dark/Light Mode" title="Toggle Theme">
+          <i class="fa-solid fa-moon"></i> <span>Theme</span>
         </button>
 
         <!-- Notification Bell Icon with Live Badge Counter -->
-        <button id="notificationsBellBtn" class="btn-icon" onclick="toggleAnnouncementsDropdown(event)" aria-label="Institutional Announcements" title="Announcements & Notices" style="position: relative; background: none; border: none; cursor: pointer; font-size: 1.15rem; color: var(--text-color, #334155); padding: 0.4rem;">
-          <i class="fa-solid fa-bell"></i>
-          <span id="navUnreadBadge" class="nav-badge-counter" style="display: none; position: absolute; top: -2px; right: -4px; background: #ef4444; color: white; font-size: 0.65rem; font-weight: 700; padding: 0.05rem 0.35rem; border-radius: 10px; min-width: 16px; text-align: center;">0</span>
+        <button id="notificationsBellBtn" class="nav-action-item" onclick="toggleAnnouncementsDropdown(event)" aria-label="Institutional Announcements" title="Announcements & Notices" style="position: relative;">
+          <i class="fa-solid fa-bell"></i> <span>Notices</span>
+          <span id="navUnreadBadge" class="nav-badge-counter" style="display: none; position: absolute; top: -4px; right: -4px; background: #ef4444; color: white; font-size: 0.65rem; font-weight: 700; padding: 0.05rem 0.35rem; border-radius: 10px; min-width: 16px; text-align: center;">0</span>
         </button>
 
         <!-- Link to Assessment Portal -->
-        <a href="assessments.html" class="nav-clean-link">
+        <a href="assessments.html" class="nav-action-item">
           <i class="fa-solid fa-file-pen"></i> Assessment Portal
         </a>
         
         <!-- S.1 – S.6 Curriculum Link with no action -->
-        <a href="#" class="nav-clean-link desktop-only" onclick="event.preventDefault();">
+        <a href="#" class="nav-action-item desktop-only" onclick="event.preventDefault();">
           <i class="fa-solid fa-graduation-cap"></i> S.1 – S.6 Curriculum
         </a>
       </div>
