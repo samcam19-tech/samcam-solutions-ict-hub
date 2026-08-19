@@ -36,7 +36,7 @@ function loadAnnouncementsRealtime() {
     .orderBy('createdAt', 'desc')
     .onSnapshot((snapshot) => {
       announcementsList = [];
-      
+
       snapshot.forEach((doc) => {
         const data = doc.data();
         let formattedDate = 'Just now';
@@ -56,7 +56,7 @@ function loadAnnouncementsRealtime() {
           date: formattedDate
         });
       });
-      
+
       updateUnreadBadgeCounter();
       filterAnnouncements(); 
     }, (error) => {
@@ -79,7 +79,7 @@ function renderAnnouncements(items) {
   const session = getCurrentUserSession();
   const combined = `${session.role || session.userType || ''} ${session.name || ''}`.toLowerCase();
   const isTeacherOrAdmin = combined.includes('teacher') || combined.includes('admin') || combined.includes('staff') || combined.includes('instructor');
-  
+
   const readList = getReadAnnouncementsStorage();
 
   let html = '';
@@ -87,7 +87,7 @@ function renderAnnouncements(items) {
     const isRead = readList.includes(item.id);
     let badgeClass = 'badge-general';
     let cardClass = '';
-    
+
     if (item.priority === 'Urgent') {
       badgeClass = 'badge-urgent';
       cardClass = 'priority-urgent';
@@ -100,8 +100,13 @@ function renderAnnouncements(items) {
       cardClass += ' unread-notice';
     }
 
+    // Escape parameters safely for inline handler injection
+    const escapedTitle = escapeHtml(item.title).replace(/'/g, "\\'");
+    const escapedBody = escapeHtml(item.body).replace(/'/g, "\\'").replace(/\n/g, '\\n');
+    const escapedAuthor = escapeHtml(item.author).replace(/'/g, "\\'");
+
     html += `
-      <div class="announcement-card ${cardClass}" onclick="markAnnouncementAsRead('${item.id}')">
+      <div class="announcement-card ${cardClass}" onclick="openReadAnnouncementModal('${item.id}', '${escapedTitle}', '${item.priority}', '${escapedBody}', '${escapedAuthor}', '${item.date}')">
         <div class="announcement-meta">
           <div>
             <span class="badge ${badgeClass}">${item.priority}</span>
@@ -113,7 +118,7 @@ function renderAnnouncements(items) {
         <div class="announcement-title">${escapeHtml(item.title)}</div>
         <div class="announcement-body">${escapeHtml(item.body)}</div>
         <div class="announcement-footer">
-          <span style="color: var(--text-muted); font-size: 0.75rem;">${isRead ? 'Read' : 'Click card to mark read'}</span>
+          <span style="color: var(--text-muted); font-size: 0.75rem;">${isRead ? 'Read' : 'Click to read full notice'}</span>
           ${isTeacherOrAdmin ? `
             <button class="btn btn-danger-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="event.stopPropagation(); deleteAnnouncement('${item.id}')">
               <i class="fa-solid fa-trash"></i> Delete
@@ -129,8 +134,12 @@ function renderAnnouncements(items) {
 
 // 3. Search, Category & Unread Counter Filtering
 function filterAnnouncements() {
-  const query = document.getElementById('announcementSearch').value.toLowerCase();
-  const priority = document.getElementById('priorityFilter').value;
+  const searchInput = document.getElementById('announcementSearch');
+  const priorityFilter = document.getElementById('priorityFilter');
+  if (!searchInput || !priorityFilter) return;
+
+  const query = searchInput.value.toLowerCase();
+  const priority = priorityFilter.value;
   const readList = getReadAnnouncementsStorage();
 
   const filtered = announcementsList.filter(item => {
@@ -147,24 +156,26 @@ function filterAnnouncements() {
 function toggleUnreadFilter() {
   showOnlyUnread = !showOnlyUnread;
   const badgeContainer = document.querySelector('.notification-badge-container');
-  
-  if (showOnlyUnread) {
-    badgeContainer.classList.add('active-filter');
-  } else {
-    badgeContainer.classList.remove('active-filter');
+
+  if (badgeContainer) {
+    if (showOnlyUnread) {
+      badgeContainer.classList.add('active-filter');
+    } else {
+      badgeContainer.classList.remove('active-filter');
+    }
   }
-  
+
   filterAnnouncements();
 }
 
 function updateUnreadBadgeCounter() {
   const readList = getReadAnnouncementsStorage();
   const unreadCount = announcementsList.filter(item => !readList.includes(item.id)).length;
-  
+
   const counterEl = document.getElementById('unreadBadgeCount');
   if (counterEl) {
     counterEl.textContent = unreadCount;
-    counterEl.style.display = unreadCount > 0 ? 'inline-block' : 'inline-block';
+    counterEl.style.display = 'inline-block';
   }
 }
 
@@ -190,20 +201,74 @@ function getReadAnnouncementsStorage() {
   }
 }
 
-// 5. Modal & Firestore Actions
-function openAnnouncementModal() { document.getElementById('announcementModal').style.display = 'flex'; }
-function closeAnnouncementModal() { document.getElementById('announcementModal').style.display = 'none'; document.getElementById('announcementForm').reset(); }
+// 5. Modal & Read View Handlers
+function openAnnouncementModal() { 
+  const modal = document.getElementById('announcementModal');
+  if (modal) modal.style.display = 'flex'; 
+}
+
+function closeAnnouncementModal() { 
+  const modal = document.getElementById('announcementModal');
+  const form = document.getElementById('announcementForm');
+  if (modal) modal.style.display = 'none'; 
+  if (form) form.reset(); 
+}
+
+function openReadAnnouncementModal(id, title, priority, body, author, date) {
+  // Mark as read immediately when opened
+  markAnnouncementAsRead(id);
+
+  const modal = document.getElementById('readAnnouncementModal');
+  if (!modal) return;
+
+  const tagEl = document.getElementById('readModalCategoryTag');
+  const titleEl = document.getElementById('readModalTitle');
+  const metaEl = document.getElementById('readModalDateAuthor');
+  const bodyEl = document.getElementById('readModalBody');
+
+  if (tagEl) {
+    tagEl.textContent = priority;
+    tagEl.style.background = priority === 'Urgent' ? '#fee2e2' : (priority === 'Exam' ? '#fef3c7' : '#e0f2fe');
+    tagEl.style.color = priority === 'Urgent' ? '#991b1b' : (priority === 'Exam' ? '#92400e' : '#0369a1');
+  }
+
+  if (titleEl) titleEl.textContent = title;
+  if (metaEl) {
+    metaEl.innerHTML = `<span><i class="fa-solid fa-user"></i> Posted by <strong>${author}</strong></span><span><i class="fa-regular fa-clock"></i> ${date}</span>`;
+  }
+  if (bodyEl) bodyEl.textContent = body.replace(/\\n/g, '\n');
+
+  modal.style.display = 'flex';
+}
+
+function closeReadModal() {
+  const modal = document.getElementById('readAnnouncementModal');
+  if (modal) modal.style.display = 'none';
+}
+
+function closeReadModalOutside(event) {
+  const modal = document.getElementById('readAnnouncementModal');
+  if (event.target === modal) {
+    closeReadModal();
+  }
+}
 
 async function handlePostAnnouncement(e) {
   e.preventDefault();
-  const title = document.getElementById('annTitle').value.trim();
-  const priority = document.getElementById('annPriority').value;
-  const body = document.getElementById('annBody').value.trim();
+  const titleInput = document.getElementById('annTitle');
+  const priorityInput = document.getElementById('annPriority');
+  const bodyInput = document.getElementById('annBody');
+  const submitBtn = document.getElementById('submitNoticeBtn');
+  
+  if (!titleInput || !priorityInput || !bodyInput || !submitBtn) return;
+
+  const title = titleInput.value.trim();
+  const priority = priorityInput.value;
+  const body = bodyInput.value.trim();
 
   const session = getCurrentUserSession();
   const authorName = session.name || session.fullName || 'Staff Member';
-  
-  const submitBtn = document.getElementById('submitNoticeBtn');
+
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publishing...';
 
@@ -215,7 +280,7 @@ async function handlePostAnnouncement(e) {
       author: authorName,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    
+
     closeAnnouncementModal();
   } catch (error) {
     console.error("Error writing document: ", error);
@@ -239,10 +304,12 @@ async function deleteAnnouncement(id) {
 
 // Utilities
 function getCurrentUserSession() {
-  const sessionData = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
-  if (sessionData) {
-    try { return JSON.parse(sessionData); } catch (e) {}
-  }
+  try {
+    const sessionData = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
+    if (sessionData) { 
+      return JSON.parse(sessionData); 
+    }
+  } catch (e) {}
   return { name: 'Learner', role: 'Student' };
 }
 
@@ -258,6 +325,7 @@ function checkUserRolePermissions() {
 }
 
 function escapeHtml(text) {
+  if (!text) return '';
   const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
-  return text.replace(/[&<>"']/g, m => map[m]);
+  return String(text).replace(/[&<>"']/g, m => map[m]);
 }
