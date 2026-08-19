@@ -219,6 +219,8 @@ function renderThreadsList(threads) {
   feedContainer.innerHTML = html;
 }
 
+let userReadReceiptsCache = {};
+
 function filterForumThreads() {
   const query = document.getElementById('forumSearchInput')?.value.toLowerCase() || '';
   const selectedClass = document.getElementById('classFilterSelect')?.value || '';
@@ -245,11 +247,20 @@ function filterForumThreads() {
     return matchesQuery && matchesClassDropdown;
   });
 
-  // Attach unread notification flag/metadata to filtered threads before rendering
+  let unreadTotalCount = 0;
+
+  // Attach unread notification flag and compute global count
   const enhancedFiltered = filtered.map(t => {
-    const lastReadTime = parseInt(localStorage.getItem(`samcam_thread_last_read_${t.id}`) || '0', 10);
+    const localRead = parseInt(localStorage.getItem(`samcam_thread_last_read_${t.id}`) || '0', 10);
+    const cloudRead = userReadReceiptsCache[t.id] || 0;
+    const lastReadTime = Math.max(localRead, cloudRead);
+
     const lastCommentTime = t.lastCommentAt && t.lastCommentAt.toDate ? t.lastCommentAt.toDate().getTime() : (t.updatedAt || 0);
     const hasNewComment = lastCommentTime > lastReadTime;
+
+    if (hasNewComment) {
+      unreadTotalCount++;
+    }
 
     return {
       ...t,
@@ -257,16 +268,37 @@ function filterForumThreads() {
     };
   });
 
+  // Update global counter UI element if present
+  const counterEl = document.getElementById('globalForumCounter');
+  if (counterEl) {
+    counterEl.innerHTML = unreadTotalCount > 0 
+      ? `<span class="nav-notification-badge" style="background:#ef4444; color:#fff; font-size:0.65rem; padding:0.1rem 0.35rem; border-radius:10px; font-weight:700; margin-left:0.3rem; animation:pulse-badge 2s infinite ease-in-out; display:inline-block;">${unreadTotalCount}</span>` 
+      : '';
+  }
+
   renderThreadsList(enhancedFiltered);
 }
 
 window.selectThread = async function(threadId) {
   activeThreadId = threadId;
+  const now = Date.now();
   
-  // Persist active thread selection so it survives page reloads
+  // Persist active thread selection & read timestamps locally and in cache
   localStorage.setItem('samcam_active_thread', threadId);
-  // Save the exact time the user opened this thread as their last read timestamp
-  localStorage.setItem(`samcam_thread_last_read_${threadId}`, Date.now());
+  localStorage.setItem(`samcam_thread_last_read_${threadId}`, now);
+  userReadReceiptsCache[threadId] = now;
+
+  // Sync read receipt to Firestore profile for multi-device support
+  const session = getCurrentUserSession();
+  if (session && session.name && typeof db !== 'undefined') {
+    try {
+      await db.collection('users').doc(session.name).set({
+        readThreads: { [threadId]: firebase.firestore.FieldValue.serverTimestamp() }
+      }, { merge: true });
+    } catch (e) {
+      console.warn("Could not sync read state to cloud:", e);
+    }
+  }
 
   filterForumThreads();
 
@@ -274,7 +306,6 @@ window.selectThread = async function(threadId) {
   const detailPane = document.getElementById('threadDetailPane');
   if (!thread || !detailPane) return;
 
-  const session = getCurrentUserSession();
   const userId = session.name || 'Anonymous';
   const role = (session.role || session.userType || session.type || '').toLowerCase();
   const isTeacherOrAdmin = role.includes('teacher') || role.includes('admin') || role.includes('instructor') || role.includes('staff');
@@ -349,6 +380,41 @@ window.selectThread = async function(threadId) {
   loadThreadRepliesRealtime(thread.id);
   listenToTypingIndicator(thread.id);
 };
+
+function markAllThreadsAsRead() {
+  const now = Date.now();
+  globalThreads.forEach(t => {
+    localStorage.setItem(`samcam_thread_last_read_${t.id}`, now);
+    userReadReceiptsCache[t.id] = now;
+  });
+  filterForumThreads();
+}
+
+function showForumToast(title, message, threadId) {
+  let container = document.getElementById('forumToastContainer');
+  if (!container) {
+    container = document.createElement('div');
+    container.id = 'forumToastContainer';
+    document.body.appendChild(container);
+  }
+
+  const toast = document.createElement('div');
+  toast.className = 'forum-toast';
+  toast.innerHTML = `<div style="font-weight:600; margin-bottom:0.15rem;"><i class="fa-solid fa-comment-dots" style="color:#60a5fa;"></i> ${escapeHtml(title)}</div><div>${escapeHtml(message)}</div>`;
+  
+  toast.onclick = () => {
+    selectThread(threadId);
+    toast.remove();
+  };
+
+  container.appendChild(toast);
+
+  // Auto dismiss after 5 seconds
+  setTimeout(() => {
+    if (toast.parentElement) toast.remove();
+  }, 5000);
+}
+
 
 function insertMarkdown(wrapperStart, wrapperEnd) {
   const textarea = document.getElementById('replyMessageInput');
