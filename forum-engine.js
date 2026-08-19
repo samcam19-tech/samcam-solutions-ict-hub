@@ -371,7 +371,6 @@ window.generateAiSummary = async function(threadId) {
   content.innerHTML = `<i class="fa-solid fa-spinner fa-spin fa-bounce"></i> Querying Gemini AI to synthesize discussion and student responses...`;
 
   try {
-    // Correct dynamic import for the Google Gen AI SDK
     const { GoogleGenAI } = await import("https://esm.run/@google/genai");
 
     const thread = globalThreads.find(t => t.id === threadId);
@@ -397,7 +396,6 @@ window.generateAiSummary = async function(threadId) {
       repliesText = "No student responses submitted yet.";
     }
 
-    // Directly added your API key string here
     const ai = new GoogleGenAI({ 
       apiKey: "AQ.Ab8RN6JPbMg_NiacjSgAuv44bqdnR6cG5Raho4WkLCO3nNteNQ", 
       dangerouslyAllowBrowser: true 
