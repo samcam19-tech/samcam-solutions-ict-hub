@@ -411,15 +411,16 @@ window.generateAiSummary = async function(threadId) {
       ${repliesText}
     `;
 
-    // Direct REST API fetch implementation using your AQ. auth key securely in the headers
+    // Your AQ. auth key
     const apiKey = "AQ.Ab8RN6JPbMg_NiacjSgAuv44bqdnR6cG5Raho4WkLCO3nNteNQ";
+    
+    // Pass the AQ. key as a query parameter ?key=... to authenticate natively
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
-          "x-goog-api-key": apiKey
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }]
@@ -428,6 +429,8 @@ window.generateAiSummary = async function(threadId) {
     );
 
     if (!response.ok) {
+      const errDetail = await response.text();
+      console.error("API error details:", errDetail);
       throw new Error(`API error code: ${response.status}`);
     }
 
