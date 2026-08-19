@@ -233,6 +233,10 @@ function filterForumThreads() {
 
 window.selectThread = async function(threadId) {
   activeThreadId = threadId;
+  
+  // Persist active thread selection so it survives page reloads
+  localStorage.setItem('samcam_active_thread', threadId);
+
   filterForumThreads();
 
   const thread = globalThreads.find(t => t.id === threadId);
