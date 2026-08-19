@@ -307,28 +307,6 @@
   <!-- Firebase App & Firestore Compatibility SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-
-  <script>
-    // --- FIREBASE INITIALIZATION ---
-    const firebaseConfig = {
-      apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
-      authDomain: "samcam-system.firebaseapp.com",
-      projectId: "samcam-system",
-      storageBucket: "samcam-system.firebasestorage.app",
-      messagingSenderId: "74940789582",
-      appId: "1:74940789582:web:f159688165a194e841241f",
-      measurementId: "G-L2H4V8Y050"
-    };
-
-    // Initialize Firebase if it hasn't been initialized already
-    if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
-    }
-    
-    // Export/Define global db variable used by the snapshot listener
-    const db = firebase.firestore();
-  </script>
-  
   <script>
     // --- GLOBAL CACHE DECLARATION ---
     let navAnnouncementsCache = [];
