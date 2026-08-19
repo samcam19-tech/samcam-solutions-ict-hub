@@ -371,8 +371,6 @@ window.generateAiSummary = async function(threadId) {
   content.innerHTML = `<i class="fa-solid fa-spinner fa-spin fa-bounce"></i> Querying Gemini AI to synthesize discussion and student responses...`;
 
   try {
-    const { GoogleGenAI } = await import("https://esm.run/@google/genai");
-
     const thread = globalThreads.find(t => t.id === threadId);
     if (!thread) {
       content.innerHTML = `<span style="color:#ef4444;">Discussion topic not found.</span>`;
@@ -396,11 +394,6 @@ window.generateAiSummary = async function(threadId) {
       repliesText = "No student responses submitted yet.";
     }
 
-    const ai = new GoogleGenAI({ 
-      apiKey: "AQ.Ab8RN6JPbMg_NiacjSgAuv44bqdnR6cG5Raho4WkLCO3nNteNQ", 
-      dangerouslyAllowBrowser: true 
-    });
-
     const prompt = `
       You are an expert ICT educator specializing in the Ugandan Lower Secondary Curriculum and UNEB standards.
       Analyze the following secondary ICT classroom discussion topic and student responses.
@@ -418,15 +411,33 @@ window.generateAiSummary = async function(threadId) {
       ${repliesText}
     `;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    });
+    // Direct REST API fetch implementation using your AQ. auth key securely in the headers
+    const apiKey = "AQ.Ab8RN6JPbMg_NiacjSgAuv44bqdnR6cG5Raho4WkLCO3nNteNQ";
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey
+        },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }]
+        })
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error(`API error code: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const aiText = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
 
     content.innerHTML = `
       <div style="display:flex; flex-direction:column; gap:0.4rem;">
         <div><strong>🤖 Gemini AI Curriculum Synthesis:</strong></div>
-        <div style="color:#334155; line-height:1.4; font-size:0.85rem;">${formatRichContent(response.text)}</div>
+        <div style="color:#334155; line-height:1.4; font-size:0.85rem;">${formatRichContent(aiText)}</div>
       </div>
     `;
 
