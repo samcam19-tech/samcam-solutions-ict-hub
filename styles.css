@@ -98,7 +98,7 @@ body {
 .nav-action-item:hover {
   background: var(--accent);
   color: #ffffff;
-  border-color: var(--accent);
+  border-color: var(--surface-alt:);
   text-decoration: none;
 }
 
