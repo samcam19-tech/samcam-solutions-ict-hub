@@ -119,15 +119,6 @@
           <i class="fa-solid fa-moon"></i> <span>Theme</span>
         </button>
 
-        <!-- Notification Bell Icon with Live Badge Counter positioned on the top right of the bell icon -->
-        <button id="notificationsBellBtn" class="nav-action-item" onclick="toggleAnnouncementsDropdown(event)" aria-label="Institutional Announcements" title="Announcements & Notices">
-          <span style="position: relative; display: inline-flex; align-items: center;">
-            <i class="fa-solid fa-bell" style="font-size: 1rem;"></i>
-            <span id="navUnreadBadge" class="nav-badge-counter" style="position: absolute; top: -8px; right: -10px; background: #ef4444; color: white; font-size: 0.6rem; font-weight: 700; padding: 0.05rem 0.3rem; border-radius: 10px; min-width: 15px; text-align: center; line-height: 1.2;">0</span>
-          </span>
-          <span></span>
-        </button>
-
         <!-- Link to Assessment Portal -->
         <a href="assessments.html" class="nav-action-item">
           <i class="fa-solid fa-file-pen"></i> Portal
@@ -138,6 +129,15 @@
           <i class="fa-solid fa-graduation-cap"></i> S.1 – S.6 Curriculum
         </a>
       </div>
+
+       <!-- Notification Bell Icon with Live Badge Counter positioned on the top right of the bell icon -->
+        <button id="notificationsBellBtn" class="nav-action-item" onclick="toggleAnnouncementsDropdown(event)" aria-label="Institutional Announcements" title="Announcements & Notices">
+          <span style="position: relative; display: inline-flex; align-items: center;">
+            <i class="fa-solid fa-bell" style="font-size: 1rem;"></i>
+            <span id="navUnreadBadge" class="nav-badge-counter" style="position: absolute; top: -8px; right: -10px; background: #ef4444; color: white; font-size: 0.6rem; font-weight: 700; padding: 0.05rem 0.3rem; border-radius: 10px; min-width: 15px; text-align: center; line-height: 1.2;">0</span>
+          </span>
+          <span></span>
+        </button>
 
       <!-- QUICK-VIEW ANNOUNCEMENTS DRAWER/POPUP -->
       <div id="announcementsDropdownPopup" style="display: none; position: absolute; top: 70px; right: 0; width: 360px; max-height: 480px; background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #cbd5e1); border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15); z-index: 10000; flex-direction: column; overflow: hidden;">
