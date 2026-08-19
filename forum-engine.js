@@ -194,6 +194,11 @@ function renderThreadsList(threads) {
     const upvotesCount = (thread.upvotedBy || []).length;
     const isBookmarked = bookmarks.includes(thread.id);
 
+    // Unread notification badge HTML tag
+    const unreadBadge = thread.hasUnreadNotification 
+      ? `<span class="thread-unread-badge" style="background:#ef4444; color:#fff; font-size:0.65rem; padding:0.05rem 0.35rem; border-radius:10px; font-weight:600; margin-left:0.4rem; vertical-align:middle; display:inline-block;"><i class="fa-solid fa-circle" style="font-size:0.45rem; vertical-align:middle; margin-right:2px;"></i> New</span>` 
+      : '';
+
     html += `
       <div class="thread-card ${isActive}" onclick="selectThread('${thread.id}')">
         <div class="thread-meta-top" style="display:flex; justify-content:space-between; align-items:center;">
@@ -205,7 +210,7 @@ function renderThreadsList(threads) {
             <span class="thread-time" style="margin-left:0.3rem;"><i class="fa-solid fa-thumbs-up"></i> ${upvotesCount} • ${timeAgo}</span>
           </div>
         </div>
-        <h4>${escapeHtml(thread.title)}</h4>
+        <h4>${escapeHtml(thread.title)} ${unreadBadge}</h4>
         <div class="thread-snippet">${formatRichContent(thread.body)}</div>
       </div>
     `;
@@ -240,14 +245,27 @@ function filterForumThreads() {
     return matchesQuery && matchesClassDropdown;
   });
 
-  renderThreadsList(filtered);
-}
+  // Attach unread notification flag/metadata to filtered threads before rendering
+  const enhancedFiltered = filtered.map(t => {
+    const lastReadTime = parseInt(localStorage.getItem(`samcam_thread_last_read_${t.id}`) || '0', 10);
+    const lastCommentTime = t.lastCommentAt && t.lastCommentAt.toDate ? t.lastCommentAt.toDate().getTime() : (t.updatedAt || 0);
+    const hasNewComment = lastCommentTime > lastReadTime;
 
+    return {
+      ...t,
+      hasUnreadNotification: hasNewComment
+    };
+  });
+
+  renderThreadsList(enhancedFiltered);
+}
 window.selectThread = async function(threadId) {
   activeThreadId = threadId;
   
   // Persist active thread selection so it survives page reloads
   localStorage.setItem('samcam_active_thread', threadId);
+  // Save the exact time the user opened this thread as their last read timestamp
+  localStorage.setItem(`samcam_thread_last_read_${threadId}`, Date.now());
 
   filterForumThreads();
 
@@ -983,6 +1001,7 @@ async function submitReplyOptimistic(threadId) {
 
     const finalBody = replyBody || (hasAudio ? '🎤 [Voice Note]' : '[Attached File]');
 
+    // Add the reply document
     await db.collection('forum_threads').doc(threadId).collection('replies').add({
       studentName: studentName,
       role: userRole,
@@ -993,6 +1012,11 @@ async function submitReplyOptimistic(threadId) {
       upvotedBy: [],
       isBestAnswer: false,
       submittedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    // Update parent thread's last activity timestamp for notification badges
+    await db.collection('forum_threads').doc(threadId).update({
+      lastCommentAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
     inputEl.value = '';
