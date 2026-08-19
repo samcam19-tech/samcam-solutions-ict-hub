@@ -115,7 +115,6 @@
       <div class="nav-actions" id="navActionsContainer" style="display: flex; align-items: center; gap: 0.75rem;">
         
         <!-- Theme Toggle Button -->
-        <!-- Theme Toggle Button -->
         <button id="themeToggleBtn" class="nav-action-item" aria-label="Toggle Dark/Light Mode" title="Toggle Theme">
           <i class="fa-solid fa-moon"></i> <span>Theme</span>
         </button>
@@ -308,6 +307,7 @@
   <script>
     // --- GLOBAL CACHE DECLARATION ---
     let navAnnouncementsCache = [];
+
     // Mobile Navigation Drawer Toggle Script
     function toggleMobileMenu() {
       const navActions = document.getElementById('navActionsContainer');
@@ -402,10 +402,14 @@
         if (item.priority === 'Urgent') { badgeColor = '#991b1b'; badgeBg = '#fee2e2'; }
         else if (item.priority === 'Exam') { badgeColor = '#92400e'; badgeBg = '#fef3c7'; }
 
+        // Added individual badge counter inside the modal feed header/item description block as requested
         html += `
           <div onclick="markNavNoticeAsRead('${item.id}')" style="padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border-color, #e2e8f0); cursor: pointer; transition: background 0.2s; background: ${isRead ? 'transparent' : 'rgba(37, 99, 235, 0.04)'};">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem; font-size: 0.7rem;">
-              <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 0.1rem 0.35rem; border-radius: 4px; font-weight: 700; text-transform: uppercase;">${item.priority}</span>
+              <div style="display: flex; align-items: center; gap: 0.35rem;">
+                <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 0.1rem 0.35rem; border-radius: 4px; font-weight: 700; text-transform: uppercase;">${item.priority}</span>
+                ${!isRead ? '<span style="background: #ef4444; color: white; padding: 0.05rem 0.3rem; border-radius: 6px; font-size: 0.6rem; font-weight: 700;">NEW</span>' : ''}
+              </div>
               <span style="color: #64748b;">${item.createdAt}</span>
             </div>
             <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-color, #0f172a); margin-bottom: 0.2rem;">${escapeHtmlText(item.title)}</div>
@@ -414,7 +418,19 @@
         `;
       });
 
-      container.innerHTML = html;
+      // Prepend a dynamic unread counter badge banner inside the modal dropdown list header view
+      const unreadCount = navAnnouncementsCache.filter(item => !readList.includes(item.id)).length;
+      let headerBannerHtml = '';
+      if (unreadCount > 0) {
+        headerBannerHtml = `
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.4rem 0.75rem; background: var(--primary-light, #eff6ff); border-bottom: 1px solid var(--border-color, #e2e8f0); font-size: 0.75rem; color: var(--primary, #2563eb); font-weight: 600;">
+            <span>Unread Notices</span>
+            <span style="background: #ef4444; color: white; padding: 0.05rem 0.4rem; border-radius: 10px; font-size: 0.65rem; font-weight: 700;">${unreadCount} New</span>
+          </div>
+        `;
+      }
+
+      container.innerHTML = headerBannerHtml + html;
     }
 
     function markNavNoticeAsRead(id) {
