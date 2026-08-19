@@ -326,9 +326,11 @@
     // --- NAVBAR ANNOUNCEMENTS INTEGRATION SCRIPT ---
 
     document.addEventListener("DOMContentLoaded", () => {
-      // Initialize real-time listener for the bell badge counter if Firebase 'db' is present
-      if (typeof db !== 'undefined') {
-        db.collection('announcements')
+      // Resolve global db reference safely (checks both local scope and window scope)
+      const firestoreDb = (typeof window.db !== 'undefined') ? window.db : (typeof db !== 'undefined' ? db : null);
+
+      if (firestoreDb) {
+        firestoreDb.collection('announcements')
           .orderBy('createdAt', 'desc')
           .onSnapshot((snapshot) => {
             navAnnouncementsCache = [];
@@ -345,9 +347,12 @@
             });
             updateNavBadgeCounter();
             renderNavAnnouncementsDropdownList();
+          }, (error) => {
+            console.error("Error fetching announcements snapshot:", error);
+            updateNavBadgeCounter();
           });
       } else {
-        // Ensure counter displays 0 initially even if DB isn't loaded yet
+        console.warn("Firestore 'db' instance not found during DOMContentLoaded. Ensure Firebase initialization runs before this script.");
         updateNavBadgeCounter();
       }
 
