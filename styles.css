@@ -67,26 +67,22 @@ body {
 
 /* NAVBAR */
 
-/* ==========================================================================
-   UNIFORM NAVBAR ACTION ITEMS & BUTTONS
-   ========================================================================== */
-
 .nav-action-item {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  background: var(--surface-alt);
-  color: var(--text-main);
-  border: 1px solid var(--border);
-  padding: 0.45rem 0.85rem;
-  border-radius: var(--radius-sm);
-  font-size: 0.875rem;
+  background: transparent !important;
+  color: var(--text-muted);
+  border: none !important;
+  padding: 0 !important;
+  border-radius: 0;
+  font-size: 0.9rem;
   font-weight: 500;
-  text-decoration: none;
+  text-decoration: none !important;
   cursor: pointer;
-  transition: all 0.2s ease;
-  box-shadow: var(--shadow-sm);
+  transition: color 0.2s ease;
+  box-shadow: none !important;
 }
 
 .nav-action-item i {
@@ -96,14 +92,14 @@ body {
 }
 
 .nav-action-item:hover {
-  background: var(--accent);
-  color: #ffffff;
-  border-color: var(--surface-alt:);
-  text-decoration: none;
+  background: transparent !important;
+  color: var(--accent);
+  border-color: transparent !important;
+  text-decoration: none !important;
 }
 
 .nav-action-item:hover i {
-  color: #ffffff;
+  color: var(--accent);
 }
 .navbar {
   background: var(--surface);
