@@ -377,6 +377,31 @@ window.selectThread = async function(threadId) {
       '</div>' +
     '</div>';
 
+  // --- MENTION TEXTAREA TYPING HOOK ---
+  const replyTextarea = document.getElementById('replyMessageInput');
+  if (replyTextarea) {
+    replyTextarea.addEventListener('input', function(e) {
+      const val = this.value;
+      const cursorCoord = this.selectionStart;
+      const textBeforeCursor = val.substring(0, cursorCoord);
+      
+      // Check if user just typed '@'
+      const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+      if (lastAtIndex !== -1) {
+        const query = textBeforeCursor.substring(lastAtIndex + 1);
+        // If there's no space after '@', trigger mention suggestions lookup
+        if (!query.includes(' ')) {
+          if (typeof showMentionDropdown === 'function') showMentionDropdown(query);
+        } else {
+          if (typeof hideMentionDropdown === 'function') hideMentionDropdown();
+        }
+      } else {
+        if (typeof hideMentionDropdown === 'function') hideMentionDropdown();
+      }
+    });
+  }
+  // ------------------------------------
+
   loadThreadRepliesRealtime(thread.id);
   listenToTypingIndicator(thread.id);
 };
@@ -388,6 +413,41 @@ function markAllThreadsAsRead() {
     userReadReceiptsCache[t.id] = now;
   });
   filterForumThreads();
+}
+
+
+// Scan comment text for @username mentions and trigger notifications
+async function checkAndSendMentions(threadId, threadTitle, commentBody, authorName) {
+  // Regex to find words starting with @ (e.g., @JaneDoe)
+  const mentionRegex = /@([a-zA-Z0-9_.-]+)/g;
+  const matches = commentBody.match(mentionRegex);
+  
+  if (!matches) return;
+
+  // Extract unique usernames without the @ symbol
+  const mentionedUsers = [...new Set(matches.map(m => m.substring(1).toLowerCase()))];
+
+  if (typeof db === 'undefined') return;
+
+  // Loop through mentioned users and write notifications to Firestore
+  for (const username of mentionedUsers) {
+    // Avoid notifying yourself if you mention yourself
+    if (username === authorName.toLowerCase()) continue;
+
+    try {
+      await db.collection('notifications').add({
+        recipientUsername: username,
+        senderName: authorName,
+        threadId: threadId,
+        threadTitle: threadTitle,
+        message: `${authorName} mentioned you in a discussion: "${threadTitle.substring(0, 30)}..."`,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        read: false
+      });
+    } catch (e) {
+      console.warn("Failed to send mention notification:", e);
+    }
+  }
 }
 
 function showForumToast(title, message, threadId) {
@@ -1086,6 +1146,17 @@ async function submitReplyOptimistic(threadId) {
       lastCommentAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
+    // --- MENTION NOTIFICATION HOOK ---
+    // Safely grab thread title if available in globalThreads cache
+    const targetThread = (typeof globalThreads !== 'undefined') ? globalThreads.find(t => t.id === threadId) : null;
+    const threadTitle = targetThread ? targetThread.title : 'Discussion Thread';
+    
+    // Scan body for @mentions and trigger notification records
+    if (replyBody) {
+      await checkAndSendMentions(threadId, threadTitle, replyBody, studentName);
+    }
+    // ---------------------------------
+
     inputEl.value = '';
     inputEl.style.height = 'auto';
     if (typeof switchInputTab === 'function') switchInputTab('write');
@@ -1116,6 +1187,47 @@ function handleTypingInput(threadId) {
     clearTypingIndicator(threadId);
   }, 3000);
 }
+
+let unreadNotificationsCount = 0;
+
+function listenToUserNotifications(username) {
+  if (!username || typeof db === 'undefined') return;
+
+  db.collection('notifications')
+    .where('recipientUsername', '==', username.toLowerCase())
+    .where('read', '==', false)
+    .onSnapshot(snapshot => {
+      let count = snapshot.docs.length;
+      unreadNotificationsCount = count;
+      
+      // Update a notification bell badge in your header if you have one
+      updateNotificationBellBadge(count);
+
+      // Trigger a live toast for newly added notifications
+      snapshot.docChanges().forEach(change => {
+        if (change.type === 'added') {
+          const notif = change.doc.data();
+          // Show toast alert
+          if (typeof showForumToast === 'function') {
+            showForumToast(notif.senderName, notif.message, notif.threadId);
+          }
+        }
+      });
+    });
+}
+
+function updateNotificationBellBadge(count) {
+  const badge = document.getElementById('userNotificationBadge');
+  if (!badge) return;
+  if (count > 0) {
+    badge.style.display = 'inline-block';
+    badge.textContent = count;
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+
 
 function clearTypingIndicator(threadId) {
   db.collection('forum_threads').doc(threadId).collection('presence').doc('typing').delete().catch(() => {});
