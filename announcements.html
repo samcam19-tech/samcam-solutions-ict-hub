@@ -1,15 +1,66 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="SAMCAM SOLUTIONS - Premier ICT Academic Resource Hub & Institutional Announcements.">
   <title>Announcements - SAMCAM SOLUTIONS ICT HUB</title>
+  
+  <!-- Preconnect & External Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  
   <!-- FontAwesome for Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
   <!-- External CSS -->
+  <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="announcements.css">
+
+  <style>
+    /* Minimal Navbar Styling for Brand Logo & Slogan */
+    .navbar {
+      background: var(--bg-card, #ffffff);
+      border-bottom: 1px solid var(--border-color, #e2e8f0);
+      padding: 0.75rem 1.5rem;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+    .nav-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+    }
+  </style>
+
+  <!-- Firebase App & Firestore Compatibility SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
+
+  <!-- TOP NAVIGATION BAR (Brand & Slogan Only) -->
+  <nav class="navbar" role="navigation" aria-label="Main Navigation">
+    <div class="nav-container">
+      <div class="brand" style="display: flex; align-items: center; gap: 0.75rem;">
+        <img src="images/logo.png" alt="Samcam Solutions Logo" class="brand-logo" style="height: 40px; width: auto;" onerror="this.style.display='none'">
+        <div class="brand-text" style="display: flex; flex-direction: column;">
+          <span class="brand-title" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.1rem; color: var(--text-color, #0f172a); letter-spacing: -0.5px;">SAMCAM SOLUTIONS</span>
+          <span class="brand-tagline" style="font-size: 0.75rem; color: #64748b; font-weight: 500;">Innovative ICT Insights In Action</span>
+        </div>
+      </div>
+      <div>
+        <a href="assessments.html" class="btn btn-outline" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+          <i class="fa-solid fa-arrow-left"></i> Back to Portal
+        </a>
+      </div>
+    </div>
+  </nav>
 
   <div class="announcements-wrapper">
     <!-- Header -->
@@ -18,9 +69,9 @@
         <h2>
           <i class="fa-solid fa-bullhorn" style="color: var(--primary);"></i> LMS Announcements
           <!-- Clickable Notification Badge Counter -->
-          <div class="notification-badge-container" onclick="toggleUnreadFilter()" title="Click to filter unread notices">
-            <span id="unreadBadgeCount" class="notification-counter">0</span>
-            <span class="badge-label">New</span>
+          <div class="notification-badge-container" onclick="toggleUnreadFilter()" title="Click to filter unread notices" style="cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem; margin-left: 0.5rem; vertical-align: middle;">
+            <span id="unreadBadgeCount" class="notification-counter" style="background: #ef4444; color: white; padding: 0.05rem 0.4rem; border-radius: 10px; font-size: 0.75rem; font-weight: 700;">0</span>
+            <span class="badge-label" style="font-size: 0.75rem; font-weight: 600; color: #64748b;">New</span>
           </div>
         </h2>
         <p>Stay updated with institutional notices, exam timetables, and academic updates.</p>
@@ -29,9 +80,6 @@
         <button class="btn btn-primary teacher-only" id="newAnnouncementBtn" onclick="openAnnouncementModal()" style="display: none;">
           <i class="fa-solid fa-plus"></i> Post Announcement
         </button>
-        <a href="assessments.html" class="btn btn-outline">
-          <i class="fa-solid fa-arrow-left"></i> Back to Portal
-        </a>
       </div>
     </header>
 
@@ -60,7 +108,7 @@
   </div>
 
   <!-- Modal: Post New Announcement -->
-  <div class="modal-overlay" id="announcementModal">
+  <div class="modal-overlay" id="announcementModal" style="display: none;">
     <div class="modal-box">
       <div class="modal-header">
         <h3>Post New Institutional Announcement</h3>
@@ -88,6 +136,22 @@
           <button type="submit" id="submitNoticeBtn" class="btn btn-primary">Publish Notice</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal: Full Read/View Announcement Modal -->
+  <div class="modal-overlay" id="readAnnouncementModal" style="display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000;" onclick="closeReadModalOutside(event)">
+    <div class="modal-box" style="background: var(--bg-card, #ffffff); max-width: 600px; width: 90%; max-height: 85vh; overflow-y: auto; border-radius: 12px; padding: 1.5rem; position: relative; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color, #e2e8f0); padding-bottom: 0.75rem; margin-bottom: 1rem;">
+        <div id="readModalCategoryTag" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; padding: 0.2rem 0.5rem; border-radius: 4px;"></div>
+        <button onclick="closeReadModal()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b;"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <h2 id="readModalTitle" style="font-size: 1.25rem; font-weight: 700; color: var(--text-color, #0f172a); margin-bottom: 0.5rem;"></h2>
+      <div id="readModalDateAuthor" style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem; display: flex; gap: 1rem;"></div>
+      <div id="readModalBody" style="font-size: 0.9rem; color: #334155; line-height: 1.6; white-space: pre-wrap; background: var(--bg-main, #f8fafc); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color, #e2e8f0); margin-bottom: 1.5rem;"></div>
+      <div style="text-align: right;">
+        <button type="button" class="btn btn-primary" onclick="closeReadModal()">Close Notice</button>
+      </div>
     </div>
   </div>
 
