@@ -266,6 +266,9 @@ window.selectThread = async function(threadId) {
   const bookmarks = JSON.parse(localStorage.getItem(`samcam_bookmarks_${session.name}`) || '[]');
   const isBookmarked = bookmarks.includes(thread.id);
 
+  // Extract author stream or class info if available
+  const authorSubtext = thread.authorStream ? `${escapeHtml(thread.authorName)} (${escapeHtml(thread.authorStream)})` : escapeHtml(thread.authorName || 'Instructor');
+
   detailPane.innerHTML = 
     '<div class="active-thread-header">' +
       '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">' +
@@ -282,7 +285,7 @@ window.selectThread = async function(threadId) {
           '</button>' +
           (isAuthor || isTeacherOrAdmin ? '<button class="btn btn-sm btn-outline" onclick="openEditThreadModal(\'' + thread.id + '\')" title="Edit Thread" style="background:transparent;"><i class="fa-solid fa-pen-to-square"></i></button>' : '') +
           (isAuthor || isTeacherOrAdmin ? '<button class="btn btn-sm btn-outline" onclick="confirmDeleteThread(\'' + thread.id + '\')" title="Delete Thread" style="background:transparent; color:#ef4444; border-color:#fca5a5;"><i class="fa-solid fa-trash"></i></button>' : '') +
-          '<span style="font-size:0.75rem; color:#64748b; margin-left:0.25rem;">Posted by <strong>' + escapeHtml(thread.authorName || 'Instructor') + '</strong></span>' +
+          '<span style="font-size:0.75rem; color:#64748b; margin-left:0.25rem;">Posted by <strong>' + authorSubtext + '</strong></span>' +
         '</div>' +
       '</div>' +
       '<h3>' + escapeHtml(thread.title) + '</h3>' +
@@ -665,6 +668,11 @@ function loadThreadRepliesRealtime(threadId) {
         const editBtnHtml = showActionButtons ? `<button class="btn btn-xs btn-outline" style="font-size:0.7rem; padding:0.1rem 0.3rem;" onclick="enableEditComment('${threadId}', '${repId}', \`${escapeHtml(rep.replyBody).replace(/\\/g, '\\\\').replace(/`/g, '\\`')}\`)"><i class="fa-solid fa-pen"></i> Edit</button>` : '';
         const deleteBtnHtml = showActionButtons ? `<button class="btn btn-xs btn-outline" style="font-size:0.7rem; padding:0.1rem 0.3rem; color:#ef4444; border-color:#fca5a5;" onclick="deleteComment('${threadId}', '${repId}', '${escapeHtml(rep.studentName)}')"><i class="fa-solid fa-trash"></i> Delete</button>` : '';
 
+        // Format student class and stream designation for the header
+        const studentClassInfo = rep.studentClass || rep.classTarget || 'Student';
+        const studentStreamInfo = rep.studentStream || rep.stream ? ` (${rep.studentStream || rep.stream})` : '';
+        const authorSubtext = `${escapeHtml(studentClassInfo)}${escapeHtml(studentStreamInfo)}`;
+
         let mediaHtml = '';
         if (rep.mediaUrl) {
           if (rep.mediaUrl.includes('forum_audio') || rep.mediaUrl.includes('.webm') || rep.mediaUrl.includes('.mp3')) {
@@ -684,7 +692,7 @@ function loadThreadRepliesRealtime(threadId) {
         html += `
           <div class="reply-item ${rep.isBestAnswer ? 'best-answer-card' : ''}" style="${rep.isBestAnswer ? 'border-left: 4px solid #10b981; background: #f0fdf4;' : ''}">
             <div class="reply-meta">
-              <span class="reply-author">${escapeHtml(rep.studentName)} <span style="font-weight:normal; color:#64748b;">(${escapeHtml(rep.studentClass || 'Student')})</span> ${badgeHtml} ${isBest}</span>
+              <span class="reply-author">${escapeHtml(rep.studentName)} <span style="font-weight:normal; color:#64748b;">(${authorSubtext})</span> ${badgeHtml} ${isBest}</span>
               <span style="font-size:0.75rem; color:#64748b;">${repTime} ${rep.editedAt ? '(Edited)' : ''}</span>
             </div>
             <div class="reply-body" id="reply-body-${repId}">${formatRichContent(rep.replyBody)}</div>
