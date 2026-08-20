@@ -1165,30 +1165,72 @@ function loadUserProfileUI() {
 function handleUpdateAccountDetails(event) {
   event.preventDefault();
   const newUsername = document.getElementById('updateUsername').value.trim();
+  const currentPasswordInput = document.getElementById('currentPassword').value.trim();
   const newPassword = document.getElementById('updatePassword').value.trim();
+  const confirmPassword = document.getElementById('confirmPassword').value.trim();
+  
   const currentUser = JSON.parse(localStorage.getItem('currentLoggedInUser'));
 
-  if (!currentUser) return;
-
-  const updateData = { username: newUsername };
-  if (newPassword) {
-    updateData.password = newPassword;
+  if (!currentUser) {
+    alert("No active session found. Please sign in again.");
+    return;
   }
 
-  db.collection("students").where("username", "==", currentUser.username).get().then((querySnapshot) => {
-    if (!querySnapshot.empty) {
-      querySnapshot.forEach((doc) => {
-        doc.ref.update(updateData);
-      });
+  // 1. Check if new passwords match when attempting to change it
+  if (newPassword && newPassword !== confirmPassword) {
+    alert("New passwords do not match! Please re-enter.");
+    return;
+  }
+
+  // 2. Query the correct 'users' collection using the document ID / username
+  const userRef = db.collection("users").doc(currentUser.username);
+
+  userRef.get().then((docSnapshot) => {
+    if (!docSnapshot.exists) {
+      alert("User record not found in database.");
+      return;
     }
-    currentUser.username = newUsername;
-    localStorage.setItem('currentLoggedInUser', JSON.stringify(currentUser));
+
+    const userData = docSnapshot.data();
+
+    // Verify current password matches database record
+    if (userData.password !== currentPasswordInput) {
+      alert("Incorrect current password! Changes rejected.");
+      return;
+    }
+
+    // Build update payload
+    const updateData = {};
     
-    alert("Account details updated successfully!");
-    loadUserProfileUI();
+    // If username is changing, Firestore requires creating a new doc or keeping the same doc ID. 
+    // Since document ID is the username here, changing the username field is straightforward:
+    if (newUsername && newUsername !== currentUser.username) {
+      updateData.username = newUsername;
+    }
+
+    if (newPassword) {
+      updateData.password = newPassword;
+    }
+
+    // Perform database update on the user document
+    userRef.update(updateData).then(() => {
+      if (newUsername) {
+        currentUser.username = newUsername;
+      }
+      localStorage.setItem('currentLoggedInUser', JSON.stringify(currentUser));
+      
+      // Clear password fields for security
+      document.getElementById('currentPassword').value = '';
+      document.getElementById('updatePassword').value = '';
+      document.getElementById('confirmPassword').value = '';
+
+      alert("Account details and security credentials updated successfully!");
+      loadUserProfileUI();
+    });
+
   }).catch((error) => {
     console.error("Error updating account details:", error);
-    alert("Error updating account.");
+    alert("Error updating account. Check console for details.");
   });
 }
 
