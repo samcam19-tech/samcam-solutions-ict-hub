@@ -43,7 +43,17 @@
         <a href="announcements.html"><i class="fa-solid fa-bullhorn"></i> Announcements</a>
       </nav>
 
+      <!-- Header Actions (Theme Toggle & Profile Chip) -->
       <div class="header-actions">
+        <!-- User Profile Chip added right next to theme toggle -->
+        <div class="nav-user-profile" style="display: flex; align-items: center; gap: 10px; margin-right: 5px;">
+          <img id="bannerProfilePic" src="images/default-avatar.png" alt="Profile" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
+          <div class="user-meta" style="display: flex; flex-direction: column; text-align: left; line-height: 1.2;">
+            <span id="userNameDisplay" style="font-size: 13px; font-weight: 600; color: var(--text-main);">User</span>
+            <span id="profileUsernameDisplay" style="font-size: 11px; color: var(--text-muted, #777);">@username</span>
+          </div>
+        </div>
+
         <button id="themeToggleBtn" class="btn-icon-only" title="Toggle Theme"><i class="fa-solid fa-moon"></i></button>
       </div>
     </div>
