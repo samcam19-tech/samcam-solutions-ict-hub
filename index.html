@@ -89,6 +89,22 @@
       }
     }
   </style>
+  <script>
+  (function () {
+    // Check for active login session across common storage keys
+    const sessionData = localStorage.getItem('currentLoggedInUser') || 
+                        localStorage.getItem('portal_session') || 
+                        sessionStorage.getItem('portal_session');
+    
+    const currentUser = window.currentUser;
+
+    // If no session data and no global currentUser object exist, redirect to login
+    if (!sessionData && !currentUser) {
+      // Change 'index.html' or 'login.html' to your actual login page filename if different
+      window.location.replace('index.html');
+    }
+  })();
+</script>
 
   <!-- Firebase App & Firestore Compatibility SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
