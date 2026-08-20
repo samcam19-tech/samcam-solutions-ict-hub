@@ -333,13 +333,29 @@
             navAnnouncementsCache = [];
             snapshot.forEach((doc) => {
               const data = doc.data();
+              
+              // Safe date parsing handling Timestamps, Date objects, or string representations
+              let formattedDate = 'Just now';
+              if (data.createdAt) {
+                if (typeof data.createdAt.toDate === 'function') {
+                  formattedDate = data.createdAt.toDate().toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+                } else {
+                  const parsedDate = new Date(data.createdAt);
+                  if (!isNaN(parsedDate)) {
+                    formattedDate = parsedDate.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+                  } else {
+                    formattedDate = String(data.createdAt);
+                  }
+                }
+              }
+
               navAnnouncementsCache.push({
                 id: doc.id,
-                title: data.title,
-                priority: data.priority,
-                body: data.body,
-                author: data.author,
-                createdAt: data.createdAt ? data.createdAt.toDate().toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) : 'Just now'
+                title: data.title || 'Untitled Notice',
+                priority: data.priority || 'General',
+                body: data.body || '',
+                author: data.author || 'Admin',
+                createdAt: formattedDate
               });
             });
             updateNavBadgeCounter();
