@@ -6,6 +6,41 @@ window.currentUser = null;
 let editingUsername = null;
 let currentStudentSubmissionsPage = 1;
 const ITEMS_PER_PAGE = 5;
+// --- FIREBASE INITIALIZATION ---
+const firebaseConfig = {
+  apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
+  authDomain: "samcam-system.firebaseapp.com",
+  projectId: "samcam-system",
+  storageBucket: "samcam-system.firebasestorage.app",
+  messagingSenderId: "74940789582",
+  appId: "1:74940789582:web:f159688165a194e841241f",
+  measurementId: "G-L2H4V8Y050"
+};
+
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+window.db = firebase.firestore();
+const storageRef = firebase.storage().ref();
+
+// --- STATE VARIABLES ---
+let assessmentCurrentPage = 1;
+let assessmentPerPage = 5;
+
+let submissionCurrentPage = 1;
+let submissionPerPage = 5;
+
+let studentCurrentPage = 1;
+let studentPerPage = 8;
+
+let currentEditingStudentId = null;
+
+// --- DOM CONTENT LOADED EVENT BINDING ---
+document.addEventListener('DOMContentLoaded', () => {
+  // Navigation & Menu toggles
+  const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+  if (mobileMenuBtn) {
+    mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+  }
 
 const initialAssessments = [
   {
@@ -399,6 +434,8 @@ window.downloadStudentCSV = async function() {
   link.click();
   document.body.removeChild(link);
 };
+
+
 
 /* ==========================================================================
    3. STUDENT MANAGEMENT MODAL & PAGINATION WITH ELLIPSIS
@@ -913,6 +950,311 @@ window.cancelSubmission = async function(testId) {
 
   renderAssessments();
 };
+
+
+const navHomeLink = document.getElementById('navHomeLink');
+  if (navHomeLink) {
+    navHomeLink.addEventListener('click', (e) => navigateTo(e, 'home'));
+  }
+
+  const navQuizLink = document.getElementById('navQuizLink');
+  if (navQuizLink) {
+    navQuizLink.addEventListener('click', (e) => navigateTo(e, 'quiz'));
+  }
+
+  // Forms and Buttons
+  const loginForm = document.getElementById('loginForm');
+  if (loginForm) {
+    loginForm.addEventListener('submit', handleLogin);
+  }
+
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', handleLogout);
+  }
+
+  const profilePicInput = document.getElementById('profilePicInput');
+  if (profilePicInput) {
+    profilePicInput.addEventListener('change', handleProfilePicUpload);
+  }
+
+  const updateAccountForm = document.getElementById('updateAccountForm');
+  if (updateAccountForm) {
+    updateAccountForm.addEventListener('submit', handleUpdateAccountDetails);
+  }
+
+  const registerStudentForm = document.getElementById('registerStudentForm');
+  if (registerStudentForm) {
+    registerStudentForm.addEventListener('submit', handleRegisterStudent);
+  }
+
+  const bulkImportBtn = document.getElementById('bulkImportBtn');
+  if (bulkImportBtn) {
+    bulkImportBtn.addEventListener('click', handleBulkImport);
+  }
+
+  const assessmentForm = document.getElementById('assessmentForm');
+  if (assessmentForm) {
+    assessmentForm.addEventListener('click', handleCreateAssessment); // Or standard submit handler
+  }
+
+  const filterAssessmentClass = document.getElementById('filterAssessmentClass');
+  if (filterAssessmentClass) {
+    filterAssessmentClass.addEventListener('change', filterAssessmentsByClass);
+  }
+
+  const downloadCsvBtn = document.getElementById('downloadCsvBtn');
+  if (downloadCsvBtn) {
+    downloadCsvBtn.addEventListener('click', downloadStudentCSV);
+  }
+
+  const openManageStudentsBtn = document.getElementById('openManageStudentsBtn');
+  if (openManageStudentsBtn) {
+    openManageStudentsBtn.addEventListener('click', openManageStudentsModal);
+  }
+
+  const assignmentForm = document.getElementById('assignmentForm');
+  if (assignmentForm) {
+    assignmentForm.addEventListener('submit', handleFormSubmission);
+  }
+
+  const studentSearchInput = document.getElementById('studentSearchInput');
+  if (studentSearchInput) {
+    studentSearchInput.addEventListener('keyup', () => {
+      studentCurrentPage = 1;
+      renderStudentModalTable();
+    });
+  }
+
+  const deleteAllStudentsBtn = document.getElementById('deleteAllStudentsBtn');
+  if (deleteAllStudentsBtn) {
+    deleteAllStudentsBtn.addEventListener('click', deleteAllStudents);
+  }
+
+  const gradingForm = document.getElementById('gradingForm');
+  if (gradingForm) {
+    gradingForm.addEventListener('submit', saveStudentGrade);
+  }
+
+  // Modal Close Listeners
+  const closeSubmissionModalBtn = document.getElementById('closeSubmissionModalBtn');
+  if (closeSubmissionModalBtn) closeSubmissionModalBtn.addEventListener('click', closeSubmissionModal);
+
+  const cancelSubmissionBtn = document.getElementById('cancelSubmissionBtn');
+  if (cancelSubmissionBtn) cancelSubmissionBtn.addEventListener('click', closeSubmissionModal);
+
+  const closeManageStudentsModalBtn = document.getElementById('closeManageStudentsModalBtn');
+  if (closeManageStudentsModalBtn) closeManageStudentsModalBtn.addEventListener('click', closeManageStudentsModal);
+
+  const closeGradingModalBtn = document.getElementById('closeGradingModalBtn');
+  if (closeGradingModalBtn) closeGradingModalBtn.addEventListener('click', closeGradingModal);
+
+  const cancelGradingBtn = document.getElementById('cancelGradingBtn');
+  if (cancelGradingBtn) cancelGradingBtn.addEventListener('click', closeGradingModal);
+
+  // Initial check on load
+  checkUserSession();
+});
+
+// --- CORE UTILS & FUNCTIONS ---
+
+function toggleMobileMenu() {
+  const navActions = document.getElementById('authNavActions');
+  const menuIcon = document.getElementById('menuToggleIcon');
+  navActions.classList.toggle('mobile-active');
+  if (navActions.classList.contains('mobile-active')) {
+    menuIcon.className = "fa-solid fa-xmark";
+  } else {
+    menuIcon.className = "fa-solid fa-bars";
+  }
+}
+
+function navigateTo(e, routeKey) {
+  if (e) e.preventDefault();
+  const urls = {
+    home: 'index.html',
+    quiz: 'quiz.html',
+    portal: 'assessments.html'
+  };
+  const targetUrl = urls[routeKey] || 'index.html';
+  window.history.pushState({ route: routeKey }, '', targetUrl);
+  window.location.href = targetUrl;
+}
+
+function generatePaginationHTML(currentPage, totalPages, callbackName) {
+  if (totalPages <= 1) return '';
+  
+  let html = `<button class="page-btn" onclick="${callbackName}(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>`;
+  
+  let startPage = Math.max(1, currentPage - 2);
+  let endPage = Math.min(totalPages, currentPage + 2);
+
+  if (startPage > 1) {
+    html += `<button class="page-btn" onclick="${callbackName}(1)">1</button>`;
+    if (startPage > 2) {
+      html += `<span class="page-ellipsis">&hellip;</span>`;
+    }
+  }
+
+  for (let i = startPage; i <= endPage; i++) {
+    html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="${callbackName}(${i})">${i}</button>`;
+  }
+
+  if (endPage < totalPages) {
+    if (endPage < totalPages - 1) {
+      html += `<span class="page-ellipsis">&hellip;</span>`;
+    }
+    html += `<button class="page-btn" onclick="${callbackName}(${totalPages})">${totalPages}</button>`;
+  }
+
+  html += `<button class="page-btn" onclick="${callbackName}(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>`;
+  
+  return html;
+}
+
+// --- PROFILE & ACCOUNT SETTINGS LOGIC ---
+
+function handleProfilePicUpload(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+
+  const currentUser = JSON.parse(localStorage.getItem('currentLoggedInUser'));
+  if (!currentUser) return;
+
+  const filePath = `profile_pictures/${currentUser.username}_${Date.now()}_${file.name}`;
+  const fileRef = storageRef.child(filePath);
+
+  alert("Uploading profile picture...");
+
+  fileRef.put(file).then((snapshot) => {
+    return snapshot.ref.getDownloadURL();
+  }).then((downloadURL) => {
+    currentUser.profilePic = downloadURL;
+    localStorage.setItem('currentLoggedInUser', JSON.stringify(currentUser));
+
+    return db.collection("students").where("username", "==", currentUser.username).get();
+  }).then((querySnapshot) => {
+    if (!querySnapshot.empty) {
+      querySnapshot.forEach((doc) => {
+        doc.ref.update({ profilePic: JSON.parse(localStorage.getItem('currentLoggedInUser')).profilePic });
+      });
+    }
+    alert("Profile picture updated successfully!");
+    loadUserProfileUI();
+  }).catch((error) => {
+    console.error("Error uploading profile picture: ", error);
+    alert("Failed to upload image.");
+  });
+}
+
+function loadUserProfileUI() {
+  const currentUser = JSON.parse(localStorage.getItem('currentLoggedInUser'));
+  if (!currentUser) return;
+
+  if (document.getElementById('userNameDisplay')) document.getElementById('userNameDisplay').innerText = currentUser.fullName || currentUser.username;
+  if (document.getElementById('userRoleDisplay')) document.getElementById('userRoleDisplay').innerText = currentUser.role || 'Student';
+  if (document.getElementById('profileFullName')) document.getElementById('profileFullName').innerText = currentUser.fullName || currentUser.username;
+  if (document.getElementById('profileUsernameDisplay')) document.getElementById('profileUsernameDisplay').innerText = `@${currentUser.username}`;
+  if (document.getElementById('updateUsername')) document.getElementById('updateUsername').value = currentUser.username;
+
+  const avatarUrl = currentUser.profilePic || 'images/default-avatar.png';
+  if (document.getElementById('profilePicPreview')) document.getElementById('profilePicPreview').src = avatarUrl;
+  if (document.getElementById('bannerProfilePic')) document.getElementById('bannerProfilePic').src = avatarUrl;
+}
+
+function handleUpdateAccountDetails(event) {
+  event.preventDefault();
+  const newUsername = document.getElementById('updateUsername').value.trim();
+  const newPassword = document.getElementById('updatePassword').value.trim();
+  const currentUser = JSON.parse(localStorage.getItem('currentLoggedInUser'));
+
+  if (!currentUser) return;
+
+  const updateData = { username: newUsername };
+  if (newPassword) {
+    updateData.password = newPassword;
+  }
+
+  db.collection("students").where("username", "==", currentUser.username).get().then((querySnapshot) => {
+    if (!querySnapshot.empty) {
+      querySnapshot.forEach((doc) => {
+        doc.ref.update(updateData);
+      });
+    }
+    currentUser.username = newUsername;
+    localStorage.setItem('currentLoggedInUser', JSON.stringify(currentUser));
+    
+    alert("Account details updated successfully!");
+    loadUserProfileUI();
+  }).catch((error) => {
+    console.error("Error updating account details:", error);
+    alert("Error updating account.");
+  });
+}
+
+// --- AUTHENTICATION MOCK & SESSION UTILS ---
+function checkUserSession() {
+  const currentUser = JSON.parse(localStorage.getItem('currentLoggedInUser'));
+  if (currentUser) {
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('dashboardSection').style.display = 'block';
+    loadUserProfileUI();
+
+    if (currentUser.role === 'teacher') {
+      document.getElementById('teacherControls').style.display = 'block';
+      document.getElementById('teacherReports').style.display = 'grid';
+    } else {
+      document.getElementById('teacherControls').style.display = 'none';
+      document.getElementById('teacherReports').style.display = 'none';
+    }
+  } else {
+    document.getElementById('loginSection').style.display = 'block';
+    document.getElementById('dashboardSection').style.display = 'none';
+  }
+}
+
+function handleLogin(e) {
+  e.preventDefault();
+  const user = document.getElementById('loginUsername').value.trim();
+  const pass = document.getElementById('loginPassword').value.trim();
+
+  // Basic authentication setup mock
+  if (user === "admin" && pass === "admin123") {
+    const adminUser = { username: "admin", fullName: "Administrator", role: "teacher" };
+    localStorage.setItem('currentLoggedInUser', JSON.stringify(adminUser));
+    checkUserSession();
+  } else {
+    db.collection("students").where("username", "==", user).where("password", "==", pass).get().then((snapshot) => {
+      if (!snapshot.empty) {
+        const studentData = snapshot.docs[0].data();
+        localStorage.setItem('currentLoggedInUser', JSON.stringify({ ...studentData, role: 'student' }));
+        checkUserSession();
+      } else {
+        document.getElementById('loginError').style.display = 'block';
+      }
+    });
+  }
+}
+
+function handleLogout() {
+  localStorage.removeItem('currentLoggedInUser');
+  checkUserSession();
+}
+
+// Placeholder wrappers for features
+function handleRegisterStudent(e) { e.preventDefault(); }
+function handleBulkImport() {}
+function handleCreateAssessment(e) { e.preventDefault(); }
+function filterAssessmentsByClass() {}
+function downloadStudentCSV() {}
+function openManageStudentsModal() { document.getElementById('manageStudentsModal').style.display = 'flex'; }
+function closeManageStudentsModal() { document.getElementById('manageStudentsModal').style.display = 'none'; }
+function handleFormSubmission(e) { e.preventDefault(); }
+function deleteAllStudents() {}
+function closeSubmissionModal() { document.getElementById('submissionModal').style.display = 'none'; }
+function closeGradingModal() { document.getElementById('gradingModal').style.display = 'none'; }
+function saveStudentGrade(e) { e.preventDefault(); }
+function renderStudentModalTable() {}
 
 /* ==========================================================================
    TEACHER GRADING & FEEDBACK MODULE
