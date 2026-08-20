@@ -469,8 +469,7 @@
       window.location.href = 'assessments.html'; // Adjust to your login page filename if different
     }
 
-   // Profile Modals Control Functions
-function openViewProfileModal(event) {
+   function openViewProfileModal(event) {
   event.preventDefault();
   const menu = document.getElementById('profileDropdownMenu');
   if (menu) menu.style.display = 'none';
@@ -481,13 +480,14 @@ function openViewProfileModal(event) {
     const role = currentUser.role ? currentUser.role.toUpperCase() : (currentUser.class || 'Student');
     const pic = currentUser.profilePic || currentUser.avatarUrl || currentUser.photoURL || 'images/default-avatar.png';
 
-    // Safely update elements if they exist in the DOM
     const elFullName = document.getElementById('modalFullName');
+    const elFullNameRow = document.getElementById('modalFullNameRow');
     const elUsername = document.getElementById('modalUsername');
     const elUserRole = document.getElementById('modalUserRole');
     const elProfilePic = document.getElementById('modalProfilePic');
 
     if (elFullName) elFullName.textContent = fullName;
+    if (elFullNameRow) elFullNameRow.textContent = fullName;
     if (elUsername) elUsername.textContent = username;
     if (elUserRole) elUserRole.textContent = role;
     if (elProfilePic) elProfilePic.src = pic;
