@@ -16,7 +16,7 @@
   <link rel="stylesheet" href="quiz-style.css" />
   
   <style>
-    /* --- MOBILE MENU RESPONSIVE STYLES --- */
+    /* --- MOBILE MENU & PROFILE RESPONSIVE STYLES --- */
     .mobile-menu-toggle {
       display: none;
       background: transparent;
@@ -25,6 +25,37 @@
       color: #ffffff;
       cursor: pointer;
       padding: 0.5rem;
+    }
+
+    .user-profile-widget {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .user-profile-widget img {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .user-meta-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+
+    .user-meta-text .full-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #ffffff;
+    }
+
+    .user-meta-text .username {
+      font-size: 0.75rem;
+      color: #94a3b8;
     }
 
     @media (max-width: 768px) {
@@ -83,10 +114,20 @@
         <i class="fa-solid fa-bars" id="menuToggleIcon"></i>
       </button>
 
-      <div class="user-profile" id="userProfileContainer" style="display: flex; align-items: center; gap: 0.75rem;">
-        <div id="userBadge" class="user-badge">
+      <div class="user-profile" id="userProfileContainer" style="display: flex; align-items: center; gap: 1rem;">
+        <!-- User Profile Widget (Logo/Avatar, Full Name, Username) -->
+        <div class="user-profile-widget">
+          <img src="images/default-avatar.png" id="bannerProfilePic" alt="User Profile" onerror="this.src='images/default-avatar.png'">
+          <div class="user-meta-text">
+            <span class="full-name" id="userNameDisplay">Loading...</span>
+            <span class="username" id="profileUsernameDisplay">@user</span>
+          </div>
+        </div>
+
+        <div id="userBadge" class="user-badge" style="display:none;">
           <i class="fa-solid fa-circle-notch fa-spin"></i> Checking Session...
         </div>
+
         <!-- Back to Assessment Page Button -->
         <a href="assessments.html" class="btn btn-outline" title="Back to Assessments" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; background: rgba(255,255,255,0.1); border-color: #334155; color: #fff; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 20px;">
           <i class="fa-solid fa-arrow-left"></i> Back
