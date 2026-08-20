@@ -52,7 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* ==========================================================================
-   DYNAMIC STYLING INJECTION FOR BADGES & TABS
+   DYNAMIC STYLING INJECTION FOR BADGES, TABS & COUNTDOWNS
    ========================================================================== */
 function injectExtraStyles() {
   if (document.getElementById('samcamClassesExtraStyles')) return;
@@ -73,6 +73,17 @@ function injectExtraStyles() {
       display: inline-flex;
       align-items: center;
       gap: 5px;
+    }
+    .live-countdown {
+      color: var(--warning-color, #eab308);
+      font-size: 0.85rem;
+      font-weight: 700;
+      margin-top: 8px;
+      font-family: monospace;
+      background: var(--bg-chip, #f1f5f9);
+      padding: 4px 8px;
+      border-radius: 4px;
+      display: inline-block;
     }
     .tab-toolbar {
       display: flex;
@@ -104,6 +115,14 @@ function injectExtraStyles() {
     }
     .class-card {
       position: relative;
+    }
+    .class-desc {
+      background: var(--bg-card-sub, rgba(0,0,0,0.02));
+      border-left: 3px solid var(--primary-color, #2563eb);
+      padding: 8px 12px;
+      margin: 10px 0;
+      font-size: 0.92rem;
+      border-radius: 0 4px 4px 0;
     }
     .resource-links-box {
       margin-top: 12px;
@@ -170,8 +189,6 @@ function getCurrentUserSession(userParam) {
 
 function syncLiveClassSession(user) {
   const session = getCurrentUserSession(user);
-  console.log("Synced Live Class Session:", session);
-
   const combinedCheck = `${session.role} ${session.name} ${session.userClass}`.toLowerCase();
   const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
                            combinedCheck.includes('admin') || 
@@ -248,7 +265,6 @@ function renderClassesGrid() {
   const container = document.getElementById('classes-grid');
   if (!container) return;
 
-  // Inject Tab bar dynamically above grid if not already present
   let tabToolbar = document.getElementById('classesTabToolbar');
   if (!tabToolbar) {
     tabToolbar = document.createElement('div');
@@ -269,7 +285,6 @@ function renderClassesGrid() {
 
   let filtered = allClasses;
 
-  // Filter by user class level role
   if (!isTeacherOrAdmin) {
     const studentClass = session.userClass;
     filtered = allClasses.filter(item => {
@@ -282,7 +297,6 @@ function renderClassesGrid() {
 
   const now = new Date();
 
-  // Separate into Upcoming/Live vs Past Sessions
   filtered = filtered.filter(item => {
     const isLive = isClassLive(item.startTime, item.endTime);
     const isFuture = new Date(item.startTime) > now;
@@ -295,7 +309,6 @@ function renderClassesGrid() {
     }
   });
 
-  // Sort: Active live sessions first, then chronological
   filtered.sort((a, b) => {
     const aLive = isClassLive(a.startTime, a.endTime);
     const bLive = isClassLive(b.startTime, b.endTime);
@@ -316,17 +329,19 @@ function renderClassesGrid() {
   }
 
   filtered.forEach(item => {
-    const formattedDate = new Date(item.startTime).toLocaleString('en-US', {
+    const startDate = new Date(item.startTime);
+    const formattedDate = startDate.toLocaleString('en-US', {
       weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
     });
 
     const isLive = isClassLive(item.startTime, item.endTime);
+    const timeDiffHours = (startDate - now) / (1000 * 60 * 60);
+    const showCountdown = !isLive && timeDiffHours > 0 && timeDiffHours <= 24;
 
     const card = document.createElement('div');
     card.className = 'class-card';
     if (isLive) card.style.borderColor = '#22c55e';
 
-    // Teacher quick action controls (Edit / Delete)
     let teacherActionsHtml = '';
     if (isTeacherOrAdmin) {
       teacherActionsHtml = `
@@ -337,7 +352,6 @@ function renderClassesGrid() {
       `;
     }
 
-    // Resource links snippet (Recordings / Handouts)
     let resourcesHtml = '';
     if (item.recordingUrl || item.handoutUrl) {
       resourcesHtml = `<div class="resource-links-box">`;
@@ -350,7 +364,6 @@ function renderClassesGrid() {
       resourcesHtml += `</div>`;
     }
 
-    // Generate .ics calendar download data URL
     const icsDataUrl = generateIcsDataUrl(item);
 
     card.innerHTML = `
@@ -362,8 +375,9 @@ function renderClassesGrid() {
           ${item.admissionType === 'restricted' ? '<span class="tag" style="background: #fee2e2; color: #991b1b;">Restricted Access</span>' : ''}
         </div>
         <h3 class="class-title">${item.title}</h3>
-        <p class="class-desc">${item.description || 'No instructions provided.'}</p>
-        <div class="class-details">
+        <div class="class-desc"><strong>Pre-Class Brief:</strong> ${item.description || 'No specific instructions provided.'}</div>
+        ${showCountdown ? `<div class="live-countdown" data-start="${item.startTime}"><i class="fa-solid fa-stopwatch"></i> Starts in: calculating...</div>` : ''}
+        <div class="class-details" style="margin-top: 10px;">
           <span><i class="fa-solid fa-user-tie"></i> Instructor: <strong>${item.instructorName}</strong></span>
           <span><i class="fa-regular fa-clock"></i> ${formattedDate}</span>
         </div>
@@ -371,12 +385,51 @@ function renderClassesGrid() {
       </div>
       <div class="class-footer" style="display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-top: 15px;">
         <a href="${icsDataUrl}" download="${item.title.replace(/[^a-zA-Z0-9]/g, '_')}.ics" class="resource-chip" title="Add to Google Calendar / Outlook"><i class="fa-solid fa-calendar-plus"></i> Add to Calendar</a>
-        <a href="${item.meetUrl}" target="_blank" class="meet-btn">
+        <a href="${item.meetUrl}" target="_blank" class="meet-btn" onclick="logAttendance('${item.id}')">
           <i class="fa-solid fa-video"></i> ${isLive ? 'Join Active Meet' : 'Join Meet'}
         </a>
       </div>
     `;
     container.appendChild(card);
+  });
+
+  startCountdownInterval();
+}
+
+/* ==========================================================================
+   AUTOMATION: LIVE COUNTDOWN & ATTENDANCE LOGGING
+   ========================================================================== */
+function startCountdownInterval() {
+  if (window.samcamCountdownTimer) clearInterval(window.samcamCountdownTimer);
+  window.samcamCountdownTimer = setInterval(() => {
+    document.querySelectorAll('.live-countdown').forEach(el => {
+      const startTime = new Date(el.getAttribute('data-start')).getTime();
+      const now = new Date().getTime();
+      const diff = startTime - now;
+
+      if (diff <= 0) {
+        el.innerHTML = "<span style='color: #22c55e;'>Session starting right now!</span>";
+      } else {
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+        el.innerHTML = `<i class="fa-solid fa-stopwatch"></i> Starts in: ${hours}h ${minutes}m ${seconds}s`;
+      }
+    });
+  }, 1000);
+}
+
+function logAttendance(classId) {
+  const session = getCurrentUserSession();
+  if (!db || !session.name) return;
+
+  db.collection("live_classes").doc(classId).collection("attendance").add({
+    studentName: session.name,
+    studentRole: session.role,
+    studentClass: session.userClass,
+    joinedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(err => {
+    console.error("Error writing attendance log:", err);
   });
 }
 
@@ -418,7 +471,6 @@ function openScheduleModal() {
   const form = document.getElementById('scheduleForm');
   if (form) form.reset();
 
-  // Add recording fields container dynamically if missing in modal form
   ensureRecordingFieldsInModal();
 
   const modeSelect = document.getElementById('meetingMode');
@@ -446,7 +498,6 @@ function ensureRecordingFieldsInModal() {
       </div>
     </div>
   `;
-  // Insert before modal footer
   const footer = form.querySelector('.modal-footer');
   form.insertBefore(div, footer);
 }
@@ -564,7 +615,6 @@ function handleScheduleSubmit(e) {
   const submitBtn = document.getElementById('submitClassBtn');
   
   if (editingClassId) {
-    // Updating existing class in Firestore without regenerating Meet link unless desired
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Updating...`;
 
@@ -593,7 +643,6 @@ function handleScheduleSubmit(e) {
     return;
   }
 
-  // Creating new class with Google Calendar API Meet Link generation
   if (!tokenClient) {
     alert("Google Identity Services is still loading or blocked. Please wait a moment and try again.");
     return;
@@ -698,7 +747,6 @@ async function createGoogleCalendarEvent(accessToken, classData) {
 function deleteClassSession(classId) {
   if (confirm("Are you sure you want to delete this class session? This action cannot be undone.")) {
     db.collection("live_classes").doc(classId).delete().then(() => {
-      // Real-time listener will automatically refresh the grid
     }).catch(err => {
       console.error("Error deleting session:", err);
       alert("Failed to delete session: " + err.message);
