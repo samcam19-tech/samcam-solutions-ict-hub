@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SAMCAM SOLUTIONS - LIVE CLASSES & GOOGLE MEET ENGINE
+   SAMCAM SOLUTIONS - LIVE CLASSES & GOOGLE MEET ENGINE (ROLE & CLASS BASED)
    ========================================================================== */
 
 const firebaseConfig = {
@@ -13,8 +13,10 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase & Firestore
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+if (typeof firebase !== "undefined" && !firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
+}
+const db = typeof firebase !== "undefined" ? firebase.firestore() : null;
 
 // Google API Client configuration
 const CLIENT_ID = '74940789582-42d2vlki0lr8bj734afchl8b42jo3b98.apps.googleusercontent.com';
@@ -24,8 +26,13 @@ let tokenClient = null;
 let allClasses = [];
 let currentFilterClass = 'ALL';
 
+window.addEventListener('portalSessionChanged', (e) => {
+  syncLiveClassSession(e.detail);
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
+  syncLiveClassSession();
   fetchClassesFromFirestore();
   
   // Safely initialize Google Identity Services token client
@@ -42,9 +49,78 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* ==========================================================================
+   SESSION MANAGEMENT & ROLE DETECTION (Unified with Forum Engine)
+   ========================================================================== */
+function getCurrentUserSession(userParam) {
+  let activeUser = userParam || window.currentUser;
+
+  if (!activeUser) {
+    const sessionData = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
+    if (sessionData) {
+      try {
+        activeUser = JSON.parse(sessionData);
+      } catch (e) {
+        console.error("Error parsing portal_session from storage:", e);
+        activeUser = null;
+      }
+    }
+  }
+
+  let role = '';
+  let name = '';
+  let userClass = 'ALL';
+
+  if (activeUser && typeof activeUser === 'object') {
+    role = activeUser.role || activeUser.userType || activeUser.type || activeUser.accessLevel || '';
+    name = activeUser.fullName || activeUser.name || activeUser.username || '';
+    userClass = activeUser.class || activeUser.userClass || 'ALL';
+  }
+
+  return {
+    role: (role || '').trim().toLowerCase(),
+    name: (name || '').trim(),
+    userClass: (userClass || 'ALL').trim()
+  };
+}
+
+function syncLiveClassSession(user) {
+  const session = getCurrentUserSession(user);
+  console.log("Synced Live Class Session:", session);
+
+  const combinedCheck = `${session.role} ${session.name} ${session.userClass}`.toLowerCase();
+  const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
+                           combinedCheck.includes('admin') || 
+                           combinedCheck.includes('instructor') ||
+                           combinedCheck.includes('staff');
+
+  // Toggle visibility of teacher-only elements (like the 'Schedule New Class' button/modal triggers)
+  document.querySelectorAll('.teacher-only').forEach(el => {
+    el.style.display = isTeacherOrAdmin ? 'inline-flex' : 'none';
+  });
+
+  // Update filter controls or automatically enforce class bounds for learners
+  updateClassFilterInterface(session, isTeacherOrAdmin);
+  renderClassesGrid();
+}
+
+function updateClassFilterInterface(session, isTeacherOrAdmin) {
+  const filterGroup = document.getElementById('classFilterGroup');
+  if (!filterGroup) return;
+
+  if (isTeacherOrAdmin) {
+    // Teachers see filter options or container
+    filterGroup.style.display = 'flex';
+  } else {
+    // Learners are restricted to their own class, hide manual multi-class filter buttons if desired
+    filterGroup.style.display = 'none';
+  }
+}
+
+/* ==========================================================================
    FIRESTORE DATA RETRIEVAL & RENDERING
    ========================================================================== */
 function fetchClassesFromFirestore() {
+  if (!db) return;
   db.collection("live_classes").orderBy("startTime", "asc").onSnapshot((snapshot) => {
     allClasses = [];
     snapshot.forEach((doc) => {
@@ -57,6 +133,13 @@ function fetchClassesFromFirestore() {
 }
 
 function filterClass(cls, event) {
+  const session = getCurrentUserSession();
+  const combinedCheck = `${session.role} ${session.name} ${session.userClass}`.toLowerCase();
+  const isTeacherOrAdmin = combinedCheck.includes('teacher') || combinedCheck.includes('admin') || combinedCheck.includes('instructor') || combinedCheck.includes('staff');
+
+  // Prevent students from overriding their class filter
+  if (!isTeacherOrAdmin) return;
+
   currentFilterClass = cls;
   document.querySelectorAll('#classFilterGroup .segment-btn').forEach(btn => btn.classList.remove('active'));
   if (event) event.currentTarget.classList.add('active');
@@ -69,14 +152,30 @@ function renderClassesGrid() {
 
   container.innerHTML = '';
 
-  const filtered = allClasses.filter(item => currentFilterClass === 'ALL' || item.classLevel === currentFilterClass);
+  const session = getCurrentUserSession();
+  const combinedCheck = `${session.role} ${session.name} ${session.userClass}`.toLowerCase();
+  const isTeacherOrAdmin = combinedCheck.includes('teacher') || combinedCheck.includes('admin') || combinedCheck.includes('instructor') || combinedCheck.includes('staff');
+
+  let filtered = allClasses;
+
+  if (!isTeacherOrAdmin) {
+    // Learners only view meetings matching their class level
+    const studentClass = session.userClass;
+    filtered = allClasses.filter(item => {
+      const itemCls = (item.classLevel || '').trim().toLowerCase();
+      return itemCls === 'general' || itemCls === studentClass.toLowerCase();
+    });
+  } else {
+    // Teachers can use the active button/dropdown filter
+    filtered = allClasses.filter(item => currentFilterClass === 'ALL' || item.classLevel === currentFilterClass);
+  }
 
   if (filtered.length === 0) {
     container.innerHTML = `
       <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted);">
         <i class="fa-solid fa-calendar-xmark" style="font-size: 2.5rem; margin-bottom: 1rem;"></i>
         <h3>No scheduled classes found</h3>
-        <p>Click "Schedule New Class" above to set up a live session.</p>
+        <p>${isTeacherOrAdmin ? 'Click "Schedule New Class" above to set up a live session.' : 'No live sessions currently scheduled for your class.'}</p>
       </div>
     `;
     return;
