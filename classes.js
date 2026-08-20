@@ -16,11 +16,9 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// Google API Client configurations
+// Google API Client configuration
 const CLIENT_ID = '74940789582-42d2vlki0lr8bj734afchl8b42jo3b98.apps.googleusercontent.com';
-const API_KEY = 'YOUR_GOOGLE_API_KEY_HERE'; // Optional if using tokenClient auth, but required for gapi.client.init
 const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
-const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
 
 let tokenClient = null;
 let allClasses = [];
@@ -30,13 +28,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   fetchClassesFromFirestore();
   
-  // Load GAPI client and Google Identity Services
-  gapi.load('client', () => {
-    gapi.client.init({
-      discoveryDocs: [DISCOVERY_DOC],
-    }).catch(err => console.error("GAPI client init error:", err));
-  });
-
+  // Safely initialize Google Identity Services token client
   const checkGoogleLoaded = setInterval(() => {
     if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
       tokenClient = google.accounts.oauth2.initTokenClient({
@@ -170,10 +162,8 @@ function handleScheduleSubmit(e) {
     }
 
     try {
-      // Set the token obtained from GIS into the GAPI client instance for authenticated calls
-      gapi.client.setToken({ access_token: resp.access_token });
-
-      const meetUrl = await createGoogleCalendarEvent({
+      // Direct REST API Call to Google Calendar with automatic Google Meet conference creation
+      const meetUrl = await createGoogleCalendarEvent(resp.access_token, {
         title, classLevel, instructorName, startTime, endTime, description
       });
 
@@ -204,7 +194,7 @@ function handleScheduleSubmit(e) {
   tokenClient.requestAccessToken({ prompt: 'consent' });
 }
 
-async function createGoogleCalendarEvent(classData) {
+async function createGoogleCalendarEvent(accessToken, classData) {
   const event = {
     'summary': `[${classData.classLevel}] ${classData.title} - Samcam ICT Hub`,
     'description': `${classData.description}\n\nInstructor: ${classData.instructorName}`,
@@ -218,13 +208,21 @@ async function createGoogleCalendarEvent(classData) {
     }
   };
 
-  const response = await gapi.client.calendar.events.insert({
-    'calendarId': 'primary',
-    'resource': event,
-    'conferenceDataVersion': 1
+  const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(event)
   });
 
-  const meetLink = response.result.hangoutLink;
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Failed to create calendar event via API.");
+  }
+
+  const meetLink = data.hangoutLink;
   if (!meetLink) throw new Error("Google Meet link was not returned by the API.");
   return meetLink;
 }
