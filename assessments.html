@@ -344,16 +344,24 @@
         </div>
 
         <form id="updateAccountForm" style="width: 100%;">
-          <div class="form-group">
-            <label for="updateUsername">Update Username</label>
-            <input type="text" id="updateUsername" placeholder="Enter new username..." required>
-          </div>
-          <div class="form-group">
-            <label for="updatePassword">New Password (leave blank to keep current)</label>
-            <input type="password" id="updatePassword" placeholder="Enter new password...">
-          </div>
-          <button type="submit" class="btn-submit" style="width: auto; padding: 0.6rem 1.2rem;"><i class="fa-solid fa-floppy-disk"></i> Save Account Changes</button>
-        </form>
+            <div class="form-group">
+              <label for="updateUsername">Update Username</label>
+              <input type="text" id="updateUsername" placeholder="Enter new username..." required>
+            </div>
+            <div class="form-group">
+              <label for="currentPassword">Current Password (required for any changes)</label>
+              <input type="password" id="currentPassword" placeholder="Enter current password..." required>
+            </div>
+            <div class="form-group">
+              <label for="updatePassword">New Password (leave blank if keeping current)</label>
+              <input type="password" id="updatePassword" placeholder="Enter new password...">
+            </div>
+            <div class="form-group">
+              <label for="confirmPassword">Confirm New Password</label>
+              <input type="password" id="confirmPassword" placeholder="Re-enter new password...">
+            </div>
+            <button type="submit" class="btn-submit" style="width: auto; padding: 0.6rem 1.2rem;"><i class="fa-solid fa-floppy-disk"></i> Save Account Changes</button>
+      </form>
       </div>
 
       <div class="portal-grid">
