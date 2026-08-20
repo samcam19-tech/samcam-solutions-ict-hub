@@ -101,7 +101,7 @@
 </head>
 <body>
 
-  <!-- Top Portal Header -->
+<!-- Top Portal Header -->
   <header class="portal-header">
     <div class="header-container" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
       <div class="brand-title">
@@ -115,12 +115,29 @@
       </button>
 
       <div class="user-profile" id="userProfileContainer" style="display: flex; align-items: center; gap: 1rem;">
-        <!-- User Profile Widget (Logo/Avatar, Full Name, Username) -->
-        <div class="user-profile-widget">
-          <img src="images/default-avatar.png" id="bannerProfilePic" alt="User Profile" onerror="this.src='images/default-avatar.png'">
-          <div class="user-meta-text">
-            <span class="full-name" id="userNameDisplay">Loading...</span>
-            <span class="username" id="profileUsernameDisplay">@user</span>
+        
+        <!-- Profile Dropdown Widget -->
+        <div class="profile-dropdown-wrapper" style="position: relative;">
+          <div class="user-profile-widget" onclick="toggleProfileDropdown(event)" style="cursor: pointer; display: flex; align-items: center; gap: 10px;">
+            <img src="images/default-avatar.png" id="bannerProfilePic" alt="User Profile" onerror="this.src='images/default-avatar.png'">
+            <div class="user-meta-text">
+              <span class="full-name" id="userNameDisplay">Loading...</span>
+              <span class="username" id="profileUsernameDisplay">@user</span>
+            </div>
+            <i class="fa-solid fa-chevron-down" style="font-size: 0.75rem; color: #94a3b8; margin-left: 4px;"></i>
+          </div>
+
+          <!-- Dropdown Menu Content -->
+          <div id="profileDropdownMenu" class="profile-dropdown-menu" style="display: none; position: absolute; right: 0; top: calc(100% + 10px); background: #1e293b; border: 1px solid #334155; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); width: 180px; z-index: 1100; overflow: hidden;">
+            <a href="profile.html" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f8fafc; text-decoration: none; font-size: 0.85rem; border-bottom: 1px solid #334155;">
+              <i class="fa-solid fa-user" style="color: #38bdf8; width: 16px;"></i> View Profile
+            </a>
+            <a href="edit-profile.html" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f8fafc; text-decoration: none; font-size: 0.85rem; border-bottom: 1px solid #334155;">
+              <i class="fa-solid fa-user-pen" style="color: #38bdf8; width: 16px;"></i> Edit Profile
+            </a>
+            <a href="#" onclick="handlePortalLogout(event)" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f87171; text-decoration: none; font-size: 0.85rem;">
+              <i class="fa-solid fa-right-from-bracket" style="width: 16px;"></i> Logout
+            </a>
           </div>
         </div>
 
