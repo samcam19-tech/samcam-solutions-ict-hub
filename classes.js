@@ -33,7 +33,6 @@ window.addEventListener('portalSessionChanged', (e) => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-  initTheme();
   syncLiveClassSession();
   fetchClassesFromFirestore();
   injectExtraStyles();
