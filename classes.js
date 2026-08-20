@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SAMCAM SOLUTIONS - LIVE CLASSES & GOOGLE MEET ENGINE
+   SAMCAM SOLUTIONS - LIVE CLASSES & GOOGLE MEET ENGINE (SESSION-BASED)
    ========================================================================== */
 
 const firebaseConfig = {
@@ -20,12 +20,20 @@ const db = firebase.firestore();
 const CLIENT_ID = '74940789582-42d2vlki0lr8bj734afchl8b42jo3b98.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 
+// List of authorized Teacher/Admin emails
+const AUTHORIZED_TEACHERS = [
+  "samuel.akugizibwe95@gmail.com",
+  "samuelakugizibwe23@gmail.com"
+];
+
 let tokenClient = null;
 let allClasses = [];
 let currentFilterClass = 'ALL';
+let currentUser = null; // Holds the logged-in user data from storage
 
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
+  checkUserSession();
   fetchClassesFromFirestore();
   
   // Safely initialize Google Identity Services token client
@@ -40,6 +48,34 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }, 500);
 });
+
+/* ==========================================================================
+   USER SESSION CHECK (Integration with assessments login)
+   ========================================================================== */
+function checkUserSession() {
+  // Adjust 'samcam_user' or 'currentUser' to match whatever key your assessment page uses
+  const savedUser = localStorage.getItem('samcam_user') || localStorage.getItem('currentUser');
+  
+  if (savedUser) {
+    try {
+      currentUser = JSON.parse(savedUser);
+    } catch (e) {
+      currentUser = { role: 'student', classLevel: savedUser }; // Fallback if stored as a plain string
+    }
+  } else {
+    // Default fallback mock for testing if no session exists yet (treat as student or public)
+    currentUser = { role: 'student', classLevel: 'Senior 3', name: 'Learner' };
+  }
+
+  const scheduleBtn = document.querySelector('button[onclick="openScheduleModal()"]');
+  const filterGroup = document.getElementById('classFilterGroup');
+
+  // If user is a student, lock their view to their specific class and hide teacher controls
+  if (currentUser.role === 'student' || currentUser.type === 'student') {
+    if (scheduleBtn) scheduleBtn.style.display = 'none'; // Hide scheduling button for learners
+    if (filterGroup) filterGroup.style.display = 'none'; // Hide class filter buttons for learners
+  }
+}
 
 /* ==========================================================================
    FIRESTORE DATA RETRIEVAL & RENDERING
@@ -57,6 +93,11 @@ function fetchClassesFromFirestore() {
 }
 
 function filterClass(cls, event) {
+  // Prevent students from changing filters
+  if (currentUser && (currentUser.role === 'student' || currentUser.type === 'student')) {
+    return;
+  }
+
   currentFilterClass = cls;
   document.querySelectorAll('#classFilterGroup .segment-btn').forEach(btn => btn.classList.remove('active'));
   if (event) event.currentTarget.classList.add('active');
@@ -69,14 +110,28 @@ function renderClassesGrid() {
 
   container.innerHTML = '';
 
-  const filtered = allClasses.filter(item => currentFilterClass === 'ALL' || item.classLevel === currentFilterClass);
+  let filtered = allClasses;
+
+  // Enforce class restriction for students based on their session class level
+  if (currentUser && (currentUser.role === 'student' || currentUser.type === 'student')) {
+    const studentClass = currentUser.classLevel || currentUser.class;
+    filtered = allClasses.filter(item => item.classLevel === studentClass);
+  } else if (currentFilterClass !== 'ALL') {
+    // Teachers/Admins use the filter bar
+    filtered = allClasses.filter(item => item.classLevel === currentFilterClass);
+  }
 
   if (filtered.length === 0) {
+    const studentClass = currentUser?.classLevel || currentUser?.class || 'your class';
+    const msg = (currentUser?.role === 'student' || currentUser?.type === 'student')
+      ? `No scheduled live sessions found for ${studentClass}.`
+      : 'No scheduled classes found.';
+      
     container.innerHTML = `
       <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted);">
         <i class="fa-solid fa-calendar-xmark" style="font-size: 2.5rem; margin-bottom: 1rem;"></i>
-        <h3>No scheduled classes found</h3>
-        <p>Click "Schedule New Class" above to set up a live session.</p>
+        <h3>${msg}</h3>
+        <p>Check back later for upcoming live sessions.</p>
       </div>
     `;
     return;
@@ -114,9 +169,14 @@ function renderClassesGrid() {
 }
 
 /* ==========================================================================
-   MODAL CONTROLS
+   MODAL CONTROLS & SCHEDULING WORKFLOW
    ========================================================================== */
 function openScheduleModal() {
+  // Double-check authorization before showing modal
+  if (!tokenClient) {
+    alert("Google Identity Services is still loading. Please wait a moment.");
+    return;
+  }
   const modal = document.getElementById('scheduleModal');
   if (modal) modal.style.display = 'flex';
 }
@@ -130,9 +190,6 @@ function closeScheduleModalDirect() {
   if (modal) modal.style.display = 'none';
 }
 
-/* ==========================================================================
-   GOOGLE MEET CREATION & SCHEDULING WORKFLOW
-   ========================================================================== */
 function handleScheduleSubmit(e) {
   e.preventDefault();
   
@@ -146,7 +203,7 @@ function handleScheduleSubmit(e) {
   const submitBtn = document.getElementById('submitClassBtn');
   
   if (!tokenClient) {
-    alert("Google Identity Services is still loading or blocked. Please wait a moment and try again.");
+    alert("Google Identity Services is still loading or blocked.");
     return;
   }
 
@@ -162,12 +219,25 @@ function handleScheduleSubmit(e) {
     }
 
     try {
-      // Direct REST API Call to Google Calendar with automatic Google Meet conference creation
+      // Verify teacher email via userinfo
+      const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        headers: { 'Authorization': `Bearer ${resp.access_token}` }
+      });
+      const userInfo = await userInfoRes.json();
+
+      if (!AUTHORIZED_TEACHERS.includes(userInfo.email)) {
+        alert(`Access Denied: (${userInfo.email}) is not authorized to schedule meetings.`);
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Create Meet & Schedule`;
+        return;
+      }
+
+      // Create Calendar Event & Meet Link
       const meetUrl = await createGoogleCalendarEvent(resp.access_token, {
         title, classLevel, instructorName, startTime, endTime, description
       });
 
-      // Save class data including generated Meet URL to Firestore
+      // Save to Firestore
       await db.collection("live_classes").add({
         title,
         classLevel,
