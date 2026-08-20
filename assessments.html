@@ -269,19 +269,19 @@
       </div>
       
       <!-- Mobile Menu Hamburger Button -->
-      <button type="button" class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle Navigation Menu">
+      <button type="button" class="mobile-menu-toggle" id="mobileMenuBtn" aria-label="Toggle Navigation Menu">
         <i class="fa-solid fa-bars" id="menuToggleIcon"></i>
       </button>
 
      <!-- Navigation Links -->
       <div class="nav-actions" id="authNavActions" style="display: none; align-items: center; gap: 1.5rem;">
-        <a href="index.html" class="nav-clean-link" onclick="navigateTo(event, 'home')">
+        <a href="index.html" class="nav-clean-link" id="navHomeLink">
           <i class="fa-solid fa-house"></i> Home Library
         </a>
         <a href="classes.html" class="nav-clean-link">
           <i class="fa-solid fa-video"></i> Online Classes
         </a>
-        <a href="quiz.html" class="nav-clean-link" onclick="navigateTo(event, 'quiz')">
+        <a href="quiz.html" class="nav-clean-link" id="navQuizLink">
           <i class="fa-solid fa-pen-to-square"></i> Online Quizzes
         </a>
         <a href="forum.html" class="nav-clean-link">
@@ -295,7 +295,7 @@
     <!-- AUTHENTICATED LOGIN PANEL -->
     <div id="loginSection" class="card-box" style="max-width: 450px; margin: 2rem auto;">
       <h3><i class="fa-solid fa-right-to-bracket"></i> Portal Sign In</h3>
-      <form id="loginForm" onsubmit="handleLogin(event); return false;">
+      <form id="loginForm">
         <div class="form-group">
           <label for="loginUsername">Username</label>
           <input type="text" id="loginUsername" name="username" placeholder="Enter username..." required autocomplete="username">
@@ -322,7 +322,7 @@
             <small id="userClassDisplay" style="color:#64748b; font-weight:normal; margin-left:5px;"></small>
           </div>
         </div>
-        <button onclick="handleLogout()" class="btn-logout"><i class="fa-solid fa-power-off"></i> Sign Out</button>
+        <button id="logoutBtn" class="btn-logout"><i class="fa-solid fa-power-off"></i> Sign Out</button>
       </div>
 
       <!-- ACCOUNT & PROFILE SETTINGS PANEL -->
@@ -339,11 +339,11 @@
             <label for="profilePicInput" class="btn-action btn-upload" style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;">
               <i class="fa-solid fa-camera"></i> Change Picture
             </label>
-            <input type="file" id="profilePicInput" accept="image/*" style="display: none;" onchange="handleProfilePicUpload(event)">
+            <input type="file" id="profilePicInput" accept="image/*" style="display: none;">
           </div>
         </div>
 
-        <form onsubmit="handleUpdateAccountDetails(event)" style="width: 100%;">
+        <form id="updateAccountForm" style="width: 100%;">
           <div class="form-group">
             <label for="updateUsername">Update Username</label>
             <input type="text" id="updateUsername" placeholder="Enter new username..." required>
@@ -362,7 +362,7 @@
         <div id="teacherControls" style="display:none;">
           <div class="card-box">
             <h3><i class="fa-solid fa-user-plus"></i> Register Student(s)</h3>
-            <form onsubmit="handleRegisterStudent(event)">
+            <form id="registerStudentForm">
               <div class="form-group">
                 <label for="regFullName">Full Name</label>
                 <input type="text" id="regFullName" placeholder="e.g. John Okello" required>
@@ -401,13 +401,13 @@
                 <label for="bulkStudentFile">Excel/CSV File</label>
                 <input type="file" id="bulkStudentFile" accept=".xlsx, .xls, .csv">
               </div>
-              <button type="button" onclick="handleBulkImport()" class="btn-submit" style="background: #059669;"><i class="fa-solid fa-file-import"></i> Import & Generate Credentials</button>
+              <button type="button" id="bulkImportBtn" class="btn-submit" style="background: #059669;"><i class="fa-solid fa-file-import"></i> Import & Generate Credentials</button>
             </div>
           </div>
 
           <div class="card-box">
             <h3><i class="fa-solid fa-upload"></i> Publish New Assessment</h3>
-            <form id="assessmentForm" onsubmit="handleCreateAssessment(event)">
+            <form id="assessmentForm">
               <div class="form-group">
                 <label for="testTitle">Assessment Title</label>
                 <input type="text" id="testTitle" placeholder="e.g. Wakissha UCE ICT 2 MOCK 2026" required>
@@ -440,7 +440,7 @@
         <div class="card-box" id="assessmentsViewPanel">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
             <h3 style="margin: 0;"><i class="fa-solid fa-list-check"></i> Active Assessments</h3>
-            <select id="filterAssessmentClass" onchange="filterAssessmentsByClass()" style="padding: 0.4rem; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem;">
+            <select id="filterAssessmentClass" style="padding: 0.4rem; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem;">
               <option value="ALL">All Classes</option>
               <option value="S1">S.1</option><option value="S2">S.2</option><option value="S3">S.3</option>
               <option value="S4">S.4</option><option value="S5">S.5</option><option value="S6">S.6</option>
@@ -459,8 +459,8 @@
             <h3 style="margin:0;"><i class="fa-solid fa-users"></i> Registered Student Credentials</h3>
             <p style="font-size: 0.85rem; color: #64748b; margin:0;">Download full class registration records or manage individual student accounts.</p>
             <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
-              <button onclick="downloadStudentCSV()" class="btn-action btn-secondary"><i class="fa-solid fa-file-csv"></i> Download CSV</button>
-              <a href="#" onclick="openManageStudentsModal(); return false;" class="btn-action btn-download" style="text-decoration:none;"><i class="fa-solid fa-user-gear"></i> Manage Registered Students</a>
+              <button id="downloadCsvBtn" class="btn-action btn-secondary"><i class="fa-solid fa-file-csv"></i> Download CSV</button>
+              <button id="openManageStudentsBtn" class="btn-action btn-download" style="border:none;"><i class="fa-solid fa-user-gear"></i> Manage Registered Students</button>
             </div>
           </div>
         </div>
@@ -478,9 +478,9 @@
   <!-- MODAL 1: STUDENT SUBMISSION FORM -->
   <div id="submissionModal" class="modal" style="display:none;">
     <div class="modal-card">
-      <div class="modal-close-btn" onclick="closeSubmissionModal()"><i class="fa-solid fa-xmark"></i></div>
+      <button type="button" class="modal-close-btn" id="closeSubmissionModalBtn"><i class="fa-solid fa-xmark"></i></button>
       <h3 style="margin-bottom:1.25rem;"><i class="fa-solid fa-paper-plane"></i> Submit Assignment</h3>
-      <form id="assignmentForm" onsubmit="handleFormSubmission(event)">
+      <form id="assignmentForm">
         <div class="form-group">
           <label for="studentName">Student Full Name</label>
           <input type="text" id="studentName" placeholder="e.g. John Doe" required>
@@ -502,7 +502,7 @@
           <input type="file" id="assignmentFile" accept=".pdf,.doc,.docx,.zip,.pptx,.xlsx" required>
         </div>
         <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.5rem; flex-wrap: wrap;">
-          <button type="button" onclick="closeSubmissionModal()" class="btn-action btn-secondary">Cancel</button>
+          <button type="button" id="cancelSubmissionBtn" class="btn-action btn-secondary">Cancel</button>
           <button type="submit" class="btn-action btn-upload">Submit Assignment</button>
         </div>
       </form>
@@ -512,12 +512,12 @@
   <!-- MODAL 2: MANAGE REGISTERED STUDENTS WITH PAGINATION & ELLIPSIS -->
   <div id="manageStudentsModal" class="manage-students-modal-overlay" style="display:none;">
     <div class="manage-students-modal-card">
-      <button type="button" onclick="closeManageStudentsModal()" class="modal-close-btn" aria-label="Close modal"><i class="fa-solid fa-xmark"></i></button>
+      <button type="button" id="closeManageStudentsModalBtn" class="modal-close-btn" aria-label="Close modal"><i class="fa-solid fa-xmark"></i></button>
       <h3 style="margin-bottom:1.25rem;"><i class="fa-solid fa-users-gear"></i> Manage Registered Students</h3>
       
       <div class="modal-top-bar">
-        <input type="text" id="studentSearchInput" placeholder="Search by name, class, or username..." onkeyup="studentCurrentPage=1; renderStudentModalTable()" style="padding: 0.5rem; flex: 1; min-width: 200px; border: 1px solid #cbd5e1; border-radius: 6px;">
-        <button type="button" onclick="deleteAllStudents()" class="btn-action btn-danger"><i class="fa-solid fa-trash-can"></i> Delete All Students</button>
+        <input type="text" id="studentSearchInput" placeholder="Search by name, class, or username..." style="padding: 0.5rem; flex: 1; min-width: 200px; border: 1px solid #cbd5e1; border-radius: 6px;">
+        <button type="button" id="deleteAllStudentsBtn" class="btn-action btn-danger"><i class="fa-solid fa-trash-can"></i> Delete All Students</button>
       </div>
 
       <div style="overflow-x: auto; width: 100%;">
@@ -542,9 +542,9 @@
   <!-- MODAL 3: TEACHER GRADING & FEEDBACK -->
   <div id="gradingModal" class="modal" style="display:none;">
     <div class="modal-card">
-      <div class="modal-close-btn" onclick="closeGradingModal()"><i class="fa-solid fa-xmark"></i></div>
+      <button type="button" class="modal-close-btn" id="closeGradingModalBtn"><i class="fa-solid fa-xmark"></i></button>
       <h3 style="margin-bottom:1.25rem;"><i class="fa-solid fa-award"></i> Grade Student Submission</h3>
-      <form id="gradingForm" onsubmit="saveStudentGrade(event)">
+      <form id="gradingForm">
         <input type="hidden" id="gradeSubmissionId">
         <div class="form-group">
           <label>Student Name</label>
@@ -563,7 +563,7 @@
           <textarea id="gradeFeedback" rows="3" placeholder="Provide constructive feedback..."></textarea>
         </div>
         <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.5rem; flex-wrap: wrap;">
-          <button type="button" onclick="closeGradingModal()" class="btn-action btn-secondary">Cancel</button>
+          <button type="button" id="cancelGradingBtn" class="btn-action btn-secondary">Cancel</button>
           <button type="submit" class="btn-action btn-upload"><i class="fa-solid fa-floppy-disk"></i> Save Grade & Feedback</button>
         </div>
       </form>
@@ -576,175 +576,7 @@
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
-  <script>
-    const firebaseConfig = {
-      apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
-      authDomain: "samcam-system.firebaseapp.com",
-      projectId: "samcam-system",
-      storageBucket: "samcam-system.firebasestorage.app",
-      messagingSenderId: "74940789582",
-      appId: "1:74940789582:web:f159688165a194e841241f",
-      measurementId: "G-L2H4V8Y050"
-    };
-
-    // Initialize Firebase
-    firebase.initializeApp(firebaseConfig);
-    window.db = firebase.firestore();
-    const storageRef = firebase.storage().ref();
-  </script>
-
-  <!-- PAGINATION, ELLIPSIS, PROFILE & URL OPTIMIZATION LOGIC -->
-  <script>
-    // Pagination State Variables
-    let assessmentCurrentPage = 1;
-    let assessmentPerPage = 5;
-
-    let submissionCurrentPage = 1;
-    let submissionPerPage = 5;
-
-    let studentCurrentPage = 1;
-    let studentPerPage = 8;
-
-    // Mobile Menu Toggle Function
-    function toggleMobileMenu() {
-      const navActions = document.getElementById('authNavActions');
-      const menuIcon = document.getElementById('menuToggleIcon');
-      navActions.classList.toggle('mobile-active');
-      if (navActions.classList.contains('mobile-active')) {
-        menuIcon.className = "fa-solid fa-xmark";
-      } else {
-        menuIcon.className = "fa-solid fa-bars";
-      }
-    }
-
-    // URL Routing / Optimization helper
-    function navigateTo(e, routeKey) {
-      if (e) e.preventDefault();
-      const urls = {
-        home: 'index.html',
-        quiz: 'quiz.html',
-        portal: 'assessments.html'
-      };
-      const targetUrl = urls[routeKey] || 'index.html';
-      window.history.pushState({ route: routeKey }, '', targetUrl);
-      window.location.href = targetUrl;
-    }
-
-    // Generic Ellipsis Pagination HTML Generator
-    function generatePaginationHTML(currentPage, totalPages, callbackName) {
-      if (totalPages <= 1) return '';
-      
-      let html = `<button class="page-btn" onclick="${callbackName}(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}><i class="fa-solid fa-chevron-left"></i></button>`;
-      
-      let startPage = Math.max(1, currentPage - 2);
-      let endPage = Math.min(totalPages, currentPage + 2);
-
-      if (startPage > 1) {
-        html += `<button class="page-btn" onclick="${callbackName}(1)">1</button>`;
-        if (startPage > 2) {
-          html += `<span class="page-ellipsis">&hellip;</span>`;
-        }
-      }
-
-      for (let i = startPage; i <= endPage; i++) {
-        html += `<button class="page-btn ${i === currentPage ? 'active' : ''}" onclick="${callbackName}(${i})">${i}</button>`;
-      }
-
-      if (endPage < totalPages) {
-        if (endPage < totalPages - 1) {
-          html += `<span class="page-ellipsis">&hellip;</span>`;
-        }
-        html += `<button class="page-btn" onclick="${callbackName}(${totalPages})">${totalPages}</button>`;
-      }
-
-      html += `<button class="page-btn" onclick="${callbackName}(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}><i class="fa-solid fa-chevron-right"></i></button>`;
-      
-      return html;
-    }
-
-    // --- PROFILE & ACCOUNT SETTINGS LOGIC ---
-
-    // 1. Handle Profile Picture Upload to Firebase Storage
-    function handleProfilePicUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const currentUser = JSON.parse(localStorage.getItem('currentLoggedInUser'));
-      if (!currentUser) return;
-
-      const filePath = `profile_pictures/${currentUser.username}_${Date.now()}_${file.name}`;
-      const fileRef = storageRef.child(filePath);
-
-      alert("Uploading profile picture...");
-
-      fileRef.put(file).then((snapshot) => {
-        return snapshot.ref.getDownloadURL();
-      }).then((downloadURL) => {
-        currentUser.profilePic = downloadURL;
-        localStorage.setItem('currentLoggedInUser', JSON.stringify(currentUser));
-
-        return db.collection("students").where("username", "==", currentUser.username).get();
-      }).then((querySnapshot) => {
-        if (!querySnapshot.empty) {
-          querySnapshot.forEach((doc) => {
-            doc.ref.update({ profilePic: JSON.parse(localStorage.getItem('currentLoggedInUser')).profilePic });
-          });
-        }
-        alert("Profile picture updated successfully!");
-        loadUserProfileUI();
-      }).catch((error) => {
-        console.error("Error uploading profile picture: ", error);
-        alert("Failed to upload image.");
-      });
-    }
-
-    // 2. Load Profile Data into UI upon Login
-    function loadUserProfileUI() {
-      const currentUser = JSON.parse(localStorage.getItem('currentLoggedInUser'));
-      if (!currentUser) return;
-
-      if (document.getElementById('userNameDisplay')) document.getElementById('userNameDisplay').innerText = currentUser.fullName || currentUser.username;
-      if (document.getElementById('userRoleDisplay')) document.getElementById('userRoleDisplay').innerText = currentUser.role || 'Student';
-      if (document.getElementById('profileFullName')) document.getElementById('profileFullName').innerText = currentUser.fullName || currentUser.username;
-      if (document.getElementById('profileUsernameDisplay')) document.getElementById('profileUsernameDisplay').innerText = `@${currentUser.username}`;
-      if (document.getElementById('updateUsername')) document.getElementById('updateUsername').value = currentUser.username;
-
-      const avatarUrl = currentUser.profilePic || 'images/default-avatar.png';
-      if (document.getElementById('profilePicPreview')) document.getElementById('profilePicPreview').src = avatarUrl;
-      if (document.getElementById('bannerProfilePic')) document.getElementById('bannerProfilePic').src = avatarUrl;
-    }
-
-    // 3. Handle Account Details Update (Username & Password)
-    function handleUpdateAccountDetails(event) {
-      event.preventDefault();
-      const newUsername = document.getElementById('updateUsername').value.trim();
-      const newPassword = document.getElementById('updatePassword').value.trim();
-      const currentUser = JSON.parse(localStorage.getItem('currentLoggedInUser'));
-
-      if (!currentUser) return;
-
-      const updateData = { username: newUsername };
-      if (newPassword) {
-        updateData.password = newPassword;
-      }
-
-      db.collection("students").where("username", "==", currentUser.username).get().then((querySnapshot) => {
-        if (!querySnapshot.empty) {
-          querySnapshot.forEach((doc) => {
-            doc.ref.update(updateData);
-          });
-        }
-        currentUser.username = newUsername;
-        localStorage.setItem('currentLoggedInUser', JSON.stringify(currentUser));
-        
-        alert("Account details updated successfully!");
-        loadUserProfileUI();
-      }).catch((error) => {
-        console.error("Error updating account details:", error);
-        alert("Error updating account.");
-      });
-    }
-  </script>
+  <!-- External script file containing all logic -->
   <script src="script.js"></script>
 </body>
 </html>
