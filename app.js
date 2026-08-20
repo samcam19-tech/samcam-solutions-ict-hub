@@ -11,6 +11,22 @@ let searchQuery = '';
 let currentPage = 1;
 const itemsPerPage = 6; // Number of resource cards per page
 
+
+const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_AUTH_DOMAIN",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_STORAGE_BUCKET",
+    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  // Initialize Firebase App
+  firebase.initializeApp(firebaseConfig);
+
+  // Expose Firestore globally as window.db so your polling script catches it instantly
+  window.db = firebase.firestore();
+
 document.addEventListener("DOMContentLoaded", () => {
   // Initialize Theme
   initTheme();
