@@ -472,24 +472,32 @@
       window.location.href = 'assessments.html'; // Adjust to your login page filename if different
     }
 
-    // Profile Modals Control Functions
     function openViewProfileModal(event) {
-      event.preventDefault();
-      const menu = document.getElementById('profileDropdownMenu');
-      if (menu) menu.style.display = 'none';
+  event.preventDefault();
+  const menu = document.getElementById('profileDropdownMenu');
+  if (menu) menu.style.display = 'none';
 
-      // Populate data from currentUser if globally available
-      if (typeof currentUser !== 'undefined' && currentUser) {
-        document.getElementById('modalFullName').textContent = currentUser.fullName || currentUser.username || 'Portal User';
-        document.getElementById('modalUsername').textContent = '@' + (currentUser.username || 'user');
-        document.getElementById('modalUserRole').textContent = currentUser.role ? currentUser.role.toUpperCase() : (currentUser.class || 'Student');
-        document.getElementById('modalUserEmail').textContent = currentUser.email || currentUser.id || 'N/A';
-        if (currentUser.profilePic || currentUser.avatarUrl || currentUser.photoURL) {
-          document.getElementById('modalProfilePic').src = currentUser.profilePic || currentUser.avatarUrl || currentUser.photoURL;
-        }
-      }
-      document.getElementById('viewProfileModal').style.display = 'flex';
-    }
+  if (typeof currentUser !== 'undefined' && currentUser) {
+    const fullName = currentUser.fullName || currentUser.username || 'Portal User';
+    const username = '@' + (currentUser.username || 'user');
+    const role = currentUser.role ? currentUser.role.toUpperCase() : (currentUser.class || 'Student');
+    const pic = currentUser.profilePic || currentUser.avatarUrl || currentUser.photoURL || 'images/default-avatar.png';
+
+    // Safely update elements if they exist in the DOM
+    const elFullName = document.getElementById('modalFullName');
+    const elFullNameRow = document.getElementById('modalFullNameRow');
+    const elUsername = document.getElementById('modalUsername');
+    const elUserRole = document.getElementById('modalUserRole');
+    const elProfilePic = document.getElementById('modalProfilePic');
+
+    if (elFullName) elFullName.textContent = fullName;
+    if (elFullNameRow) elFullNameRow.textContent = fullName;
+    if (elUsername) elUsername.textContent = username;
+    if (elUserRole) elUserRole.textContent = role;
+    if (elProfilePic) elProfilePic.src = pic;
+  }
+  document.getElementById('viewProfileModal').style.display = 'flex';
+}
 
     function closeViewProfileModal() {
       document.getElementById('viewProfileModal').style.display = 'none';
