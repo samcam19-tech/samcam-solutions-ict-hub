@@ -18,7 +18,9 @@ const db = firebase.firestore();
 
 // Google API Client configurations
 const CLIENT_ID = '74940789582-42d2vlki0lr8bj734afchl8b42jo3b98.apps.googleusercontent.com';
+const API_KEY = 'YOUR_GOOGLE_API_KEY_HERE'; // Optional if using tokenClient auth, but required for gapi.client.init
 const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
+const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
 
 let tokenClient = null;
 let allClasses = [];
@@ -28,13 +30,19 @@ document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   fetchClassesFromFirestore();
   
-  // Safely initialize Google Identity Services token client once available
+  // Load GAPI client and Google Identity Services
+  gapi.load('client', () => {
+    gapi.client.init({
+      discoveryDocs: [DISCOVERY_DOC],
+    }).catch(err => console.error("GAPI client init error:", err));
+  });
+
   const checkGoogleLoaded = setInterval(() => {
     if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
       tokenClient = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: SCOPES,
-        callback: '', // defined dynamically during submission
+        callback: '', 
       });
       clearInterval(checkGoogleLoaded);
     }
@@ -146,14 +154,13 @@ function handleScheduleSubmit(e) {
   const submitBtn = document.getElementById('submitClassBtn');
   
   if (!tokenClient) {
-    alert("Google Identity Services is still loading or blocked. Please wait a moment and try again, or check if an ad-blocker is active.");
+    alert("Google Identity Services is still loading or blocked. Please wait a moment and try again.");
     return;
   }
 
   submitBtn.disabled = true;
   submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Generating Meet...`;
 
-  // Set callback for authentication token response
   tokenClient.callback = async (resp) => {
     if (resp.error !== undefined) {
       alert("Authentication failed. Unable to generate Google Meet link.");
@@ -163,6 +170,9 @@ function handleScheduleSubmit(e) {
     }
 
     try {
+      // Set the token obtained from GIS into the GAPI client instance for authenticated calls
+      gapi.client.setToken({ access_token: resp.access_token });
+
       const meetUrl = await createGoogleCalendarEvent({
         title, classLevel, instructorName, startTime, endTime, description
       });
@@ -208,7 +218,6 @@ async function createGoogleCalendarEvent(classData) {
     }
   };
 
-  await gapi.client.load('calendar', 'v3');
   const response = await gapi.client.calendar.events.insert({
     'calendarId': 'primary',
     'resource': event,
