@@ -121,18 +121,28 @@
           </div>
         </div>
 
-        <div class="form-group">
-          <label>Meeting Access Control</label>
-          <select id="admissionType" class="form-control" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input, #fff); color: var(--text-main, #333);">
-            <option value="open">Open (Anyone with the link can join directly)</option>
-            <option value="restricted">Restricted / Require Admission (Students wait in waiting room to be admitted)</option>
-          </select>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Meeting Access Control</label>
+            <select id="admissionType" class="form-control" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input, #fff); color: var(--text-main, #333);">
+              <option value="open">Open (Anyone with link)</option>
+              <option value="restricted">Restricted (Waiting Room)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Recording Preference</label>
+            <select id="recordingPreference" class="form-control" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input, #fff); color: var(--text-main, #333);">
+              <option value="yes">Record Session (Cloud / Meet)</option>
+              <option value="no">Do Not Record</option>
+            </select>
+          </div>
         </div>
 
         <div class="form-group">
-          <label>Description / Instructions</label>
+          <label>Description / Pre-Class Brief & Objectives</label>
           <textarea id="classDescription" rows="3" placeholder="Brief overview or preparation notes for students..."></textarea>
         </div>
+
         <div class="modal-footer">
           <button type="button" class="btn-action btn-secondary" onclick="closeScheduleModalDirect()">Cancel</button>
           <button type="submit" class="btn-action btn-upload" id="submitClassBtn">
