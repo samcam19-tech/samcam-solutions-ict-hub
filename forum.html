@@ -256,7 +256,7 @@
   <script src="script.js"></script>
   <script src="forum-engine.js"></script>
 
-  <!-- Role-based Back Link & Mobile Menu Controller Script -->
+ <!-- Role-based Back Link, Profile Widget & Mobile Menu Controller Script -->
   <script>
     function toggleMobileMenu() {
       const actionsWrapper = document.querySelector('.header-actions-wrapper');
@@ -272,33 +272,50 @@
     }
 
     window.addEventListener('portalSessionChanged', (e) => {
-      updateHeaderBackLinks(e.detail);
+      updateHeaderSessionData(e.detail);
     });
 
     document.addEventListener("DOMContentLoaded", () => {
-      // Evaluate session on initial load
+      // Evaluate session on initial load, checking both window.currentUser and stored sessions
       let activeUser = window.currentUser;
       if (!activeUser) {
-        const sessionData = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
+        const sessionData = localStorage.getItem('currentLoggedInUser') || localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
         if (sessionData) {
           try { activeUser = JSON.parse(sessionData); } catch (err) {}
         }
       }
-      updateHeaderBackLinks(activeUser);
+      updateHeaderSessionData(activeUser);
     });
 
-    function updateHeaderBackLinks(user) {
+    function updateHeaderSessionData(user) {
       let role = '';
-      let name = '';
+      let fullName = 'Portal User';
+      let username = 'user';
+      let pic = 'images/default-avatar.png';
+
       if (user && typeof user === 'object') {
         role = user.role || user.userType || user.type || user.accessLevel || '';
-        name = user.fullName || user.name || user.username || '';
+        fullName = user.fullName || user.name || user.username || 'Portal User';
+        username = user.username || 'user';
+        pic = user.profilePic || user.avatarUrl || user.photoURL || 'images/default-avatar.png';
       }
-      const combined = `${role} ${name}`.toLowerCase();
+
+      // Populate Navbar Profile Widget Elements
+      const elNavPic = document.getElementById('navProfilePic');
+      const elNavName = document.getElementById('navFullName');
+      const elNavUsername = document.getElementById('navUsername');
+
+      if (elNavPic) elNavPic.src = pic;
+      if (elNavName) elNavName.textContent = fullName;
+      if (elNavUsername) elNavUsername.textContent = '@' + username;
+
+      // Evaluate role-based permissions and back links
+      const combined = `${role} ${fullName}`.toLowerCase();
       const isTeacherOrAdmin = combined.includes('teacher') || 
                                combined.includes('admin') || 
                                combined.includes('instructor') ||
-                               combined.includes('staff');
+                               combined.includes('staff') ||
+                               (user && user.role === 'Teacher');
 
       const staffLink = document.getElementById('staffBackLink');
       const studentLink = document.getElementById('studentBackLink');
