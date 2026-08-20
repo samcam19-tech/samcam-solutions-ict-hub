@@ -89,19 +89,33 @@
       }
     }
   </style>
-  <script>
+ <script>
   (function () {
-    // Check for active login session across common storage keys
-    const sessionData = localStorage.getItem('currentLoggedInUser') || 
-                        localStorage.getItem('portal_session') || 
-                        sessionStorage.getItem('portal_session');
+    let activeUser = null;
     
-    const currentUser = window.currentUser;
+    // Attempt to retrieve active session
+    try {
+      const sessionData = localStorage.getItem('currentLoggedInUser') || 
+                          localStorage.getItem('portal_session') || 
+                          sessionStorage.getItem('portal_session');
+      if (sessionData) {
+        activeUser = JSON.parse(sessionData);
+      }
+    } catch (e) {}
 
-    // If no session data and no global currentUser object exist, redirect to login
-    if (!sessionData && !currentUser) {
-      // Change 'index.html' or 'login.html' to your actual login page filename if different
-      window.location.replace('index.html');
+    if (!activeUser && window.currentUser) {
+      activeUser = window.currentUser;
+    }
+
+    // Check if user is missing, or is explicitly logged in as a Guest
+    const username = (activeUser && activeUser.username || '').toLowerCase();
+    const role = (activeUser && (activeUser.role || activeUser.userType) || '').toLowerCase();
+    
+    const isGuest = !activeUser || username === 'guest' || username === 'admin_guest' || role.includes('guest');
+
+    if (isGuest) {
+      // Immediately redirect unauthorized/guest users to your login/portal entry page
+      window.location.replace('index.html'); 
     }
   })();
 </script>
