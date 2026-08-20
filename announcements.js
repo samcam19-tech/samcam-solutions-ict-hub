@@ -1,21 +1,3 @@
-// --- FIREBASE CONFIGURATION & SETUP ---
-const firebaseConfig = {
-  apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
-  authDomain: "samcam-system.firebaseapp.com",
-  projectId: "samcam-system",
-  storageBucket: "samcam-system.firebasestorage.app",
-  messagingSenderId: "74940789582",
-  appId: "1:74940789582:web:f159688165a194e841241f",
-  measurementId: "G-L2H4V8Y050"
-};
-
-if (typeof firebase !== "undefined" && !firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
-
-const db = typeof firebase !== "undefined" ? firebase.firestore() : null;
-const storage = typeof firebase !== "undefined" && firebase.storage ? firebase.storage() : null;
-
 // --- APPLICATION STATE ---
 let announcementsList = [];
 let showOnlyUnread = false; // Toggle state for clicking the badge counter
