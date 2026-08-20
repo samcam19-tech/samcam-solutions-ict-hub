@@ -1198,8 +1198,7 @@ const navHomeLink = document.getElementById('navHomeLink');
   // Initial check on load (Ensure checkUserSession exists or use broadcastSessionUpdate)
   if (typeof checkUserSession === 'function') {
     checkUserSession();
-  }
-});
+   }
 // --- CORE UTILS & FUNCTIONS ---
 
 function toggleMobileMenu() {
