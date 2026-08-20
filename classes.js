@@ -16,8 +16,8 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// Google API Client configurations (Replace with your Google Cloud Console Client ID)
-const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+// Google API Client configurations (Configured with your Google Cloud Console Client ID)
+const CLIENT_ID = '74940789582-42d2vlki0lr8bj734afchl8b42jo3b98.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 
 let tokenClient;
@@ -201,7 +201,7 @@ async function createGoogleCalendarEvent(classData) {
     'end': { 'dateTime': new Date(classData.endTime).toISOString() },
     'conferenceData': {
       'createRequest': {
-        'requestId': 'samcam-' + Math.random().toString(36.substring(2, 9)),
+        'requestId': 'samcam-' + Math.random().toString(36).substring(2, 9),
         'conferenceSolutionKey': { 'type': 'hangoutsMeet' }
       }
     }
