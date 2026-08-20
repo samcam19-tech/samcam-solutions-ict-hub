@@ -297,7 +297,7 @@ window.handleLogout = function() {
   if (typeof updatePortalUI === 'function') updatePortalUI();
 
   // 5. Force a hard redirect or reload to clear cached DOM memory
-  window.location.href = 'index.html'; 
+  window.location.href = 'assessments.html'; 
 };
 
 /* ==========================================================================
