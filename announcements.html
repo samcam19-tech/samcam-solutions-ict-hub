@@ -35,6 +35,27 @@
       max-width: 1200px;
       margin: 0 auto;
       width: 100%;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .nav-right-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    @media (max-width: 768px) {
+      .navbar {
+        padding: 0.5rem 1rem;
+      }
+      .nav-container {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .nav-right-actions {
+        justify-content: space-between;
+        width: 100%;
+      }
     }
   </style>
 
@@ -44,7 +65,7 @@
 </head>
 <body>
 
-  <!-- TOP NAVIGATION BAR (Brand & Slogan Only) -->
+  <!-- TOP NAVIGATION BAR -->
   <nav class="navbar" role="navigation" aria-label="Main Navigation">
     <div class="nav-container">
       <div class="brand" style="display: flex; align-items: center; gap: 0.75rem;">
@@ -54,10 +75,23 @@
           <span class="brand-tagline" style="font-size: 0.75rem; color: #64748b; font-weight: 500;">Innovative ICT Insights In Action</span>
         </div>
       </div>
-      <div>
-        <a href="assessments.html" class="btn btn-outline" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
-          <i class="fa-solid fa-arrow-left"></i> Back to Portal
-        </a>
+      
+      <!-- Right Side Actions & Profile Widget -->
+      <div class="nav-right-actions">
+        <!-- User Profile Navbar Widget -->
+        <div id="navProfileWidget" style="display: flex; align-items: center; gap: 0.6rem; background: var(--bg-main, #f8fafc); padding: 0.3rem 0.65rem; border-radius: 30px; border: 1px solid var(--border-color, #cbd5e1);">
+          <img id="navProfilePic" src="images/default-avatar.png" alt="Avatar" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 1px solid #38bdf8;" onerror="this.src='images/default-avatar.png'">
+          <div style="display: flex; flex-direction: column; text-align: left; line-height: 1.15;">
+            <span id="navFullName" style="font-size: 0.78rem; font-weight: 600; color: var(--text-color, #0f172a);">User</span>
+            <span id="navUsername" style="font-size: 0.68rem; color: #0284c7;">@username</span>
+          </div>
+        </div>
+
+        <div>
+          <a href="assessments.html" class="btn btn-outline" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+            <i class="fa-solid fa-arrow-left"></i> Back to Portal
+          </a>
+        </div>
       </div>
     </div>
   </nav>
@@ -155,15 +189,43 @@
     </div>
   </div>
 
-  <!-- 1. Load Firebase SDKs ONCE (v10.x.x recommended) -->
+  <!-- 1. Load Firebase SDKs ONCE -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
 
-  <!-- 2. Load your Firebase Configuration & Initialization file (which sets window.db) -->
+  <!-- 2. Load Firebase Configuration & Initialization -->
   <script src="firebase-config.js"></script>
+  <script src="script.js"></script>
 
-  <!-- 3. Load your Announcements Logic -->
+  <!-- 3. Load Announcements Logic -->
   <script src="announcements.js"></script>
+
+  <!-- 4. Navbar Profile Widget Initialization Script -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      let activeUser = window.currentUser;
+      if (!activeUser) {
+        const sessionData = localStorage.getItem('currentLoggedInUser') || localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
+        if (sessionData) {
+          try { activeUser = JSON.parse(sessionData); } catch (err) {}
+        }
+      }
+
+      if (activeUser && typeof activeUser === 'object') {
+        const fullName = activeUser.fullName || activeUser.name || activeUser.username || 'User';
+        const username = activeUser.username || 'user';
+        const pic = activeUser.profilePic || activeUser.avatarUrl || activeUser.photoURL || 'images/default-avatar.png';
+
+        const elNavPic = document.getElementById('navProfilePic');
+        const elNavName = document.getElementById('navFullName');
+        const elNavUsername = document.getElementById('navUsername');
+
+        if (elNavPic) elNavPic.src = pic;
+        if (elNavName) elNavName.textContent = fullName;
+        if (elNavUsername) elNavUsername.textContent = '@' + username;
+      }
+    });
+  </script>
 </body>
 </html>
