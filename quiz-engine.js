@@ -2,24 +2,11 @@
 let editingQuizId = null;
 
 // ==========================================================================
-// 1. FIREBASE INITIALIZATION & MOCK DATA
+// 1. FIREBASE INITIALIZATION
 // ==========================================================================
-const firebaseConfig = {
-  apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
-  authDomain: "samcam-system.firebaseapp.com",
-  projectId: "samcam-system",
-  storageBucket: "samcam-system.firebasestorage.app",
-  messagingSenderId: "74940789582",
-  appId: "1:74940789582:web:f159688165a194e841241f",
-  measurementId: "G-L2H4V8Y050"
-};
 
-// Initialize Firebase
-if (typeof firebase !== "undefined" && !firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
-
-const db = typeof firebase !== "undefined" ? firebase.firestore() : null;
+// Use the global db instance initialized in firebase-config.js
+const db = window.db || (typeof firebase !== "undefined" ? firebase.firestore() : null);
 
 // Fallback Mock Data with mixed question types (mcq and text)
 const MOCK_QUIZZES = [
