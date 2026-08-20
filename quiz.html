@@ -129,10 +129,10 @@
 
           <!-- Dropdown Menu Content -->
           <div id="profileDropdownMenu" class="profile-dropdown-menu" style="display: none; position: absolute; right: 0; top: calc(100% + 10px); background: #1e293b; border: 1px solid #334155; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); width: 180px; z-index: 1100; overflow: hidden;">
-            <a href="profile.html" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f8fafc; text-decoration: none; font-size: 0.85rem; border-bottom: 1px solid #334155;">
+            <a href="#" onclick="openViewProfileModal(event)" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f8fafc; text-decoration: none; font-size: 0.85rem; border-bottom: 1px solid #334155;">
               <i class="fa-solid fa-user" style="color: #38bdf8; width: 16px;"></i> View Profile
             </a>
-            <a href="edit-profile.html" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f8fafc; text-decoration: none; font-size: 0.85rem; border-bottom: 1px solid #334155;">
+            <a href="#" onclick="openEditProfileModal(event)" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f8fafc; text-decoration: none; font-size: 0.85rem; border-bottom: 1px solid #334155;">
               <i class="fa-solid fa-user-pen" style="color: #38bdf8; width: 16px;"></i> Edit Profile
             </a>
             <a href="#" onclick="handlePortalLogout(event)" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f87171; text-decoration: none; font-size: 0.85rem;">
@@ -342,6 +342,63 @@
       </div>
     </div>
 
+    <!-- =================================================================== -->
+    <!-- VIEW PROFILE MODAL                                                  -->
+    <!-- =================================================================== -->
+    <div id="viewProfileModal" class="modal-overlay" style="display: none;">
+      <div class="modal-card" style="max-width: 420px;">
+        <div class="modal-header">
+          <h3><i class="fa-solid fa-user"></i> User Profile</h3>
+          <button class="modal-close" onclick="closeViewProfileModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="text-align: center; padding: 1.5rem 1rem;">
+          <img src="images/default-avatar.png" id="modalProfilePic" alt="Profile Picture" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin-bottom: 1rem; border: 3px solid #0284c7;" onerror="this.src='images/default-avatar.png'">
+          <h4 id="modalFullName" style="margin: 0 0 0.25rem 0; font-size: 1.1rem; color: #f8fafc;">Loading...</h4>
+          <p id="modalUsername" style="margin: 0 0 1rem 0; font-size: 0.85rem; color: #94a3b8;">@username</p>
+          
+          <div style="text-align: left; background: rgba(51,65,85,0.3); padding: 1rem; border-radius: 8px; font-size: 0.9rem; display: flex; flex-direction: column; gap: 0.5rem;">
+            <div><strong>Role/Class:</strong> <span id="modalUserRole">-</span></div>
+            <div><strong>Account Email/ID:</strong> <span id="modalUserEmail">-</span></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="closeViewProfileModal()">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- EDIT PROFILE MODAL                                                  -->
+    <!-- =================================================================== -->
+    <div id="editProfileModal" class="modal-overlay" style="display: none;">
+      <div class="modal-card" style="max-width: 450px;">
+        <div class="modal-header">
+          <h3><i class="fa-solid fa-user-pen"></i> Edit Profile</h3>
+          <button class="modal-close" onclick="closeEditProfileModal()">&times;</button>
+        </div>
+        <form id="editProfileForm" onsubmit="handleSaveProfile(event)">
+          <div class="modal-body" style="display: flex; flex-direction: column; gap: 1rem;">
+            <div class="form-group">
+              <label for="editFullName" style="font-size: 0.85rem; color: #cbd5e1; margin-bottom: 0.3rem; display: block;">Full Name</label>
+              <input type="text" id="editFullName" class="form-control" style="width: 100%; padding: 0.6rem; background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 6px;" required />
+            </div>
+            <div class="form-group">
+              <label for="editUsername" style="font-size: 0.85rem; color: #cbd5e1; margin-bottom: 0.3rem; display: block;">Username</label>
+              <input type="text" id="editUsername" class="form-control" style="width: 100%; padding: 0.6rem; background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 6px;" required />
+            </div>
+            <div class="form-group">
+              <label for="editProfilePicUrl" style="font-size: 0.85rem; color: #cbd5e1; margin-bottom: 0.3rem; display: block;">Profile Picture URL</label>
+              <input type="text" id="editProfilePicUrl" class="form-control" placeholder="https://..." style="width: 100%; padding: 0.6rem; background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 6px;" />
+            </div>
+          </div>
+          <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.5rem; padding: 1rem;">
+            <button type="button" class="btn btn-outline" onclick="closeEditProfileModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
   </main>
 
   <script>
@@ -356,6 +413,7 @@
         menuIcon.className = "fa-solid fa-bars";
       }
     }
+
     // Toggle Profile Dropdown Visibility
     function toggleProfileDropdown(event) {
       event.stopPropagation();
@@ -379,6 +437,69 @@
       localStorage.removeItem('currentLoggedInUser');
       localStorage.removeItem('portal_session'); // Clears both just in case
       window.location.href = 'assessments.html'; // Adjust to your login page filename if different
+    }
+
+    // Profile Modals Control Functions
+    function openViewProfileModal(event) {
+      event.preventDefault();
+      const menu = document.getElementById('profileDropdownMenu');
+      if (menu) menu.style.display = 'none';
+
+      // Populate data from currentUser if globally available
+      if (typeof currentUser !== 'undefined' && currentUser) {
+        document.getElementById('modalFullName').textContent = currentUser.fullName || currentUser.username || 'Portal User';
+        document.getElementById('modalUsername').textContent = '@' + (currentUser.username || 'user');
+        document.getElementById('modalUserRole').textContent = currentUser.role ? currentUser.role.toUpperCase() : (currentUser.class || 'Student');
+        document.getElementById('modalUserEmail').textContent = currentUser.email || currentUser.id || 'N/A';
+        if (currentUser.profilePic || currentUser.avatarUrl || currentUser.photoURL) {
+          document.getElementById('modalProfilePic').src = currentUser.profilePic || currentUser.avatarUrl || currentUser.photoURL;
+        }
+      }
+      document.getElementById('viewProfileModal').style.display = 'flex';
+    }
+
+    function closeViewProfileModal() {
+      document.getElementById('viewProfileModal').style.display = 'none';
+    }
+
+    function openEditProfileModal(event) {
+      event.preventDefault();
+      const menu = document.getElementById('profileDropdownMenu');
+      if (menu) menu.style.display = 'none';
+
+      if (typeof currentUser !== 'undefined' && currentUser) {
+        document.getElementById('editFullName').value = currentUser.fullName || '';
+        document.getElementById('editUsername').value = currentUser.username || '';
+        document.getElementById('editProfilePicUrl').value = currentUser.profilePic || currentUser.avatarUrl || currentUser.photoURL || '';
+      }
+      document.getElementById('editProfileModal').style.display = 'flex';
+    }
+
+    function closeEditProfileModal() {
+      document.getElementById('editProfileModal').style.display = 'none';
+    }
+
+    function handleSaveProfile(event) {
+      event.preventDefault();
+      if (typeof currentUser !== 'undefined' && currentUser) {
+        currentUser.fullName = document.getElementById('editFullName').value;
+        currentUser.username = document.getElementById('editUsername').value;
+        const newPic = document.getElementById('editProfilePicUrl').value;
+        if (newPic) currentUser.profilePic = newPic;
+
+        localStorage.setItem('currentLoggedInUser', JSON.stringify(currentUser));
+        
+        // Refresh UI elements
+        if (typeof syncQuizEngineSession === 'function') {
+          syncQuizEngineSession(currentUser);
+        } else {
+          document.getElementById('userNameDisplay').textContent = currentUser.fullName;
+          document.getElementById('profileUsernameDisplay').textContent = '@' + currentUser.username;
+          if (newPic) document.getElementById('bannerProfilePic').src = newPic;
+        }
+      }
+      closeEditProfileModal();
+      alert('Profile updated successfully!');
     }
   </script>
 
