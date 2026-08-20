@@ -1179,7 +1179,7 @@ const navHomeLink = document.getElementById('navHomeLink');
     gradingForm.addEventListener('submit', saveStudentGrade);
   }
 
-  // Modal Close Listeners
+// Modal Close Listeners
   const closeSubmissionModalBtn = document.getElementById('closeSubmissionModalBtn');
   if (closeSubmissionModalBtn) closeSubmissionModalBtn.addEventListener('click', closeSubmissionModal);
 
@@ -1195,10 +1195,11 @@ const navHomeLink = document.getElementById('navHomeLink');
   const cancelGradingBtn = document.getElementById('cancelGradingBtn');
   if (cancelGradingBtn) cancelGradingBtn.addEventListener('click', closeGradingModal);
 
-  // Initial check on load
-  checkUserSession();
+  // Initial check on load (Ensure checkUserSession exists or use broadcastSessionUpdate)
+  if (typeof checkUserSession === 'function') {
+    checkUserSession();
+  }
 });
-
 // --- CORE UTILS & FUNCTIONS ---
 
 function toggleMobileMenu() {
