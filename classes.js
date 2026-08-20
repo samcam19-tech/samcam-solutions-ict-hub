@@ -91,7 +91,8 @@ function syncLiveClassSession(user) {
   const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
                            combinedCheck.includes('admin') || 
                            combinedCheck.includes('instructor') ||
-                           combinedCheck.includes('staff');
+                           combinedCheck.includes('staff') ||
+                           session.role === 'teacher';
 
   // Toggle visibility of teacher-only elements (like the 'Schedule New Class' button/modal triggers)
   document.querySelectorAll('.teacher-only').forEach(el => {
@@ -146,7 +147,7 @@ function fetchClassesFromFirestore() {
 function filterClass(cls, event) {
   const session = getCurrentUserSession();
   const combinedCheck = `${session.role} ${session.name} ${session.userClass}`.toLowerCase();
-  const isTeacherOrAdmin = combinedCheck.includes('teacher') || combinedCheck.includes('admin') || combinedCheck.includes('instructor') || combinedCheck.includes('staff');
+  const isTeacherOrAdmin = combinedCheck.includes('teacher') || combinedCheck.includes('admin') || combinedCheck.includes('instructor') || combinedCheck.includes('staff') || session.role === 'teacher';
 
   // Prevent students from overriding their class filter
   if (!isTeacherOrAdmin) return;
@@ -165,7 +166,7 @@ function renderClassesGrid() {
 
   const session = getCurrentUserSession();
   const combinedCheck = `${session.role} ${session.name} ${session.userClass}`.toLowerCase();
-  const isTeacherOrAdmin = combinedCheck.includes('teacher') || combinedCheck.includes('admin') || combinedCheck.includes('instructor') || combinedCheck.includes('staff');
+  const isTeacherOrAdmin = combinedCheck.includes('teacher') || combinedCheck.includes('admin') || combinedCheck.includes('instructor') || combinedCheck.includes('staff') || session.role === 'teacher';
 
   let filtered = allClasses;
 
