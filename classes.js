@@ -373,11 +373,15 @@ async function createGoogleCalendarEvent(accessToken, classData) {
     ? "\n\n🔒 [Access Policy: Restricted - Attendees will wait in the knocking room until admitted by the instructor]." 
     : "\n\n🔓 [Access Policy: Open entry for class participants].";
 
+  // Safely parse start and end times whether they are Date objects or ISO strings
+  const startIso = classData.startTime instanceof Date ? classData.startTime.toISOString() : new Date(classData.startTime).toISOString();
+  const endIso = classData.endTime instanceof Date ? classData.endTime.toISOString() : new Date(classData.endTime).toISOString();
+
   const event = {
     'summary': `[${classData.classLevel}] ${classData.title} - Samcam ICT Hub`,
     'description': `${classData.description}${restrictionNote}\n\nInstructor: ${classData.instructorName}`,
-    'start': { 'dateTime': classData.startTime },
-    'end': { 'dateTime': classData.endTime },
+    'start': { 'dateTime': startIso },
+    'end': { 'dateTime': endIso },
     'conferenceData': {
       'createRequest': {
         'requestId': 'samcam-' + Math.random().toString(36).substring(2, 9),
