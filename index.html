@@ -124,7 +124,7 @@
           <i class="fa-solid fa-file-pen"></i> Academic Portal
         </a>
 
-         <!-- Notification Bell Icon with Live Badge Counter positioned on the top right of the bell icon -->
+         <!-- Notification Bell Icon with Live Badge Counter -->
         <button id="notificationsBellBtn" class="nav-action-item" onclick="toggleAnnouncementsDropdown(event)" aria-label="Institutional Announcements" title="Announcements & Notices">
           <span style="position: relative; display: inline-flex; align-items: center;">
             <i class="fa-solid fa-bell" style="font-size: 1rem;"></i>
@@ -133,8 +133,6 @@
           <span></span>
         </button>
       </div>
-
-      
 
       <!-- QUICK-VIEW ANNOUNCEMENTS DRAWER/POPUP -->
       <div id="announcementsDropdownPopup" style="display: none; position: absolute; top: 70px; right: 0; width: 360px; max-height: 480px; background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #cbd5e1); border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15); z-index: 10000; flex-direction: column; overflow: hidden;">
@@ -410,7 +408,6 @@
       
       const badgeEl = document.getElementById('navUnreadBadge');
       if (badgeEl) {
-        // Always display the counter, showing '0' when there are no new announcements
         badgeEl.textContent = unreadCount;
         badgeEl.style.display = 'inline-block';
       }
@@ -465,16 +462,11 @@
     }
 
     function handleAnnouncementItemClick(id) {
-      // 1. Mark as read
       markNavNoticeAsRead(id);
-
-      // 2. Close quick-view dropdown drawer popup
       const popup = document.getElementById('announcementsDropdownPopup');
       if (popup) {
         popup.style.display = 'none';
       }
-
-      // 3. Find announcement object and open detailed modal view
       const item = navAnnouncementsCache.find(n => n.id === id);
       if (item) {
         openAnnouncementDetailModal(item);
@@ -500,8 +492,24 @@
           <div style="font-size: 0.85rem; color: #475569; margin-bottom: 1.5rem; font-weight: 500;">
             <i class="fa-solid fa-user-pen" style="color: var(--primary, #2563eb);"></i> Posted by: <strong>${escapeHtmlText(item.author)}</strong>
           </div>
-          <div style="font-size: 0.95rem; color: var(--text-color, #334155); line-height: 1.6; white-space: pre-wrap; background: var(--bg-main, #f8fafc); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color, #e2e8f0); max-height: 300px; overflow-y: auto;">${escapeHtmlText(item.body)}</div>
-          <div style="margin-top: 1.5rem; text-align: right;">
+          <div style="font-size: 0.95rem; color: var(--text-color, #334155); line-height: 1.6; white-space: pre-wrap; background: var(--bg-main, #f8fafc); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color, #e2e8f0); max-height: 240px; overflow-y: auto; margin-bottom: 1.25rem;">${escapeHtmlText(item.body)}</div>
+          
+          <!-- QUICK ACTION LINKS INSIDE THE ANNOUNCEMENT MODAL -->
+          <div style="background: var(--bg-main, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1.25rem;">
+            <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.3rem;">
+              <i class="fa-solid fa-bolt" style="color: var(--primary, #2563eb);"></i> Quick Links
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+              <a href="assessments.html" class="nav-action-item" style="font-size: 0.8rem; padding: 0.35rem 0.65rem; background: var(--primary-light, #eff6ff); color: var(--primary, #2563eb); border-color: var(--primary, #2563eb);">
+                <i class="fa-solid fa-file-pen"></i> Assessment Portal
+              </a>
+              <a href="#resource-grid" onclick="closePreviewModalDirect()" class="nav-action-item" style="font-size: 0.8rem; padding: 0.35rem 0.65rem;">
+                <i class="fa-solid fa-book-open"></i> Resource Library
+              </a>
+            </div>
+          </div>
+
+          <div style="display: flex; justify-content: flex-end;">
             <button onclick="closePreviewModalDirect()" class="nav-action-item" style="background: var(--primary, #2563eb); color: white; border-color: var(--primary, #2563eb);">Close Notice</button>
           </div>
         </div>
