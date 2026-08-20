@@ -472,7 +472,8 @@
       window.location.href = 'assessments.html'; // Adjust to your login page filename if different
     }
 
-    function openViewProfileModal(event) {
+   // Profile Modals Control Functions
+function openViewProfileModal(event) {
   event.preventDefault();
   const menu = document.getElementById('profileDropdownMenu');
   if (menu) menu.style.display = 'none';
@@ -485,13 +486,11 @@
 
     // Safely update elements if they exist in the DOM
     const elFullName = document.getElementById('modalFullName');
-    const elFullNameRow = document.getElementById('modalFullNameRow');
     const elUsername = document.getElementById('modalUsername');
     const elUserRole = document.getElementById('modalUserRole');
     const elProfilePic = document.getElementById('modalProfilePic');
 
     if (elFullName) elFullName.textContent = fullName;
-    if (elFullNameRow) elFullNameRow.textContent = fullName;
     if (elUsername) elUsername.textContent = username;
     if (elUserRole) elUserRole.textContent = role;
     if (elProfilePic) elProfilePic.src = pic;
@@ -499,49 +498,47 @@
   document.getElementById('viewProfileModal').style.display = 'flex';
 }
 
-    function closeViewProfileModal() {
-      document.getElementById('viewProfileModal').style.display = 'none';
+function closeViewProfileModal() {
+  document.getElementById('viewProfileModal').style.display = 'none';
+}
+
+function openEditProfileModal(event) {
+  event.preventDefault();
+  const menu = document.getElementById('profileDropdownMenu');
+  if (menu) menu.style.display = 'none';
+
+  if (typeof currentUser !== 'undefined' && currentUser) {
+    document.getElementById('editFullName').value = currentUser.fullName || '';
+    document.getElementById('editUsername').value = currentUser.username || '';
+    document.getElementById('editProfilePicUrl').value = currentUser.profilePic || currentUser.avatarUrl || currentUser.photoURL || '';
+  }
+  document.getElementById('editProfileModal').style.display = 'flex';
+}
+
+function closeEditProfileModal() {
+  document.getElementById('editProfileModal').style.display = 'none';
+}
+
+function handleSaveProfile(event) {
+  event.preventDefault();
+  if (typeof currentUser !== 'undefined' && currentUser) {
+    currentUser.fullName = document.getElementById('editFullName').value;
+    currentUser.username = document.getElementById('editUsername').value;
+    // Profile picture URL is read-only, so we keep the existing value
+
+    localStorage.setItem('currentLoggedInUser', JSON.stringify(currentUser));
+    
+    // Refresh UI elements
+    if (typeof syncQuizEngineSession === 'function') {
+      syncQuizEngineSession(currentUser);
+    } else {
+      document.getElementById('userNameDisplay').textContent = currentUser.fullName;
+      document.getElementById('profileUsernameDisplay').textContent = '@' + currentUser.username;
     }
-
-    function openEditProfileModal(event) {
-      event.preventDefault();
-      const menu = document.getElementById('profileDropdownMenu');
-      if (menu) menu.style.display = 'none';
-
-      if (typeof currentUser !== 'undefined' && currentUser) {
-        document.getElementById('editFullName').value = currentUser.fullName || '';
-        document.getElementById('editUsername').value = currentUser.username || '';
-        document.getElementById('editProfilePicUrl').value = currentUser.profilePic || currentUser.avatarUrl || currentUser.photoURL || '';
-      }
-      document.getElementById('editProfileModal').style.display = 'flex';
-    }
-
-    function closeEditProfileModal() {
-      document.getElementById('editProfileModal').style.display = 'none';
-    }
-
-    function handleSaveProfile(event) {
-      event.preventDefault();
-      if (typeof currentUser !== 'undefined' && currentUser) {
-        currentUser.fullName = document.getElementById('editFullName').value;
-        currentUser.username = document.getElementById('editUsername').value;
-        const newPic = document.getElementById('editProfilePicUrl').value;
-        if (newPic) currentUser.profilePic = newPic;
-
-        localStorage.setItem('currentLoggedInUser', JSON.stringify(currentUser));
-        
-        // Refresh UI elements
-        if (typeof syncQuizEngineSession === 'function') {
-          syncQuizEngineSession(currentUser);
-        } else {
-          document.getElementById('userNameDisplay').textContent = currentUser.fullName;
-          document.getElementById('profileUsernameDisplay').textContent = '@' + currentUser.username;
-          if (newPic) document.getElementById('bannerProfilePic').src = newPic;
-        }
-      }
-      closeEditProfileModal();
-      alert('Profile updated successfully!');
-    }
+  }
+  closeEditProfileModal();
+  alert('Profile updated successfully!');
+}
   </script>
 
   <!-- Firebase SDKs (App, Firestore, & Storage Compatibility Mode) -->
