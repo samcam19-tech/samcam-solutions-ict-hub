@@ -12,21 +12,12 @@ let currentPage = 1;
 const itemsPerPage = 6; // Number of resource cards per page
 
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
-  authDomain: "samcam-system.firebaseapp.com",
-  projectId: "samcam-system",
-  storageBucket: "samcam-system.firebasestorage.app",
-  messagingSenderId: "74940789582",
-  appId: "1:74940789582:web:f159688165a194e841241f",
-  measurementId: "G-L2H4V8Y050"
-};
+/* ==========================================================================
+   SAMCAM SOLUTIONS - MAIN APP SCRIPT
+   ========================================================================== */
 
-  // Initialize Firebase App
-  firebase.initializeApp(firebaseConfig);
-
-  // Expose Firestore globally as window.db so your polling script catches it instantly
-  window.db = firebase.firestore();
+// Use the global db instance initialized in firebase-config.js
+const db = window.db || (typeof firebase !== "undefined" ? firebase.firestore() : null);
 
 document.addEventListener("DOMContentLoaded", () => {
   // Initialize Theme
