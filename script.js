@@ -267,9 +267,19 @@ window.handleLogin = function(e) {
 };
 
 window.handleLogout = function() {
+  // 1. Clear ALL possible session storage locations
   localStorage.removeItem('portal_session');
-  broadcastSessionUpdate(null);
+  localStorage.removeItem('currentLoggedInUser');
+  sessionStorage.removeItem('portal_session');
+  sessionStorage.removeItem('currentLoggedInUser');
 
+  // 2. Clear global user memory states
+  if (typeof broadcastSessionUpdate === 'function') {
+    broadcastSessionUpdate(null);
+  }
+  window.currentUser = null;
+
+  // 3. Reset input fields if present
   const userEl = document.getElementById('loginUsername');
   const passEl = document.getElementById('loginPassword');
   const errEl = document.getElementById('loginError');
@@ -278,14 +288,16 @@ window.handleLogout = function() {
   if (passEl) passEl.value = '';
   if (errEl) errEl.style.display = 'none';
 
-  // Explicitly hide the authenticated navigation links on logout
+  // 4. Hide authenticated navigation links
   const authNavActions = document.getElementById('authNavActions');
   if (authNavActions) {
     authNavActions.style.display = 'none';
   }
 
   if (typeof updatePortalUI === 'function') updatePortalUI();
-  navigateToView('login', true);
+
+  // 5. Force a hard redirect or reload to clear cached DOM memory
+  window.location.href = 'index.html'; 
 };
 
 /* ==========================================================================
