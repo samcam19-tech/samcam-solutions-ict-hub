@@ -270,6 +270,116 @@ window.handleLogout = function() {
 };
 
 /* ==========================================================================
+   PROFILE PICTURE UPLOAD & UI DISPLAY MODULE
+   ========================================================================== */
+
+// 1. Function to update all profile image elements on the page
+window.updateProfileUIImages = function(user) {
+  const defaultAvatar = "images/default-avatar.png";
+  const userAvatar = (user && user.profilePic && user.profilePic.trim() !== "") 
+    ? user.profilePic 
+    : defaultAvatar;
+
+  // Target banner and preview image elements safely
+  const bannerPic = document.getElementById('bannerProfilePic');
+  const previewPic = document.getElementById('profilePicPreview');
+  const fullNameDisplay = document.getElementById('profileFullName');
+  const usernameDisplay = document.getElementById('profileUsernameDisplay');
+  const nameDisplay = document.getElementById('userNameDisplay');
+  const roleDisplay = document.getElementById('userRoleDisplay');
+
+  if (bannerPic) bannerPic.src = userAvatar;
+  if (previewPic) previewPic.src = userAvatar;
+  
+  if (user) {
+    if (fullNameDisplay) fullNameDisplay.textContent = user.fullName || user.username || "User";
+    if (usernameDisplay) usernameDisplay.textContent = "@" + (user.username || "");
+    if (nameDisplay) nameDisplay.textContent = user.fullName || user.username || "User";
+    if (roleDisplay) roleDisplay.textContent = user.role || "User";
+  }
+};
+
+// 2. Hook into session changes to refresh profile images automatically
+window.addEventListener('portalSessionChanged', (e) => {
+  window.updateProfileUIImages(e.detail);
+});
+
+// 3. Handle File Input Change & Firebase Storage Upload
+document.addEventListener('DOMContentLoaded', () => {
+  const profilePicInput = document.getElementById('profilePicInput');
+  
+  if (profilePicInput) {
+    profilePicInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const currentUser = loadSessionFromStorage();
+      if (!currentUser || !currentUser.username) {
+        alert("Please sign in again to update your profile picture.");
+        navigateToView('login', true);
+        return;
+      }
+
+      // Provide visual loading feedback on the upload label/button
+      const uploadLabel = document.querySelector('label[for="profilePicInput"]');
+      const originalLabelHTML = uploadLabel ? uploadLabel.innerHTML : '';
+      if (uploadLabel) {
+        uploadLabel.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
+        uploadLabel.style.pointerEvents = 'none';
+      }
+
+      try {
+        // Create unique path in Firebase Storage: profile_pictures/username_timestamp.ext
+        const fileExtension = file.name.split('.').pop();
+        const filePath = `profile_pictures/${currentUser.username}_${Date.now()}.${fileExtension}`;
+        const fileRef = storageRef.child(filePath);
+
+        // Upload file to Firebase Storage
+        const snapshot = await fileRef.put(file);
+        
+        // Retrieve public download URL from Firebase Storage
+        const downloadURL = await snapshot.ref.getDownloadURL();
+
+        // Update local object & session storage
+        currentUser.profilePic = downloadURL;
+        localStorage.setItem('portal_session', JSON.stringify(currentUser));
+        broadcastSessionUpdate(currentUser);
+
+        // Update Firestore database document ('users' collection keyed by username)
+        if (window.db) {
+          const userDocRef = window.db.collection('users').doc(currentUser.username.toLowerCase());
+          await userDocRef.update({
+            profilePic: downloadURL
+          });
+        }
+
+        // Refresh UI images instantly
+        window.updateProfileUIImages(currentUser);
+        alert("Profile picture updated successfully!");
+
+      } catch (error) {
+        console.error("Error uploading profile picture to Firebase Storage:", error);
+        alert("Failed to upload profile picture. Please check your network connection and try again.");
+      } finally {
+        // Restore upload button state
+        if (uploadLabel) {
+          uploadLabel.innerHTML = originalLabelHTML;
+          uploadLabel.style.pointerEvents = 'auto';
+        }
+        // Clear the file input value so re-selecting the same file triggers change again if needed
+        profilePicInput.value = '';
+      }
+    });
+  }
+
+  // Initial load check if session already active on page load
+  const initialSession = loadSessionFromStorage();
+  if (initialSession) {
+    window.updateProfileUIImages(initialSession);
+  }
+});
+
+/* ==========================================================================
    2. STUDENT REGISTRATION & BULK IMPORT
    ========================================================================== */
 async function saveUserToCloud(userObj) {
