@@ -93,6 +93,20 @@
   <!-- Firebase App & Firestore Compatibility SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+  <!-- INITIALIZE FIREBASE COMPAT INSTANCE -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_AUTH_DOMAIN",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_STORAGE_BUCKET",
+      messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
+    window.db = firebase.firestore();
+  </script>
 </head>
 <body>
 
@@ -107,10 +121,14 @@
         </div>
       </div>
 
-      <!-- Mobile Hamburger Button -->
-      <button type="button" class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle Navigation Menu">
-        <i class="fa-solid fa-bars" id="menuToggleIcon"></i>
-      </button>
+      <!-- Mobile Hamburger Button Container with Badge Support -->
+      <div style="position: relative; display: inline-flex;">
+        <button type="button" class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle Navigation Menu">
+          <i class="fa-solid fa-bars" id="menuToggleIcon"></i>
+        </button>
+        <!-- Shared Badge Counter (Dynamic placement handled in JS) -->
+        <span id="navUnreadBadge" class="nav-badge-counter" style="position: absolute; top: 0px; right: 0px; background: #ef4444; color: white; font-size: 0.6rem; font-weight: 700; padding: 0.05rem 0.3rem; border-radius: 10px; min-width: 15px; text-align: center; line-height: 1.2; display: none;">0</span>
+      </div>
 
       <div class="nav-actions" id="navActionsContainer" style="display: flex; align-items: center; gap: 0.75rem;">
         
@@ -124,17 +142,14 @@
           <i class="fa-solid fa-file-pen"></i> Academic Portal
         </a>
 
-         <!-- Notification Bell Icon with Live Badge Counter positioned on the top right of the bell icon -->
+         <!-- Notification Bell Icon -->
         <button id="notificationsBellBtn" class="nav-action-item" onclick="toggleAnnouncementsDropdown(event)" aria-label="Institutional Announcements" title="Announcements & Notices">
-          <span style="position: relative; display: inline-flex; align-items: center;">
+          <span id="bellIconWrapper" style="position: relative; display: inline-flex; align-items: center;">
             <i class="fa-solid fa-bell" style="font-size: 1rem;"></i>
-            <span id="navUnreadBadge" class="nav-badge-counter" style="position: absolute; top: -8px; right: -10px; background: #ef4444; color: white; font-size: 0.6rem; font-weight: 700; padding: 0.05rem 0.3rem; border-radius: 10px; min-width: 15px; text-align: center; line-height: 1.2;">0</span>
           </span>
-          <span></span>
+          <span>Notices</span>
         </button>
       </div>
-
-      
 
       <!-- QUICK-VIEW ANNOUNCEMENTS DRAWER/POPUP -->
       <div id="announcementsDropdownPopup" style="display: none; position: absolute; top: 70px; right: 0; width: 360px; max-height: 480px; background: var(--bg-card, #ffffff); border: 1px solid var(--border-color, #cbd5e1); border-radius: 12px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15); z-index: 10000; flex-direction: column; overflow: hidden;">
@@ -335,7 +350,7 @@
           attempts++;
           if (attempts > 20) { // Stop after 10 seconds and fallback
             clearInterval(checkFirestore);
-            console.warn("Firestore 'db' instance could not be found after waiting. Ensure Firebase is initialized in your other scripts.");
+            console.warn("Firestore 'db' instance could not be found after waiting.");
             updateNavBadgeCounter();
           }
         }
@@ -349,6 +364,11 @@
           popup.style.display = 'none';
         }
       });
+
+      // Listen for window resize to reposition badge dynamically
+      window.addEventListener('resize', () => {
+        updateNavBadgeCounter();
+      });
     });
 
     function initAnnouncementsListener(firestoreDb) {
@@ -359,7 +379,6 @@
           snapshot.forEach((doc) => {
             const data = doc.data();
             
-            // Safe date parsing handling Timestamps, Date objects, or string representations
             let formattedDate = 'Just now';
             if (data.createdAt) {
               if (typeof data.createdAt.toDate === 'function') {
@@ -409,10 +428,27 @@
       const unreadCount = navAnnouncementsCache.filter(item => !readList.includes(item.id)).length;
       
       const badgeEl = document.getElementById('navUnreadBadge');
-      if (badgeEl) {
-        // Always display the counter, showing '0' when there are no new announcements
+      const bellWrapper = document.getElementById('bellIconWrapper');
+      const mobileToggleContainer = badgeEl ? badgeEl.parentElement : null;
+
+      if (badgeEl && bellWrapper && mobileToggleContainer) {
         badgeEl.textContent = unreadCount;
         badgeEl.style.display = 'inline-block';
+
+        // Check if viewport is mobile (matching media query max-width: 768px)
+        const isMobile = window.innerWidth <= 768;
+
+        if (isMobile) {
+          // Move badge inside the mobile hamburger wrapper container
+          mobileToggleContainer.appendChild(badgeEl);
+          badgeEl.style.top = '0px';
+          badgeEl.style.right = '0px';
+        } else {
+          // Move badge back to the desktop notification bell icon wrapper
+          bellWrapper.appendChild(badgeEl);
+          badgeEl.style.top = '-8px';
+          badgeEl.style.right = '-10px';
+        }
       }
     }
 
