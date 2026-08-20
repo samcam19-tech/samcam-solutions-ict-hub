@@ -386,14 +386,15 @@ document.addEventListener('DOMContentLoaded', () => {
         broadcastSessionUpdate(currentUser);
       }
 
-      // Update Firestore database document using the user's full name to match the document ID
+      // Update Firestore database document using the user's username as the document ID
       if (window.db) {
-        const docId = currentUser.fullName || currentUser.username;
+        // Target Firestore document by username (adjust .toLowerCase() if your document IDs are lowercase)
+        const docId = currentUser.username;
         const userDocRef = window.db.collection('users').doc(docId);
         
-        // Use set with merge: true to avoid "No document to update" errors
+        // Use set with merge: true to update or create safely
         await userDocRef.set({ profilePic: downloadURL }, { merge: true });
-        console.log("💾 Firestore user profilePic updated for document:", docId);
+        console.log("💾 Firestore user profilePic updated for document (username):", docId);
       }
 
       // Refresh UI images instantly
@@ -415,7 +416,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
-
 /* ==========================================================================
    2. STUDENT REGISTRATION & BULK IMPORT
    ========================================================================== */
