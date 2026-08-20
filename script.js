@@ -1151,15 +1151,22 @@ function loadUserProfileUI() {
   const currentUser = JSON.parse(localStorage.getItem('currentLoggedInUser'));
   if (!currentUser) return;
 
-  if (document.getElementById('userNameDisplay')) document.getElementById('userNameDisplay').innerText = currentUser.fullName || currentUser.username;
-  if (document.getElementById('userRoleDisplay')) document.getElementById('userRoleDisplay').innerText = currentUser.role || 'Student';
-  if (document.getElementById('profileFullName')) document.getElementById('profileFullName').innerText = currentUser.fullName || currentUser.username;
-  if (document.getElementById('profileUsernameDisplay')) document.getElementById('profileUsernameDisplay').innerText = `@${currentUser.username}`;
-  if (document.getElementById('updateUsername')) document.getElementById('updateUsername').value = currentUser.username;
+  // Set default fallback if profilePic is missing or empty
+  const userAvatar = currentUser.profilePic && currentUser.profilePic.trim() !== "" 
+    ? currentUser.profilePic 
+    : "images/default-avatar.png";
 
-  const avatarUrl = currentUser.profilePic || 'images/default-avatar.png';
-  if (document.getElementById('profilePicPreview')) document.getElementById('profilePicPreview').src = avatarUrl;
-  if (document.getElementById('bannerProfilePic')) document.getElementById('bannerProfilePic').src = avatarUrl;
+  // Update UI elements safely
+  document.getElementById('bannerProfilePic').src = userAvatar;
+  document.getElementById('profilePicPreview').src = userAvatar;
+  document.getElementById('userNameDisplay').textContent = currentUser.fullName || currentUser.username;
+  document.getElementById('profileFullName').textContent = currentUser.fullName || currentUser.username;
+  document.getElementById('profileUsernameDisplay').textContent = "@" + currentUser.username;
+  document.getElementById('updateUsername').value = currentUser.username;
+  
+  if(document.getElementById('userRoleDisplay')) {
+    document.getElementById('userRoleDisplay').textContent = currentUser.role || "User";
+  }
 }
 
 function handleUpdateAccountDetails(event) {
