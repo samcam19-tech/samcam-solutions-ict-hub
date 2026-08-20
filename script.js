@@ -1327,78 +1327,6 @@ function loadUserProfileUI() {
   }
 }
 
-function handleUpdateAccountDetails(event) {
-  event.preventDefault();
-  const newUsername = document.getElementById('updateUsername').value.trim();
-  const currentPasswordInput = document.getElementById('currentPassword').value.trim();
-  const newPassword = document.getElementById('updatePassword').value.trim();
-  const confirmPassword = document.getElementById('confirmPassword').value.trim();
-  
-  const currentUser = JSON.parse(localStorage.getItem('currentLoggedInUser'));
-
-  if (!currentUser) {
-    alert("No active session found. Please sign in again.");
-    return;
-  }
-
-  // 1. Check if new passwords match when attempting to change it
-  if (newPassword && newPassword !== confirmPassword) {
-    alert("New passwords do not match! Please re-enter.");
-    return;
-  }
-
-  // 2. Query the correct 'users' collection using the document ID / username
-  const userRef = db.collection("users").doc(currentUser.username);
-
-  userRef.get().then((docSnapshot) => {
-    if (!docSnapshot.exists) {
-      alert("User record not found in database.");
-      return;
-    }
-
-    const userData = docSnapshot.data();
-
-    // Verify current password matches database record
-    if (userData.password !== currentPasswordInput) {
-      alert("Incorrect current password! Changes rejected.");
-      return;
-    }
-
-    // Build update payload
-    const updateData = {};
-    
-    // If username is changing, Firestore requires creating a new doc or keeping the same doc ID. 
-    // Since document ID is the username here, changing the username field is straightforward:
-    if (newUsername && newUsername !== currentUser.username) {
-      updateData.username = newUsername;
-    }
-
-    if (newPassword) {
-      updateData.password = newPassword;
-    }
-
-    // Perform database update on the user document
-    userRef.update(updateData).then(() => {
-      if (newUsername) {
-        currentUser.username = newUsername;
-      }
-      localStorage.setItem('currentLoggedInUser', JSON.stringify(currentUser));
-      
-      // Clear password fields for security
-      document.getElementById('currentPassword').value = '';
-      document.getElementById('updatePassword').value = '';
-      document.getElementById('confirmPassword').value = '';
-
-      alert("Account details and security credentials updated successfully!");
-      loadUserProfileUI();
-    });
-
-  }).catch((error) => {
-    console.error("Error updating account details:", error);
-    alert("Error updating account. Check console for details.");
-  });
-}
-
 // --- AUTHENTICATION MOCK & SESSION UTILS ---
 function checkUserSession() {
   const currentUser = JSON.parse(localStorage.getItem('currentLoggedInUser'));
@@ -1446,6 +1374,113 @@ function handleLogin(e) {
 function handleLogout() {
   localStorage.removeItem('currentLoggedInUser');
   checkUserSession();
+}
+
+function handleUpdateAccountDetails(event) {
+  event.preventDefault();
+  const newUsername = document.getElementById('updateUsername').value.trim();
+  const currentPasswordInput = document.getElementById('currentPassword').value.trim();
+  const newPassword = document.getElementById('updatePassword').value.trim();
+  const confirmPassword = document.getElementById('confirmPassword').value.trim();
+  
+  const currentUser = JSON.parse(localStorage.getItem('currentLoggedInUser'));
+
+  if (!currentUser) {
+    alert("No active session found. Please sign in again.");
+    return;
+  }
+
+  // 1. Check if new passwords match when attempting to change it
+  if (newPassword && newPassword !== confirmPassword) {
+    alert("New passwords do not match! Please re-enter.");
+    return;
+  }
+
+  const oldUsernameId = currentUser.username;
+  const userRef = db.collection("users").doc(oldUsernameId);
+
+  userRef.get().then((docSnapshot) => {
+    if (!docSnapshot.exists) {
+      alert("User record not found in database.");
+      return;
+    }
+
+    const userData = docSnapshot.data();
+
+    // Verify current password matches database record
+    if (userData.password !== currentPasswordInput) {
+      alert("Incorrect current password! Changes rejected.");
+      return;
+    }
+
+    // Determine what needs updating
+    const updatingUsername = newUsername && newUsername !== oldUsernameId;
+    const updatingPassword = Boolean(newPassword);
+
+    // If nothing was typed to change, stop here
+    if (!updatingUsername && !updatingPassword) {
+      alert("No changes detected.");
+      return;
+    }
+
+    // SCENARIO A: Username is changing (Since Username = Document ID)
+    if (updatingUsername) {
+      // Check if target username already exists first to prevent overwriting
+      db.collection("users").doc(newUsername).get().then((newDocSnap) => {
+        if (newDocSnap.exists) {
+          alert("Username is already taken. Choose another one.");
+          return;
+        }
+
+        // Prepare new data payload
+        const migratedData = { ...userData };
+        migratedData.username = newUsername;
+        if (updatingPassword) {
+          migratedData.password = newPassword;
+        }
+
+        // 1. Create new doc with new username ID, 2. Delete old doc
+        db.collection("users").doc(newUsername).set(migratedData)
+          .then(() => {
+            return userRef.delete(); // Delete old document ID
+          })
+          .then(() => {
+            currentUser.username = newUsername;
+            localStorage.setItem('currentLoggedInUser', JSON.stringify(currentUser));
+            clearFormAndFinish();
+          })
+          .catch((err) => {
+            console.error("Error migrating username:", err);
+            alert("Failed to update username. Check console.");
+          });
+      });
+    } 
+    // SCENARIO B: Only Password is changing (Document ID stays identical)
+    else if (updatingPassword) {
+      userRef.update({ password: newPassword }).then(() => {
+        clearFormAndFinish();
+      }).catch((err) => {
+        console.error("Error updating password:", err);
+        alert("Failed to update password.");
+      });
+    }
+
+  }).catch((error) => {
+    console.error("Error accessing database:", error);
+    alert("Error processing request. Check console for details.");
+  });
+}
+
+// Helper to clean inputs and refresh UI cleanly
+function clearFormAndFinish() {
+  document.getElementById('currentPassword').value = '';
+  document.getElementById('updatePassword').value = '';
+  document.getElementById('confirmPassword').value = '';
+
+  alert("Account details and security credentials updated successfully!");
+  if (typeof loadUserProfileUI === 'function') {
+    loadUserProfileUI();
+  }
 }
 
 // Placeholder wrappers for features
