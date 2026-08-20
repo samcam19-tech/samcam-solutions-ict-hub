@@ -205,6 +205,7 @@ function renderClassesGrid() {
         <div class="class-meta">
           <span class="tag">${item.classLevel}</span>
           <span class="tag" style="background: #dcfce7; color: #166534;">Live Session</span>
+          ${item.admissionType === 'restricted' ? '<span class="tag" style="background: #fee2e2; color: #991b1b;">Restricted Access</span>' : ''}
         </div>
         <h3 class="class-title">${item.title}</h3>
         <p class="class-desc">${item.description || 'No instructions provided.'}</p>
@@ -225,11 +226,41 @@ function renderClassesGrid() {
 }
 
 /* ==========================================================================
-   MODAL CONTROLS
+   MODAL CONTROLS & MEETING MODE TOGGLE
    ========================================================================== */
 function openScheduleModal() {
   const modal = document.getElementById('scheduleModal');
   if (modal) modal.style.display = 'flex';
+  
+  // Default to Instant Meeting mode on open
+  const modeSelect = document.getElementById('meetingMode');
+  if (modeSelect) {
+    modeSelect.value = 'instant';
+    toggleMeetingMode();
+  }
+}
+
+function toggleMeetingMode() {
+  const modeSelect = document.getElementById('meetingMode');
+  if (!modeSelect) return;
+  
+  const mode = modeSelect.value;
+  const container = document.getElementById('dateTimeFieldsContainer');
+  const startInput = document.getElementById('startTime');
+  const endInput = document.getElementById('endTime');
+  const submitBtn = document.getElementById('submitClassBtn');
+
+  if (mode === 'instant') {
+    if (container) container.style.display = 'none';
+    if (startInput) startInput.removeAttribute('required');
+    if (endInput) endInput.removeAttribute('required');
+    if (submitBtn) submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Create & Launch Instant Meet`;
+  } else {
+    if (container) container.style.display = 'flex';
+    if (startInput) startInput.setAttribute('required', 'true');
+    if (endInput) endInput.setAttribute('required', 'true');
+    if (submitBtn) submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Schedule Meet & Save`;
+  }
 }
 
 function closeScheduleModal(e) {
@@ -250,9 +281,31 @@ function handleScheduleSubmit(e) {
   const title = document.getElementById('classTitle').value;
   const classLevel = document.getElementById('classLevel').value;
   const instructorName = document.getElementById('instructorName').value;
-  const startTime = document.getElementById('startTime').value;
-  const endTime = document.getElementById('endTime').value;
   const description = document.getElementById('classDescription').value;
+  const meetingMode = document.getElementById('meetingMode').value;
+  const admissionType = document.getElementById('admissionType').value;
+
+  let startDate, endDate;
+
+  if (meetingMode === 'instant') {
+    startDate = new Date();
+    endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // +1 hour default span
+  } else {
+    const startTimeVal = document.getElementById('startTime').value;
+    const endTimeVal = document.getElementById('endTime').value;
+    
+    startDate = new Date(startTimeVal);
+    endDate = new Date(endTimeVal);
+
+    if (isNaN(startDate.getTime())) {
+      alert("Please provide a valid Start Date & Time.");
+      return;
+    }
+
+    if (isNaN(endDate.getTime()) || endDate <= startDate) {
+      endDate = new Date(startDate.getTime() + 60 * 60 * 1000); // Default +1 hour if invalid
+    }
+  }
 
   const submitBtn = document.getElementById('submitClassBtn');
   
@@ -273,32 +326,42 @@ function handleScheduleSubmit(e) {
     }
 
     try {
-      // Direct REST API Call to Google Calendar with automatic Google Meet conference creation
       const meetUrl = await createGoogleCalendarEvent(resp.access_token, {
-        title, classLevel, instructorName, startTime, endTime, description
+        title, classLevel, instructorName, 
+        startTime: startDate.toISOString(), 
+        endTime: endDate.toISOString(), 
+        description,
+        admissionType
       });
 
-      // Save class data including generated Meet URL to Firestore
       await db.collection("live_classes").add({
         title,
         classLevel,
         instructorName,
-        startTime,
-        endTime,
+        startTime: startDate.toISOString(),
+        endTime: endDate.toISOString(),
         description,
         meetUrl,
+        admissionType,
+        meetingMode,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
       closeScheduleModalDirect();
       document.getElementById('scheduleForm').reset();
-      alert("Class scheduled successfully with an automated Google Meet link!");
+      
+      if (meetingMode === 'instant') {
+        alert("Instant meeting created successfully! Launching Google Meet...");
+        window.open(meetUrl, '_blank');
+      } else {
+        alert("Class scheduled successfully with an automated Google Meet link!");
+      }
     } catch (err) {
       console.error("Error creating calendar event:", err);
-      alert("Failed to create Google Calendar event. Check console for details.");
+      alert("Failed to create Google Calendar event: " + err.message);
     } finally {
       submitBtn.disabled = false;
-      submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Create Meet & Schedule`;
+      toggleMeetingMode();
     }
   };
 
@@ -306,11 +369,15 @@ function handleScheduleSubmit(e) {
 }
 
 async function createGoogleCalendarEvent(accessToken, classData) {
+  const restrictionNote = classData.admissionType === 'restricted' 
+    ? "\n\n🔒 [Access Policy: Restricted - Attendees will wait in the knocking room until admitted by the instructor]." 
+    : "\n\n🔓 [Access Policy: Open entry for class participants].";
+
   const event = {
     'summary': `[${classData.classLevel}] ${classData.title} - Samcam ICT Hub`,
-    'description': `${classData.description}\n\nInstructor: ${classData.instructorName}`,
-    'start': { 'dateTime': new Date(classData.startTime).toISOString() },
-    'end': { 'dateTime': new Date(classData.endTime).toISOString() },
+    'description': `${classData.description}${restrictionNote}\n\nInstructor: ${classData.instructorName}`,
+    'start': { 'dateTime': classData.startTime },
+    'end': { 'dateTime': classData.endTime },
     'conferenceData': {
       'createRequest': {
         'requestId': 'samcam-' + Math.random().toString(36).substring(2, 9),
