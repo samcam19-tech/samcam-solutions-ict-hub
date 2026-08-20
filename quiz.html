@@ -516,25 +516,74 @@ function closeEditProfileModal() {
   document.getElementById('editProfileModal').style.display = 'none';
 }
 
-function handleSaveProfile(event) {
+async function handleSaveProfile(event) {
   event.preventDefault();
   if (typeof currentUser !== 'undefined' && currentUser) {
-    currentUser.fullName = document.getElementById('editFullName').value;
-    currentUser.username = document.getElementById('editUsername').value;
-    // Profile picture URL is read-only, so we keep the existing value
+    const oldUsername = currentUser.username;
+    const updatedFullName = document.getElementById('editFullName').value.trim();
+    const updatedUsername = document.getElementById('editUsername').value.trim();
 
+    const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+
+    // If the username is being changed, check if the new one is already taken
+    if (updatedUsername.toLowerCase() !== oldUsername.toLowerCase()) {
+      if (localUsers.some(u => u.username.toLowerCase() === updatedUsername.toLowerCase())) {
+        alert('Username already exists! Please choose a unique username.');
+        return;
+      }
+    }
+
+    // Update current user properties
+    currentUser.fullName = updatedFullName;
+    currentUser.username = updatedUsername;
+
+    // Locate and update the user record in the local users array
+    const userIndex = localUsers.findIndex(u => u.username.toLowerCase() === oldUsername.toLowerCase());
+    if (userIndex >= 0) {
+      localUsers[userIndex] = currentUser;
+    } else {
+      // Fallback if old username wasn't matched exactly
+      localUsers.push(currentUser);
+    }
+    localStorage.setItem('portal_users', JSON.stringify(localUsers));
+
+    // If Firestore cloud sync is active, update the document
+    if (window.db) {
+      try {
+        // If username changed, we might want to delete the old Firestore doc and create/update the new one
+        if (updatedUsername.toLowerCase() !== oldUsername.toLowerCase()) {
+          await window.db.collection('users').doc(oldUsername.toLowerCase()).delete();
+        }
+
+        await window.db.collection('users').doc(updatedUsername.toLowerCase()).set({
+          fullName: currentUser.fullName,
+          class: currentUser.class || 'Student',
+          username: currentUser.username,
+          password: currentUser.password, // preserve existing password
+          role: currentUser.role || 'Student',
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (err) {
+        console.error('Firestore update error:', err);
+      }
+    }
+
+    // Update active session storage reference
     localStorage.setItem('currentLoggedInUser', JSON.stringify(currentUser));
     
     // Refresh UI elements
     if (typeof syncQuizEngineSession === 'function') {
       syncQuizEngineSession(currentUser);
     } else {
-      document.getElementById('userNameDisplay').textContent = currentUser.fullName;
-      document.getElementById('profileUsernameDisplay').textContent = '@' + currentUser.username;
+      const nameDisplay = document.getElementById('userNameDisplay');
+      const userHandleDisplay = document.getElementById('profileUsernameDisplay');
+      if (nameDisplay) nameDisplay.textContent = currentUser.fullName;
+      if (userHandleDisplay) userHandleDisplay.textContent = '@' + currentUser.username;
     }
+
+    closeEditProfileModal();
+    alert('Profile updated successfully!');
   }
-  closeEditProfileModal();
-  alert('Profile updated successfully!');
 }
   </script>
 
