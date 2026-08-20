@@ -119,14 +119,9 @@
           <i class="fa-solid fa-moon"></i> <span>Theme</span>
         </button>
 
-        <!-- Link to Academic Portal -->
+        <!-- Link to Assessment Portal -->
         <a href="assessments.html" class="nav-action-item">
           <i class="fa-solid fa-file-pen"></i> Academic Portal
-        </a>
-
-        <!-- Quick Link to Full Announcements Page -->
-        <a href="announcements.html" class="nav-action-item" title="View Full Announcements Page">
-          <i class="fa-solid fa-bullhorn"></i> <span>Announcements</span>
         </a>
 
          <!-- Notification Bell Icon with Live Badge Counter -->
@@ -298,7 +293,6 @@
         <h4>Quick Links</h4>
         <ul>
           <li><a href="assessments.html"><i class="fa-solid fa-chevron-right"></i> Academic Portal</a></li>
-          <li><a href="announcements.html"><i class="fa-solid fa-chevron-right"></i> Announcements</a></li>
           <li><a href="#resource-grid"><i class="fa-solid fa-chevron-right"></i> Resource Library</a></li>
         </ul>
       </div>
@@ -327,7 +321,6 @@
     // --- NAVBAR ANNOUNCEMENTS INTEGRATION SCRIPT ---
 
     document.addEventListener("DOMContentLoaded", () => {
-      // Safely poll for the Firestore db instance if it loads asynchronously
       let attempts = 0;
       const checkFirestore = setInterval(() => {
         const firestoreDb = (typeof window.db !== 'undefined') ? window.db : (typeof db !== 'undefined' ? db : null);
@@ -337,15 +330,14 @@
           initAnnouncementsListener(firestoreDb);
         } else {
           attempts++;
-          if (attempts > 20) { // Stop after 10 seconds and fallback
+          if (attempts > 20) {
             clearInterval(checkFirestore);
-            console.warn("Firestore 'db' instance could not be found after waiting. Ensure Firebase is initialized in your other scripts.");
+            console.warn("Firestore 'db' instance could not be found after waiting.");
             updateNavBadgeCounter();
           }
         }
       }, 500);
 
-      // Close popup dropdown when clicking outside
       document.addEventListener('click', (e) => {
         const popup = document.getElementById('announcementsDropdownPopup');
         const bellBtn = document.getElementById('notificationsBellBtn');
@@ -363,7 +355,6 @@
           snapshot.forEach((doc) => {
             const data = doc.data();
             
-            // Safe date parsing handling Timestamps, Date objects, or string representations
             let formattedDate = 'Just now';
             if (data.createdAt) {
               if (typeof data.createdAt.toDate === 'function') {
@@ -479,48 +470,80 @@
       }
     }
 
+    /* --- MODERNIZED 2026 MODAL APPEARANCE --- */
     function openAnnouncementDetailModal(item) {
-      let badgeColor = '#0369a1';
-      let badgeBg = '#e0f2fe';
-      if (item.priority === 'Urgent') { badgeColor = '#991b1b'; badgeBg = '#fee2e2'; }
-      else if (item.priority === 'Exam') { badgeColor = '#92400e'; badgeBg = '#fef3c7'; }
+      let badgeColor = '#0284c7';
+      let badgeBg = 'rgba(2, 132, 199, 0.1)';
+      let badgeBorder = 'rgba(2, 132, 199, 0.2)';
+      
+      if (item.priority === 'Urgent') { 
+        badgeColor = '#dc2626'; 
+        badgeBg = 'rgba(220, 38, 38, 0.1)'; 
+        badgeBorder = 'rgba(220, 38, 38, 0.2)';
+      } else if (item.priority === 'Exam') { 
+        badgeColor = '#d97706'; 
+        badgeBg = 'rgba(217, 119, 6, 0.1)'; 
+        badgeBorder = 'rgba(217, 119, 6, 0.2)';
+      }
 
       const modalContent = document.getElementById('modalContent');
       if (!modalContent) return;
 
       modalContent.innerHTML = `
-        <div style="padding: 1.5rem; max-width: 500px; width: 100%;">
-          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
-            <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">${item.priority}</span>
-            <span style="font-size: 0.8rem; color: #64748b;"><i class="fa-regular fa-clock"></i> ${item.createdAt}</span>
-          </div>
-          <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-color, #0f172a); margin-bottom: 1rem; line-height: 1.4;">${escapeHtmlText(item.title)}</h2>
-          <div style="font-size: 0.85rem; color: #475569; margin-bottom: 1.5rem; font-weight: 500;">
-            <i class="fa-solid fa-user-pen" style="color: var(--primary, #2563eb);"></i> Posted by: <strong>${escapeHtmlText(item.author)}</strong>
-          </div>
-          <div style="font-size: 0.95rem; color: var(--text-color, #334155); line-height: 1.6; white-space: pre-wrap; background: var(--bg-main, #f8fafc); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color, #e2e8f0); max-height: 240px; overflow-y: auto; margin-bottom: 1.25rem;">${escapeHtmlText(item.body)}</div>
+        <div style="padding: 2rem 2.25rem; max-width: 560px; width: 100%; box-sizing: border-box; font-family: 'Inter', sans-serif;">
           
-          <!-- QUICK ACTION LINKS INSIDE THE ANNOUNCEMENT MODAL -->
-          <div style="background: var(--bg-main, #f8fafc); border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px; padding: 0.75rem 1rem; margin-bottom: 1.25rem;">
-            <div style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.3rem;">
-              <i class="fa-solid fa-bolt" style="color: var(--primary, #2563eb);"></i> Quick Links
+          <!-- Metadata Header Tag & Timestamp -->
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+            <span style="background: ${badgeBg}; color: ${badgeColor}; border: 1px solid ${badgeBorder}; padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; display: inline-flex; align-items: center; gap: 0.35rem;">
+              <span style="width: 6px; height: 6px; border-radius: 50%; background: ${badgeColor}; display: inline-block;"></span>
+              ${item.priority}
+            </span>
+            <span style="font-size: 0.78rem; color: #64748b; font-weight: 500; display: inline-flex; align-items: center; gap: 0.4rem;">
+              <i class="fa-regular fa-clock" style="color: #94a3b8;"></i> ${item.createdAt}
+            </span>
+          </div>
+
+          <!-- Title -->
+          <h2 style="font-family: 'Plus Jakarta Sans', sans-serif; font-size: 1.35rem; font-weight: 800; color: var(--text-color, #0f172a); margin-bottom: 0.85rem; line-height: 1.35;">${escapeHtmlText(item.title)}</h2>
+
+          <!-- Author Box -->
+          <div style="display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; color: #475569; margin-bottom: 1.25rem; background: var(--bg-main, #f8fafc); padding: 0.35rem 0.75rem; border-radius: 6px; border: 1px solid var(--border-color, #e2e8f0);">
+            <div style="width: 22px; height: 22px; border-radius: 50%; background: var(--primary-light, #eff6ff); color: var(--primary, #2563eb); display: inline-flex; align-items: center; justify-content: center; font-size: 0.7rem;">
+              <i class="fa-solid fa-user"></i>
             </div>
-            <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-              <a href="assessments.html" class="nav-action-item" style="font-size: 0.8rem; padding: 0.35rem 0.65rem; background: var(--primary-light, #eff6ff); color: var(--primary, #2563eb); border-color: var(--primary, #2563eb);">
-                <i class="fa-solid fa-file-pen"></i> Academic Portal
+            <span>Posted by <strong style="color: var(--text-color, #1e293b);">${escapeHtmlText(item.author)}</strong></span>
+          </div>
+
+          <!-- Notice Body Card -->
+          <div style="font-size: 0.92rem; color: var(--text-color, #334155); line-height: 1.7; white-space: pre-wrap; background: var(--bg-main, #f8fafc); padding: 1.25rem; border-radius: 12px; border: 1px solid var(--border-color, #e2e8f0); max-height: 260px; overflow-y: auto; margin-bottom: 1.25rem; box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);">
+            ${escapeHtmlText(item.body)}
+          </div>
+          
+          <!-- Modern Quick Action Hub -->
+          <div style="background: linear-gradient(135deg, var(--bg-main, #f8fafc) 0%, rgba(37, 99, 235, 0.02) 100%); border: 1px solid var(--border-color, #e2e8f0); border-radius: 12px; padding: 1rem 1.15rem; margin-bottom: 1.5rem;">
+            <div style="font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 0.65rem; display: flex; align-items: center; gap: 0.4rem;">
+              <i class="fa-solid fa-bolt" style="color: var(--primary, #2563eb);"></i> Quick Access Links
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.6rem;">
+              <a href="assessments.html" class="nav-action-item" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; background: var(--bg-card, #ffffff); border-color: var(--border-color, #cbd5e1);">
+                <i class="fa-solid fa-file-pen" style="color: var(--primary, #2563eb);"></i> Assessment Portal
               </a>
-              <a href="announcements.html" class="nav-action-item" style="font-size: 0.8rem; padding: 0.35rem 0.65rem;">
-                <i class="fa-solid fa-bullhorn"></i> Announcements
+              <a href="announcements.html" class="nav-action-item" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; background: var(--bg-card, #ffffff); border-color: var(--border-color, #cbd5e1);">
+                <i class="fa-solid fa-bullhorn" style="color: #0284c7;"></i> All Notices
               </a>
-              <a href="#resource-grid" onclick="closePreviewModalDirect()" class="nav-action-item" style="font-size: 0.8rem; padding: 0.35rem 0.65rem;">
-                <i class="fa-solid fa-book-open"></i> Resource Library
+              <a href="#resource-grid" onclick="closePreviewModalDirect()" class="nav-action-item" style="font-size: 0.8rem; padding: 0.4rem 0.8rem; background: var(--bg-card, #ffffff); border-color: var(--border-color, #cbd5e1);">
+                <i class="fa-solid fa-book-open" style="color: #0d9488;"></i> Resource Library
               </a>
             </div>
           </div>
 
-          <div style="display: flex; justify-content: flex-end;">
-            <button onclick="closePreviewModalDirect()" class="nav-action-item" style="background: var(--primary, #2563eb); color: white; border-color: var(--primary, #2563eb);">Close Notice</button>
+          <!-- Footer Action Button -->
+          <div style="display: flex; justify-content: flex-end; border-top: 1px solid var(--border-color, #e2e8f0); padding-top: 1rem;">
+            <button onclick="closePreviewModalDirect()" class="nav-action-item" style="background: var(--primary, #2563eb); color: white; border-color: var(--primary, #2563eb); font-weight: 600; padding: 0.5rem 1.25rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); cursor: pointer;">
+              Close Notice
+            </button>
           </div>
+
         </div>
       `;
 
