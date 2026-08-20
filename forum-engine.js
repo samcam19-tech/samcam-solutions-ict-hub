@@ -10,6 +10,9 @@ let unsubscribeThreads = null;
 let unsubscribeReplies = null;
 let typingTimeout = null;
 
+// Use the global db instance initialized in firebase-config.js
+const db = window.db || (typeof firebase !== "undefined" ? firebase.firestore() : null);
+
 window.addEventListener('portalSessionChanged', (e) => {
   syncForumEngineSession(e.detail);
 });
