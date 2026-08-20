@@ -436,7 +436,7 @@
         else if (item.priority === 'Exam') { badgeColor = '#92400e'; badgeBg = '#fef3c7'; }
 
         html += `
-          <div onclick="markNavNoticeAsRead('${item.id}')" style="padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border-color, #e2e8f0); cursor: pointer; transition: background 0.2s; background: ${isRead ? 'transparent' : 'rgba(37, 99, 235, 0.04)'};">
+          <div onclick="handleAnnouncementItemClick('${item.id}')" style="padding: 0.6rem 0.75rem; border-bottom: 1px solid var(--border-color, #e2e8f0); cursor: pointer; transition: background 0.2s; background: ${isRead ? 'transparent' : 'rgba(37, 99, 235, 0.04)'};">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem; font-size: 0.7rem;">
               <div style="display: flex; align-items: center; gap: 0.35rem;">
                 <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 0.1rem 0.35rem; border-radius: 4px; font-weight: 700; text-transform: uppercase;">${item.priority}</span>
@@ -462,6 +462,55 @@
       }
 
       container.innerHTML = headerBannerHtml + html;
+    }
+
+    function handleAnnouncementItemClick(id) {
+      // 1. Mark as read
+      markNavNoticeAsRead(id);
+
+      // 2. Close quick-view dropdown drawer popup
+      const popup = document.getElementById('announcementsDropdownPopup');
+      if (popup) {
+        popup.style.display = 'none';
+      }
+
+      // 3. Find announcement object and open detailed modal view
+      const item = navAnnouncementsCache.find(n => n.id === id);
+      if (item) {
+        openAnnouncementDetailModal(item);
+      }
+    }
+
+    function openAnnouncementDetailModal(item) {
+      let badgeColor = '#0369a1';
+      let badgeBg = '#e0f2fe';
+      if (item.priority === 'Urgent') { badgeColor = '#991b1b'; badgeBg = '#fee2e2'; }
+      else if (item.priority === 'Exam') { badgeColor = '#92400e'; badgeBg = '#fef3c7'; }
+
+      const modalContent = document.getElementById('modalContent');
+      if (!modalContent) return;
+
+      modalContent.innerHTML = `
+        <div style="padding: 1.5rem; max-width: 500px; width: 100%;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.75rem;">
+            <span style="background: ${badgeBg}; color: ${badgeColor}; padding: 0.2rem 0.5rem; border-radius: 6px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase;">${item.priority}</span>
+            <span style="font-size: 0.8rem; color: #64748b;"><i class="fa-regular fa-clock"></i> ${item.createdAt}</span>
+          </div>
+          <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text-color, #0f172a); margin-bottom: 1rem; line-height: 1.4;">${escapeHtmlText(item.title)}</h2>
+          <div style="font-size: 0.85rem; color: #475569; margin-bottom: 1.5rem; font-weight: 500;">
+            <i class="fa-solid fa-user-pen" style="color: var(--primary, #2563eb);"></i> Posted by: <strong>${escapeHtmlText(item.author)}</strong>
+          </div>
+          <div style="font-size: 0.95rem; color: var(--text-color, #334155); line-height: 1.6; white-space: pre-wrap; background: var(--bg-main, #f8fafc); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color, #e2e8f0); max-height: 300px; overflow-y: auto;">${escapeHtmlText(item.body)}</div>
+          <div style="margin-top: 1.5rem; text-align: right;">
+            <button onclick="closePreviewModalDirect()" class="nav-action-item" style="background: var(--primary, #2563eb); color: white; border-color: var(--primary, #2563eb);">Close Notice</button>
+          </div>
+        </div>
+      `;
+
+      const previewModal = document.getElementById('previewModal');
+      if (previewModal) {
+        previewModal.style.display = 'flex';
+      }
     }
 
     function markNavNoticeAsRead(id) {
