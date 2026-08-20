@@ -120,19 +120,29 @@
         <p>Engage in academic discourse, ask questions, and collaborate with peers.</p>
       </div>
 
-      <!-- Action buttons & role-based back links container -->
+     <!-- Action buttons & role-based back links container -->
       <div class="header-actions-wrapper" style="display: flex; align-items: center; gap: 0.75rem;">
+        
+        <!-- User Profile Navbar Widget -->
+        <div id="navProfileWidget" style="display: flex; align-items: center; gap: 0.6rem; background: rgba(15, 23, 42, 0.4); padding: 0.35rem 0.75rem; border-radius: 30px; border: 1px solid rgba(255, 255, 255, 0.15); margin-right: 0.5rem;">
+          <img id="navProfilePic" src="images/default-avatar.png" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid #38bdf8;" onerror="this.src='images/default-avatar.png'">
+          <div style="display: flex; flex-direction: column; text-align: left; line-height: 1.2;">
+            <span id="navFullName" style="font-size: 0.8rem; font-weight: 600; color: #f8fafc;">User</span>
+            <span id="navUsername" style="font-size: 0.7rem; color: #38bdf8;">@username</span>
+          </div>
+        </div>
+
         <!-- Button for Teachers to post a new prompt -->
         <button class="btn btn-primary teacher-only" id="openNewThreadModalBtn" onclick="openNewThreadModal()" style="display: none;">
           <i class="fa-solid fa-plus"></i> New Discussion Question
         </button>
 
-        <!-- Back Link for Staff (appears right after the new discussion button) -->
+        <!-- Back Link for Staff -->
         <a href="assessments.html" class="btn btn-outline teacher-only back-link-staff" id="staffBackLink" style="display: none;">
           <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
         </a>
 
-        <!-- Back Link for Students (appears on the right when not staff) -->
+        <!-- Back Link for Students -->
         <a href="assessments.html" class="btn btn-outline student-only back-link-student" id="studentBackLink" style="display: inline-flex;">
           <i class="fa-solid fa-arrow-left"></i> Back to Portal
         </a>
