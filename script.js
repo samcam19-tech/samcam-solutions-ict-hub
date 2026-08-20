@@ -304,79 +304,95 @@ window.addEventListener('portalSessionChanged', (e) => {
   window.updateProfileUIImages(e.detail);
 });
 
-// 3. Handle File Input Change & Firebase Storage Upload
+// Handle File Input Change & Firebase Storage Upload with Debug Logging
 document.addEventListener('DOMContentLoaded', () => {
   const profilePicInput = document.getElementById('profilePicInput');
   
-  if (profilePicInput) {
-    profilePicInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
+  if (!profilePicInput) {
+    console.error("❌ Error: 'profilePicInput' element was not found in the DOM!");
+    return;
+  }
 
-      const currentUser = loadSessionFromStorage();
-      if (!currentUser || !currentUser.username) {
-        alert("Please sign in again to update your profile picture.");
-        navigateToView('login', true);
-        return;
+  profilePicInput.addEventListener('change', async (e) => {
+    console.log("📁 File input change event triggered.");
+    const file = e.target.files[0];
+    
+    if (!file) {
+      console.log("⚠️ No file selected.");
+      return;
+    }
+    console.log("✅ File selected:", file.name, file.size);
+
+    // Check if session loader exists
+    if (typeof loadSessionFromStorage !== 'function') {
+      console.error("❌ Error: 'loadSessionFromStorage' function is not defined.");
+      alert("System configuration error: Session manager missing.");
+      return;
+    }
+
+    const currentUser = loadSessionFromStorage();
+    if (!currentUser || !currentUser.username) {
+      console.warn("⚠️ No active user session found in storage.");
+      alert("Please sign in again to update your profile picture.");
+      return;
+    }
+
+    // Visual loading indicator
+    const uploadLabel = document.querySelector('label[for="profilePicInput"]');
+    const originalLabelHTML = uploadLabel ? uploadLabel.innerHTML : '';
+    if (uploadLabel) {
+      uploadLabel.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
+      uploadLabel.style.pointerEvents = 'none';
+    }
+
+    try {
+      // Verify Firebase storage reference
+      if (typeof storageRef === 'undefined') {
+        throw new Error("Firebase 'storageRef' is not initialized globally.");
       }
 
-      // Provide visual loading feedback on the upload label/button
-      const uploadLabel = document.querySelector('label[for="profilePicInput"]');
-      const originalLabelHTML = uploadLabel ? uploadLabel.innerHTML : '';
-      if (uploadLabel) {
-        uploadLabel.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Uploading...';
-        uploadLabel.style.pointerEvents = 'none';
-      }
+      const fileExtension = file.name.split('.').pop();
+      const filePath = `profile_pictures/${currentUser.username}_${Date.now()}.${fileExtension}`;
+      console.log("☁️ Uploading to Firebase path:", filePath);
 
-      try {
-        // Create unique path in Firebase Storage: profile_pictures/username_timestamp.ext
-        const fileExtension = file.name.split('.').pop();
-        const filePath = `profile_pictures/${currentUser.username}_${Date.now()}.${fileExtension}`;
-        const fileRef = storageRef.child(filePath);
+      const fileRef = storageRef.child(filePath);
+      const snapshot = await fileRef.put(file);
+      const downloadURL = await snapshot.ref.getDownloadURL();
+      console.log("🔗 File uploaded successfully. Download URL:", downloadURL);
 
-        // Upload file to Firebase Storage
-        const snapshot = await fileRef.put(file);
-        
-        // Retrieve public download URL from Firebase Storage
-        const downloadURL = await snapshot.ref.getDownloadURL();
-
-        // Update local object & session storage
-        currentUser.profilePic = downloadURL;
-        localStorage.setItem('portal_session', JSON.stringify(currentUser));
+      // Update session data
+      currentUser.profilePic = downloadURL;
+      localStorage.setItem('portal_session', JSON.stringify(currentUser));
+      
+      if (typeof broadcastSessionUpdate === 'function') {
         broadcastSessionUpdate(currentUser);
-
-        // Update Firestore database document ('users' collection keyed by username)
-        if (window.db) {
-          const userDocRef = window.db.collection('users').doc(currentUser.username.toLowerCase());
-          await userDocRef.update({
-            profilePic: downloadURL
-          });
-        }
-
-        // Refresh UI images instantly
-        window.updateProfileUIImages(currentUser);
-        alert("Profile picture updated successfully!");
-
-      } catch (error) {
-        console.error("Error uploading profile picture to Firebase Storage:", error);
-        alert("Failed to upload profile picture. Please check your network connection and try again.");
-      } finally {
-        // Restore upload button state
-        if (uploadLabel) {
-          uploadLabel.innerHTML = originalLabelHTML;
-          uploadLabel.style.pointerEvents = 'auto';
-        }
-        // Clear the file input value so re-selecting the same file triggers change again if needed
-        profilePicInput.value = '';
       }
-    });
-  }
 
-  // Initial load check if session already active on page load
-  const initialSession = loadSessionFromStorage();
-  if (initialSession) {
-    window.updateProfileUIImages(initialSession);
-  }
+      // Update Firestore database document
+      if (window.db) {
+        const userDocRef = window.db.collection('users').doc(currentUser.username.toLowerCase());
+        await userDocRef.update({ profilePic: downloadURL });
+        console.log("💾 Firestore user profilePic updated.");
+      }
+
+      // Refresh UI images instantly
+      if (typeof window.updateProfileUIImages === 'function') {
+        window.updateProfileUIImages(currentUser);
+      }
+      
+      alert("Profile picture updated successfully!");
+
+    } catch (error) {
+      console.error("❌ Error during profile picture upload process:", error);
+      alert("Failed to upload profile picture: " + error.message);
+    } finally {
+      if (uploadLabel) {
+        uploadLabel.innerHTML = originalLabelHTML;
+        uploadLabel.style.pointerEvents = 'auto';
+      }
+      profilePicInput.value = '';
+    }
+  });
 });
 
 /* ==========================================================================
