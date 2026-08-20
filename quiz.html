@@ -356,6 +356,29 @@
         menuIcon.className = "fa-solid fa-bars";
       }
     }
+    // Toggle Profile Dropdown Visibility
+    function toggleProfileDropdown(event) {
+      event.stopPropagation();
+      const menu = document.getElementById('profileDropdownMenu');
+      if (menu) {
+        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+      }
+    }
+
+    // Close dropdown when clicking outside
+    window.addEventListener('click', () => {
+      const menu = document.getElementById('profileDropdownMenu');
+      if (menu) {
+        menu.style.display = 'none';
+      }
+    });
+
+    // Handle User Logout Action
+    function handlePortalLogout(event) {
+      event.preventDefault();
+      localStorage.removeItem('portal_session');
+      window.location.href = 'index.html'; // Adjust to your login page filename if different
+    }
   </script>
 
   <!-- Firebase SDKs (App, Firestore, & Storage Compatibility Mode) -->
