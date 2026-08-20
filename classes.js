@@ -375,7 +375,9 @@ function renderClassesGrid() {
     let teacherActionsHtml = '';
     if (isTeacherOrAdmin) {
       teacherActionsHtml = `
-        <div class="teacher-action-menu">
+        <div class="teacher-action-menu" style="display: flex; gap: 4px; align-items: center;">
+          <button class="btn-icon-only" onclick="exportAttendanceReport('${item.id}', 'pdf')" title="Download PDF Attendance Report" style="background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; padding: 6px 10px; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-file-pdf"></i></button>
+          <button class="btn-icon-only" onclick="exportAttendanceReport('${item.id}', 'csv')" title="Download Excel/CSV Attendance Report" style="background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; padding: 6px 10px; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-file-csv"></i></button>
           <button class="btn-icon-only" onclick="openEditModal('${item.id}')" title="Edit / Add Recordings" style="background: var(--bg-card, #fff); border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-pen-to-square"></i></button>
           <button class="btn-icon-only" onclick="deleteClassSession('${item.id}')" title="Delete Session" style="background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; padding: 6px 10px; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-trash"></i></button>
         </div>
@@ -425,7 +427,6 @@ function renderClassesGrid() {
 
   startCountdownInterval();
 }
-
 /* ==========================================================================
    AUTOMATION: LIVE COUNTDOWN & ATTENDANCE LOGGING
    ========================================================================== */
