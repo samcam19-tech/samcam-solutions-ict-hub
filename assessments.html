@@ -313,35 +313,35 @@
     <div id="dashboardSection" style="display: none;">
       
       <!-- User Info Banner -->
-      <div class="auth-banner">
-        <div class="user-info">
-          <img id="bannerProfilePic" src="images/default-avatar.png" alt="Avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1.5px solid #2563eb; flex-shrink: 0;">
-          <div>
-            <span id="userNameDisplay">User</span>
-            <span id="userRoleDisplay" class="role-badge">Role</span>
-            <small id="userClassDisplay" style="color:#64748b; font-weight:normal; margin-left:5px;"></small>
-          </div>
-        </div>
-        <button id="logoutBtn" class="btn-logout"><i class="fa-solid fa-power-off"></i> Sign Out</button>
-      </div>
+<div class="auth-banner">
+  <div class="user-info">
+    <img id="bannerProfilePic" src="images/default-avatar.png" alt="Avatar" onerror="this.src='https://via.placeholder.com/40?text=👤'" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1.5px solid #2563eb; flex-shrink: 0;">
+    <div>
+      <span id="userNameDisplay">User</span>
+      <span id="userRoleDisplay" class="role-badge">Role</span>
+      <small id="userClassDisplay" style="color:#64748b; font-weight:normal; margin-left:5px;"></small>
+    </div>
+  </div>
+  <button id="logoutBtn" class="btn-logout"><i class="fa-solid fa-power-off"></i> Sign Out</button>
+</div>
 
-      <!-- ACCOUNT & PROFILE SETTINGS PANEL -->
-      <div class="card-box" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #e2e8f0; width: 100%;">
-        <h3><i class="fa-solid fa-id-card"></i> Account & Profile Settings</h3>
-        
-        <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; width: 100%;">
-          <div style="flex-shrink: 0;">
-            <img id="profilePicPreview" src="images/default-avatar.png" alt="Profile Picture" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; display: block;">
-          </div>
-          <div style="flex-grow: 1;">
-            <h4 id="profileFullName" style="margin: 0 0 0.2rem 0; color: #0f172a; font-size: 1rem;">User Name</h4>
-            <p id="profileUsernameDisplay" style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: #64748b;"></p>
-            <label for="profilePicInput" class="btn-action btn-upload" style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;">
-              <i class="fa-solid fa-camera"></i> Change Picture
-            </label>
-            <input type="file" id="profilePicInput" accept="image/*" style="display: none;">
-          </div>
-        </div>
+<!-- ACCOUNT & PROFILE SETTINGS PANEL -->
+<div class="card-box" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #e2e8f0; width: 100%;">
+  <h3><i class="fa-solid fa-id-card"></i> Account & Profile Settings</h3>
+  
+  <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; width: 100%;">
+    <div style="flex-shrink: 0;">
+      <img id="profilePicPreview" src="images/default-avatar.png" alt="Profile Picture" onerror="this.src='https://via.placeholder.com/80?text=👤'" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; display: block;">
+    </div>
+    <div style="flex-grow: 1;">
+      <h4 id="profileFullName" style="margin: 0 0 0.2rem 0; color: #0f172a; font-size: 1rem;">User Name</h4>
+      <p id="profileUsernameDisplay" style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: #64748b;"></p>
+      <label for="profilePicInput" class="btn-action btn-upload" style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+        <i class="fa-solid fa-camera"></i> Change Picture
+      </label>
+      <input type="file" id="profilePicInput" accept="image/*" style="display: none;">
+    </div>
+  </div>
 
         <form id="updateAccountForm" style="width: 100%;">
             <div class="form-group">
