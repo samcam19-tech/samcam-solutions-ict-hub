@@ -13,13 +13,14 @@ const itemsPerPage = 6; // Number of resource cards per page
 
 
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
-  };
+  apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
+  authDomain: "samcam-system.firebaseapp.com",
+  projectId: "samcam-system",
+  storageBucket: "samcam-system.firebasestorage.app",
+  messagingSenderId: "74940789582",
+  appId: "1:74940789582:web:f159688165a194e841241f",
+  measurementId: "G-L2H4V8Y050"
+};
 
   // Initialize Firebase App
   firebase.initializeApp(firebaseConfig);
