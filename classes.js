@@ -187,16 +187,20 @@ function getCurrentUserSession(userParam) {
 }
 
 /* ==========================================================================
-   PROFILE UI UPDATER
+   PROFILE UI UPDATER (FIRESTORE & SESSION SYNC)
    ========================================================================== */
 window.updateProfileUIImages = function(user) {
   const activeUser = user || getCurrentUserSession();
   const defaultAvatar = "images/default-avatar.png";
   
-  // Look for stored session details to grab profile data safely
+  // Look for stored session details (where Firebase user document or profile link is cached)
   const storedSession = JSON.parse(localStorage.getItem('portal_session') || '{}');
   
-  const userAvatar = activeUser.profilePic || storedSession.profilePic || defaultAvatar;
+  // Check multiple possible keys where the storage URL might be saved
+  const userAvatar = activeUser.profilePic || activeUser.photoURL || activeUser.avatarUrl || 
+                     storedSession.profilePic || storedSession.photoURL || storedSession.avatarUrl || 
+                     defaultAvatar;
+
   const fullName = activeUser.name || storedSession.fullName || storedSession.name || "User";
   const username = storedSession.username || storedSession.handle || "user";
 
@@ -204,7 +208,16 @@ window.updateProfileUIImages = function(user) {
   const nameDisplay = document.getElementById('userNameDisplay');
   const usernameDisplay = document.getElementById('profileUsernameDisplay');
 
-  if (bannerPic) bannerPic.src = userAvatar;
+  if (bannerPic) {
+    // Directly apply the Firebase Storage URL link to the image source
+    bannerPic.src = userAvatar;
+    
+    // Add an error fallback just in case an external storage link fails to load
+    bannerPic.onerror = function() {
+      this.src = defaultAvatar;
+    };
+  }
+
   if (nameDisplay) nameDisplay.textContent = fullName;
   if (usernameDisplay) usernameDisplay.textContent = "@" + username;
 };
