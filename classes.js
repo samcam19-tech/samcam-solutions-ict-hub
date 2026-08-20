@@ -187,8 +187,43 @@ function getCurrentUserSession(userParam) {
   };
 }
 
+/* ==========================================================================
+   PROFILE UI UPDATER
+   ========================================================================== */
+window.updateProfileUIImages = function(user) {
+  // Use session if no user passed
+  const activeUser = user || getCurrentUserSession();
+  
+  // Default image path
+  const defaultAvatar = "images/default-avatar.png";
+  
+  // Retrieve picture from storage or user object
+  // Note: We check localStorage directly if 'user' object lacks profilePic
+  const storedSession = JSON.parse(localStorage.getItem('portal_session') || '{}');
+  const userAvatar = (activeUser.profilePic || storedSession.profilePic || defaultAvatar);
+
+  // Update UI Elements
+  const bannerPic = document.getElementById('bannerProfilePic');
+  const nameDisplay = document.getElementById('userNameDisplay');
+  const usernameDisplay = document.getElementById('profileUsernameDisplay');
+
+  if (bannerPic) bannerPic.src = userAvatar;
+  
+  // Update text elements if they exist
+  if (nameDisplay) {
+    nameDisplay.textContent = activeUser.name || storedSession.fullName || "User";
+  }
+  if (usernameDisplay) {
+    usernameDisplay.textContent = "@" + (storedSession.username || "username");
+  }
+};
+
 function syncLiveClassSession(user) {
   const session = getCurrentUserSession(user);
+  
+  // Update navbar profile picture, full name, and username
+  window.updateProfileUIImages(session);
+
   const combinedCheck = `${session.role} ${session.name} ${session.userClass}`.toLowerCase();
   const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
                            combinedCheck.includes('admin') || 
@@ -213,6 +248,7 @@ function syncLiveClassSession(user) {
   updateClassFilterInterface(session, isTeacherOrAdmin);
   renderClassesGrid();
 }
+
 
 function updateClassFilterInterface(session, isTeacherOrAdmin) {
   const filterGroup = document.getElementById('classFilterGroup');
