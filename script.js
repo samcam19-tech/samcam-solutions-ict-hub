@@ -6,6 +6,7 @@ window.currentUser = null;
 let editingUsername = null;
 let currentStudentSubmissionsPage = 1;
 const ITEMS_PER_PAGE = 5;
+
 // --- FIREBASE INITIALIZATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
@@ -33,14 +34,6 @@ let studentCurrentPage = 1;
 let studentPerPage = 8;
 
 let currentEditingStudentId = null;
-
-// --- DOM CONTENT LOADED EVENT BINDING ---
-document.addEventListener('DOMContentLoaded', () => {
-  // Navigation & Menu toggles
-  const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-  if (mobileMenuBtn) {
-    mobileMenuBtn.addEventListener('click', toggleMobileMenu);
-  }
 
 const initialAssessments = [
   {
@@ -99,13 +92,24 @@ window.navigateToView = function(viewName, pushState = true) {
   if (submissionsSec) submissionsSec.style.display = 'none';
   if (studentsSec) studentsSec.style.display = 'none';
 
-  if (!currentUser) {
+  if (!window.currentUser) {
     if (loginSec) loginSec.style.display = 'block';
     if (pushState) history.pushState({ view: 'login' }, '', '#login');
     return;
   }
 
-  if (dashSec) dashSec.style.display = 'block';
+  // Map viewName to corresponding DOM section
+  let targetSection = dashSec;
+  if (viewName === 'assessments' && assessmentsSec) targetSection = assessmentsSec;
+  else if (viewName === 'submissions' && submissionsSec) targetSection = submissionsSec;
+  else if (viewName === 'students' && studentsSec) targetSection = studentsSec;
+  else if (viewName === 'dashboard' && dashSec) targetSection = dashSec;
+
+  if (targetSection) {
+    targetSection.style.display = 'block';
+  } else if (dashSec) {
+    dashSec.style.display = 'block';
+  }
 
   if (pushState) {
     history.pushState({ view: viewName }, '', `#${viewName}`);
@@ -116,14 +120,21 @@ window.addEventListener('popstate', (event) => {
   if (event.state && event.state.view) {
     navigateToView(event.state.view, false);
   } else {
-    updatePortalUI();
+    const hash = window.location.hash.replace('#', '') || 'dashboard';
+    navigateToView(hash, false);
   }
 });
 
 /* ==========================================================================
-   INITIALIZATION & SESSION PERSISTENCE
+   UNIFIED INITIALIZATION & SESSION PERSISTENCE
    ========================================================================== */
 document.addEventListener("DOMContentLoaded", () => {
+  // Navigation & Menu toggles
+  const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+  if (mobileMenuBtn) {
+    mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+  }
+
   // 1. Initialize default collections if missing
   if (!localStorage.getItem('portal_resources')) {
     localStorage.setItem('portal_resources', JSON.stringify(initialAssessments));
@@ -136,36 +147,33 @@ document.addEventListener("DOMContentLoaded", () => {
   const session = loadSessionFromStorage();
   broadcastSessionUpdate(session);
 
-  // 3. Refresh UI & handle initial route
-  if (typeof updatePortalUI === 'function') {
-    updatePortalUI();
-  }
+  const navActions = document.getElementById('authNavActions');
 
-  // Live countdown timer interval (updates every second)
-  setInterval(() => {
-    updateCountdowns();
-  }, 1000);
-});
+  if (!session) {
+    if (navActions) navActions.style.display = 'none';
+    navigateToView('login', false);
+  } else {
+    if (navActions) navActions.style.display = 'flex';
 
-document.addEventListener("DOMContentLoaded", () => {
-  // Check if a user session already exists in localStorage on page load
-  const session = localStorage.getItem('portal_session');
-  if (session) {
-    const navActions = document.getElementById('authNavActions');
-    if (navActions) {
-      navActions.style.display = 'flex';
-    }
-
-    // 1. Update the UI components with user data
+    // 3. Refresh UI components
     if (typeof updatePortalUI === 'function') {
       updatePortalUI();
     }
 
-    // 2. Automatically navigate back to the dashboard view on refresh
-    if (typeof navigateToView === 'function') {
-      navigateToView('dashboard', true);
-    }
+    // 4. Handle initial route based on URL hash (keeps user on current view after refresh)
+    const currentHash = window.location.hash.replace('#', '').trim();
+    const validViews = ['dashboard', 'assessments', 'submissions', 'students'];
+    const initialView = validViews.includes(currentHash) ? currentHash : 'dashboard';
+    
+    navigateToView(initialView, false);
   }
+
+  // Live countdown timer interval (updates every second)
+  setInterval(() => {
+    if (typeof updateCountdowns === 'function') {
+      updateCountdowns();
+    }
+  }, 1000);
 });
 
 /* ==========================================================================
@@ -257,6 +265,7 @@ window.handleLogin = function(e) {
   if (e && e.preventDefault) e.preventDefault();
   window.executeLogin();
 };
+
 window.handleLogout = function() {
   localStorage.removeItem('portal_session');
   broadcastSessionUpdate(null);
@@ -319,7 +328,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const profilePicInput = document.getElementById('profilePicInput');
   
   if (!profilePicInput) {
-    console.error("❌ Error: 'profilePicInput' element was not found in the DOM!");
     return;
   }
 
@@ -436,7 +444,7 @@ async function saveUserToCloud(userObj) {
 
 window.handleRegisterStudent = async function(e) {
   e.preventDefault();
-  if (!currentUser || currentUser.role !== 'Teacher') return;
+  if (!window.currentUser || window.currentUser.role !== 'Teacher') return;
 
   const fullName = document.getElementById('regFullName').value.trim();
   const studentClass = document.getElementById('regClass').value;
@@ -468,7 +476,7 @@ function generateStrongPassword() {
 }
 
 window.handleBulkImport = function() {
-  if (!currentUser || currentUser.role !== 'Teacher') return;
+  if (!window.currentUser || window.currentUser.role !== 'Teacher') return;
 
   const fileInput = document.getElementById('bulkStudentFile');
   const targetClass = document.getElementById('bulkClass').value;
@@ -535,7 +543,6 @@ window.handleBulkImport = function() {
   };
   reader.readAsArrayBuffer(fileInput.files[0]);
 };
-
 window.downloadStudentCSV = async function() {
   let students = [];
   if (window.db) {
