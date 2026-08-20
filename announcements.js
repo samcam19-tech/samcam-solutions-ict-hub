@@ -1,19 +1,27 @@
 /* ==========================================================================
-   SAMCAM SOLUTIONS - ANNOUNCEMENTS ENGINE (FIXED GLOBAL DB)
+   SAMCAM SOLUTIONS - ANNOUNCEMENTS ENGINE (SAFE LAZY-LOADED DB)
    ========================================================================== */
-
-// Safely establish global db reference from window or firebase instance
-
-const db = (typeof firebase !== "undefined" && firebase.firestore) ? firebase.firestore() : (window.db || null);
 
 // --- APPLICATION STATE ---
 let announcementsList = [];
 let showOnlyUnread = false; // Toggle state for clicking the badge counter
 
+// Helper to safely retrieve the Firestore database instance at runtime
+function getDb() {
+  if (typeof window !== "undefined" && window.db) {
+    return window.db;
+  }
+  if (typeof firebase !== "undefined" && firebase.firestore) {
+    return firebase.firestore();
+  }
+  return null;
+}
+
 document.addEventListener("DOMContentLoaded", () => {
   checkUserRolePermissions();
   
-  if (db) {
+  const database = getDb();
+  if (database) {
     loadAnnouncementsRealtime();
   } else {
     // Fallback if db is completely missing
@@ -27,9 +35,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // 1. Fetch & Listen to Firestore in Real-Time
 function loadAnnouncementsRealtime() {
-  if (!db) return;
+  const database = getDb();
+  if (!database) return;
   
-  db.collection('announcements')
+  database.collection('announcements')
     .orderBy('createdAt', 'desc')
     .onSnapshot((snapshot) => {
       announcementsList = [];
@@ -254,7 +263,8 @@ function closeReadModalOutside(event) {
 async function handlePostAnnouncement(e) {
   e.preventDefault();
   
-  if (!db) {
+  const database = getDb();
+  if (!database) {
     alert("Database connection is not available.");
     return;
   }
@@ -277,7 +287,7 @@ async function handlePostAnnouncement(e) {
   submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publishing...';
 
   try {
-    await db.collection('announcements').add({
+    await database.collection('announcements').add({
       title: title,
       priority: priority,
       body: body,
@@ -296,11 +306,12 @@ async function handlePostAnnouncement(e) {
 }
 
 async function deleteAnnouncement(id) {
-  if (!db) return;
+  const database = getDb();
+  if (!database) return;
   
   if (confirm("Are you sure you want to delete this announcement permanently?")) {
     try {
-      await db.collection('announcements').doc(id).delete();
+      await database.collection('announcements').doc(id).delete();
     } catch (error) {
       console.error("Error removing document: ", error);
       alert("Failed to delete notice: " + error.message);
