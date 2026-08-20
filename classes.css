@@ -201,3 +201,40 @@ body { background-color: var(--bg-main); color: var(--text-main); min-height: 10
   background: var(--bg-main); color: var(--text-main); font-size: 0.9rem;
 }
 .modal-footer { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; }
+
+/* Hide hamburger toggle by default on large screens */
+.mobile-menu-toggle {
+  display: none;
+}
+
+/* Mobile responsive styles */
+@media screen and (max-width: 768px) {
+  .mobile-menu-toggle {
+    display: inline-flex;
+  }
+
+  .nav-links {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background: var(--bg-card);
+    flex-direction: column;
+    gap: 0;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-in-out;
+  }
+
+  .nav-links.show {
+    max-height: 300px;
+  }
+
+  .nav-links a {
+    padding: 0.9rem 1.5rem;
+    border-top: 1px solid var(--border-color);
+    width: 100%;
+  }
+}
