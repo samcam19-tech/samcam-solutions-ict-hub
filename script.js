@@ -386,11 +386,14 @@ document.addEventListener('DOMContentLoaded', () => {
         broadcastSessionUpdate(currentUser);
       }
 
-      // Update Firestore database document
+      // Update Firestore database document using the user's full name to match the document ID
       if (window.db) {
-        const userDocRef = window.db.collection('users').doc(currentUser.username.toLowerCase());
-        await userDocRef.update({ profilePic: downloadURL });
-        console.log("💾 Firestore user profilePic updated.");
+        const docId = currentUser.fullName || currentUser.username;
+        const userDocRef = window.db.collection('users').doc(docId);
+        
+        // Use set with merge: true to avoid "No document to update" errors
+        await userDocRef.set({ profilePic: downloadURL }, { merge: true });
+        console.log("💾 Firestore user profilePic updated for document:", docId);
       }
 
       // Refresh UI images instantly
