@@ -16,29 +16,17 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// Google API Client configurations (Configured with your Google Cloud Console Client ID)
+// Google API Client configurations
 const CLIENT_ID = '74940789582-42d2vlki0lr8bj734afchl8b42jo3b98.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 
 let tokenClient;
-let gapiInited = false;
-let gisInited = false;
 let allClasses = [];
 let currentFilterClass = 'ALL';
 
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   fetchClassesFromFirestore();
-  
-  // Initialize Google Identity Services token client
-  if (typeof google !== 'undefined') {
-    tokenClient = google.accounts.oauth2.initTokenClient({
-      client_id: CLIENT_ID,
-      scope: SCOPES,
-      callback: '', // defined dynamically during submission
-    });
-    gisInited = true;
-  }
 });
 
 /* ==========================================================================
@@ -147,53 +135,59 @@ function handleScheduleSubmit(e) {
   submitBtn.disabled = true;
   submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Generating Meet...`;
 
-  // Request token and create Google Calendar Event with Google Meet conference data
-  tokenClient.callback = async (resp) => {
-    if (resp.error !== undefined) {
-      alert("Authentication failed. Unable to generate Google Meet link.");
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Create Meet & Schedule`;
-      return;
-    }
-
-    try {
-      const meetUrl = await createGoogleCalendarEvent({
-        title, classLevel, instructorName, startTime, endTime, description
-      });
-
-      // Save class data including generated Meet URL to Firestore
-      await db.collection("live_classes").add({
-        title,
-        classLevel,
-        instructorName,
-        startTime,
-        endTime,
-        description,
-        meetUrl,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-
-      closeScheduleModalDirect();
-      document.getElementById('scheduleForm').reset();
-      alert("Class scheduled successfully with an automated Google Meet link!");
-    } catch (err) {
-      console.error("Error creating calendar event:", err);
-      alert("Failed to create Google Calendar event. Check console for details.");
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Create Meet & Schedule`;
-    }
-  };
-
-  if (gapi.client.getToken() === null) {
-    tokenClient.requestAccessToken({ prompt: 'consent' });
-  } else {
-    tokenClient.requestAccessToken({ prompt: '' });
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+    alert("Google Identity Services script is not loaded. Please check your internet connection or script tags.");
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Create Meet & Schedule`;
+    return;
   }
+
+  // Initialize token client safely on submission if not already done
+  tokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: CLIENT_ID,
+    scope: SCOPES,
+    callback: async (resp) => {
+      if (resp.error !== undefined) {
+        alert("Authentication failed. Unable to generate Google Meet link.");
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Create Meet & Schedule`;
+        return;
+      }
+
+      try {
+        const meetUrl = await createGoogleCalendarEvent({
+          title, classLevel, instructorName, startTime, endTime, description
+        });
+
+        // Save class data including generated Meet URL to Firestore
+        await db.collection("live_classes").add({
+          title,
+          classLevel,
+          instructorName,
+          startTime,
+          endTime,
+          description,
+          meetUrl,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        closeScheduleModalDirect();
+        document.getElementById('scheduleForm').reset();
+        alert("Class scheduled successfully with an automated Google Meet link!");
+      } catch (err) {
+        console.error("Error creating calendar event:", err);
+        alert("Failed to create Google Calendar event. Check console for details.");
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Create Meet & Schedule`;
+      }
+    },
+  });
+
+  tokenClient.requestAccessToken({ prompt: 'consent' });
 }
 
 async function createGoogleCalendarEvent(classData) {
-  // Format dates for Google Calendar API (ISO strings)
   const event = {
     'summary': `[${classData.classLevel}] ${classData.title} - Samcam ICT Hub`,
     'description': `${classData.description}\n\nInstructor: ${classData.instructorName}`,
@@ -207,7 +201,6 @@ async function createGoogleCalendarEvent(classData) {
     }
   };
 
-  // Load GAPI client for calendar
   await gapi.client.load('calendar', 'v3');
   const response = await gapi.client.calendar.events.insert({
     'calendarId': 'primary',
