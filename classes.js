@@ -784,3 +784,51 @@ function deleteClassSession(classId) {
   }
 }
 
+async function exportAttendanceReport(classId, format) {
+  const attendanceRef = db.collection("live_classes").doc(classId).collection("attendance");
+  const snapshot = await attendanceRef.orderBy("joinedAt", "desc").get();
+  
+  if (snapshot.empty) {
+    alert("No attendance data found for this session.");
+    return;
+  }
+
+  const attendanceData = snapshot.docs.map(doc => {
+    const data = doc.data();
+    return {
+      name: data.studentName || "N/A",
+      role: data.studentRole || "N/A",
+      class: data.studentClass || "N/A",
+      time: data.joinedAt ? data.joinedAt.toDate().toLocaleString() : "N/A"
+    };
+  });
+
+  if (format === 'csv') {
+    // Generate CSV for Excel
+    let csvContent = "data:text/csv;charset=utf-8,Name,Role,Class,Joined At\n";
+    attendanceData.forEach(row => {
+      csvContent += `${row.name},${row.role},${row.class},"${row.time}"\n`;
+    });
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `attendance_${classId}.csv`);
+    document.body.appendChild(link);
+    link.click();
+  } 
+  else if (format === 'pdf') {
+    // Generate PDF
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    doc.text("Attendance Report", 14, 15);
+    doc.autoTable({
+      head: [['Name', 'Role', 'Class', 'Joined At']],
+      body: attendanceData.map(r => [r.name, r.role, r.class, r.time]),
+      startY: 20
+    });
+    
+    doc.save(`attendance_${classId}.pdf`);
+  }
+}
+
