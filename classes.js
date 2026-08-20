@@ -20,13 +20,25 @@ const db = firebase.firestore();
 const CLIENT_ID = '74940789582-42d2vlki0lr8bj734afchl8b42jo3b98.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 
-let tokenClient;
+let tokenClient = null;
 let allClasses = [];
 let currentFilterClass = 'ALL';
 
 document.addEventListener("DOMContentLoaded", () => {
   initTheme();
   fetchClassesFromFirestore();
+  
+  // Safely initialize Google Identity Services token client once available
+  const checkGoogleLoaded = setInterval(() => {
+    if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: '', // defined dynamically during submission
+      });
+      clearInterval(checkGoogleLoaded);
+    }
+  }, 500);
 });
 
 /* ==========================================================================
@@ -132,57 +144,52 @@ function handleScheduleSubmit(e) {
   const description = document.getElementById('classDescription').value;
 
   const submitBtn = document.getElementById('submitClassBtn');
-  submitBtn.disabled = true;
-  submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Generating Meet...`;
-
-  if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
-    alert("Google Identity Services script is not loaded. Please check your internet connection or script tags.");
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Create Meet & Schedule`;
+  
+  if (!tokenClient) {
+    alert("Google Identity Services is still loading or blocked. Please wait a moment and try again, or check if an ad-blocker is active.");
     return;
   }
 
-  // Initialize token client safely on submission if not already done
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: CLIENT_ID,
-    scope: SCOPES,
-    callback: async (resp) => {
-      if (resp.error !== undefined) {
-        alert("Authentication failed. Unable to generate Google Meet link.");
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Create Meet & Schedule`;
-        return;
-      }
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Generating Meet...`;
 
-      try {
-        const meetUrl = await createGoogleCalendarEvent({
-          title, classLevel, instructorName, startTime, endTime, description
-        });
+  // Set callback for authentication token response
+  tokenClient.callback = async (resp) => {
+    if (resp.error !== undefined) {
+      alert("Authentication failed. Unable to generate Google Meet link.");
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Create Meet & Schedule`;
+      return;
+    }
 
-        // Save class data including generated Meet URL to Firestore
-        await db.collection("live_classes").add({
-          title,
-          classLevel,
-          instructorName,
-          startTime,
-          endTime,
-          description,
-          meetUrl,
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+    try {
+      const meetUrl = await createGoogleCalendarEvent({
+        title, classLevel, instructorName, startTime, endTime, description
+      });
 
-        closeScheduleModalDirect();
-        document.getElementById('scheduleForm').reset();
-        alert("Class scheduled successfully with an automated Google Meet link!");
-      } catch (err) {
-        console.error("Error creating calendar event:", err);
-        alert("Failed to create Google Calendar event. Check console for details.");
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Create Meet & Schedule`;
-      }
-    },
-  });
+      // Save class data including generated Meet URL to Firestore
+      await db.collection("live_classes").add({
+        title,
+        classLevel,
+        instructorName,
+        startTime,
+        endTime,
+        description,
+        meetUrl,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      closeScheduleModalDirect();
+      document.getElementById('scheduleForm').reset();
+      alert("Class scheduled successfully with an automated Google Meet link!");
+    } catch (err) {
+      console.error("Error creating calendar event:", err);
+      alert("Failed to create Google Calendar event. Check console for details.");
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Create Meet & Schedule`;
+    }
+  };
 
   tokenClient.requestAccessToken({ prompt: 'consent' });
 }
