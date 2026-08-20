@@ -2,21 +2,12 @@
    SAMCAM SOLUTIONS - LIVE CLASSES & GOOGLE MEET ENGINE (ROLE & CLASS BASED)
    ========================================================================== */
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
-  authDomain: "samcam-system.firebaseapp.com",
-  projectId: "samcam-system",
-  storageBucket: "samcam-system.firebasestorage.app",
-  messagingSenderId: "74940789582",
-  appId: "1:74940789582:web:f159688165a194e841241f",
-  measurementId: "G-L2H4V8Y050"
-};
+/* ==========================================================================
+   SAMCAM SOLUTIONS - LIVE CLASSES & GOOGLE MEET ENGINE (ROLE & CLASS BASED)
+   ========================================================================== */
 
-// Initialize Firebase & Firestore
-if (typeof firebase !== "undefined" && !firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
-const db = typeof firebase !== "undefined" ? firebase.firestore() : null;
+// Use the global db instance initialized in firebase-config.js
+const db = window.db || (typeof firebase !== "undefined" ? firebase.firestore() : null);
 
 // Google API Client configuration
 const CLIENT_ID = '74940789582-42d2vlki0lr8bj734afchl8b42jo3b98.apps.googleusercontent.com';
