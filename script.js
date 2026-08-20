@@ -1383,9 +1383,10 @@ function handleUpdateAccountDetails(event) {
   const newPassword = document.getElementById('updatePassword').value.trim();
   const confirmPassword = document.getElementById('confirmPassword').value.trim();
   
-  const currentUser = JSON.parse(localStorage.getItem('currentLoggedInUser'));
+  // FIXED: Using 'portal_session' which matches your login module key name
+  const currentUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser'));
 
-  if (!currentUser) {
+  if (!currentUser || !currentUser.username) {
     alert("No active session found. Please sign in again.");
     return;
   }
@@ -1413,11 +1414,9 @@ function handleUpdateAccountDetails(event) {
       return;
     }
 
-    // Determine what needs updating
     const updatingUsername = newUsername && newUsername !== oldUsernameId;
     const updatingPassword = Boolean(newPassword);
 
-    // If nothing was typed to change, stop here
     if (!updatingUsername && !updatingPassword) {
       alert("No changes detected.");
       return;
@@ -1425,28 +1424,23 @@ function handleUpdateAccountDetails(event) {
 
     // SCENARIO A: Username is changing (Since Username = Document ID)
     if (updatingUsername) {
-      // Check if target username already exists first to prevent overwriting
       db.collection("users").doc(newUsername).get().then((newDocSnap) => {
         if (newDocSnap.exists) {
           alert("Username is already taken. Choose another one.");
           return;
         }
 
-        // Prepare new data payload
         const migratedData = { ...userData };
         migratedData.username = newUsername;
         if (updatingPassword) {
           migratedData.password = newPassword;
         }
 
-        // 1. Create new doc with new username ID, 2. Delete old doc
         db.collection("users").doc(newUsername).set(migratedData)
-          .then(() => {
-            return userRef.delete(); // Delete old document ID
-          })
+          .then(() => userRef.delete())
           .then(() => {
             currentUser.username = newUsername;
-            localStorage.setItem('currentLoggedInUser', JSON.stringify(currentUser));
+            localStorage.setItem('portal_session', JSON.stringify(currentUser));
             clearFormAndFinish();
           })
           .catch((err) => {
@@ -1455,7 +1449,7 @@ function handleUpdateAccountDetails(event) {
           });
       });
     } 
-    // SCENARIO B: Only Password is changing (Document ID stays identical)
+    // SCENARIO B: Only Password is changing
     else if (updatingPassword) {
       userRef.update({ password: newPassword }).then(() => {
         clearFormAndFinish();
@@ -1471,7 +1465,6 @@ function handleUpdateAccountDetails(event) {
   });
 }
 
-// Helper to clean inputs and refresh UI cleanly
 function clearFormAndFinish() {
   document.getElementById('currentPassword').value = '';
   document.getElementById('updatePassword').value = '';
