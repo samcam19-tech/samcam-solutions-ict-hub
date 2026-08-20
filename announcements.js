@@ -1,19 +1,33 @@
+/* ==========================================================================
+   SAMCAM SOLUTIONS - ANNOUNCEMENTS ENGINE (FIXED GLOBAL DB)
+   ========================================================================== */
+
+// Safely establish global db reference from window or firebase instance
+const db = (typeof firebase !== "undefined" && firebase.firestore) ? firebase.firestore() : (window.db || null);
+
 // --- APPLICATION STATE ---
 let announcementsList = [];
 let showOnlyUnread = false; // Toggle state for clicking the badge counter
 
 document.addEventListener("DOMContentLoaded", () => {
   checkUserRolePermissions();
+  
   if (db) {
     loadAnnouncementsRealtime();
   } else {
-    document.getElementById('announcementsFeed').innerHTML = 
-      '<div class="empty-state" style="color:red;">Firebase database is not initialized.</div>';
+    // Fallback if db is completely missing
+    console.error("Firebase Firestore is not initialized.");
+    const feed = document.getElementById('announcementsFeed');
+    if (feed) {
+      feed.innerHTML = '<div class="empty-state" style="color:red;">Firebase database is not initialized. Please check your configuration script.</div>';
+    }
   }
 });
 
 // 1. Fetch & Listen to Firestore in Real-Time
 function loadAnnouncementsRealtime() {
+  if (!db) return;
+  
   db.collection('announcements')
     .orderBy('createdAt', 'desc')
     .onSnapshot((snapshot) => {
@@ -23,9 +37,9 @@ function loadAnnouncementsRealtime() {
         const data = doc.data();
         let formattedDate = 'Just now';
         if (data.createdAt) {
-          formattedDate = data.createdAt.toDate().toLocaleString([], { 
-            dateStyle: 'medium', 
-            timeStyle: 'short' 
+          formattedDate = data.createdAt.toDate().toLocaleString([], {  
+            dateStyle: 'medium',  
+            timeStyle: 'short'  
           });
         }
 
@@ -40,11 +54,13 @@ function loadAnnouncementsRealtime() {
       });
 
       updateUnreadBadgeCounter();
-      filterAnnouncements(); 
+      filterAnnouncements();  
     }, (error) => {
       console.error("Error loading announcements: ", error);
-      document.getElementById('announcementsFeed').innerHTML = 
-        '<div class="empty-state" style="color:#ef4444;">Failed to load announcements from server.</div>';
+      const feed = document.getElementById('announcementsFeed');
+      if (feed) {
+        feed.innerHTML = '<div class="empty-state" style="color:#ef4444;">Failed to load announcements from server.</div>';
+      }
     });
 }
 
@@ -197,7 +213,6 @@ function closeAnnouncementModal() {
 }
 
 function openReadAnnouncementModal(id, title, priority, body, author, date) {
-  // Mark as read immediately when opened
   markAnnouncementAsRead(id);
 
   const modal = document.getElementById('readAnnouncementModal');
@@ -237,6 +252,12 @@ function closeReadModalOutside(event) {
 
 async function handlePostAnnouncement(e) {
   e.preventDefault();
+  
+  if (!db) {
+    alert("Database connection is not available.");
+    return;
+  }
+
   const titleInput = document.getElementById('annTitle');
   const priorityInput = document.getElementById('annPriority');
   const bodyInput = document.getElementById('annBody');
@@ -274,6 +295,8 @@ async function handlePostAnnouncement(e) {
 }
 
 async function deleteAnnouncement(id) {
+  if (!db) return;
+  
   if (confirm("Are you sure you want to delete this announcement permanently?")) {
     try {
       await db.collection('announcements').doc(id).delete();
