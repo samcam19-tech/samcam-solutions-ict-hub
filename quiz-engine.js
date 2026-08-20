@@ -75,6 +75,11 @@ async function syncQuizEngineSession(user) {
 
   const userBadge = document.getElementById('userBadge');
   const teacherPanel = document.getElementById('teacherPanel');
+  
+  // Header profile elements
+  const userNameDisplay = document.getElementById('userNameDisplay');
+  const profileUsernameDisplay = document.getElementById('profileUsernameDisplay');
+  const bannerProfilePic = document.getElementById('bannerProfilePic');
 
   if (!currentUser) {
     if (userBadge) {
@@ -83,7 +88,16 @@ async function syncQuizEngineSession(user) {
     if (teacherPanel) {
       teacherPanel.style.display = 'none';
     }
+    if (userNameDisplay) userNameDisplay.textContent = 'Guest User';
+    if (profileUsernameDisplay) profileUsernameDisplay.textContent = '@guest';
     return;
+  }
+
+  // Update header profile widget details
+  if (userNameDisplay) userNameDisplay.textContent = currentUser.fullName || currentUser.username || 'Portal User';
+  if (profileUsernameDisplay) profileUsernameDisplay.textContent = '@' + (currentUser.username || 'user');
+  if (bannerProfilePic && (currentUser.profilePic || currentUser.avatarUrl || currentUser.photoURL)) {
+    bannerProfilePic.src = currentUser.profilePic || currentUser.avatarUrl || currentUser.photoURL;
   }
 
   // Normalize role check
@@ -96,7 +110,7 @@ async function syncQuizEngineSession(user) {
       ? 'Admin' 
       : (userRole === 'teacher' ? 'Teacher' : (currentUser.class || 'Student'));
 
-    userBadge.innerHTML = `<i class="fa-solid fa-user-check"></i> ${currentUser.fullName || currentUser.username} <span style="background:#0284c7; color:#ffffff; padding:0.1rem 0.45rem; border-radius:4px; font-size:0.75rem; margin-left:0.35rem; font-weight:700;">${badgeTag}</span>`;
+    userBadge.innerHTML = `<i class="fa-solid fa-user-check"></i> <span style="background:#0284c7; color:#ffffff; padding:0.1rem 0.45rem; border-radius:4px; font-size:0.75rem; margin-left:0.35rem; font-weight:700;">${badgeTag}</span>`;
   }
 
   // Show Teacher / Admin Management Panel
