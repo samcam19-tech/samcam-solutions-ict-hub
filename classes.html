@@ -29,12 +29,20 @@
         <i class="fa-solid fa-graduation-cap logo-icon"></i>
         <span>SAMCAM <small>ICT HUB</small></span>
       </div>
-      <nav class="nav-links">
+
+      <!-- Hamburger Toggle Button (Mobile Only) -->
+      <button id="mobileMenuBtn" class="btn-icon-only mobile-menu-toggle" aria-label="Toggle Navigation">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Nav Links Container -->
+      <nav class="nav-links" id="navLinksMenu">
         <a href="index.html"><i class="fa-solid fa-house"></i> Home</a>
         <a href="assessments.html"><i class="fa-solid fa-file-lines"></i> Assessments</a>
         <a href="classes.html" class="active"><i class="fa-solid fa-video"></i> Live Classes</a>
         <a href="announcements.html"><i class="fa-solid fa-bullhorn"></i> Announcements</a>
       </nav>
+
       <div class="header-actions">
         <button id="themeToggleBtn" class="btn-icon-only" title="Toggle Theme"><i class="fa-solid fa-moon"></i></button>
       </div>
@@ -155,5 +163,25 @@
 
   <!-- JavaScript Engine -->
   <script src="classes.js"></script>
+  
+  <!-- Inline script for mobile menu toggle interaction -->
+  <script>
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const navLinksMenu = document.getElementById('navLinksMenu');
+
+    if (mobileMenuBtn && navLinksMenu) {
+      mobileMenuBtn.addEventListener('click', () => {
+        navLinksMenu.classList.toggle('show');
+        const icon = mobileMenuBtn.querySelector('i');
+        if (navLinksMenu.classList.contains('show')) {
+          icon.classList.remove('fa-bars');
+          icon.classList.add('fa-xmark');
+        } else {
+          icon.classList.remove('fa-xmark');
+          icon.classList.add('fa-bars');
+        }
+      });
+    }
+  </script>
 </body>
 </html>
