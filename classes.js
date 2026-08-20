@@ -98,6 +98,17 @@ function syncLiveClassSession(user) {
     el.style.display = isTeacherOrAdmin ? 'inline-flex' : 'none';
   });
 
+  // Dynamic subtitle update based on user role and class
+  const subtitleEl = document.getElementById('pageSubtitle');
+  if (subtitleEl) {
+    if (isTeacherOrAdmin) {
+      subtitleEl.textContent = "Schedule interactive video lessons, automatically generate Meet links, and manage live sessions.";
+    } else {
+      const studentClass = session.userClass !== 'ALL' ? session.userClass : 'your class';
+      subtitleEl.textContent = `View upcoming live video lessons and join scheduled sessions for ${studentClass}.`;
+    }
+  }
+
   // Update filter controls or automatically enforce class bounds for learners
   updateClassFilterInterface(session, isTeacherOrAdmin);
   renderClassesGrid();
