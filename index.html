@@ -323,51 +323,23 @@
     // --- NAVBAR ANNOUNCEMENTS INTEGRATION SCRIPT ---
 
     document.addEventListener("DOMContentLoaded", () => {
-      // Resolve global db reference safely (checks both local scope and window scope)
-      const firestoreDb = (typeof window.db !== 'undefined') ? window.db : (typeof db !== 'undefined' ? db : null);
-
-      if (firestoreDb) {
-        firestoreDb.collection('announcements')
-          .orderBy('createdAt', 'desc')
-          .onSnapshot((snapshot) => {
-            navAnnouncementsCache = [];
-            snapshot.forEach((doc) => {
-              const data = doc.data();
-              
-              // Safe date parsing handling Timestamps, Date objects, or string representations
-              let formattedDate = 'Just now';
-              if (data.createdAt) {
-                if (typeof data.createdAt.toDate === 'function') {
-                  formattedDate = data.createdAt.toDate().toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
-                } else {
-                  const parsedDate = new Date(data.createdAt);
-                  if (!isNaN(parsedDate)) {
-                    formattedDate = parsedDate.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
-                  } else {
-                    formattedDate = String(data.createdAt);
-                  }
-                }
-              }
-
-              navAnnouncementsCache.push({
-                id: doc.id,
-                title: data.title || 'Untitled Notice',
-                priority: data.priority || 'General',
-                body: data.body || '',
-                author: data.author || 'Admin',
-                createdAt: formattedDate
-              });
-            });
+      // Safely poll for the Firestore db instance if it loads asynchronously
+      let attempts = 0;
+      const checkFirestore = setInterval(() => {
+        const firestoreDb = (typeof window.db !== 'undefined') ? window.db : (typeof db !== 'undefined' ? db : null);
+        
+        if (firestoreDb) {
+          clearInterval(checkFirestore);
+          initAnnouncementsListener(firestoreDb);
+        } else {
+          attempts++;
+          if (attempts > 20) { // Stop after 10 seconds and fallback
+            clearInterval(checkFirestore);
+            console.warn("Firestore 'db' instance could not be found after waiting. Ensure Firebase is initialized in your other scripts.");
             updateNavBadgeCounter();
-            renderNavAnnouncementsDropdownList();
-          }, (error) => {
-            console.error("Error fetching announcements snapshot:", error);
-            updateNavBadgeCounter();
-          });
-      } else {
-        console.warn("Firestore 'db' instance not found during DOMContentLoaded. Ensure Firebase initialization runs before this script.");
-        updateNavBadgeCounter();
-      }
+          }
+        }
+      }, 500);
 
       // Close popup dropdown when clicking outside
       document.addEventListener('click', (e) => {
@@ -378,6 +350,46 @@
         }
       });
     });
+
+    function initAnnouncementsListener(firestoreDb) {
+      firestoreDb.collection('announcements')
+        .orderBy('createdAt', 'desc')
+        .onSnapshot((snapshot) => {
+          navAnnouncementsCache = [];
+          snapshot.forEach((doc) => {
+            const data = doc.data();
+            
+            // Safe date parsing handling Timestamps, Date objects, or string representations
+            let formattedDate = 'Just now';
+            if (data.createdAt) {
+              if (typeof data.createdAt.toDate === 'function') {
+                formattedDate = data.createdAt.toDate().toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+              } else {
+                const parsedDate = new Date(data.createdAt);
+                if (!isNaN(parsedDate)) {
+                  formattedDate = parsedDate.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+                } else {
+                  formattedDate = String(data.createdAt);
+                }
+              }
+            }
+
+            navAnnouncementsCache.push({
+              id: doc.id,
+              title: data.title || 'Untitled Notice',
+              priority: data.priority || 'General',
+              body: data.body || '',
+              author: data.author || 'Admin',
+              createdAt: formattedDate
+            });
+          });
+          updateNavBadgeCounter();
+          renderNavAnnouncementsDropdownList();
+        }, (error) => {
+          console.error("Error fetching announcements snapshot:", error);
+          updateNavBadgeCounter();
+        });
+    }
 
     function toggleAnnouncementsDropdown(e) {
       if (e) e.stopPropagation();
