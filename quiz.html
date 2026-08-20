@@ -376,8 +376,9 @@
     // Handle User Logout Action
     function handlePortalLogout(event) {
       event.preventDefault();
-      localStorage.removeItem('portal_session');
-      window.location.href = 'index.html'; // Adjust to your login page filename if different
+      localStorage.removeItem('currentLoggedInUser');
+      localStorage.removeItem('portal_session'); // Clears both just in case
+      window.location.href = 'assessments.html'; // Adjust to your login page filename if different
     }
   </script>
 
