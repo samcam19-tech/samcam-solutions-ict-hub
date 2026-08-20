@@ -155,6 +155,16 @@ document.addEventListener("DOMContentLoaded", () => {
     if (navActions) {
       navActions.style.display = 'flex';
     }
+
+    // 1. Update the UI components with user data
+    if (typeof updatePortalUI === 'function') {
+      updatePortalUI();
+    }
+
+    // 2. Automatically navigate back to the dashboard view on refresh
+    if (typeof navigateToView === 'function') {
+      navigateToView('dashboard', true);
+    }
   }
 });
 
