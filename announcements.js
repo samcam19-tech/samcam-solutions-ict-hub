@@ -3,6 +3,7 @@
    ========================================================================== */
 
 // Safely establish global db reference from window or firebase instance
+
 const db = (typeof firebase !== "undefined" && firebase.firestore) ? firebase.firestore() : (window.db || null);
 
 // --- APPLICATION STATE ---
