@@ -17,19 +17,17 @@
         gap: 0.75rem !important;
         padding: 1rem !important;
       }
-      .forum-header > div:first-child {
+      .forum-header > div:first-child > div:first-of-type {
         display: flex;
         justify-content: space-between;
-        align-items: flex-start;
+        align-items: center;
         width: 100%;
-        gap: 0.5rem;
       }
       .forum-header h2 {
-        font-size: 1.25rem !important;
+        font-size: 1.15rem !important;
         display: flex;
         align-items: center;
         gap: 0.4rem;
-        flex-wrap: wrap;
         margin: 0;
       }
       .header-actions-wrapper {
@@ -54,7 +52,7 @@
     }
 
     .mobile-menu-toggle {
-      display: inline-flex;
+      display: none;
       background: none;
       border: 1px solid var(--border-color, #cbd5e1);
       color: inherit;
@@ -64,6 +62,12 @@
       font-size: 1rem;
       align-items: center;
       justify-content: center;
+    }
+
+    @media (max-width: 768px) {
+      .mobile-menu-toggle {
+        display: inline-flex;
+      }
     }
 
     /* Pulsing notification icon counter badge */
@@ -122,8 +126,8 @@
   <div class="forum-wrapper">
     <!-- Header Section -->
     <header class="forum-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-      <div>
-        <div>
+      <div style="flex: 1; min-width: 250px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
           <h2>
             <i class="fa-solid fa-comments"></i> Learner Discussion Forum 
             <!-- Global Unread Counter Badge Hook -->
@@ -134,7 +138,7 @@
             <i class="fa-solid fa-bars" id="mobileMenuIcon"></i>
           </button>
         </div>
-        <p>Engage in academic discourse, ask questions, and collaborate with peers.</p>
+        <p style="margin: 0.35rem 0 0 0;">Engage in academic discourse, ask questions, and collaborate with peers.</p>
       </div>
 
      <!-- Action buttons & role-based back links container -->
@@ -273,7 +277,7 @@
   <script src="script.js"></script>
   <script src="forum-engine.js"></script>
 
- <!-- Role-based Back Link, Profile Widget & Mobile Menu Controller Script -->
+  <!-- Role-based Back Link, Profile Widget & Mobile Menu Controller Script -->
   <script>
     function toggleMobileMenu() {
       const actionsWrapper = document.querySelector('.header-actions-wrapper');
@@ -293,7 +297,6 @@
     });
 
     document.addEventListener("DOMContentLoaded", () => {
-      // Evaluate session on initial load, checking both window.currentUser and stored sessions
       let activeUser = window.currentUser;
       if (!activeUser) {
         const sessionData = localStorage.getItem('currentLoggedInUser') || localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
