@@ -173,3 +173,91 @@ body { background-color: var(--bg-main); color: var(--text-main); min-height: 10
   background: var(--bg-main); color: var(--text-main); font-size: 0.9rem;
 }
 .modal-footer { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; }
+
+/* Mobile Menu Toggle Button (Hidden on Desktop) */
+.mobile-menu-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  font-size: 1.5rem;
+  color: var(--text-main, #1e293b);
+  cursor: pointer;
+  padding: 5px;
+}
+
+/* User profile widget layout classes for styling */
+.user-profile-widget {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-card, #f1f5f9);
+  padding: 5px 12px;
+  border-radius: 20px;
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+.user-profile-widget img {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.user-info-text {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+  line-height: 1.2;
+}
+.user-info-text span:first-child {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text-main, #1e293b);
+}
+.user-info-text span:last-child {
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+}
+
+/* Responsive Breakpoint for Mobile (e.g., 900px and below) */
+@media (max-width: 900px) {
+  .mobile-menu-btn {
+    display: block;
+  }
+
+  .header-container {
+    flex-wrap: wrap;
+    position: relative;
+  }
+
+  .nav-collapse-wrapper {
+    display: none;
+    width: 100%;
+    flex-direction: column;
+    gap: 15px;
+    padding: 15px 0;
+    border-top: 1px solid var(--border-color, #e2e8f0);
+    margin-top: 10px;
+  }
+
+  .nav-collapse-wrapper.show {
+    display: flex;
+  }
+
+  .nav-links {
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .nav-links a {
+    padding: 10px;
+    border-radius: 6px;
+  }
+
+  .header-actions {
+    flex-direction: row;
+    justify-content: space-between;
+    width: 100%;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border-color, #e2e8f0);
+  }
+}
