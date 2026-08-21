@@ -11,6 +11,15 @@ let searchQuery = '';
 let currentPage = 1;
 const itemsPerPage = 6; // Number of resource cards per page
 
+/* ==========================================================================
+   BUSINESS PAYMENT CONFIGURATION
+   ========================================================================== */
+const SAMCAM_MOMO_CONFIG = {
+  merchantName: "SAMCAM SOLUTIONS ICT HUB",
+  provider: "AIRTEL",
+  merchantNumber: "0703999089"
+};
+
 
 /* ==========================================================================
    SAMCAM SOLUTIONS - MAIN APP SCRIPT
@@ -235,7 +244,6 @@ function resetFilters() {
    MOBILE MONEY PAYMENT GATEWAY WORKFLOW (UGANDA / MOMO)
    ========================================================================== */
 function initiateMoMoPayment(resourceId, resourceTitle, price) {
-  // Create or retrieve a dynamic checkout modal container
   let modal = document.getElementById('momoPaymentModal');
   if (!modal) {
     modal = document.createElement('div');
@@ -249,18 +257,22 @@ function initiateMoMoPayment(resourceId, resourceTitle, price) {
     <div class="card" style="width: 100%; max-width: 420px; margin: 1rem; position: relative; background: var(--card-bg);">
       <button onclick="closeMomoModal()" style="position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);"><i class="fa-solid fa-xmark"></i></button>
       <h3 style="margin-bottom: 0.5rem;"><i class="fa-solid fa-mobile-screen-button" style="color:var(--primary);"></i> Mobile Money Checkout</h3>
-      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.2rem;">Secure resource access for: <strong>${escapeHtml(resourceTitle)}</strong></p>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Unlocking: <strong>${escapeHtml(resourceTitle)}</strong></p>
       
-      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; margin-bottom: 1rem; border: 1px solid var(--border-color);">
-        <div style="display:flex; justify-content:space-between; font-size: 0.9rem; margin-bottom:4px;">
-          <span>Amount Payable:</span>
+      <div style="background: #f8fafc; padding: 12px; border-radius: 6px; margin-bottom: 1rem; border: 1px solid var(--border-color); font-size: 0.85rem;">
+        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+          <span>Payable Amount:</span>
           <strong>UGX ${price.toLocaleString()}</strong>
+        </div>
+        <div style="display:flex; justify-content:space-between; color: var(--text-muted);">
+          <span>Merchant Number:</span>
+          <strong>${SAMCAM_MOMO_CONFIG.merchantNumber}</strong>
         </div>
       </div>
 
       <form onsubmit="processMomoCheckout(event, '${resourceId}')">
         <div class="form-group" style="margin-bottom: 1rem;">
-          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Network Provider</label>
+          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Your Mobile Money Network</label>
           <select id="momoProvider" required style="width:100%; padding: 0.6rem; border-radius:6px; border:1px solid var(--border-color);">
             <option value="MTN">MTN Mobile Money</option>
             <option value="AIRTEL">Airtel Money</option>
@@ -268,9 +280,9 @@ function initiateMoMoPayment(resourceId, resourceTitle, price) {
         </div>
 
         <div class="form-group" style="margin-bottom: 1.2rem;">
-          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Phone Number</label>
-          <input type="tel" id="momoPhone" placeholder="e.g. 0772123456 or 0752123456" required style="width:100%; padding: 0.6rem; border-radius:6px; border:1px solid var(--border-color);">
-          <small style="color:var(--text-muted); font-size:0.75rem;">You will receive an instant PIN prompt on this phone.</small>
+          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Your Phone Number (For PIN Prompt)</label>
+          <input type="tel" id="momoPhone" placeholder="e.g. 0772xxxxxx or 0752xxxxxx" required style="width:100%; padding: 0.6rem; border-radius:6px; border:1px solid var(--border-color);">
+          <small style="color:var(--text-muted); font-size:0.75rem;">A prompt will be sent to your phone to authorize payment to ${SAMCAM_MOMO_CONFIG.merchantNumber}.</small>
         </div>
 
         <button type="submit" id="paySubmitBtn" class="btn-primary" style="width:100%; justify-content:center;">
