@@ -5,7 +5,7 @@
 // Bulletproof dynamic database resolver
 function getDatabaseInstance() {
   if (window.db) return window.db;
-  if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
+  if (typeof firebase !== 'undefined' && firebase.firestore) {
     try {
       window.db = firebase.firestore();
       return window.db;
@@ -636,6 +636,13 @@ function getDatabaseInstance() {
 function handleScheduleSubmit(e) {
   e.preventDefault();
   
+  // Verify database connection up front
+  const database = getDatabaseInstance();
+  if (!database) {
+    alert("Database connection is not available. Please ensure Firebase is loaded.");
+    return;
+  }
+  
   const title = document.getElementById('classTitle').value;
   const classLevel = document.getElementById('classLevel').value;
   const instructorName = document.getElementById('instructorName').value;
@@ -671,42 +678,31 @@ function handleScheduleSubmit(e) {
   const submitBtn = document.getElementById('submitClassBtn');
 
   if (editingClassId) {
-    const database = getDatabaseInstance();
-    if (!database) {
-      alert("Database connection is not available.");
-      return;
-    }
-
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Updating...`;
 
     database.collection("live_classes").doc(editingClassId).update({
-      title,
-      classLevel,
-      instructorName,
+      title, classLevel, instructorName,
       startTime: startDate.toISOString(),
       endTime: endDate.toISOString(),
-      description,
-      admissionType,
-      meetingMode,
-      recordingUrl,
-      handoutUrl,
+      description, admissionType, meetingMode,
+      recordingUrl, handoutUrl,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }).then(() => {
       alert("Class updated successfully!");
       closeScheduleModalDirect();
-      document.getElementById('scheduleForm').reset();
     }).catch(err => {
       console.error("Error updating class:", err);
       alert("Failed to update class: " + err.message);
     }).finally(() => {
       submitBtn.disabled = false;
+      submitBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Update Class Session`;
     });
     return;
   }
 
   if (!tokenClient) {
-    alert("Google Identity Services is still loading or blocked. Please wait a moment and try again.");
+    alert("Google Identity Services is still loading. Please wait a moment and try again.");
     return;
   }
 
@@ -715,39 +711,28 @@ function handleScheduleSubmit(e) {
 
   tokenClient.callback = async (resp) => {
     if (resp.error !== undefined) {
-      alert("Authentication failed. Unable to generate Google Meet link.");
+      alert("Google Authentication failed. Unable to generate Meet link.");
       submitBtn.disabled = false;
-      submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Create Meet & Schedule`;
+      submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Schedule Meet & Save`;
       return;
     }
 
     try {
+      // Step 1: Create the Google Calendar Event & Meet Link
       const meetUrl = await createGoogleCalendarEvent(resp.access_token, {
         title, classLevel, instructorName, 
         startTime: startDate.toISOString(), 
         endTime: endDate.toISOString(), 
-        description,
-        admissionType
+        description, admissionType
       });
 
-      // Fresh-fetch the database instance inside the async callback
-      const database = getDatabaseInstance();
-      if (!database) {
-        throw new Error("Database connection is not available.");
-      }
-
+      // Step 2: Save to Firestore using our pre-verified database instance
       await database.collection("live_classes").add({
-        title,
-        classLevel,
-        instructorName,
+        title, classLevel, instructorName,
         startTime: startDate.toISOString(),
         endTime: endDate.toISOString(),
-        description,
-        meetUrl,
-        admissionType,
-        meetingMode,
-        recordingUrl,
-        handoutUrl,
+        description, meetUrl, admissionType,
+        meetingMode, recordingUrl, handoutUrl,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
@@ -761,8 +746,8 @@ function handleScheduleSubmit(e) {
         alert("Class scheduled successfully with an automated Google Meet link!");
       }
     } catch (err) {
-      console.error("Error creating calendar event:", err);
-      alert("Failed to create Google Calendar event: " + err.message);
+      console.error("Error in scheduling process:", err);
+      alert("Process failed: " + err.message);
     } finally {
       submitBtn.disabled = false;
       toggleMeetingMode();
@@ -821,6 +806,7 @@ function deleteClassSession(classId) {
 
   if (confirm("Are you sure you want to delete this class session? This action cannot be undone.")) {
     database.collection("live_classes").doc(classId).delete().then(() => {
+      // Successfully deleted
     }).catch(err => {
       console.error("Error deleting session:", err);
       alert("Failed to delete session: " + err.message);
