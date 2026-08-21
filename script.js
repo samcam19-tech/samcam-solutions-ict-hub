@@ -1908,3 +1908,79 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+function renderPaginationControls(totalItems, rowsPerPage, currentPage, containerElement, onPageChangeCallback) {
+  if (!containerElement) return;
+  containerElement.innerHTML = "";
+
+  const totalPages = Math.ceil(totalItems / rowsPerPage);
+  if (totalPages <= 1) return;
+
+  // Previous Button
+  const prevBtn = document.createElement("button");
+  prevBtn.type = "button";
+  prevBtn.className = "page-btn";
+  prevBtn.innerHTML = '<i class="fa-solid fa-chevron-left"></i>';
+  prevBtn.disabled = currentPage === 1;
+  prevBtn.onclick = () => onPageChangeCallback(currentPage - 1);
+  containerElement.appendChild(prevBtn);
+
+  // Page Numbers with Ellipsis logic
+  const maxVisiblePages = 5;
+  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+  if (endPage - startPage + 1 < maxVisiblePages) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+
+  if (startPage > 1) {
+    const firstBtn = document.createElement("button");
+    firstBtn.type = "button";
+    firstBtn.className = "page-btn";
+    firstBtn.textContent = "1";
+    firstBtn.onclick = () => onPageChangeCallback(1);
+    containerElement.appendChild(firstBtn);
+
+    if (startPage > 2) {
+      const ellipsis = document.createElement("span");
+      ellipsis.className = "page-ellipsis";
+      ellipsis.textContent = "...";
+      containerElement.appendChild(ellipsis);
+    }
+  }
+
+  for (let i = startPage; i <= endPage; i++) {
+    const pageBtn = document.createElement("button");
+    pageBtn.type = "button";
+    pageBtn.className = `page-btn ${i === currentPage ? "active" : ""}`;
+    pageBtn.textContent = i;
+    pageBtn.onclick = () => onPageChangeCallback(i);
+    containerElement.appendChild(pageBtn);
+  }
+
+  if (endPage < totalPages) {
+    if (endPage < totalPages - 1) {
+      const ellipsis = document.createElement("span");
+      ellipsis.className = "page-ellipsis";
+      ellipsis.textContent = "...";
+      containerElement.appendChild(ellipsis);
+    }
+
+    const lastBtn = document.createElement("button");
+    lastBtn.type = "button";
+    lastBtn.className = "page-btn";
+    lastBtn.textContent = totalPages;
+    lastBtn.onclick = () => onPageChangeCallback(totalPages);
+    containerElement.appendChild(lastBtn);
+  }
+
+  // Next Button
+  const nextBtn = document.createElement("button");
+  nextBtn.type = "button";
+  nextBtn.className = "page-btn";
+  nextBtn.innerHTML = '<i class="fa-solid fa-chevron-right"></i>';
+  nextBtn.disabled = currentPage === totalPages;
+  nextBtn.onclick = () => onPageChangeCallback(currentPage + 1);
+  containerElement.appendChild(nextBtn);
+}
