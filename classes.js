@@ -169,16 +169,18 @@ function getCurrentUserSession(userParam) {
 }
 
 function syncLiveClassSession(user) {
-  const session = getCurrentUserSession(user);
+  // Ensure we have a valid session object
+  const session = user || getCurrentUserSession();
   console.log("Synced Live Class Session:", session);
 
-  const combinedCheck = `${session.role} ${session.name} ${session.userClass}`.toLowerCase();
-  const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
-                           combinedCheck.includes('admin') || 
-                           combinedCheck.includes('instructor') ||
-                           combinedCheck.includes('staff') ||
-                           session.role === 'teacher';
+  // Robust check for teacher permissions
+  const roleStr = (session.role || '').toLowerCase();
+  const isTeacherOrAdmin = roleStr.includes('teacher') || 
+                           roleStr.includes('admin') || 
+                           roleStr.includes('instructor') ||
+                           roleStr.includes('staff');
 
+  // Update UI elements based on role
   document.querySelectorAll('.teacher-only').forEach(el => {
     el.style.display = isTeacherOrAdmin ? 'inline-flex' : 'none';
   });
@@ -188,11 +190,14 @@ function syncLiveClassSession(user) {
     if (isTeacherOrAdmin) {
       subtitleEl.textContent = "Schedule interactive video lessons, automatically generate Meet links, and manage live sessions.";
     } else {
-      const studentClass = session.userClass !== 'ALL' ? session.userClass : 'your class';
+      const studentClass = (session.userClass && session.userClass !== 'ALL') ? session.userClass : 'your class';
       subtitleEl.textContent = `View upcoming live video lessons and join scheduled sessions for ${studentClass}.`;
     }
   }
+
+  // Call the robust profile updater
   updateNavProfile(session);
+  
   updateClassFilterInterface(session, isTeacherOrAdmin);
   renderClassesGrid();
 }
@@ -735,23 +740,31 @@ function updateNavProfile(session) {
   const userEl = document.getElementById('navUsername');
   const picEl = document.getElementById('navProfilePic');
   
-  // Resolve name and username safely from session keys
+  // 1. Resolve Display Name
   const displayName = session.fullName || session.name || session.username || 'User';
+  
+  // 2. Resolve Username (ensures the @ format looks clean)
   const usernameVal = session.username || (session.name ? session.name.split(' ')[0].toLowerCase() : 'user');
 
+  // Update Text Content
   if (nameEl) nameEl.textContent = displayName;
   if (userEl) userEl.textContent = '@' + usernameVal;
   
-  // Resolve profile picture: check profilePic first, then photoUrl, then fallback to UI Avatars or default
-  const defaultAvatar = "images/default-avatar.png";
-  const userAvatar = (session.profilePic && session.profilePic.trim() !== "") 
-    ? session.profilePic 
-    : (session.photoUrl && session.photoUrl.trim() !== "" ? session.photoUrl : null);
+  // 3. Resolve Profile Picture
+  // Priority: 1. profilePic, 2. photoUrl, 3. UI Avatars fallback
+  const userAvatar = session.profilePic || session.photoUrl || null;
 
   if (picEl) {
-    picEl.src = userAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`;
+    if (userAvatar && userAvatar.trim() !== "") {
+      picEl.src = userAvatar;
+      picEl.onerror = () => { picEl.src = 'images/default-avatar.png'; }; // Fallback if link breaks
+    } else {
+      // Use UI Avatars if no picture is set
+      picEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2563eb&color=ffffff&size=128`;
+    }
   }
 }
+
 // 2. Attendance Modal Controls
 function openAttendanceModal() {
   const modal = document.getElementById('attendanceModal');
