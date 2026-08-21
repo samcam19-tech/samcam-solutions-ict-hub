@@ -110,7 +110,6 @@ function fetchResourcesFromFirestore() {
     return;
   }
 
-  // Updated to use your exact Firestore collection name: 'e_library_resources'
   db.collection('e_library_resources')
     .onSnapshot((snapshot) => {
       allResources = [];
@@ -120,10 +119,13 @@ function fetchResourcesFromFirestore() {
           id: doc.id,
           title: data.title || 'Untitled Resource',
           description: data.description || '',
-          class: data.classLevel || 'S1',      // Mapped to your 'classLevel' field
+          class: data.classLevel || 'S1',        // Mapped to your 'classLevel' field
           category: data.category || 'Notes',
+          accessType: data.accessType || 'free',  // Mapped to 'free' or 'paid'
+          price: Number(data.price) || 0,         // Mapped to your numeric 'price' field
           fileUrl: data.fileUrl || '#',
-          fileSize: data.fileSize || '',
+          fileName: data.fileName || '',
+          fileType: data.fileType || '',
           date: data.date || '2026',
           createdAt: data.createdAt
         });
