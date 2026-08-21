@@ -35,7 +35,15 @@
         <a href="classes.html" class="active"><i class="fa-solid fa-video"></i> Live Classes</a>
         <a href="announcements.html"><i class="fa-solid fa-bullhorn"></i> Announcements</a>
       </nav>
-      <div class="header-actions">
+      <div class="header-actions" style="display: flex; align-items: center; gap: 15px;">
+        <!-- User Profile Widget -->
+        <div id="userProfileWidget" style="display: flex; align-items: center; gap: 10px; background: var(--bg-card, #f1f5f9); padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border-color, #e2e8f0);">
+          <img id="navProfilePic" src="https://via.placeholder.com/32" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+          <div style="display: flex; flex-direction: column; text-align: left; line-height: 1.2;">
+            <span id="navFullName" style="font-weight: 600; font-size: 0.85rem; color: var(--text-main, #1e293b);">User Name</span>
+            <span id="navUsername" style="font-size: 0.75rem; color: var(--text-muted, #64748b);">@username</span>
+          </div>
+        </div>
         <button id="themeToggleBtn" class="btn-icon-only" title="Toggle Theme"><i class="fa-solid fa-moon"></i></button>
       </div>
     </div>
@@ -48,9 +56,14 @@
         <h1>Virtual Classrooms & Google Meet</h1>
         <p id="pageSubtitle">Loading session details...</p>
       </div>
-      <button id="openScheduleModalBtn" class="btn-action btn-upload teacher-only" onclick="openScheduleModal()" style="display: none;">
-        <i class="fa-solid fa-plus"></i> Schedule New Class
-      </button>
+      <div style="display: flex; gap: 10px;">
+        <button id="openAttendanceModalBtn" class="btn-action btn-secondary" onclick="openAttendanceModal()">
+          <i class="fa-solid fa-clipboard-user"></i> View Attendance Log
+        </button>
+        <button id="openScheduleModalBtn" class="btn-action btn-upload teacher-only" onclick="openScheduleModal()" style="display: none;">
+          <i class="fa-solid fa-plus"></i> Schedule New Class
+        </button>
+      </div>
     </div>
 
     <!-- FILTER BAR -->
@@ -140,6 +153,35 @@
           </button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- ATTENDANCE LOG MODAL -->
+  <div id="attendanceModal" class="modal-overlay" style="display:none;" onclick="closeAttendanceModal(event)">
+    <div class="modal-card" style="max-width: 800px; width: 90%;">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-clipboard-user"></i> Meeting Attendance Log</h3>
+        <button class="btn-icon-only" onclick="closeAttendanceModalDirect()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+        <p style="color: var(--text-muted); font-size: 0.9rem;">Record of user interactions and joined sessions.</p>
+        <button onclick="exportAttendanceCSV()" class="btn-action btn-upload" style="padding: 6px 12px; font-size: 0.85rem;"><i class="fa-solid fa-file-arrow-down"></i> Export CSV</button>
+      </div>
+      <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px;">
+        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+          <thead style="background: var(--bg-card, #f8fafc); position: sticky; top: 0;">
+            <tr>
+              <th style="padding: 10px; border-bottom: 1px solid var(--border-color);">Timestamp</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--border-color);">User Name</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--border-color);">Role / Class</th>
+              <th style="padding: 10px; border-bottom: 1px solid var(--border-color);">Action / Class Joined</th>
+            </tr>
+          </thead>
+          <tbody id="attendanceTableBody">
+            <!-- Dynamic rows will render here -->
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
