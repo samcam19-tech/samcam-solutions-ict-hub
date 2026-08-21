@@ -136,16 +136,27 @@ function injectExtraStyles() {
 /* ==========================================================================
    SESSION MANAGEMENT & ROLE DETECTION
    ========================================================================== */
+/* ==========================================================================
+   SESSION MANAGEMENT & ROLE DETECTION
+   ========================================================================== */
 function getCurrentUserSession(userParam) {
-  // If a user object is passed directly (e.g., from an event), use it
-  if (userParam) return userParam;
+  // If a user object is passed directly (e.g., from an event), normalize it and return
+  if (userParam) {
+    return {
+      ...userParam,
+      profilePic: userParam.profilePic || userParam.photoURL || userParam.avatar || userParam.image || ''
+    };
+  }
 
   // Otherwise, retrieve from localStorage (Primary) or sessionStorage
   const sessionData = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
   
   if (sessionData) {
     try {
-      return JSON.parse(sessionData);
+      const parsed = JSON.parse(sessionData);
+      // Normalize profile picture property across common naming conventions
+      parsed.profilePic = parsed.profilePic || parsed.photoURL || parsed.avatar || parsed.image || '';
+      return parsed;
     } catch (e) {
       console.error("Error parsing portal_session:", e);
     }
@@ -186,15 +197,22 @@ function syncLiveClassSession(user) {
     }
   }
 
-  // 4. Call the robust profile updater (from your existing profile logic)
+  // 4. Call the robust profile updater and manually push profile picture to elements if needed
   if (typeof updateNavProfile === 'function') {
     updateNavProfile(session);
+  } else {
+    // Direct DOM fallback to guarantee the profile image updates instantly if IDs exist
+    const profileImgElements = document.querySelectorAll('.user-profile-pic, #navProfilePic, #userAvatarImg');
+    profileImgElements.forEach(img => {
+      if (session.profilePic) {
+        img.src = session.profilePic;
+      }
+    });
   }
   
   updateClassFilterInterface(session, isTeacherOrAdmin);
   renderClassesGrid();
 }
-
 function updateClassFilterInterface(session, isTeacherOrAdmin) {
   const filterGroup = document.getElementById('classFilterGroup');
   if (!filterGroup) return;
