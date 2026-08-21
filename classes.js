@@ -2,8 +2,19 @@
    SAMCAM SOLUTIONS - LIVE CLASSES & GOOGLE MEET ENGINE (ROLE & CLASS BASED)
    ========================================================================== */
 
-// Use the global db instance initialized in firebase-config.js
-const db = window.db || (typeof firebase !== "undefined" ? firebase.firestore() : null);
+// Bulletproof dynamic database resolver
+function getDatabaseInstance() {
+  if (window.db) return window.db;
+  if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
+    try {
+      window.db = firebase.firestore();
+      return window.db;
+    } catch (e) {
+      console.error("Failed to initialize firestore directly:", e);
+    }
+  }
+  return null;
+}
 
 // Google API Client configuration
 const CLIENT_ID = '74940789582-42d2vlki0lr8bj734afchl8b42jo3b98.apps.googleusercontent.com';
@@ -250,8 +261,9 @@ function updateClassFilterInterface(session, isTeacherOrAdmin) {
    FIRESTORE DATA RETRIEVAL & RENDERING
    ========================================================================== */
 function fetchClassesFromFirestore() {
-  if (!db) return;
-  db.collection("live_classes").orderBy("startTime", "asc").onSnapshot((snapshot) => {
+  const database = getDatabaseInstance();
+  if (!database) return;
+  database.collection("live_classes").orderBy("startTime", "asc").onSnapshot((snapshot) => {
     allClasses = [];
     snapshot.forEach((doc) => {
       allClasses.push({ id: doc.id, ...doc.data() });
@@ -423,6 +435,7 @@ function renderClassesGrid() {
 
   startCountdownInterval();
 }
+
 /* ==========================================================================
    AUTOMATION: LIVE COUNTDOWN & ATTENDANCE LOGGING
    ========================================================================== */
@@ -448,9 +461,10 @@ function startCountdownInterval() {
 
 function logAttendance(classId) {
   const session = getCurrentUserSession();
-  if (!db || !session.name) return;
+  const database = getDatabaseInstance();
+  if (!database || !session.name) return;
 
-  db.collection("live_classes").doc(classId).collection("attendance").add({
+  database.collection("live_classes").doc(classId).collection("attendance").add({
     studentName: session.name,
     studentRole: session.role,
     studentClass: session.userClass,
