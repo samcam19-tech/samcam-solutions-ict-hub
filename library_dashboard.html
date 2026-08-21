@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Library Administration Dashboard - Samcam Solutions</title>
+  <link rel="stylesheet" href="library_dashboard.css">
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <div class="dashboard-container">
+    <!-- Header -->
+    <header class="dash-header">
+      <div class="header-title">
+        <h2><i class="fa-solid fa-book-bookmark"></i> E-Library Management Portal</h2>
+        <p>Manage free & paid resources, upload documents, and track inventory.</p>
+      </div>
+      <div class="header-actions">
+        <a href="index.html" class="btn-secondary"><i class="fa-solid fa-arrow-left"></i> Back to Portal</a>
+      </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <div class="dash-grid">
+      
+      <!-- Left: Resource Upload / Edit Form Card -->
+      <div class="card form-card">
+        <h3 id="formTitle"><i class="fa-solid fa-cloud-arrow-up"></i> Upload New Resource</h3>
+        <form id="libraryResourceForm" onsubmit="handleLibraryFormSubmit(event)">
+          <input type="hidden" id="editingResourceId">
+
+          <div class="form-group">
+            <label>Resource Title</label>
+            <input type="text" id="resTitle" placeholder="e.g. Advanced UNEB ICT Practical Workbook" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Class / Level</label>
+              <select id="resClass" required>
+                <option value="S1">Senior 1</option>
+                <option value="S2">Senior 2</option>
+                <option value="S3">Senior 3</option>
+                <option value="S4">Senior 4</option>
+                <option value="S5">Senior 5</option>
+                <option value="S6">Senior 6</option>
+                <option value="General">General / All</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Category</label>
+              <select id="resCategory" required>
+                <option value="Notes">Notes & Handouts</option>
+                <option value="Past Papers">Past Papers</option>
+                <option value="Datasets">Practical Datasets</option>
+                <option value="Software">Software & Tools</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Access Type</label>
+              <select id="resAccessType" onchange="togglePriceField()" required>
+                <option value="free">Free Resource</option>
+                <option value="paid">Paid / Private Resource</option>
+              </select>
+            </div>
+            <div class="form-group" id="priceGroup" style="display: none;">
+              <label>Price (UGX)</label>
+              <input type="number" id="resPrice" placeholder="e.g. 5000" min="0">
+            </div>
+          </div>
+
+          <div class="form-group" id="fileInputWrapper">
+            <label>Select Resource File</label>
+            <input type="file" id="resFile">
+            <small class="help-text">Leave blank if editing details without changing the file.</small>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" id="saveResourceBtn" class="btn-primary">
+              <i class="fa-solid fa-upload"></i> Save Resource
+            </button>
+            <button type="button" id="cancelEditBtn" class="btn-secondary" style="display:none;" onclick="resetLibraryForm()">
+              Cancel Edit
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Right: Resource Inventory Table -->
+      <div class="card table-card">
+        <div class="table-header-flex">
+          <h3><i class="fa-solid fa-list"></i> Existing Resources</h3>
+          <input type="text" id="librarySearch" placeholder="Search resources..." onkeyup="filterLibraryTable()">
+        </div>
+        
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th>Title</th>
+                <th>Class / Category</th>
+                <th>Access</th>
+                <th>Price</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="libraryTableBody">
+              <tr><td colspan="5" style="text-align:center; color:#64748b;">Loading resources...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Firebase SDKs Compat (v9.23.0) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="library_dashboard.js"></script>
+</body>
+</html>
