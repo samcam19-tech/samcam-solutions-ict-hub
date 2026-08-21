@@ -1,0 +1,137 @@
+/* ==========================================================================
+   ADMIN & TEACHER PAYMENT RECONCILIATION SCRIPT
+   ========================================================================== */
+
+document.addEventListener("DOMContentLoaded", () => {
+  checkAdminAuthorization();
+});
+
+let pendingPaymentsList = [];
+
+// 1. Role Guard: Ensure only Admins or Teachers can view this panel
+function checkAdminAuthorization() {
+  const isAdmin = localStorage.getItem('samcam_is_admin') === 'true';
+  const isTeacher = localStorage.getItem('samcam_is_teacher') === 'true'; // Optional extended role flag
+
+  const restrictedView = document.getElementById('authRestrictedView');
+  const allowedPanel = document.getElementById('adminVerificationPanel');
+
+  if (!isAdmin && !isTeacher) {
+    if (restrictedView) restrictedView.style.display = 'block';
+    if (allowedPanel) allowedPanel.style.display = 'none';
+    return;
+  }
+
+  if (restrictedView) restrictedView.style.display = 'none';
+  if (allowedPanel) allowedPanel.style.display = 'block';
+
+  // Load real-time pending payments queue
+  fetchPendingPayments();
+}
+
+// 2. Fetch Pending Payments from Firestore
+function fetchPendingPayments() {
+  if (!db) return;
+
+  db.collection("pending_payments")
+    .where("status", "==", "pending")
+    .onSnapshot((snapshot) => {
+      pendingPaymentsList = [];
+      snapshot.forEach((doc) => {
+        pendingPaymentsList.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+
+      renderPendingTable(pendingPaymentsList);
+    }, (error) => {
+      console.error("Error fetching pending payments:", error);
+    });
+}
+
+// 3. Render Table Data
+function renderPendingTable(payments) {
+  const tbody = document.getElementById("pendingPaymentsTableBody");
+  if (!tbody) return;
+
+  if (payments.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#64748b; padding: 2rem;">No pending payment verifications found.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = '';
+  payments.forEach((item) => {
+    const formattedDate = item.createdAt && item.createdAt.toDate ? item.createdAt.toDate().toLocaleString() : 'Just now';
+    const badgeColor = item.network === 'MTN' ? '#eab308' : '#ef4444';
+
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${formattedDate}</td>
+      <td>
+        <span style="background: ${badgeColor}; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">${item.network}</span>
+        <br><strong style="font-size: 0.85rem;">${item.phone}</strong>
+      </td>
+      <td style="font-size: 0.85rem; color: var(--text-muted); font-family: monospace;">${item.resourceId.substring(0, 10)}...</td>
+      <td><code style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-weight: bold; color: var(--primary);">${item.transactionId}</code></td>
+      <td><span class="badge" style="background: #fef3c7; color: #92400e;">Pending Review</span></td>
+      <td>
+        <button onclick="approvePayment('${item.id}', '${item.resourceId}')" class="btn-action" style="background: #dcfce7; color: #166534; margin-right: 4px;" title="Confirm Received on Line">
+          <i class="fa-solid fa-check"></i> Approve
+        </button>
+        <button onclick="rejectPayment('${item.id}')" class="btn-action btn-delete" title="Reject Invalid TID">
+          <i class="fa-solid xmark"></i> Reject
+        </button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// 4. Approve Payment: Matches the line and marks it approved
+async function approvePayment(paymentId, resourceId) {
+  if (!confirm("Are you sure you have verified this Transaction ID on your physical phone/line statement?")) return;
+
+  try {
+    // Update payment document status to approved
+    await db.collection("pending_payments").doc(paymentId).update({
+      status: "approved",
+      approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      approvedBy: localStorage.getItem('samcam_admin_email') || 'Admin'
+    });
+
+    alert("✅ Payment approved successfully! The transaction is now reconciled.");
+  } catch (error) {
+    console.error("Error approving payment:", error);
+    alert("Failed to update approval status.");
+  }
+}
+
+// 5. Reject Invalid Payment
+async function rejectPayment(paymentId) {
+  const reason = prompt("Enter reason for rejection (e.g., Invalid TID or funds not received):");
+  if (!reason) return;
+
+  try {
+    await db.collection("pending_payments").doc(paymentId).update({
+      status: "rejected",
+      rejectionReason: reason,
+      rejectedAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert("Payment request rejected.");
+  } catch (error) {
+    console.error("Error rejecting payment:", error);
+  }
+}
+
+// 6. Search / Filter Table Function
+function filterPendingPayments() {
+  const query = document.getElementById("paymentSearch").value.toLowerCase();
+  const filtered = pendingPaymentsList.filter(item => 
+    item.phone.toLowerCase().includes(query) ||
+    item.transactionId.toLowerCase().includes(query) ||
+    item.network.toLowerCase().includes(query)
+  );
+  renderPendingTable(filtered);
+}
