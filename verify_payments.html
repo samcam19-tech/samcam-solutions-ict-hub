@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Verification Portal | SAMCAM SOLUTIONS ICT HUB</title>
+  <link rel="stylesheet" href="library_dashboard.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <div class="dashboard-container">
+    <!-- Header -->
+    <header class="dash-header">
+      <div class="header-title">
+        <h2><i class="fa-solid fa-shield-halved"></i> Mobile Money Payment Reconciliation</h2>
+        <p>Verify student Transaction IDs against line statements and grant resource access.</p>
+      </div>
+      <div class="header-actions">
+        <a href="library_dashboard.html" class="btn-secondary"><i class="fa-solid fa-arrow-left"></i> Library Dashboard</a>
+      </div>
+    </header>
+
+    <!-- Restricted Content Wrapper -->
+    <div id="authRestrictedView" style="display: none; text-align: center; padding: 3rem;" class="card">
+      <i class="fa-solid fa-triangle-exclamation" style="font-size: 3rem; color: var(--warning, #d97706); margin-bottom: 1rem;"></i>
+      <h3>Access Denied</h3>
+      <p style="color: var(--text-muted); margin-bottom: 1rem;">This reconciliation module is strictly restricted to Administrators and Teachers.</p>
+      <a href="assessments.html" class="btn-primary" style="display: inline-flex; width: auto; margin: 0 auto;">Return to Portal</a>
+    </div>
+
+    <!-- Main Verification Panel -->
+    <div id="adminVerificationPanel" class="card table-card" style="display: none;">
+      <div class="table-header-flex">
+        <h3><i class="fa-solid fa-clock-rotate-left"></i> Pending Student Payments</h3>
+        <input type="text" id="paymentSearch" placeholder="Search phone or TID..." onkeyup="filterPendingPayments()">
+      </div>
+      
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Date / Time</th>
+              <th>Network / Phone</th>
+              <th>Resource ID</th>
+              <th>Transaction ID (TID)</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="pendingPaymentsTableBody">
+            <tr><td colspan="6" style="text-align:center; color:#64748b;">Loading pending requests...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs Compat (v9.23.0) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+  <script src="admin_verification.js"></script>
+</body>
+</html>
