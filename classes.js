@@ -269,11 +269,11 @@ function getCountdownText(startTimeStr, endTimeStr) {
   const end = new Date(endTimeStr).getTime();
 
   if (now >= start && now <= end) {
-    return `<span style="color: #22c55e; font-weight: bold;"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> LIVE NOW</span>`;
+    return `<span class="live-badge-pulse"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> LIVE NOW</span>`;
   }
 
   if (now > end) {
-    return `<span style="color: var(--text-muted);">Session Ended</span>`;
+    return `<span style="color: var(--text-muted); font-weight: 500;">Session Ended</span>`;
   }
 
   const diff = start - now;
@@ -282,13 +282,20 @@ function getCountdownText(startTimeStr, endTimeStr) {
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
   const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-  if (days > 0) {
-    return `Starts in ${days}d ${hours}h ${minutes}m`;
-  } else if (hours > 0) {
-    return `Starts in ${hours}h ${minutes}m ${seconds}s`;
-  } else {
-    return `Starts in ${minutes}m ${seconds}s`;
-  }
+  // Helper to pad single digits with a leading zero
+  const pad = (num) => String(num).padStart(2, '0');
+
+  return `
+    <div class="countdown-clock">
+      <span class="countdown-label">Starts in:</span>
+      <div class="countdown-boxes">
+        ${days > 0 ? `<div class="time-box"><strong>${pad(days)}</strong><span>Days</span></div>` : ''}
+        <div class="time-box"><strong>${pad(hours)}</strong><span>Hrs</span></div>
+        <div class="time-box"><strong>${pad(minutes)}</strong><span>Mins</span></div>
+        <div class="time-box"><strong>${pad(seconds)}</strong><span>Secs</span></div>
+      </div>
+    </div>
+  `;
 }
 
 // Background loop to update all countdown elements on the screen every second
