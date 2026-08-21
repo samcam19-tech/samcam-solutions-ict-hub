@@ -2,27 +2,21 @@
    SAMCAM SOLUTIONS - LIVE CLASSES & GOOGLE MEET ENGINE (ROLE & CLASS BASED)
    ========================================================================== */
 
-// Global Firestore database reference
-let db = null;
+const firebaseConfig = {
+  apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
+  authDomain: "samcam-system.firebaseapp.com",
+  projectId: "samcam-system",
+  storageBucket: "samcam-system.firebasestorage.app",
+  messagingSenderId: "74940789582",
+  appId: "1:74940789582:web:f159688165a194e841241f",
+  measurementId: "G-L2H4V8Y050"
+};
 
-// Bulletproof dynamic database resolver fallback
-function getDatabaseInstance() {
-  if (db) return db;
-  if (window.db) {
-    db = window.db;
-    return db;
-  }
-  try {
-    if (typeof firebase !== 'undefined' && firebase.firestore) {
-      db = firebase.firestore();
-      window.db = db;
-      return db;
-    }
-  } catch (e) {
-    console.error("Failed to initialize firestore directly:", e);
-  }
-  return null;
+// Initialize Firebase & Firestore
+if (typeof firebase !== "undefined" && !firebase.apps.length) {
+  firebase.initializeApp(firebaseConfig);
 }
+const db = typeof firebase !== "undefined" ? firebase.firestore() : null;
 
 // Google API Client configuration
 const CLIENT_ID = '74940789582-42d2vlki0lr8bj734afchl8b42jo3b98.apps.googleusercontent.com';
@@ -39,6 +33,7 @@ window.addEventListener('portalSessionChanged', (e) => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
+  initTheme();
   syncLiveClassSession();
   fetchClassesFromFirestore();
   injectExtraStyles();
@@ -57,7 +52,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* ==========================================================================
-   DYNAMIC STYLING INJECTION FOR BADGES, TABS & COUNTDOWNS
+   DYNAMIC STYLING INJECTION FOR BADGES & TABS
    ========================================================================== */
 function injectExtraStyles() {
   if (document.getElementById('samcamClassesExtraStyles')) return;
@@ -78,17 +73,6 @@ function injectExtraStyles() {
       display: inline-flex;
       align-items: center;
       gap: 5px;
-    }
-    .live-countdown {
-      color: var(--warning-color, #eab308);
-      font-size: 0.85rem;
-      font-weight: 700;
-      margin-top: 8px;
-      font-family: monospace;
-      background: var(--bg-chip, #f1f5f9);
-      padding: 4px 8px;
-      border-radius: 4px;
-      display: inline-block;
     }
     .tab-toolbar {
       display: flex;
@@ -120,14 +104,6 @@ function injectExtraStyles() {
     }
     .class-card {
       position: relative;
-    }
-    .class-desc {
-      background: var(--bg-card-sub, rgba(0,0,0,0.02));
-      border-left: 3px solid var(--primary-color, #2563eb);
-      padding: 8px 12px;
-      margin: 10px 0;
-      font-size: 0.92rem;
-      border-radius: 0 4px 4px 0;
     }
     .resource-links-box {
       margin-top: 12px;
@@ -192,41 +168,9 @@ function getCurrentUserSession(userParam) {
   };
 }
 
-/* ==========================================================================
-   PROFILE UI UPDATER (FIRESTORE & SESSION SYNC)
-   ========================================================================== */
-window.updateProfileUIImages = function(user) {
-  const activeUser = user || getCurrentUserSession();
-  const defaultAvatar = "images/default-avatar.png";
-  
-  const storedSession = JSON.parse(localStorage.getItem('portal_session') || '{}');
-  
-  const userAvatar = activeUser.profilePic || activeUser.photoURL || activeUser.avatarUrl || 
-                     storedSession.profilePic || storedSession.photoURL || storedSession.avatarUrl || 
-                     defaultAvatar;
-
-  const fullName = activeUser.name || storedSession.fullName || storedSession.name || "User";
-  const username = storedSession.username || storedSession.handle || "user";
-
-  const bannerPic = document.getElementById('bannerProfilePic');
-  const nameDisplay = document.getElementById('userNameDisplay');
-  const usernameDisplay = document.getElementById('profileUsernameDisplay');
-
-  if (bannerPic) {
-    bannerPic.src = userAvatar;
-    bannerPic.onerror = function() {
-      this.src = defaultAvatar;
-    };
-  }
-
-  if (nameDisplay) nameDisplay.textContent = fullName;
-  if (usernameDisplay) usernameDisplay.textContent = "@" + username;
-};
-
 function syncLiveClassSession(user) {
   const session = getCurrentUserSession(user);
-  
-  window.updateProfileUIImages(session);
+  console.log("Synced Live Class Session:", session);
 
   const combinedCheck = `${session.role} ${session.name} ${session.userClass}`.toLowerCase();
   const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
@@ -263,9 +207,8 @@ function updateClassFilterInterface(session, isTeacherOrAdmin) {
    FIRESTORE DATA RETRIEVAL & RENDERING
    ========================================================================== */
 function fetchClassesFromFirestore() {
-  const database = getDatabaseInstance();
-  if (!database) return;
-  database.collection("live_classes").orderBy("startTime", "asc").onSnapshot((snapshot) => {
+  if (!db) return;
+  db.collection("live_classes").orderBy("startTime", "asc").onSnapshot((snapshot) => {
     allClasses = [];
     snapshot.forEach((doc) => {
       allClasses.push({ id: doc.id, ...doc.data() });
@@ -305,6 +248,7 @@ function renderClassesGrid() {
   const container = document.getElementById('classes-grid');
   if (!container) return;
 
+  // Inject Tab bar dynamically above grid if not already present
   let tabToolbar = document.getElementById('classesTabToolbar');
   if (!tabToolbar) {
     tabToolbar = document.createElement('div');
@@ -325,6 +269,7 @@ function renderClassesGrid() {
 
   let filtered = allClasses;
 
+  // Filter by user class level role
   if (!isTeacherOrAdmin) {
     const studentClass = session.userClass;
     filtered = allClasses.filter(item => {
@@ -337,6 +282,7 @@ function renderClassesGrid() {
 
   const now = new Date();
 
+  // Separate into Upcoming/Live vs Past Sessions
   filtered = filtered.filter(item => {
     const isLive = isClassLive(item.startTime, item.endTime);
     const isFuture = new Date(item.startTime) > now;
@@ -349,6 +295,7 @@ function renderClassesGrid() {
     }
   });
 
+  // Sort: Active live sessions first, then chronological
   filtered.sort((a, b) => {
     const aLive = isClassLive(a.startTime, a.endTime);
     const bLive = isClassLive(b.startTime, b.endTime);
@@ -369,31 +316,28 @@ function renderClassesGrid() {
   }
 
   filtered.forEach(item => {
-    const startDate = new Date(item.startTime);
-    const formattedDate = startDate.toLocaleString('en-US', {
+    const formattedDate = new Date(item.startTime).toLocaleString('en-US', {
       weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
     });
 
     const isLive = isClassLive(item.startTime, item.endTime);
-    const timeDiffHours = (startDate - now) / (1000 * 60 * 60);
-    const showCountdown = !isLive && timeDiffHours > 0 && timeDiffHours <= 24;
 
     const card = document.createElement('div');
     card.className = 'class-card';
     if (isLive) card.style.borderColor = '#22c55e';
 
+    // Teacher quick action controls (Edit / Delete)
     let teacherActionsHtml = '';
     if (isTeacherOrAdmin) {
       teacherActionsHtml = `
-        <div class="teacher-action-menu" style="display: flex; gap: 4px; align-items: center;">
-          <button class="btn-icon-only" onclick="exportAttendanceReport('${item.id}', 'pdf')" title="Download PDF Attendance Report" style="background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; padding: 6px 10px; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-file-pdf"></i></button>
-          <button class="btn-icon-only" onclick="exportAttendanceReport('${item.id}', 'csv')" title="Download Excel/CSV Attendance Report" style="background: #dcfce7; color: #166534; border: 1px solid #bbf7d0; padding: 6px 10px; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-file-csv"></i></button>
+        <div class="teacher-action-menu">
           <button class="btn-icon-only" onclick="openEditModal('${item.id}')" title="Edit / Add Recordings" style="background: var(--bg-card, #fff); border: 1px solid var(--border-color); padding: 6px 10px; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-pen-to-square"></i></button>
           <button class="btn-icon-only" onclick="deleteClassSession('${item.id}')" title="Delete Session" style="background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; padding: 6px 10px; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-trash"></i></button>
         </div>
       `;
     }
 
+    // Resource links snippet (Recordings / Handouts)
     let resourcesHtml = '';
     if (item.recordingUrl || item.handoutUrl) {
       resourcesHtml = `<div class="resource-links-box">`;
@@ -406,6 +350,7 @@ function renderClassesGrid() {
       resourcesHtml += `</div>`;
     }
 
+    // Generate .ics calendar download data URL
     const icsDataUrl = generateIcsDataUrl(item);
 
     card.innerHTML = `
@@ -417,9 +362,8 @@ function renderClassesGrid() {
           ${item.admissionType === 'restricted' ? '<span class="tag" style="background: #fee2e2; color: #991b1b;">Restricted Access</span>' : ''}
         </div>
         <h3 class="class-title">${item.title}</h3>
-        <div class="class-desc"><strong>Pre-Class Brief:</strong> ${item.description || 'No specific instructions provided.'}</div>
-        ${showCountdown ? `<div class="live-countdown" data-start="${item.startTime}"><i class="fa-solid fa-stopwatch"></i> Starts in: calculating...</div>` : ''}
-        <div class="class-details" style="margin-top: 10px;">
+        <p class="class-desc">${item.description || 'No instructions provided.'}</p>
+        <div class="class-details">
           <span><i class="fa-solid fa-user-tie"></i> Instructor: <strong>${item.instructorName}</strong></span>
           <span><i class="fa-regular fa-clock"></i> ${formattedDate}</span>
         </div>
@@ -427,52 +371,12 @@ function renderClassesGrid() {
       </div>
       <div class="class-footer" style="display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-top: 15px;">
         <a href="${icsDataUrl}" download="${item.title.replace(/[^a-zA-Z0-9]/g, '_')}.ics" class="resource-chip" title="Add to Google Calendar / Outlook"><i class="fa-solid fa-calendar-plus"></i> Add to Calendar</a>
-        <a href="${item.meetUrl}" target="_blank" class="meet-btn" onclick="logAttendance('${item.id}')">
+        <a href="${item.meetUrl}" target="_blank" class="meet-btn">
           <i class="fa-solid fa-video"></i> ${isLive ? 'Join Active Meet' : 'Join Meet'}
         </a>
       </div>
     `;
     container.appendChild(card);
-  });
-
-  startCountdownInterval();
-}
-
-/* ==========================================================================
-   AUTOMATION: LIVE COUNTDOWN & ATTENDANCE LOGGING
-   ========================================================================== */
-function startCountdownInterval() {
-  if (window.samcamCountdownTimer) clearInterval(window.samcamCountdownTimer);
-  window.samcamCountdownTimer = setInterval(() => {
-    document.querySelectorAll('.live-countdown').forEach(el => {
-      const startTime = new Date(el.getAttribute('data-start')).getTime();
-      const now = new Date().getTime();
-      const diff = startTime - now;
-
-      if (diff <= 0) {
-        el.innerHTML = "<span style='color: #22c55e;'>Session starting right now!</span>";
-      } else {
-        const hours = Math.floor(diff / (1000 * 60 * 60));
-        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-        el.innerHTML = `<i class="fa-solid fa-stopwatch"></i> Starts in: ${hours}h ${minutes}m ${seconds}s`;
-      }
-    });
-  }, 1000);
-}
-
-function logAttendance(classId) {
-  const session = getCurrentUserSession();
-  const database = db || getDatabaseInstance();
-  if (!database || !session.name) return;
-
-  database.collection("live_classes").doc(classId).collection("attendance").add({
-    studentName: session.name,
-    studentRole: session.role,
-    studentClass: session.userClass,
-    joinedAt: firebase.firestore.FieldValue.serverTimestamp()
-  }).catch(err => {
-    console.error("Error writing attendance log:", err);
   });
 }
 
@@ -514,6 +418,7 @@ function openScheduleModal() {
   const form = document.getElementById('scheduleForm');
   if (form) form.reset();
 
+  // Add recording fields container dynamically if missing in modal form
   ensureRecordingFieldsInModal();
 
   const modeSelect = document.getElementById('meetingMode');
@@ -541,6 +446,7 @@ function ensureRecordingFieldsInModal() {
       </div>
     </div>
   `;
+  // Insert before modal footer
   const footer = form.querySelector('.modal-footer');
   form.insertBefore(div, footer);
 }
@@ -656,39 +562,40 @@ function handleScheduleSubmit(e) {
   }
 
   const submitBtn = document.getElementById('submitClassBtn');
-  const database = db || getDatabaseInstance();
-
+  
   if (editingClassId) {
-    if (!database) {
-      alert("Database connection is not available.");
-      return;
-    }
-
+    // Updating existing class in Firestore without regenerating Meet link unless desired
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Updating...`;
 
-    database.collection("live_classes").doc(editingClassId).update({
-      title, classLevel, instructorName,
+    db.collection("live_classes").doc(editingClassId).update({
+      title,
+      classLevel,
+      instructorName,
       startTime: startDate.toISOString(),
       endTime: endDate.toISOString(),
-      description, admissionType, meetingMode,
-      recordingUrl, handoutUrl,
+      description,
+      admissionType,
+      meetingMode,
+      recordingUrl,
+      handoutUrl,
       updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     }).then(() => {
       alert("Class updated successfully!");
       closeScheduleModalDirect();
+      document.getElementById('scheduleForm').reset();
     }).catch(err => {
       console.error("Error updating class:", err);
       alert("Failed to update class: " + err.message);
     }).finally(() => {
       submitBtn.disabled = false;
-      submitBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Update Class Session`;
     });
     return;
   }
 
+  // Creating new class with Google Calendar API Meet Link generation
   if (!tokenClient) {
-    alert("Google Identity Services is still loading. Please wait a moment and try again.");
+    alert("Google Identity Services is still loading or blocked. Please wait a moment and try again.");
     return;
   }
 
@@ -697,9 +604,9 @@ function handleScheduleSubmit(e) {
 
   tokenClient.callback = async (resp) => {
     if (resp.error !== undefined) {
-      alert("Google Authentication failed. Unable to generate Meet link.");
+      alert("Authentication failed. Unable to generate Google Meet link.");
       submitBtn.disabled = false;
-      submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Schedule Meet & Save`;
+      submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Create Meet & Schedule`;
       return;
     }
 
@@ -708,19 +615,22 @@ function handleScheduleSubmit(e) {
         title, classLevel, instructorName, 
         startTime: startDate.toISOString(), 
         endTime: endDate.toISOString(), 
-        description, admissionType
+        description,
+        admissionType
       });
 
-      if (!database) {
-        throw new Error("Database connection is not available.");
-      }
-
-      await database.collection("live_classes").add({
-        title, classLevel, instructorName,
+      await db.collection("live_classes").add({
+        title,
+        classLevel,
+        instructorName,
         startTime: startDate.toISOString(),
         endTime: endDate.toISOString(),
-        description, meetUrl, admissionType,
-        meetingMode, recordingUrl, handoutUrl,
+        description,
+        meetUrl,
+        admissionType,
+        meetingMode,
+        recordingUrl,
+        handoutUrl,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
@@ -734,8 +644,8 @@ function handleScheduleSubmit(e) {
         alert("Class scheduled successfully with an automated Google Meet link!");
       }
     } catch (err) {
-      console.error("Error in scheduling process:", err);
-      alert("Process failed: " + err.message);
+      console.error("Error creating calendar event:", err);
+      alert("Failed to create Google Calendar event: " + err.message);
     } finally {
       submitBtn.disabled = false;
       toggleMeetingMode();
@@ -786,68 +696,29 @@ async function createGoogleCalendarEvent(accessToken, classData) {
 }
 
 function deleteClassSession(classId) {
-  const database = db || getDatabaseInstance();
-  if (!database) {
-    alert("Database connection is not available.");
-    return;
-  }
-
   if (confirm("Are you sure you want to delete this class session? This action cannot be undone.")) {
-    database.collection("live_classes").doc(classId).delete().catch(err => {
+    db.collection("live_classes").doc(classId).delete().then(() => {
+      // Real-time listener will automatically refresh the grid
+    }).catch(err => {
       console.error("Error deleting session:", err);
       alert("Failed to delete session: " + err.message);
     });
   }
 }
 
-async function exportAttendanceReport(classId, format) {
-  const database = db || getDatabaseInstance();
-  if (!database) {
-    alert("Database connection is not available.");
-    return;
-  }
-
-  const attendanceRef = database.collection("live_classes").doc(classId).collection("attendance");
-  const snapshot = await attendanceRef.orderBy("joinedAt", "desc").get();
-  
-  if (snapshot.empty) {
-    alert("No attendance data found for this session.");
-    return;
-  }
-
-  const attendanceData = snapshot.docs.map(doc => {
-    const data = doc.data();
-    return {
-      name: data.studentName || "N/A",
-      role: data.studentRole || "N/A",
-      class: data.studentClass || "N/A",
-      time: data.joinedAt ? data.joinedAt.toDate().toLocaleString() : "N/A"
-    };
-  });
-
-  if (format === 'csv') {
-    let csvContent = "data:text/csv;charset=utf-8,Name,Role,Class,Joined At\n";
-    attendanceData.forEach(row => {
-      csvContent += `${row.name},${row.role},${row.class},"${row.time}"\n`;
+/* ==========================================================================
+   THEME UTILITIES
+   ========================================================================== */
+function initTheme() {
+  const savedTheme = localStorage.getItem('portal_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', savedTheme);
+  const themeBtn = document.getElementById('themeToggleBtn');
+  if (themeBtn) {
+    themeBtn.addEventListener('click', () => {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      localStorage.setItem('portal_theme', next);
     });
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `attendance_${classId}.csv`);
-    document.body.appendChild(link);
-    link.click();
-  } 
-  else if (format === 'pdf') {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    
-    doc.text("Attendance Report", 14, 15);
-    doc.autoTable({
-      head: [['Name', 'Role', 'Class', 'Joined At']],
-      body: attendanceData.map(r => [r.name, r.role, r.class, r.time]),
-      startY: 20
-    });
-    
-    doc.save(`attendance_${classId}.pdf`);
   }
 }
