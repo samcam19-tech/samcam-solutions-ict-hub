@@ -732,7 +732,6 @@ function initTheme() {
    USER PROFILE & ATTENDANCE LOG FEATURES
    ========================================================================== */
 
-// 1. Update Navbar Profile (Unified & Robust)
 function updateNavProfile(session) {
   if (!session) return;
 
@@ -740,31 +739,28 @@ function updateNavProfile(session) {
   const userEl = document.getElementById('navUsername');
   const picEl = document.getElementById('navProfilePic');
   
-  // 1. Resolve Display Name
   const displayName = session.fullName || session.name || session.username || 'User';
-  
-  // 2. Resolve Username (ensures the @ format looks clean)
   const usernameVal = session.username || (session.name ? session.name.split(' ')[0].toLowerCase() : 'user');
 
-  // Update Text Content
   if (nameEl) nameEl.textContent = displayName;
   if (userEl) userEl.textContent = '@' + usernameVal;
   
-  // 3. Resolve Profile Picture
-  // Priority: 1. profilePic, 2. photoUrl, 3. UI Avatars fallback
-  const userAvatar = session.profilePic || session.photoUrl || null;
-
   if (picEl) {
+    // Check if a valid remote profile picture exists in session
+    const userAvatar = session.profilePic || session.photoUrl;
+    
     if (userAvatar && userAvatar.trim() !== "") {
       picEl.src = userAvatar;
-      picEl.onerror = () => { picEl.src = 'images/default-avatar.png'; }; // Fallback if link breaks
+      picEl.onerror = () => {
+        // If the custom URL fails to load, fallback safely to local default avatar
+        picEl.src = 'images/default-avatar.png';
+      };
     } else {
-      // Use UI Avatars if no picture is set
-      picEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=2563eb&color=ffffff&size=128`;
+      // Instantly load the local default avatar instead of making an external request to ui-avatars
+      picEl.src = 'images/default-avatar.png';
     }
   }
 }
-
 // 2. Attendance Modal Controls
 function openAttendanceModal() {
   const modal = document.getElementById('attendanceModal');
