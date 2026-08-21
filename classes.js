@@ -636,13 +636,6 @@ function getDatabaseInstance() {
 function handleScheduleSubmit(e) {
   e.preventDefault();
   
-  // Verify database connection up front
-  const database = getDatabaseInstance();
-  if (!database) {
-    alert("Database connection is not available. Please ensure Firebase is loaded.");
-    return;
-  }
-  
   const title = document.getElementById('classTitle').value;
   const classLevel = document.getElementById('classLevel').value;
   const instructorName = document.getElementById('instructorName').value;
@@ -678,6 +671,12 @@ function handleScheduleSubmit(e) {
   const submitBtn = document.getElementById('submitClassBtn');
 
   if (editingClassId) {
+    const database = getDatabaseInstance();
+    if (!database) {
+      alert("Database connection is not available. Please ensure Firebase has loaded.");
+      return;
+    }
+
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Updating...`;
 
@@ -718,7 +717,7 @@ function handleScheduleSubmit(e) {
     }
 
     try {
-      // Step 1: Create the Google Calendar Event & Meet Link
+      // Step 1: Create Google Calendar Event & Meet Link
       const meetUrl = await createGoogleCalendarEvent(resp.access_token, {
         title, classLevel, instructorName, 
         startTime: startDate.toISOString(), 
@@ -726,7 +725,13 @@ function handleScheduleSubmit(e) {
         description, admissionType
       });
 
-      // Step 2: Save to Firestore using our pre-verified database instance
+      // Step 2: Resolve database instance right before writing
+      const database = getDatabaseInstance();
+      if (!database) {
+        throw new Error("Database connection is not available.");
+      }
+
+      // Step 3: Save to Firestore
       await database.collection("live_classes").add({
         title, classLevel, instructorName,
         startTime: startDate.toISOString(),
