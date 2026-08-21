@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SAMCAM SOLUTIONS - ACADEMIC PORTAL HUB ENGINE (v2.5 - Final Integrated)
+   SAMCAM SOLUTIONS - ACADEMIC PORTAL HUB ENGINE (v2.5 - Firebase Integrated)
    ========================================================================== */
 
 let allResources = [];
@@ -26,8 +26,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // Load state from URL parameters first before fetching data
   loadStateFromURL();
 
-  // Always load fresh data from data.json first (bypasses local caching issues)
-  fetchDataJSON();
+  // Fetch data live from Firebase Firestore
+  fetchResourcesFromFirestore();
 
   // Scroll listener for Back to Top Button
   window.addEventListener('scroll', handleScroll);
@@ -92,36 +92,60 @@ function syncUIControls() {
 }
 
 /* ==========================================================================
-   DATA FETCHING & INITIALIZATION
+   DATA FETCHING & INITIALIZATION (FIREBASE FIRESTORE)
    ========================================================================== */
-function fetchDataJSON() {
-  // Append timestamp parameter to force browser/GitHub Pages cache invalidation
-  fetch('./data.json?v=' + new Date().getTime())
-    .then(response => {
-      if (!response.ok) throw new Error("HTTP error " + response.status);
-      return response.json();
-    })
-    .then(data => {
-      allResources = data;
-      // Clear outdated local storage to maintain absolute sync with data.json
-      localStorage.removeItem('portal_resources');
-      initPortal();
-    })
-    .catch(error => {
-      console.error("Error loading resources from data.json:", error);
-      // Offline / Error Fallback to local storage if network request fails
-      const localData = localStorage.getItem('portal_resources');
-      if (localData) {
-        try {
-          allResources = JSON.parse(localData);
-        } catch (e) {
-          allResources = [];
-        }
-      } else {
-        allResources = [];
+function fetchResourcesFromFirestore() {
+  if (!db) {
+    console.error("Firestore 'db' not initialized. Check your firebase-config.js script inclusion.");
+    fallbackToLocalData();
+    return;
+  }
+
+  // Real-time listener using Firestore onSnapshot (adjust 'createdAt' or remove orderBy if you don't use a timestamp field)
+  db.collection('resources')
+    .onSnapshot((snapshot) => {
+      allResources = [];
+      snapshot.forEach((doc) => {
+        const data = doc.data();
+        allResources.push({
+          id: doc.id,
+          title: data.title || 'Untitled Resource',
+          description: data.description || '',
+          class: data.class || 'S1',
+          category: data.category || 'Notes',
+          fileUrl: data.fileUrl || '#',
+          fileSize: data.fileSize || '',
+          date: data.date || '2026',
+          createdAt: data.createdAt
+        });
+      });
+
+      // Cache locally as an offline backup safeguard
+      try {
+        localStorage.setItem('portal_resources', JSON.stringify(allResources));
+      } catch (e) {
+        console.warn("Could not save resources to localStorage:", e);
       }
+
       initPortal();
+    }, (error) => {
+      console.error("Error fetching live resources from Firestore:", error);
+      fallbackToLocalData();
     });
+}
+
+function fallbackToLocalData() {
+  const localData = localStorage.getItem('portal_resources');
+  if (localData) {
+    try {
+      allResources = JSON.parse(localData);
+    } catch (e) {
+      allResources = [];
+    }
+  } else {
+    allResources = [];
+  }
+  initPortal();
 }
 
 function initPortal() {
@@ -188,7 +212,6 @@ function resetFilters() {
   currentClass = 'ALL';
   currentCategory = 'ALL';
   
-  // Explicitly clear search input element value as requested
   const searchInput = document.getElementById('searchInput');
   if (searchInput) searchInput.value = '';
   searchQuery = '';
@@ -302,17 +325,17 @@ function renderCards() {
           <span class="tag tag-cat">${item.category}</span>
           <span class="tag tag-ext">${fileMeta.label}</span>
         </div>
-        <h3 class="card-title">${item.title}</h3>
-        <p class="card-description">${item.description || 'No description provided.'}</p>
+        <h3 class="card-title">${escapeHtml(item.title)}</h3>
+        <p class="card-description">${escapeHtml(item.description || 'No description provided.')}</p>
       </div>
       
       <div class="card-footer">
-        <small class="card-date"><i class="fa-regular fa-calendar"></i> ${item.date || '2026'}</small>
+        <small class="card-date"><i class="fa-regular fa-calendar"></i> ${escapeHtml(item.date || '2026')}</small>
         <div style="display:flex; gap:0.5rem;">
           <button onclick="openPreviewModal('${encodeURIComponent(JSON.stringify(item))}')" class="btn-icon-only" title="Preview Details">
             <i class="fa-solid fa-eye"></i>
           </button>
-          <a href="${item.fileUrl || '#'}" download class="download-btn">
+          <a href="${item.fileUrl || '#'}" target="_blank" download class="download-btn">
             <i class="fa-solid ${fileMeta.icon}"></i> Download
           </a>
         </div>
@@ -451,11 +474,11 @@ function openPreviewModal(encodedItem) {
 
   content.innerHTML = `
     <span class="tag tag-cat" style="margin-bottom:0.5rem; display:inline-block;">${item.class} • ${item.category}</span>
-    <h2 style="font-size:1.25rem; margin-bottom:0.75rem;">${item.title}</h2>
-    <p style="color:#475569; font-size:0.9rem; margin-bottom:1.25rem;">${item.description || 'No detailed description available.'}</p>
+    <h2 style="font-size:1.25rem; margin-bottom:0.75rem;">${escapeHtml(item.title)}</h2>
+    <p style="color:#475569; font-size:0.9rem; margin-bottom:1.25rem;">${escapeHtml(item.description || 'No detailed description available.')}</p>
     <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #e2e8f0; padding-top:1rem;">
       <small style="color:#64748b;"><i class="fa-solid fa-file"></i> Format: ${fileMeta.label}</small>
-      <a href="${item.fileUrl || '#'}" download class="download-btn">
+      <a href="${item.fileUrl || '#'}" target="_blank" download class="download-btn">
         <i class="fa-solid ${fileMeta.icon}"></i> Download File
       </a>
     </div>
@@ -516,4 +539,9 @@ function handleScroll() {
 
 function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
 }
