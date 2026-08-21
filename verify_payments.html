@@ -7,6 +7,210 @@
   <link rel="stylesheet" href="library_dashboard.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style type="text/css">
+        /* Full-width container variation for admin data tables */
+        .dashboard-container {
+          max-width: 1400px;
+          margin: 0 auto;
+          animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* Table Card Layout */
+        .card.table-card {
+          padding: 1.5rem 2rem;
+          overflow: hidden;
+        }
+        
+        /* Table Header Controls & Search */
+        .table-header-flex {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1.5rem;
+          gap: 1.25rem;
+          flex-wrap: wrap;
+        }
+        
+        .table-header-flex h3 {
+          margin-bottom: 0;
+          font-size: 1.2rem;
+          color: var(--text-main);
+          display: flex;
+          align-items: center;
+          gap: 0.65rem;
+        }
+        
+        .table-header-flex h3 i {
+          color: var(--primary);
+        }
+        
+        .table-header-flex input[type="text"] {
+          max-width: 320px;
+          padding: 0.65rem 1rem;
+          border-radius: 8px;
+          border: 1px solid var(--border-color);
+          background-color: #f8fafc;
+          font-size: 0.9rem;
+          transition: all 0.2s ease;
+        }
+        
+        .table-header-flex input[type="text"]:focus {
+          background-color: #fff;
+          border-color: var(--primary);
+          box-shadow: 0 0 0 3px var(--primary-light);
+        }
+        
+        /* Modern Data Table Polish */
+        .table-responsive {
+          width: 100%;
+          overflow-x: auto;
+          border-radius: 10px;
+          border: 1px solid var(--border-color);
+          background: #ffffff;
+        }
+        
+        table {
+          width: 100%;
+          border-collapse: collapse;
+          text-align: left;
+          font-size: 0.925rem;
+          white-space: nowrap;
+        }
+        
+        th, td {
+          padding: 1rem 1.25rem;
+          border-bottom: 1px solid var(--border-color);
+        }
+        
+        th {
+          background: #f8fafc;
+          color: #475569;
+          font-weight: 600;
+          text-transform: uppercase;
+          font-size: 0.725rem;
+          letter-spacing: 0.06em;
+          border-bottom: 2px solid var(--border-color);
+        }
+        
+        tr:last-child td {
+          border-bottom: none;
+        }
+        
+        tr tbody tr, tr {
+          transition: background-color 0.15s ease;
+        }
+        
+        tr:hover td {
+          background-color: #f8fafc;
+        }
+        
+        /* Verification State Badges */
+        .badge-pending {
+          background: #fef3c7;
+          color: #b45309;
+          border: 1px solid #fde68a;
+        }
+        
+        .badge-verified {
+          background: #d1fae5;
+          color: #065f46;
+          border: 1px solid #a7f3d0;
+        }
+        
+        .badge-rejected {
+          background: #ffe4e6;
+          color: #be123c;
+          border: 1px solid #fecdd3;
+        }
+        
+        /* Action Buttons inside Tables */
+        td button, td .btn-action {
+          padding: 0.4rem 0.8rem;
+          font-size: 0.8rem;
+          font-weight: 600;
+          border-radius: 6px;
+          border: none;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.35rem;
+        }
+        
+        .btn-approve {
+          background: #d1fae5;
+          color: #065f46;
+        }
+        
+        .btn-approve:hover {
+          background: #a7f3d0;
+        }
+        
+        .btn-reject {
+          background: #ffe4e6;
+          color: #be123c;
+        }
+        
+        .btn-reject:hover {
+          background: #fecdd3;
+        }
+        
+        /* Restricted Auth State Card */
+        #authRestrictedView {
+          max-width: 550px;
+          margin: 4rem auto;
+          text-align: center;
+          padding: 3rem 2rem !important;
+          background: var(--card-bg);
+          border-radius: var(--radius);
+          box-shadow: var(--shadow-lg);
+          border: 1px solid var(--border-color);
+        }
+        
+        #authRestrictedView i.fa-triangle-exclamation {
+          font-size: 3rem;
+          color: var(--warning);
+          margin-bottom: 1.25rem;
+        }
+        
+        #authRestrictedView h3 {
+          font-size: 1.5rem;
+          font-weight: 700;
+          color: var(--text-main);
+          margin-bottom: 0.5rem;
+        }
+        
+        #authRestrictedView p {
+          color: var(--text-muted);
+          font-size: 0.95rem;
+          margin-bottom: 1.75rem;
+          line-height: 1.6;
+        }
+        
+        #authRestrictedView .btn-primary {
+          display: inline-flex;
+          width: auto;
+          margin: 0 auto;
+          background: var(--primary);
+          color: #fff;
+          padding: 0.7rem 1.5rem;
+          border-radius: 8px;
+          text-decoration: none;
+          font-weight: 600;
+          box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+          transition: all 0.2s ease;
+        }
+        
+        #authRestrictedView .btn-primary:hover {
+          background: var(--primary-dark);
+          transform: translateY(-1px);
+        }
+  </style>
 </head>
 <body>
 
