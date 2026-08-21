@@ -1,5 +1,5 @@
 /* ==========================================================================
-   ADMIN & TEACHER PAYMENT RECONCILIATION SCRIPT
+   ADMIN & TEACHER PAYMENT RECONCILIATION SCRIPT (SESSION-BASED)
    ========================================================================== */
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -8,15 +8,23 @@ document.addEventListener("DOMContentLoaded", () => {
 
 let pendingPaymentsList = [];
 
-// 1. Role Guard: Ensure only Admins or Teachers can view this panel
+// 1. Role Guard: Read session data from localStorage and check user role
 function checkAdminAuthorization() {
-  const isAdmin = localStorage.getItem('samcam_is_admin') === 'true';
-  const isTeacher = localStorage.getItem('samcam_is_teacher') === 'true'; // Optional extended role flag
-
   const restrictedView = document.getElementById('authRestrictedView');
   const allowedPanel = document.getElementById('adminVerificationPanel');
 
-  if (!isAdmin && !isTeacher) {
+  let sessionUser = null;
+  try {
+    sessionUser = JSON.parse(localStorage.getItem('portal_session'));
+  } catch (e) {
+    console.error("Error parsing portal session:", e);
+  }
+
+  // Check if session exists and role is Admin or Teacher (case-insensitive check)
+  const role = sessionUser && sessionUser.role ? sessionUser.role.trim().toLowerCase() : '';
+  const isAuthorized = role === 'admin' || role === 'teacher';
+
+  if (!isAuthorized) {
     if (restrictedView) restrictedView.style.display = 'block';
     if (allowedPanel) allowedPanel.style.display = 'none';
     return;
@@ -31,9 +39,9 @@ function checkAdminAuthorization() {
 
 // 2. Fetch Pending Payments from Firestore
 function fetchPendingPayments() {
-  if (!db) return;
+  if (!window.db) return;
 
-  db.collection("pending_payments")
+  window.db.collection("pending_payments")
     .where("status", "==", "pending")
     .onSnapshot((snapshot) => {
       pendingPaymentsList = [];
@@ -72,15 +80,15 @@ function renderPendingTable(payments) {
         <span style="background: ${badgeColor}; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">${item.network}</span>
         <br><strong style="font-size: 0.85rem;">${item.phone}</strong>
       </td>
-      <td style="font-size: 0.85rem; color: var(--text-muted); font-family: monospace;">${item.resourceId.substring(0, 10)}...</td>
+      <td style="font-size: 0.85rem; color: var(--text-muted); font-family: monospace;">${item.resourceId ? item.resourceId.substring(0, 10) : ''}...</td>
       <td><code style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-weight: bold; color: var(--primary);">${item.transactionId}</code></td>
       <td><span class="badge" style="background: #fef3c7; color: #92400e;">Pending Review</span></td>
       <td>
-        <button onclick="approvePayment('${item.id}', '${item.resourceId}')" class="btn-action" style="background: #dcfce7; color: #166534; margin-right: 4px;" title="Confirm Received on Line">
+        <button onclick="approvePayment('${item.id}', '${item.resourceId}')" class="btn-action btn-approve" title="Confirm Received on Line">
           <i class="fa-solid fa-check"></i> Approve
         </button>
         <button onclick="rejectPayment('${item.id}')" class="btn-action btn-delete" title="Reject Invalid TID">
-          <i class="fa-solid xmark"></i> Reject
+          <i class="fa-solid fa-xmark"></i> Reject
         </button>
       </td>
     `;
@@ -92,12 +100,21 @@ function renderPendingTable(payments) {
 async function approvePayment(paymentId, resourceId) {
   if (!confirm("Are you sure you have verified this Transaction ID on your physical phone/line statement?")) return;
 
+  let approverName = 'Admin';
   try {
-    // Update payment document status to approved
-    await db.collection("pending_payments").doc(paymentId).update({
+    const session = JSON.parse(localStorage.getItem('portal_session'));
+    if (session && session.name) {
+      approverName = session.name;
+    }
+  } catch (e) {
+    // fallback
+  }
+
+  try {
+    await window.db.collection("pending_payments").doc(paymentId).update({
       status: "approved",
       approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      approvedBy: localStorage.getItem('samcam_admin_email') || 'Admin'
+      approvedBy: approverName
     });
 
     alert("✅ Payment approved successfully! The transaction is now reconciled.");
@@ -113,7 +130,7 @@ async function rejectPayment(paymentId) {
   if (!reason) return;
 
   try {
-    await db.collection("pending_payments").doc(paymentId).update({
+    await window.db.collection("pending_payments").doc(paymentId).update({
       status: "rejected",
       rejectionReason: reason,
       rejectedAt: firebase.firestore.FieldValue.serverTimestamp()
