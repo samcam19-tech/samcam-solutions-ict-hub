@@ -740,7 +740,7 @@ function updateNavProfile(session) {
   const picEl = document.getElementById('navProfilePic');
   
   // 1. Get Full Name (fallback to username if fullName is missing)
-  const displayName = session.fullName || session.username || 'User';
+  const displayName = session.name || session.username || 'User';
   
   // 2. Get Username directly from the stored user property
   const usernameVal = session.username || 'user';
