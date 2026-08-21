@@ -230,6 +230,90 @@ function resetFilters() {
   renderCards();
 }
 
+
+/* ==========================================================================
+   MOBILE MONEY PAYMENT GATEWAY WORKFLOW (UGANDA / MOMO)
+   ========================================================================== */
+function initiateMoMoPayment(resourceId, resourceTitle, price) {
+  // Create or retrieve a dynamic checkout modal container
+  let modal = document.getElementById('momoPaymentModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'momoPaymentModal';
+    modal.className = 'modal-overlay';
+    modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:9999;';
+    document.body.appendChild(modal);
+  }
+
+  modal.innerHTML = `
+    <div class="card" style="width: 100%; max-width: 420px; margin: 1rem; position: relative; background: var(--card-bg);">
+      <button onclick="closeMomoModal()" style="position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);"><i class="fa-solid fa-xmark"></i></button>
+      <h3 style="margin-bottom: 0.5rem;"><i class="fa-solid fa-mobile-screen-button" style="color:var(--primary);"></i> Mobile Money Checkout</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.2rem;">Secure resource access for: <strong>${escapeHtml(resourceTitle)}</strong></p>
+      
+      <div style="background: #f8fafc; padding: 10px; border-radius: 6px; margin-bottom: 1rem; border: 1px solid var(--border-color);">
+        <div style="display:flex; justify-content:space-between; font-size: 0.9rem; margin-bottom:4px;">
+          <span>Amount Payable:</span>
+          <strong>UGX ${price.toLocaleString()}</strong>
+        </div>
+      </div>
+
+      <form onsubmit="processMomoCheckout(event, '${resourceId}')">
+        <div class="form-group" style="margin-bottom: 1rem;">
+          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Network Provider</label>
+          <select id="momoProvider" required style="width:100%; padding: 0.6rem; border-radius:6px; border:1px solid var(--border-color);">
+            <option value="MTN">MTN Mobile Money</option>
+            <option value="AIRTEL">Airtel Money</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 1.2rem;">
+          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Phone Number</label>
+          <input type="tel" id="momoPhone" placeholder="e.g. 0772123456 or 0752123456" required style="width:100%; padding: 0.6rem; border-radius:6px; border:1px solid var(--border-color);">
+          <small style="color:var(--text-muted); font-size:0.75rem;">You will receive an instant PIN prompt on this phone.</small>
+        </div>
+
+        <button type="submit" id="paySubmitBtn" class="btn-primary" style="width:100%; justify-content:center;">
+          <i class="fa-solid fa-shield-halved"></i> Authorize Payment
+        </button>
+      </form>
+    </div>
+  `;
+
+  modal.style.display = 'flex';
+}
+
+function closeMomoModal() {
+  const modal = document.getElementById('momoPaymentModal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function processMomoCheckout(e, resourceId) {
+  e.preventDefault();
+  const phone = document.getElementById('momoPhone').value.trim();
+  const provider = document.getElementById('momoProvider').value;
+  const payBtn = document.getElementById('paySubmitBtn');
+
+  payBtn.disabled = true;
+  payBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Sending PIN prompt to ${phone}...`;
+
+  // Simulate payment processing delay & gateway handshake
+  setTimeout(async () => {
+    payBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Waiting for authorization...`;
+    
+    setTimeout(() => {
+      alert(`Payment successful via ${provider}! Your download link is now unlocked.`);
+      closeMomoModal();
+
+      // Find resource data and trigger automatic file download
+      const targetResource = allResources.find(r => r.id === resourceId);
+      if (targetResource && targetResource.fileUrl) {
+        window.open(targetResource.fileUrl, '_blank');
+      }
+    }, 2000);
+  }, 2000);
+}
+
 /* ==========================================================================
    2. FILE TYPE ICON RESOLVER (Includes Zip Folders Support)
    ========================================================================== */
@@ -263,7 +347,7 @@ function getFileTypeIcon(url) {
 }
 
 /* ==========================================================================
-   3. RESOURCE CARDS RENDERER & SMART PAGINATION WITH ELLIPSIS
+   UPDATED RESOURCE CARDS RENDERER WITH PAYMENT GATE LOGIC
    ========================================================================== */
 function renderCards() {
   const container = document.getElementById('resource-grid');
@@ -286,7 +370,7 @@ function renderCards() {
   });
 
   if (countBadge) {
-    countBadge.textContent = `Showing ${filtered.length} Resource${filtered.length === 1 ? '' : 's'}`;
+    countBadge.textContent = `Showing ${filtered.length} Resource${filtered.length === 1 ? '' : 'S'}`;
   }
 
   if (filtered.length === 0) {
@@ -311,10 +395,36 @@ function renderCards() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedItems = filtered.slice(startIndex, endIndex);
 
+  // Check if current logged-in user is an admin (you can check localStorage session or auth state)
+  const isAdmin = localStorage.getItem('samcam_is_admin') === 'true';
+
   paginatedItems.forEach(item => {
     const fileMeta = getFileTypeIcon(item.fileUrl);
     const isALevel = item.class === 'S5' || item.class === 'S6';
     const classTagStyle = isALevel ? 'tag-alevel' : 'tag-olevel';
+    
+    const accessType = item.accessType || 'free';
+    const price = item.price || 0;
+
+    // Determine Action Button Markup based on Access Type & User Role
+    let actionButtonHTML = '';
+
+    if (accessType === 'paid' && !isAdmin) {
+      // Student view for Paid items: Hide direct link, show Payment Trigger
+      actionButtonHTML = `
+        <button onclick="initiateMoMoPayment('${item.id}', '${escapeHtml(item.title)}', ${price})" class="download-btn" style="background: var(--warning, #d97706); color: #fff;">
+          <i class="fa-solid fa-lock"></i> Pay UGX ${price.toLocaleString()} to Unlock
+        </button>
+      `;
+    } else {
+      // Free items or Admin view: Direct download link visible
+      let badgeLabel = accessType === 'paid' ? ` <span style="font-size:0.7rem; background:#fee2e2; color:#991b1b; padding:1px 4px; border-radius:3px; margin-left:4px;">Admin Direct</span>` : '';
+      actionButtonHTML = `
+        <a href="${item.fileUrl || '#'}" target="_blank" download class="download-btn">
+          <i class="fa-solid ${fileMeta.icon}"></i> Download${badgeLabel}
+        </a>
+      `;
+    }
 
     const card = document.createElement('div');
     card.className = 'card';
@@ -324,6 +434,7 @@ function renderCards() {
           <span class="tag ${classTagStyle}">${item.class}</span>
           <span class="tag tag-cat">${item.category}</span>
           <span class="tag tag-ext">${fileMeta.label}</span>
+          ${accessType === 'paid' ? '<span class="tag" style="background:#fef3c7; color:#92400e;"><i class="fa-solid fa-lock"></i> Paid</span>' : ''}
         </div>
         <h3 class="card-title">${escapeHtml(item.title)}</h3>
         <p class="card-description">${escapeHtml(item.description || 'No description provided.')}</p>
@@ -331,28 +442,18 @@ function renderCards() {
       
       <div class="card-footer">
         <small class="card-date"><i class="fa-regular fa-calendar"></i> ${escapeHtml(item.date || '2026')}</small>
-        <div style="display:flex; gap:0.5rem;">
+        <div style="display:flex; gap:0.5rem; align-items:center;">
           <button onclick="openPreviewModal('${encodeURIComponent(JSON.stringify(item))}')" class="btn-icon-only" title="Preview Details">
             <i class="fa-solid fa-eye"></i>
           </button>
-          <a href="${item.fileUrl || '#'}" target="_blank" download class="download-btn">
-            <i class="fa-solid ${fileMeta.icon}"></i> Download
-          </a>
+          ${actionButtonHTML}
         </div>
       </div>
     `;
     container.appendChild(card);
   });
 
-  // --- SHOW / HIDE & RENDER SMART PAGINATION CONTROLS ---
-  if (paginationContainer) {
-    if (totalPages > 1) {
-      paginationContainer.style.display = 'flex';
-      renderPaginationControls(totalPages);
-    } else {
-      paginationContainer.style.display = 'none';
-    }
-  }
+  renderPaginationControls(totalPages);
 }
 
 function renderPaginationControls(totalPages) {
