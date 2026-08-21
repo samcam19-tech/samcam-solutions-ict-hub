@@ -195,6 +195,45 @@
   </div>
 
   <!-- JavaScript Engine -->
+
+  <!-- Profile Widget Auto-Hydration Script -->
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      // 1. Retrieve current session safely
+      const sessionStr = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
+      if (sessionStr) {
+        try {
+          const session = JSON.parse(sessionStr);
+          
+          // 2. Resolve Profile Picture (checking multiple property names)
+          const picUrl = session.profilePic || session.photoURL || session.avatar || session.image;
+          const picEl = document.getElementById('navProfilePic');
+          if (picEl && picUrl) {
+            picEl.src = picUrl;
+          }
+
+          // 3. Resolve Full Name & Username
+          const nameEl = document.getElementById('navFullName');
+          if (nameEl) {
+            nameEl.textContent = session.name || session.fullName || 'User Name';
+          }
+
+          const usernameEl = document.getElementById('navUsername');
+          if (usernameEl) {
+            const rawUsername = session.username || session.user || 'username';
+            usernameEl.textContent = rawUsername.startsWith('@') ? rawUsername : `@${rawUsername}`;
+          }
+
+          // 4. Trigger live class session syncing if the function exists
+          if (typeof syncLiveClassSession === 'function') {
+            syncLiveClassSession(session);
+          }
+        } catch (e) {
+          console.error("Failed to hydrate navigation profile:", e);
+        }
+      }
+    });
+  </script>
   <script src="classes.js"></script>
 </body>
 </html>
