@@ -440,52 +440,79 @@ body { background-color: var(--bg-main); color: var(--text-main); min-height: 10
 }
 
 /* ==========================================
-   COUNTDOWN CLOCK COMPONENT STYLES
+   WORLD-CLASS COUNTDOWN CLOCK COMPONENT
    ========================================== */
 .countdown-clock {
   display: inline-flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 6px;
+  background: linear-gradient(135deg, var(--bg-card-subtle) 0%, var(--bg-card) 100%);
+  border: 1px solid var(--border-color);
+  padding: 10px 14px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
 }
 
 .countdown-label {
-  font-size: 0.7rem;
-  color: var(--text-muted);
-  font-weight: 700;
+  font-size: 0.68rem;
+  color: var(--primary);
+  font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.08em;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.countdown-label::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  background-color: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent);
+  animation: livePulse 1.5s infinite ease-in-out;
 }
 
 .countdown-boxes {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   align-items: center;
 }
 
 .time-box {
-  background: var(--bg-card-subtle);
+  background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
-  padding: 5px 8px;
+  padding: 6px 10px;
   text-align: center;
-  min-width: 38px;
-  box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
+  min-width: 44px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.time-box:hover {
+  border-color: var(--primary);
+  transform: translateY(-1px);
 }
 
 .time-box strong {
   display: block;
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 800;
   color: var(--text-main);
-  line-height: 1;
-  letter-spacing: -0.01em;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 .time-box span {
   display: block;
-  font-size: 0.55rem;
+  font-size: 0.52rem;
   color: var(--text-muted);
   text-transform: uppercase;
-  margin-top: 3px;
-  font-weight: 600;
+  margin-top: 2px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
 }
