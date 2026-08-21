@@ -8,7 +8,7 @@
   <!-- FontAwesome & Google Fonts -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
   
   <!-- Page Specific CSS -->
   <link rel="stylesheet" href="classes.css">
@@ -65,7 +65,7 @@
         <h1>Virtual Classrooms & Google Meet</h1>
         <p id="pageSubtitle">Loading session details...</p>
       </div>
-      <div style="display: flex; gap: 10px;">
+      <div style="display: flex; gap: 10px; flex-wrap: wrap;">
         <button id="openAttendanceModalBtn" class="btn-action btn-secondary" onclick="openAttendanceModal()">
           <i class="fa-solid fa-clipboard-user"></i> View Attendance Log
         </button>
@@ -104,7 +104,7 @@
       <form id="scheduleForm" onsubmit="handleScheduleSubmit(event)">
         <div class="form-group">
           <label>Meeting Type</label>
-          <select id="meetingMode" class="form-control" onchange="toggleMeetingMode()" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input, #fff); color: var(--text-main, #333);">
+          <select id="meetingMode" class="form-control" onchange="toggleMeetingMode()">
             <option value="instant">Instant Meeting (Start Now)</option>
             <option value="scheduled">Schedule for Later</option>
           </select>
@@ -145,7 +145,7 @@
 
         <div class="form-group">
           <label>Meeting Access Control</label>
-          <select id="admissionType" class="form-control" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input, #fff); color: var(--text-main, #333);">
+          <select id="admissionType" class="form-control">
             <option value="open">Open (Anyone with the link can join directly)</option>
             <option value="restricted">Restricted / Require Admission (Students wait in waiting room to be admitted)</option>
           </select>
@@ -172,13 +172,13 @@
         <h3><i class="fa-solid fa-clipboard-user"></i> Meeting Attendance Log</h3>
         <button class="btn-icon-only" onclick="closeAttendanceModalDirect()"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center;">
+      <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
         <p style="color: var(--text-muted); font-size: 0.9rem;">Record of user interactions and joined sessions.</p>
         <button onclick="exportAttendanceCSV()" class="btn-action btn-upload" style="padding: 6px 12px; font-size: 0.85rem;"><i class="fa-solid fa-file-arrow-down"></i> Export CSV</button>
       </div>
-      <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px;">
+      <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm);">
         <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
-          <thead style="background: var(--bg-card, #f8fafc); position: sticky; top: 0;">
+          <thead style="background: var(--bg-card-subtle); position: sticky; top: 0; z-index: 1;">
             <tr>
               <th style="padding: 10px; border-bottom: 1px solid var(--border-color);">Timestamp</th>
               <th style="padding: 10px; border-bottom: 1px solid var(--border-color);">User Name</th>
