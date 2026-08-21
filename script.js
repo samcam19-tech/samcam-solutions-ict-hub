@@ -883,10 +883,14 @@ window.renderStudentModalTable = async function() {
   tbody.innerHTML = paginatedStudents.map((s, index) => {
     const absoluteIndex = startIndex + index + 1;
     const isEditing = editingUsername === s.username;
+    
+    // Fixed narrow width style for the # column to prevent stretching
+    const indexColStyle = 'width: 50px; text-align: center; white-space: nowrap;';
+
     if (isEditing) {
       return `
         <tr>
-          <td>${absoluteIndex}</td>
+          <td style="${indexColStyle}">${absoluteIndex}</td>
           <td><input type="text" id="editFullName" value="${s.fullName}"></td>
           <td>
             <select id="editClass">
@@ -910,7 +914,7 @@ window.renderStudentModalTable = async function() {
 
     return `
       <tr>
-        <td>${absoluteIndex}</td>
+        <td style="${indexColStyle}">${absoluteIndex}</td>
         <td><strong>${s.fullName}</strong></td>
         <td>${s.class}</td>
         <td><code>${s.username}</code></td>
@@ -926,20 +930,10 @@ window.renderStudentModalTable = async function() {
   renderStudentPaginationControls(totalPages, currentStudentSubmissionsPage);
 };
 
-// Advanced Pagination with Ellipsis (...) generator
+// Advanced Pagination with Ellipsis (...) generator targeting #studentTablePagination
 function renderStudentPaginationControls(totalPages, currentPage) {
-  let pagContainer = document.getElementById('studentPaginationContainer');
-  if (!pagContainer) {
-    const tableContainer = document.querySelector('#manageStudentsModal .modal-body') || document.getElementById('studentModalTableBody');
-    if (tableContainer) {
-      pagContainer = document.createElement('div');
-      pagContainer.id = 'studentPaginationContainer';
-      pagContainer.style.cssText = 'display:flex; justify-content:center; align-items:center; gap:0.5rem; margin-top:1rem;';
-      tableContainer.parentNode.appendChild(pagContainer);
-    } else {
-      return;
-    }
-  }
+  let pagContainer = document.getElementById('studentTablePagination');
+  if (!pagContainer) return;
 
   if (totalPages <= 1) {
     pagContainer.innerHTML = '';
@@ -960,13 +954,13 @@ function renderStudentPaginationControls(totalPages, currentPage) {
   }
 
   pagContainer.innerHTML = `
-    <button onclick="changeStudentPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} class="btn-action btn-secondary"><i class="fa-solid fa-chevron-left"></i></button>
+    <button type="button" onclick="changeStudentPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''} class="page-btn"><i class="fa-solid fa-chevron-left"></i></button>
     ${pages.map(p => {
-      if (p === '...') return `<span style="padding:0.4rem 0.6rem; color:#64748b;">...</span>`;
+      if (p === '...') return `<span class="page-ellipsis">...</span>`;
       const isActive = p === currentPage;
-      return `<button onclick="changeStudentPage(${p})" class="btn-action ${isActive ? 'btn-upload' : 'btn-secondary'}" ${isActive ? 'style="background:#2563eb; color:#fff;"' : ''}>${p}</button>`;
+      return `<button type="button" onclick="changeStudentPage(${p})" class="page-btn ${isActive ? 'active' : ''}">${p}</button>`;
     }).join('')}
-    <button onclick="changeStudentPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} class="btn-action btn-secondary"><i class="fa-solid fa-chevron-right"></i></button>
+    <button type="button" onclick="changeStudentPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''} class="page-btn"><i class="fa-solid fa-chevron-right"></i></button>
   `;
 }
 
