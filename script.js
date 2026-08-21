@@ -1078,12 +1078,16 @@ function updatePortalUI() {
   // New Admin UI Elements
   const staffRegModule = document.getElementById('adminStaffRegistrationModule');
   const manageStaffBtn = document.getElementById('openManageStaffBtn');
+  
+  // Library Manager Navbar Link Element
+  const navLibraryManager = document.getElementById('navLibraryManager');
 
   if (!loginSec || !dashSec) return;
 
   if (!currentUser) {
     loginSec.style.display = 'block';
     dashSec.style.display = 'none';
+    if (navLibraryManager) navLibraryManager.style.display = 'none';
     return;
   }
 
@@ -1108,10 +1112,12 @@ function updatePortalUI() {
   if (roleLower === 'teacher' || roleLower === 'admin' || roleLower === 'administrator') {
     if (teacherControls) teacherControls.style.display = 'block';
     if (teacherReports) teacherReports.style.display = 'grid';
+    if (navLibraryManager) navLibraryManager.style.display = 'inline-flex'; // Reveal for teachers and admins
     renderSubmissions();
   } else {
     if (teacherControls) teacherControls.style.display = 'none';
     if (teacherReports) teacherReports.style.display = 'none';
+    if (navLibraryManager) navLibraryManager.style.display = 'none'; // Hide for students/others
   }
 
   // Admin-Specific Privileges (Staff Registration & Management Modal Trigger)
@@ -1125,7 +1131,6 @@ function updatePortalUI() {
 
   renderAssessments();
 }
-
 window.filterAssessmentsByClass = function() {
   renderAssessments();
 };
