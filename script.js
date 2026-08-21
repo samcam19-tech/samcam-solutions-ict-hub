@@ -1080,6 +1080,10 @@ function updatePortalUI() {
   const dashSec = document.getElementById('dashboardSection');
   const teacherControls = document.getElementById('teacherControls');
   const teacherReports = document.getElementById('teacherReports');
+  
+  // New Admin UI Elements
+  const staffRegModule = document.getElementById('adminStaffRegistrationModule');
+  const manageStaffBtn = document.getElementById('openManageStaffBtn');
 
   if (!loginSec || !dashSec) return;
 
@@ -1104,13 +1108,25 @@ function updatePortalUI() {
   const classDisp = document.getElementById('userClassDisplay');
   if (classDisp) classDisp.textContent = currentUser.class ? `(${currentUser.class})` : '';
 
-  if (currentUser.role === 'Teacher') {
+  // Normalize role string to handle capitalization variations (e.g. "admin", "Admin", "ADMIN")
+  const roleLower = (currentUser.role || '').toLowerCase();
+
+  if (roleLower === 'teacher' || roleLower === 'admin' || roleLower === 'administrator') {
     if (teacherControls) teacherControls.style.display = 'block';
     if (teacherReports) teacherReports.style.display = 'grid';
     renderSubmissions();
   } else {
     if (teacherControls) teacherControls.style.display = 'none';
     if (teacherReports) teacherReports.style.display = 'none';
+  }
+
+  // Admin-Specific Privileges (Staff Registration & Management Modal Trigger)
+  if (roleLower === 'admin' || roleLower === 'administrator') {
+    if (staffRegModule) staffRegModule.style.display = 'block';
+    if (manageStaffBtn) manageStaffBtn.style.display = 'inline-flex';
+  } else {
+    if (staffRegModule) staffRegModule.style.display = 'none';
+    if (manageStaffBtn) manageStaffBtn.style.display = 'none';
   }
 
   renderAssessments();
