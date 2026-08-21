@@ -823,3 +823,19 @@ function exportAttendanceCSV() {
   });
 }
 
+function toggleMobileMenu() {
+  const wrapper = document.getElementById('navCollapseWrapper');
+  const toggleBtn = document.getElementById('mobileMenuToggle');
+  if (!wrapper) return;
+
+  wrapper.classList.toggle('show');
+  
+  // Switch hamburger icon to an 'X' (close) icon and back
+  const icon = toggleBtn.querySelector('i');
+  if (wrapper.classList.contains('show')) {
+    icon.className = 'fa-solid fa-xmark';
+  } else {
+    icon.className = 'fa-solid fa-bars';
+  }
+}
+
