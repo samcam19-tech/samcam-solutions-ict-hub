@@ -22,29 +22,38 @@
 </head>
 <body>
 
- <!-- NAVBAR -->
+<!-- NAVBAR -->
   <header class="portal-header">
     <div class="header-container">
       <div class="logo-area">
         <i class="fa-solid fa-graduation-cap logo-icon"></i>
         <span>SAMCAM <small>ICT HUB</small></span>
       </div>
-      <nav class="nav-links">
-        <a href="index.html"><i class="fa-solid fa-house"></i> Home</a>
-        <a href="assessments.html"><i class="fa-solid fa-file-lines"></i> Assessments</a>
-        <a href="classes.html" class="active"><i class="fa-solid fa-video"></i> Live Classes</a>
-        <a href="announcements.html"><i class="fa-solid fa-bullhorn"></i> Announcements</a>
-      </nav>
-      <div class="header-actions" style="display: flex; align-items: center; gap: 15px;">
-        <!-- User Profile Widget -->
-        <div id="userProfileWidget" style="display: flex; align-items: center; gap: 10px; background: var(--bg-card, #f1f5f9); padding: 5px 12px; border-radius: 20px; border: 1px solid var(--border-color, #e2e8f0);">
-          <img id="navProfilePic" src="images/default-avatar.png" alt="Profile" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
-          <div style="display: flex; flex-direction: column; text-align: left; line-height: 1.2;">
-            <span id="navFullName" style="font-weight: 600; font-size: 0.85rem; color: var(--text-main, #1e293b);">User Name</span>
-            <span id="navUsername" style="font-size: 0.75rem; color: var(--text-muted, #64748b);">@username</span>
+
+      <!-- Hamburger Menu Toggle Button -->
+      <button id="mobileMenuToggle" class="mobile-menu-btn" onclick="toggleMobileMenu()" aria-label="Toggle Navigation">
+        <i class="fa-solid fa-bars"></i>
+      </button>
+
+      <!-- Collapsible Navigation & Actions Container -->
+      <div class="nav-collapse-wrapper" id="navCollapseWrapper">
+        <nav class="nav-links">
+          <a href="index.html"><i class="fa-solid fa-house"></i> Home</a>
+          <a href="assessments.html"><i class="fa-solid fa-file-lines"></i> Assessments</a>
+          <a href="classes.html" class="active"><i class="fa-solid fa-video"></i> Live Classes</a>
+          <a href="announcements.html"><i class="fa-solid fa-bullhorn"></i> Announcements</a>
+        </nav>
+        <div class="header-actions">
+          <!-- User Profile Widget -->
+          <div id="userProfileWidget" class="user-profile-widget">
+            <img id="navProfilePic" src="images/default-avatar.png" alt="Profile">
+            <div class="user-info-text">
+              <span id="navFullName">User Name</span>
+              <span id="navUsername">@username</span>
+            </div>
           </div>
+          <button id="themeToggleBtn" class="btn-icon-only" title="Toggle Theme"><i class="fa-solid fa-moon"></i></button>
         </div>
-        <button id="themeToggleBtn" class="btn-icon-only" title="Toggle Theme"><i class="fa-solid fa-moon"></i></button>
       </div>
     </div>
   </header>
