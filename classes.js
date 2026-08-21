@@ -3,19 +3,23 @@
    ========================================================================== */
 
 // Global Firestore database reference
-const db = typeof firebase !== "undefined" ? firebase.firestore() : null;
+let db = null;
 
 // Bulletproof dynamic database resolver fallback
 function getDatabaseInstance() {
   if (db) return db;
-  if (window.db) return window.db;
-  if (typeof firebase !== 'undefined' && firebase.firestore) {
-    try {
-      window.db = firebase.firestore();
-      return window.db;
-    } catch (e) {
-      console.error("Failed to initialize firestore directly:", e);
+  if (window.db) {
+    db = window.db;
+    return db;
+  }
+  try {
+    if (typeof firebase !== 'undefined' && firebase.firestore) {
+      db = firebase.firestore();
+      window.db = db;
+      return db;
     }
+  } catch (e) {
+    console.error("Failed to initialize firestore directly:", e);
   }
   return null;
 }
