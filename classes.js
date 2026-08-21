@@ -192,7 +192,7 @@ function syncLiveClassSession(user) {
       subtitleEl.textContent = `View upcoming live video lessons and join scheduled sessions for ${studentClass}.`;
     }
   }
-
+  updateNavProfile(session);
   updateClassFilterInterface(session, isTeacherOrAdmin);
   renderClassesGrid();
 }
@@ -722,3 +722,85 @@ function initTheme() {
     });
   }
 }
+
+/* ==========================================================================
+   USER PROFILE & ATTENDANCE LOG FEATURES
+   ========================================================================== */
+
+// 1. Update Navbar Profile
+function updateNavProfile(session) {
+  const nameEl = document.getElementById('navFullName');
+  const userEl = document.getElementById('navUsername');
+  const picEl = document.getElementById('navProfilePic');
+  
+  if (nameEl) nameEl.textContent = session.name || 'User';
+  if (userEl) userEl.textContent = '@' + (session.name ? session.name.split(' ')[0].toLowerCase() : 'user');
+  
+  // Attempt to use profile pic if available in session, else placeholder
+  if (picEl) {
+    picEl.src = session.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.name || 'User')}&background=random`;
+  }
+}
+
+// 2. Attendance Modal Controls
+function openAttendanceModal() {
+  const modal = document.getElementById('attendanceModal');
+  if (modal) {
+    modal.style.display = 'flex';
+    fetchAttendanceLogs(); // Load data when opening
+  }
+}
+
+function closeAttendanceModal(e) {
+  if (e.target.id === 'attendanceModal') closeAttendanceModalDirect();
+}
+
+function closeAttendanceModalDirect() {
+  const modal = document.getElementById('attendanceModal');
+  if (modal) modal.style.display = 'none';
+}
+
+// 3. Fetch and Render Attendance Logs
+function fetchAttendanceLogs() {
+  const tbody = document.getElementById('attendanceTableBody');
+  if (!tbody) return;
+  
+  tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px;">Loading logs...</td></tr>';
+
+  db.collection("attendance_logs")
+    .orderBy("timestamp", "desc")
+    .limit(50)
+    .onSnapshot((snapshot) => {
+      tbody.innerHTML = '';
+      snapshot.forEach((doc) => {
+        const log = doc.data();
+        const date = log.timestamp?.toDate().toLocaleString() || 'N/A';
+        const row = `<tr>
+          <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">${date}</td>
+          <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">${log.userName || 'Unknown'}</td>
+          <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">${log.userClass || 'N/A'}</td>
+          <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">${log.action || 'Joined Session'}</td>
+        </tr>`;
+        tbody.innerHTML += row;
+      });
+    });
+}
+
+// 4. Export Attendance to CSV
+function exportAttendanceCSV() {
+  db.collection("attendance_logs").get().then((snapshot) => {
+    let csv = "Timestamp,User Name,Class,Action\n";
+    snapshot.forEach((doc) => {
+      const log = doc.data();
+      csv += `"${log.timestamp?.toDate().toLocaleString()}","${log.userName}","${log.userClass}","${log.action}"\n`;
+    });
+    
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.setAttribute('href', url);
+    a.setAttribute('download', 'meeting_attendance_log.csv');
+    a.click();
+  });
+}
+
