@@ -727,21 +727,31 @@ function initTheme() {
    USER PROFILE & ATTENDANCE LOG FEATURES
    ========================================================================== */
 
-// 1. Update Navbar Profile
+// 1. Update Navbar Profile (Unified & Robust)
 function updateNavProfile(session) {
+  if (!session) return;
+
   const nameEl = document.getElementById('navFullName');
   const userEl = document.getElementById('navUsername');
   const picEl = document.getElementById('navProfilePic');
   
-  if (nameEl) nameEl.textContent = session.name || 'User';
-  if (userEl) userEl.textContent = '@' + (session.name ? session.name.split(' ')[0].toLowerCase() : 'user');
+  // Resolve name and username safely from session keys
+  const displayName = session.fullName || session.name || session.username || 'User';
+  const usernameVal = session.username || (session.name ? session.name.split(' ')[0].toLowerCase() : 'user');
+
+  if (nameEl) nameEl.textContent = displayName;
+  if (userEl) userEl.textContent = '@' + usernameVal;
   
-  // Attempt to use profile pic if available in session, else placeholder
+  // Resolve profile picture: check profilePic first, then photoUrl, then fallback to UI Avatars or default
+  const defaultAvatar = "images/default-avatar.png";
+  const userAvatar = (session.profilePic && session.profilePic.trim() !== "") 
+    ? session.profilePic 
+    : (session.photoUrl && session.photoUrl.trim() !== "" ? session.photoUrl : null);
+
   if (picEl) {
-    picEl.src = session.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(session.name || 'User')}&background=random`;
+    picEl.src = userAvatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random`;
   }
 }
-
 // 2. Attendance Modal Controls
 function openAttendanceModal() {
   const modal = document.getElementById('attendanceModal');
