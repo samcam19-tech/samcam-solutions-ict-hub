@@ -739,17 +739,16 @@ function updateNavProfile(session) {
   const userEl = document.getElementById('navUsername');
   const picEl = document.getElementById('navProfilePic');
   
-  // 1. Resolve Display Name (matches fullName from your portal session)
-  const displayName = session.fullName || session.name || session.username || 'User';
+  // 1. Get Full Name (fallback to username if fullName is missing)
+  const displayName = session.fullName || session.username || 'User';
   
-  // 2. Resolve Username / Role display text (@username or role fallback)
-  const usernameVal = session.username || (session.name ? session.name.split(' ')[0].toLowerCase() : 'user');
+  // 2. Get Username directly from the stored user property
+  const usernameVal = session.username || 'user';
 
   // Update Text Content
   if (nameEl) nameEl.textContent = displayName;
   if (userEl) {
-    // If you prefer showing the role or class like your dashboard does, you can format it here:
-    const roleSuffix = session.role ? ` • ${session.role}` : '';
+    const roleSuffix = session.role ? ` • ${session.role.toLowerCase()}` : '';
     userEl.textContent = '@' + usernameVal + roleSuffix;
   }
   
