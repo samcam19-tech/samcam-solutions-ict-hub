@@ -12,7 +12,7 @@ const firebaseConfig = {
   measurementId: "G-L2H4V8Y050"
 };
 
-// Initialize Firebase & Firestore safely
+// Initialize Firebase & Firestore
 if (typeof firebase !== "undefined" && !firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
