@@ -330,26 +330,50 @@ function closeMomoModal() {
   if (modal) modal.style.display = 'none';
 }
 
-function verifyManualPayment(e, resourceId) {
+async function verifyManualPayment(e, resourceId) {
   e.preventDefault();
   const phone = document.getElementById('studentPhone').value.trim();
-  const txId = document.getElementById('transactionId').value.trim();
+  const network = document.getElementById('studentNetwork').value;
+  const rawTxId = document.getElementById('transactionId').value.trim();
+  const transactionId = rawTxId.toUpperCase(); // Normalize for consistent matching
   const verifyBtn = document.getElementById('verifyBtn');
 
   verifyBtn.disabled = true;
-  verifyBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Verifying Transaction Code...`;
+  verifyBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Checking Transaction ID...`;
 
-  // Simulated verification delay (in a live school setting, you can also store this request in Firestore for admin auditing)
-  setTimeout(() => {
-    alert(`Payment reference (${txId}) received successfully! Enjoy your resource.`);
+  try {
+    // 1. Check if this Transaction ID has already been used in Firestore
+    const existingTxQuery = await db.collection("pending_payments")
+      .where("transactionId", "==", transactionId)
+      .get();
+
+    if (!existingTxQuery.empty) {
+      alert("❌ Error: This Transaction ID has already been used or submitted. Each payment code can only be used once.");
+      verifyBtn.disabled = false;
+      verifyBtn.innerHTML = `<i class="fa-solid fa-circle-check"></i> Verify & Unlock`;
+      return; // Stop execution
+    }
+
+    // 2. If unique, save the submission to Firestore for admin review
+    await db.collection("pending_payments").add({
+      resourceId,
+      phone,
+      network,
+      transactionId,
+      status: "pending", // Will change to 'approved' once you match it on your phone line
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert("✅ Payment submitted successfully! Once verified against our line, your download link will be fully enabled.");
     closeMomoModal();
 
-    // Find the target resource and trigger automatic download
-    const targetResource = allResources.find(r => r.id === resourceId);
-    if (targetResource && targetResource.fileUrl) {
-      window.open(targetResource.fileUrl, '_blank');
-    }
-  }, 1500);
+  } catch (error) {
+    console.error("Error verifying transaction:", error);
+    alert("An error occurred while validating your transaction code. Please try again.");
+  } finally {
+    verifyBtn.disabled = false;
+    verifyBtn.innerHTML = `<i class="fa-solid fa-circle-check"></i> Verify & Unlock`;
+  }
 }
 
 /* ==========================================================================
