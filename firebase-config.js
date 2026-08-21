@@ -2,7 +2,6 @@
    SAMCAM SOLUTIONS - FIREBASE CONFIGURATION & INITIALIZATION
    ========================================================================== */
 
-// --- FIREBASE INITIALIZATION ---
 const firebaseConfig = {
   apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
   authDomain: "samcam-system.firebaseapp.com",
@@ -13,11 +12,19 @@ const firebaseConfig = {
   measurementId: "G-L2H4V8Y050"
 };
 
-// Initialize Firebase App if not already initialized
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
+// Function to safely initialize once window/scripts are ready
+function initializeSamcamFirebase() {
+  if (typeof firebase !== 'undefined') {
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    window.db = firebase.firestore();
+    window.storageRef = firebase.storage().ref();
+  } else {
+    // Retry shortly if CDN is slow
+    setTimeout(initializeSamcamFirebase, 50);
+  }
 }
 
-// Expose global Firestore and Storage instances to window
-window.db = firebase.firestore();
-const storageRef = firebase.storage().ref();
+// Run initialization
+initializeSamcamFirebase();
