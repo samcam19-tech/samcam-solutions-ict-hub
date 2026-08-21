@@ -298,3 +298,63 @@ body { background-color: var(--bg-main); color: var(--text-main); min-height: 10
     border-top: 1px dashed var(--border-color);
   }
 }
+
+/* ==========================================
+   COUNTDOWN CLOCK COMPONENT STYLES
+   ========================================== */
+.countdown-clock {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.countdown-label {
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.countdown-boxes {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.time-box {
+  background: var(--bg-card-subtle, #f1f5f9);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 6px;
+  padding: 4px 6px;
+  text-align: center;
+  min-width: 34px;
+}
+
+.time-box strong {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-main, #1e293b);
+  line-height: 1;
+}
+
+.time-box span {
+  display: block;
+  font-size: 0.6rem;
+  color: var(--text-muted, #64748b);
+  text-transform: uppercase;
+  margin-top: 2px;
+}
+
+.live-badge-pulse {
+  color: #22c55e;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #dcfce7;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+}
