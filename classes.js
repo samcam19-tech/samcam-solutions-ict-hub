@@ -137,50 +137,41 @@ function injectExtraStyles() {
    SESSION MANAGEMENT & ROLE DETECTION
    ========================================================================== */
 function getCurrentUserSession(userParam) {
-  let activeUser = userParam || window.currentUser;
+  // If a user object is passed directly (e.g., from an event), use it
+  if (userParam) return userParam;
 
-  if (!activeUser) {
-    const sessionData = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
-    if (sessionData) {
-      try {
-        activeUser = JSON.parse(sessionData);
-      } catch (e) {
-        console.error("Error parsing portal_session from storage:", e);
-        activeUser = null;
-      }
+  // Otherwise, retrieve from localStorage (Primary) or sessionStorage
+  const sessionData = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
+  
+  if (sessionData) {
+    try {
+      return JSON.parse(sessionData);
+    } catch (e) {
+      console.error("Error parsing portal_session:", e);
     }
   }
-
-  let role = '';
-  let name = '';
-  let userClass = 'ALL';
-
-  if (activeUser && typeof activeUser === 'object') {
-    role = activeUser.role || activeUser.userType || activeUser.type || activeUser.accessLevel || '';
-    name = activeUser.fullName || activeUser.name || activeUser.username || '';
-    userClass = activeUser.class || activeUser.userClass || 'ALL';
-  }
-
-  return {
-    role: (role || '').trim().toLowerCase(),
-    name: (name || '').trim(),
-    userClass: (userClass || 'ALL').trim()
-  };
+  return null;
 }
 
 function syncLiveClassSession(user) {
-  // Ensure we have a valid session object
+  // 1. Get the session using the corrected helper
   const session = user || getCurrentUserSession();
   console.log("Synced Live Class Session:", session);
 
-  // Robust check for teacher permissions
+  // If no session exists, we should probably stop here or redirect to login
+  if (!session) {
+    console.warn("No active session found.");
+    return;
+  }
+
+  // 2. Robust check for teacher permissions
   const roleStr = (session.role || '').toLowerCase();
   const isTeacherOrAdmin = roleStr.includes('teacher') || 
                            roleStr.includes('admin') || 
                            roleStr.includes('instructor') ||
                            roleStr.includes('staff');
 
-  // Update UI elements based on role
+  // 3. Update UI elements based on role
   document.querySelectorAll('.teacher-only').forEach(el => {
     el.style.display = isTeacherOrAdmin ? 'inline-flex' : 'none';
   });
@@ -195,8 +186,10 @@ function syncLiveClassSession(user) {
     }
   }
 
-  // Call the robust profile updater
-  updateNavProfile(session);
+  // 4. Call the robust profile updater (from your existing profile logic)
+  if (typeof updateNavProfile === 'function') {
+    updateNavProfile(session);
+  }
   
   updateClassFilterInterface(session, isTeacherOrAdmin);
   renderClassesGrid();
