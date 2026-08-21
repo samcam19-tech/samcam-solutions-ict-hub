@@ -433,6 +433,213 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+
+// ==========================================
+// TEACHER / ADMIN STAFF REGISTRATION & MANAGEMENT MODULE
+// ==========================================
+
+document.addEventListener("DOMContentLoaded", () => {
+  // Bind staff registration form submission
+  const registerStaffForm = document.getElementById("registerStaffForm");
+  if (registerStaffForm) {
+    registerStaffForm.addEventListener("submit", handleRegisterStaff);
+  }
+
+  // Bind Staff Management Modal openers and closers
+  const openManageStaffBtn = document.getElementById("openManageStaffBtn");
+  if (openManageStaffBtn) {
+    openManageStaffBtn.addEventListener("click", openManageStaffModal);
+  }
+
+  const closeManageStaffModalBtn = document.getElementById("closeManageStaffModalBtn");
+  if (closeManageStaffModalBtn) {
+    closeManageStaffModalBtn.addEventListener("click", () => {
+      document.getElementById("manageStaffModal").style.display = "none";
+    });
+  }
+
+  // Bind Staff Search Input
+  const staffSearchInput = document.getElementById("staffSearchInput");
+  if (staffSearchInput) {
+    staffSearchInput.addEventListener("input", filterStaffTable);
+  }
+});
+
+// 1. Handle Registration of New Teachers / Admins
+async function handleRegisterStaff(e) {
+  e.preventDefault();
+
+  const fullName = document.getElementById("staffFullName").value.trim();
+  const role = document.getElementById("staffRole").value; // 'teacher' or 'admin'
+  const username = document.getElementById("staffUsername").value.trim().toLowerCase();
+  const password = document.getElementById("staffPassword").value.trim();
+
+  if (!fullName || !role || !username || !password) {
+    alert("Please fill in all required fields for staff registration.");
+    return;
+  }
+
+  try {
+    // Check if username already exists in Firestore users collection
+    const existingUser = await db.collection("users").where("username", "==", username).get();
+    if (!existingUser.empty) {
+      alert("This username is already taken. Please choose another username.");
+      return;
+    }
+
+    // Save staff/admin profile to Firestore
+    await db.collection("users").add({
+      fullName: fullName,
+      role: role, // 'teacher' or 'admin'
+      username: username,
+      password: password, // Note: In production, hash passwords securely. Matches plain text logic of student portal.
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+
+    alert(`Successfully registered ${role.toUpperCase()} account for ${fullName}!`);
+    document.getElementById("registerStaffForm").reset();
+
+    // Refresh staff table if modal is open
+    if (document.getElementById("manageStaffModal").style.display === "flex") {
+      loadStaffTableData();
+    }
+  } catch (error) {
+    console.error("Error registering staff account:", error);
+    alert("Failed to register account. Check console for details.");
+  }
+}
+
+// 2. Open Staff Management Modal & Load Data
+let allStaffRecords = [];
+let currentStaffPage = 1;
+const staffRowsPerPage = 8;
+
+async function openManageStaffModal() {
+  document.getElementById("manageStaffModal").style.display = "flex";
+  await loadStaffTableData();
+}
+
+async function loadStaffTableData() {
+  const tableBody = document.getElementById("staffModalTableBody");
+  tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 1rem;">Loading staff records...</td></tr>`;
+
+  try {
+    // Fetch users with roles 'teacher' or 'admin'
+    const snapshot = await db.collection("users")
+      .where("role", "in", ["teacher", "admin"])
+      .get();
+
+    allStaffRecords = [];
+    snapshot.forEach(doc => {
+      allStaffRecords.push({ id: doc.id, ...doc.data() });
+    });
+
+    renderStaffTablePage(1);
+  } catch (error) {
+    console.error("Error loading staff accounts:", error);
+    tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444;">Failed to load records.</td></tr>`;
+  }
+}
+
+// 3. Render Staff Pagination & Data Table
+function renderStaffTablePage(page, recordsToRender = allStaffRecords) {
+  currentStaffPage = page;
+  const tableBody = document.getElementById("staffModalTableBody");
+  const paginationContainer = document.getElementById("staffTablePagination");
+  
+  tableBody.innerHTML = "";
+  paginationContainer.innerHTML = "";
+
+  if (recordsToRender.length === 0) {
+    tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 1rem; color: #64748b;">No staff or administrator accounts found.</td></tr>`;
+    return;
+  }
+
+  const startIndex = (page - 1) * staffRowsPerPage;
+  const endIndex = startIndex + staffRowsPerPage;
+  const paginatedItems = recordsToRender.slice(startIndex, endIndex);
+
+  paginatedItems.forEach((staff, index) => {
+    const tr = document.createElement("tr");
+    const globalIndex = startIndex + index + 1;
+    const roleBadgeClass = staff.role === 'admin' ? 'role-admin' : 'role-teacher';
+
+    tr.innerHTML = `
+      <td>${globalIndex}</td>
+      <td><input type="text" id="staff-name-${staff.id}" value="${escapeHtml(staff.fullName)}"></td>
+      <td>
+        <select id="staff-role-${staff.id}">
+          <option value="teacher" ${staff.role === 'teacher' ? 'selected' : ''}>Teacher</option>
+          <option value="admin" ${staff.role === 'admin' ? 'selected' : ''}>Admin</option>
+        </select>
+      </td>
+      <td><input type="text" id="staff-user-${staff.id}" value="${escapeHtml(staff.username)}"></td>
+      <td><input type="text" id="staff-pass-${staff.id}" value="${escapeHtml(staff.password)}"></td>
+      <td>
+        <button type="button" class="page-btn" style="background:#0284c7; color:white; padding:0.25rem 0.5rem;" onclick="updateStaffAccount('${staff.id}')"><i class="fa-solid fa-floppy-disk"></i> Save</button>
+        <button type="button" class="page-btn" style="background:#dc2626; color:white; padding:0.25rem 0.5rem;" onclick="deleteStaffAccount('${staff.id}')"><i class="fa-solid fa-trash"></i></button>
+      </td>
+    `;
+    tableBody.appendChild(tr);
+  });
+
+  renderPaginationControls(recordsToRender.length, staffRowsPerPage, page, paginationContainer, (newPage) => {
+    renderStaffTablePage(newPage, recordsToRender);
+  });
+}
+
+// 4. Update Individual Staff Record
+async function updateStaffAccount(docId) {
+  const newName = document.getElementById(`staff-name-${docId}`).value.trim();
+  const newRole = document.getElementById(`staff-role-${docId}`).value;
+  const newUser = document.getElementById(`staff-user-${docId}`).value.trim().toLowerCase();
+  const newPass = document.getElementById(`staff-pass-${docId}`).value.trim();
+
+  if (!newName || !newUser || !newPass) {
+    alert("Fields cannot be left empty.");
+    return;
+  }
+
+  try {
+    await db.collection("users").doc(docId).update({
+      fullName: newName,
+      role: newRole,
+      username: newUser,
+      password: newPass
+    });
+    alert("Staff account updated successfully!");
+    loadStaffTableData();
+  } catch (error) {
+    console.error("Error updating staff account:", error);
+    alert("Failed to update account.");
+  }
+}
+
+// 5. Delete Individual Staff Record
+async function deleteStaffAccount(docId) {
+  if (!confirm("Are you sure you want to delete this staff/admin account?")) return;
+
+  try {
+    await db.collection("users").doc(docId).delete();
+    alert("Account deleted successfully.");
+    loadStaffTableData();
+  } catch (error) {
+    console.error("Error deleting account:", error);
+    alert("Failed to delete account.");
+  }
+}
+
+// 6. Filter Staff Table by Search Input
+function filterStaffTable() {
+  const query = document.getElementById("staffSearchInput").value.toLowerCase();
+  const filtered = allStaffRecords.filter(staff => 
+    staff.fullName.toLowerCase().includes(query) ||
+    staff.username.toLowerCase().includes(query) ||
+    staff.role.toLowerCase().includes(query)
+  );
+  renderStaffTablePage(1, filtered);
+}
 /* ==========================================================================
    2. STUDENT REGISTRATION & BULK IMPORT
    ========================================================================== */
