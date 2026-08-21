@@ -739,17 +739,26 @@ function updateNavProfile(session) {
   const userEl = document.getElementById('navUsername');
   const picEl = document.getElementById('navProfilePic');
   
-  // 1. Get Full Name (fallback to username if fullName is missing)
-  const displayName = session.name || session.username || 'User';
+  // 1. Get Full Name from the normalized session properties
+  const displayName = session.name || session.fullName || 'User';
   
-  // 2. Get Username directly from the stored user property
+  // 2. Get Username directly from the stored session property
   const usernameVal = session.username || 'user';
 
   // Update Text Content
   if (nameEl) nameEl.textContent = displayName;
+  
   if (userEl) {
-    const roleSuffix = session.role ? ` • ${session.role.toLowerCase()}` : '';
-    userEl.textContent = '@' + usernameVal + roleSuffix;
+    if (session.role) {
+      // Capitalize the first letter (e.g., "teacher" -> "Teacher")
+      const rawRole = session.role.trim();
+      const capitalizedRole = rawRole.charAt(0).toUpperCase() + rawRole.slice(1).toLowerCase();
+      
+      // Use innerHTML to style the role in dark blue (e.g., #1e40af or a custom CSS variable)
+      userEl.innerHTML = `@${usernameVal} • <span style="color: #1e40af; font-weight: 600;">${capitalizedRole}</span>`;
+    } else {
+      userEl.textContent = '@' + usernameVal;
+    }
   }
   
   // 3. Resolve Profile Picture instantly with local fallback
