@@ -12,11 +12,13 @@
   
   <!-- Page Specific CSS -->
   <link rel="stylesheet" href="classes.css">
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   
   <!-- Google API GIS & Calendar Client -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
 </head>
 <body>
 
@@ -27,30 +29,14 @@
         <i class="fa-solid fa-graduation-cap logo-icon"></i>
         <span>SAMCAM <small>ICT HUB</small></span>
       </div>
-
-      <!-- Hamburger Toggle Button (Mobile Only) -->
-      <button id="mobileMenuBtn" class="btn-icon-only mobile-menu-toggle" aria-label="Toggle Navigation">
-        <i class="fa-solid fa-bars"></i>
-      </button>
-
-      <!-- Nav Links Container -->
-      <nav class="nav-links" id="navLinksMenu">
+      <nav class="nav-links">
         <a href="index.html"><i class="fa-solid fa-house"></i> Home</a>
         <a href="assessments.html"><i class="fa-solid fa-file-lines"></i> Assessments</a>
         <a href="classes.html" class="active"><i class="fa-solid fa-video"></i> Live Classes</a>
         <a href="announcements.html"><i class="fa-solid fa-bullhorn"></i> Announcements</a>
       </nav>
-
-      <!-- Header Actions (Profile Chip) -->
       <div class="header-actions">
-        <!-- User Profile Chip -->
-        <div class="nav-user-profile" style="display: flex; align-items: center; gap: 10px; margin-right: 5px;">
-          <img id="bannerProfilePic" src="images/default-avatar.png" alt="Profile" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
-          <div class="user-meta" style="display: flex; flex-direction: column; text-align: left; line-height: 1.2;">
-            <span id="userNameDisplay" style="font-size: 13px; font-weight: 600; color: var(--text-main);">User</span>
-            <span id="profileUsernameDisplay" style="font-size: 11px; color: var(--text-muted, #777);">@username</span>
-          </div>
-        </div>
+        <button id="themeToggleBtn" class="btn-icon-only" title="Toggle Theme"><i class="fa-solid fa-moon"></i></button>
       </div>
     </div>
   </header>
@@ -135,28 +121,18 @@
           </div>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label>Meeting Access Control</label>
-            <select id="admissionType" class="form-control" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input, #fff); color: var(--text-main, #333);">
-              <option value="open">Open (Anyone with link)</option>
-              <option value="restricted">Restricted (Waiting Room)</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Recording Preference</label>
-            <select id="recordingPreference" class="form-control" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input, #fff); color: var(--text-main, #333);">
-              <option value="yes">Record Session (Cloud / Meet)</option>
-              <option value="no">Do Not Record</option>
-            </select>
-          </div>
+        <div class="form-group">
+          <label>Meeting Access Control</label>
+          <select id="admissionType" class="form-control" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: var(--bg-input, #fff); color: var(--text-main, #333);">
+            <option value="open">Open (Anyone with the link can join directly)</option>
+            <option value="restricted">Restricted / Require Admission (Students wait in waiting room to be admitted)</option>
+          </select>
         </div>
 
         <div class="form-group">
-          <label>Description / Pre-Class Brief & Objectives</label>
+          <label>Description / Instructions</label>
           <textarea id="classDescription" rows="3" placeholder="Brief overview or preparation notes for students..."></textarea>
         </div>
-
         <div class="modal-footer">
           <button type="button" class="btn-action btn-secondary" onclick="closeScheduleModalDirect()">Cancel</button>
           <button type="submit" class="btn-action btn-upload" id="submitClassBtn">
@@ -167,35 +143,7 @@
     </div>
   </div>
 
-  <!-- JavaScript Engine & SDKs -->
-  <!-- 1. Core Firebase App SDK MUST come first -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app-compat.js"></script>
-  
-  <!-- 2. Additional Firebase Feature SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage-compat.js"></script>
-
-  <!-- 4. Page Logic comes last -->
+  <!-- JavaScript Engine -->
   <script src="classes.js"></script>
-  
-  <!-- Inline script for mobile menu toggle interaction -->
-  <script>
-    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
-    const navLinksMenu = document.getElementById('navLinksMenu');
-
-    if (mobileMenuBtn && navLinksMenu) {
-      mobileMenuBtn.addEventListener('click', () => {
-        navLinksMenu.classList.toggle('show');
-        const icon = mobileMenuBtn.querySelector('i');
-        if (navLinksMenu.classList.contains('show')) {
-          icon.classList.remove('fa-bars');
-          icon.classList.add('fa-xmark');
-        } else {
-          icon.classList.remove('fa-xmark');
-          icon.classList.add('fa-bars');
-        }
-      });
-    }
-  </script>
 </body>
 </html>
