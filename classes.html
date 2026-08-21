@@ -12,12 +12,6 @@
   
   <!-- Page Specific CSS -->
   <link rel="stylesheet" href="classes.css">
-
-  <!-- Firebase SDKs -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore-compat.js"></script>
-  <!-- ADD THIS STORAGE SDK -->
-  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
   
   <!-- Google API GIS & Calendar Client -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -173,8 +167,18 @@
     </div>
   </div>
 
-  <!-- JavaScript Engine -->
+  <!-- JavaScript Engine & SDKs -->
+  <!-- 1. Core Firebase App SDK MUST come first -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app-compat.js"></script>
+  
+  <!-- 2. Additional Firebase Feature SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+
+  <!-- 3. Firebase Configuration comes AFTER SDKs -->
   <script src="firebase-config.js"></script>
+
+  <!-- 4. Page Logic comes last -->
   <script src="classes.js"></script>
   
   <!-- Inline script for mobile menu toggle interaction -->
