@@ -14,9 +14,9 @@ const itemsPerPage = 6; // Number of resource cards per page
 /* ==========================================================================
    BUSINESS PAYMENT CONFIGURATION
    ========================================================================== */
-const SAMCAM_BUSINESS_NUMBERS = {
-  MTN: "0761230833",
-  AIRTEL: "0703999089" 
+const SAMCAM_BUSINESS_ACCOUNTS = {
+  MTN: { name: "SAMCAM SOLUTIONS", number: "0761230833", color: "#facc15" },    // MTN Yellow accent
+  AIRTEL: { name: "AKUGIZIBWE SAMUEL", number: "0703999089", color: "#ef4444" } // Airtel Red accent
 };
 
 
@@ -241,53 +241,83 @@ function resetFilters() {
 }
 
 
-/* ==========================================================================
-   MOBILE MONEY PAYMENT GATEWAY WORKFLOW (UGANDA / MOMO)
-   ========================================================================== */
 function initiateMoMoPayment(resourceId, resourceTitle, price) {
   let modal = document.getElementById('momoPaymentModal');
   if (!modal) {
     modal = document.createElement('div');
     modal.id = 'momoPaymentModal';
     modal.className = 'modal-overlay';
-    modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; justify-content:center; align-items:center; z-index:9999;';
+    modal.style.cssText = 'position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); display:flex; justify-content:center; align-items:center; z-index:9999; padding: 1rem;';
     document.body.appendChild(modal);
   }
 
   modal.innerHTML = `
-    <div class="card" style="width: 100%; max-width: 440px; margin: 1rem; position: relative; background: var(--card-bg);">
-      <button onclick="closeMomoModal()" style="position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);"><i class="fa-solid fa-xmark"></i></button>
+    <div class="card" style="width: 100%; max-width: 450px; position: relative; background: var(--card-bg); border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.2);">
       
-      <h3 style="margin-bottom: 0.5rem;"><i class="fa-solid fa-wallet" style="color:var(--primary);"></i> Manual Mobile Money Pay</h3>
-      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Resource: <strong>${escapeHtml(resourceTitle)}</strong></p>
-      
-      <div style="background: #f8fafc; padding: 12px; border-radius: 6px; margin-bottom: 1rem; border: 1px solid var(--border-color); font-size: 0.85rem;">
-        <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-          <span>Amount to Pay:</span>
-          <strong style="color: var(--primary);">UGX ${price.toLocaleString()}</strong>
-        </div>
-        <hr style="border:0; border-top:1px solid #e2e8f0; margin: 6px 0;">
-        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">Send money using your phone to:</p>
-        <div>📱 <strong>MTN:</strong> ${SAMCAM_BUSINESS_NUMBERS.MTN}</div>
-        <div>📱 <strong>Airtel:</strong> ${SAMCAM_BUSINESS_NUMBERS.AIRTEL}</div>
-        <div style="margin-top:4px; font-size:0.75rem; color:#64748b;">(Registered Name: AKUGIZIBWE SAMUEL)</div>
+      <!-- Modal Header -->
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem; margin-bottom: 1rem;">
+        <h3 style="margin: 0; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+          <i class="fa-solid fa-mobile-screen-button" style="color: var(--primary);"></i> Mobile Money Checkout
+        </h3>
+        <button type="button" onclick="closeMomoModal()" style="background: #f1f5f9; border: none; width: 30px; height: 30px; border-radius: 50%; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; color: var(--text-main); transition: background 0.2s;">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
       </div>
 
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+        Unlocking Resource: <strong style="color: var(--text-main);">${escapeHtml(resourceTitle)}</strong>
+      </p>
+
+      <!-- Amount and Merchant Box -->
+      <div style="background: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 1.2rem; border: 1px solid var(--border-color);">
+        <div style="display:flex; justify-content:space-between; font-size: 0.95rem; margin-bottom: 8px;">
+          <span style="color: var(--text-muted);">Amount Payable:</span>
+          <strong style="color: var(--primary); font-size: 1.05rem;">UGX ${price.toLocaleString()}</strong>
+        </div>
+        <hr style="border:0; border-top:1px solid #e2e8f0; margin: 8px 0;">
+        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 6px; font-weight: 600;">SEND MONEY TO OFFICIAL LINES:</div>
+        
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.85rem;">
+          <div style="display: flex; align-items: center; justify-content: background; background: #fefce8; padding: 6px 10px; border-radius: 6px; border-left: 4px solid #eab308;">
+            <span>🟡 <strong>MTN MoMo:</strong> ${SAMCAM_BUSINESS_ACCOUNTS.MTN.number}</span>
+          </div>
+          <div style="display: flex; align-items: center; justify-content: background; background: #fef2f2; padding: 6px 10px; border-radius: 6px; border-left: 4px solid #ef4444;">
+            <span>🔴 <strong>Airtel Money:</strong> ${SAMCAM_BUSINESS_ACCOUNTS.AIRTEL.number}</span>
+          </div>
+        </div>
+        <div style="margin-top: 6px; font-size: 0.72rem; color: var(--text-muted); text-align: right;">Name: <strong>SAMCAM SOLUTIONS</strong></div>
+      </div>
+
+      <!-- Payment Form -->
       <form onsubmit="verifyManualPayment(event, '${resourceId}')">
         <div class="form-group" style="margin-bottom: 0.8rem;">
-          <label style="font-size:0.8rem; font-weight:600; display:block; margin-bottom:3px;">Your Phone Number Used to Pay</label>
-          <input type="tel" id="studentPhone" placeholder="e.g. 0772123456" required style="width:100%; padding: 0.55rem; border-radius:6px; border:1px solid var(--border-color); font-size:0.9rem;">
+          <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 3px;">Your Mobile Network</label>
+          <select id="studentNetwork" required style="width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.9rem;">
+            <option value="MTN">MTN Uganda</option>
+            <option value="AIRTEL">Airtel Uganda</option>
+          </select>
+        </div>
+
+        <div class="form-group" style="margin-bottom: 0.8rem;">
+          <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 3px;">Your Phone Number (Sender)</label>
+          <input type="tel" id="studentPhone" placeholder="e.g. 0772123456 / 0752123456" required style="width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.9rem;">
         </div>
 
         <div class="form-group" style="margin-bottom: 1.2rem;">
-          <label style="font-size:0.8rem; font-weight:600; display:block; margin-bottom:3px;">Transaction ID / Message Code</label>
-          <input type="text" id="transactionId" placeholder="e.g. TID: 987654321 or Message Ref" required style="width:100%; padding: 0.55rem; border-radius:6px; border:1px solid var(--border-color); font-size:0.9rem;">
-          <small style="color:var(--text-muted); font-size:0.72rem;">Enter the confirmation code you received from MTN/Airtel.</small>
+          <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 3px;">Transaction ID / Confirmation Code</label>
+          <input type="text" id="transactionId" placeholder="e.g. PP260821.1234.F12345" required style="width: 100%; padding: 0.6rem; border-radius: 6px; border: 1px solid var(--border-color); font-size: 0.9rem;">
+          <small style="color: var(--text-muted); font-size: 0.72rem;">Enter the message ID received from your telecom operator.</small>
         </div>
 
-        <button type="submit" id="verifyBtn" class="btn-primary" style="width:100%; justify-content:center;">
-          <i class="fa-solid fa-circle-check"></i> Unlock & Download Now
-        </button>
+        <!-- Action Buttons -->
+        <div style="display: flex; gap: 0.6rem;">
+          <button type="button" onclick="closeMomoModal()" class="btn-secondary" style="flex: 1; justify-content: center; padding: 0.65rem;">
+            Cancel
+          </button>
+          <button type="submit" id="verifyBtn" class="btn-primary" style="flex: 2; justify-content: center; padding: 0.65rem;">
+            <i class="fa-solid fa-circle-check"></i> Verify & Unlock
+          </button>
+        </div>
       </form>
     </div>
   `;
@@ -296,7 +326,7 @@ function initiateMoMoPayment(resourceId, resourceTitle, price) {
 }
 
 function closeMomoModal() {
-  const modal = document.getElementById('momoPaymentModal');
+  const modal = document.getElementById('momoPlatformModal') || document.getElementById('momoPaymentModal');
   if (modal) modal.style.display = 'none';
 }
 
