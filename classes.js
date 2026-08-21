@@ -260,6 +260,51 @@ function isClassLive(startTime, endTime) {
   return now >= new Date(startTime) && now <= new Date(endTime);
 }
 
+// ==========================================
+// 1. COUNTDOWN TIMER HELPERS & INTERVAL LOOP
+// ==========================================
+function getCountdownText(startTimeStr, endTimeStr) {
+  const now = new Date().getTime();
+  const start = new Date(startTimeStr).getTime();
+  const end = new Date(endTimeStr).getTime();
+
+  if (now >= start && now <= end) {
+    return `<span style="color: #22c55e; font-weight: bold;"><i class="fa-solid fa-circle" style="font-size: 8px;"></i> LIVE NOW</span>`;
+  }
+
+  if (now > end) {
+    return `<span style="color: var(--text-muted);">Session Ended</span>`;
+  }
+
+  const diff = start - now;
+  const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+  if (days > 0) {
+    return `Starts in ${days}d ${hours}h ${minutes}m`;
+  } else if (hours > 0) {
+    return `Starts in ${hours}h ${minutes}m ${seconds}s`;
+  } else {
+    return `Starts in ${minutes}m ${seconds}s`;
+  }
+}
+
+// Background loop to update all countdown elements on the screen every second
+setInterval(() => {
+  const countdownElements = document.querySelectorAll('.class-countdown-timer');
+  countdownElements.forEach(el => {
+    const start = el.getAttribute('data-start');
+    const end = el.getAttribute('data-end');
+    el.innerHTML = getCountdownText(start, end);
+  });
+}, 1000);
+
+
+// ==========================================
+// 2. UPDATED CLASSES GRID RENDERER
+// ==========================================
 function renderClassesGrid() {
   const container = document.getElementById('classes-grid');
   if (!container) return;
@@ -332,11 +377,8 @@ function renderClassesGrid() {
   }
 
   filtered.forEach(item => {
-    const formattedDate = new Date(item.startTime).toLocaleString('en-US', {
-      weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
-    });
-
     const isLive = isClassLive(item.startTime, item.endTime);
+    const initialCountdown = getCountdownText(item.startTime, item.endTime);
 
     const card = document.createElement('div');
     card.className = 'class-card';
@@ -384,7 +426,7 @@ function renderClassesGrid() {
         <p class="class-desc">${item.description || 'No instructions provided.'}</p>
         <div class="class-details">
           <span><i class="fa-solid fa-user-tie"></i> Instructor: <strong>${item.instructorName}</strong></span>
-          <span><i class="fa-regular fa-clock"></i> ${formattedDate}</span>
+          <span><i class="fa-regular fa-clock"></i> <span class="class-countdown-timer" data-start="${item.startTime}" data-end="${item.endTime}">${initialCountdown}</span></span>
         </div>
         ${resourcesHtml}
       </div>
@@ -398,7 +440,6 @@ function renderClassesGrid() {
     container.appendChild(card);
   });
 }
-
 async function logStudentAttendance(classId, classTitle, classLevel) {
   const session = getCurrentUserSession();
   if (!session) {
