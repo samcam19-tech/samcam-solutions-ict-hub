@@ -12,15 +12,11 @@ const firebaseConfig = {
   measurementId: "G-L2H4V8Y050"
 };
 
-// Initialize Firebase & Firestore
+// Initialize Firebase & Firestore safely
 if (typeof firebase !== "undefined" && !firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
-
-// Resilient helper to retrieve Firestore instance
-function getDb() {
-  return (typeof firebase !== "undefined" && firebase.apps.length > 0) ? firebase.firestore() : null;
-}
+const db = typeof firebase !== "undefined" ? firebase.firestore() : null;
 
 // Google API Client configuration
 const CLIENT_ID = '74940789582-42d2vlki0lr8bj734afchl8b42jo3b98.apps.googleusercontent.com';
@@ -211,7 +207,6 @@ function updateClassFilterInterface(session, isTeacherOrAdmin) {
    FIRESTORE DATA RETRIEVAL & RENDERING
    ========================================================================== */
 function fetchClassesFromFirestore() {
-  const db = getDb();
   if (!db) return;
   db.collection("live_classes").orderBy("startTime", "asc").onSnapshot((snapshot) => {
     allClasses = [];
@@ -533,8 +528,6 @@ function closeScheduleModalDirect() {
    ========================================================================== */
 function handleScheduleSubmit(e) {
   e.preventDefault();
-  const db = getDb();
-  if (!db) return alert("Database not initialized.");
   
   const title = document.getElementById('classTitle').value;
   const classLevel = document.getElementById('classLevel').value;
@@ -571,7 +564,7 @@ function handleScheduleSubmit(e) {
   const submitBtn = document.getElementById('submitClassBtn');
   
   if (editingClassId) {
-    // Updating existing class in Firestore
+    // Updating existing class in Firestore without regenerating Meet link unless desired
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Updating...`;
 
@@ -600,7 +593,7 @@ function handleScheduleSubmit(e) {
     return;
   }
 
-  // Creating new class
+  // Creating new class with Google Calendar API Meet Link generation
   if (!tokenClient) {
     alert("Google Identity Services is still loading or blocked. Please wait a moment and try again.");
     return;
@@ -703,10 +696,9 @@ async function createGoogleCalendarEvent(accessToken, classData) {
 }
 
 function deleteClassSession(classId) {
-  const db = getDb();
-  if (!db) return;
   if (confirm("Are you sure you want to delete this class session? This action cannot be undone.")) {
     db.collection("live_classes").doc(classId).delete().then(() => {
+      // Real-time listener will automatically refresh the grid
     }).catch(err => {
       console.error("Error deleting session:", err);
       alert("Failed to delete session: " + err.message);
