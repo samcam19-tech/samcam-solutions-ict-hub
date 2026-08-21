@@ -369,6 +369,9 @@ function renderClassesGrid() {
     // Generate .ics calendar download data URL
     const icsDataUrl = generateIcsDataUrl(item);
 
+    // Safely format the title to prevent syntax errors with quotes in inline handlers
+    const safeTitle = (item.title || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+
     card.innerHTML = `
       ${teacherActionsHtml}
       <div>
@@ -387,13 +390,91 @@ function renderClassesGrid() {
       </div>
       <div class="class-footer" style="display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-top: 15px;">
         <a href="${icsDataUrl}" download="${item.title.replace(/[^a-zA-Z0-9]/g, '_')}.ics" class="resource-chip" title="Add to Google Calendar / Outlook"><i class="fa-solid fa-calendar-plus"></i> Add to Calendar</a>
-        <a href="${item.meetUrl}" target="_blank" class="meet-btn">
+        <button onclick="handleJoinAndLogAttendance('${item.id}', '${safeTitle}', '${item.classLevel}', '${item.meetUrl}')" class="meet-btn" style="border: none; cursor: pointer;">
           <i class="fa-solid fa-video"></i> ${isLive ? 'Join Active Meet' : 'Join Meet'}
-        </a>
+        </button>
       </div>
     `;
     container.appendChild(card);
   });
+}
+
+async function logStudentAttendance(classId, classTitle, classLevel) {
+  const session = getCurrentUserSession();
+  if (!session) {
+    console.warn("No active session found for attendance logging.");
+    return;
+  }
+
+  const userId = session.username || session.email || 'guest';
+  const cleanClassId = classId || 'instant-meeting';
+  
+  // Create a unique composite document ID to prevent duplicate spam for the same class
+  const attendanceDocId = `${cleanClassId}_${userId.replace(/[^a-zA-Z0-9]/g, '_')}`;
+
+  const attendanceRecord = {
+    userId: userId,
+    userName: session.name || session.fullName || 'Learner',
+    userRole: session.role || 'Student',
+    userClass: session.userClass || session.class || 'N/A',
+    classId: cleanClassId,
+    classTitle: classTitle || 'Virtual Class',
+    classLevel: classLevel || 'General',
+    joinedAt: (typeof firebase !== 'undefined' && firebase.firestore) 
+              ? firebase.firestore.FieldValue.serverTimestamp() 
+              : new Date().toISOString()
+  };
+
+  const database = typeof getDb === 'function' ? getDb() : (window.db || null);
+  if (database) {
+    try {
+      // Use .set() with merge: true instead of .add() to update existing log if they click twice
+      await database.collection('attendance').doc(attendanceDocId).set(attendanceRecord, { merge: true });
+      console.log("Attendance successfully synced to Firestore.");
+    } catch (err) {
+      console.error("Failed to log attendance to Firestore:", err);
+    }
+  }
+
+  // Local storage fallback backup
+  try {
+    const localLogs = JSON.parse(localStorage.getItem('samcam_attendance_logs')) || [];
+    // Filter out previous entry for this same class if updating, then push fresh
+    const filteredLogs = localLogs.filter(log => !(log.classId === cleanClassId && log.userId === userId));
+    filteredLogs.push({ ...attendanceRecord, joinedAt: new Date().toISOString() });
+    localStorage.setItem('samcam_attendance_logs', JSON.stringify(filteredLogs));
+  } catch (e) {
+    console.error("Failed to save local attendance backup:", e);
+  }
+}
+
+async function handleJoinAndLogAttendance(classId, safeTitle, classLevel, meetUrl) {
+  if (!meetUrl) {
+    alert("Meeting link is not available.");
+    return;
+  }
+
+  // 1. Open the meet window first
+  const meetWindow = window.open(meetUrl, '_blank');
+
+  // 2. Check for popup blockers
+  if (!meetWindow || meetWindow.closed || typeof meetWindow.closed === 'undefined') {
+    alert("Popup blocked! Please allow popups for this site to join the meeting.");
+    return;
+  }
+
+  // 3. Prompt user to confirm they successfully entered the session
+  const confirmed = confirm(
+    `You are launching "${safeTitle}".\n\nClick OK once you have successfully entered the Google Meet room to record your official attendance.`
+  );
+
+  if (confirmed) {
+    // 4. Log attendance using your robust function only after confirmation
+    await logStudentAttendance(classId, safeTitle, classLevel);
+    console.log("Attendance verified and recorded.");
+  } else {
+    console.log("User cancelled attendance logging.");
+  }
 }
 
 /* ==========================================================================
