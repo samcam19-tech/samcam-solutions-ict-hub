@@ -112,36 +112,8 @@ body { background-color: var(--bg-main); color: var(--text-main); min-height: 10
   gap: 5px;
 }
 
-/* Dynamic Live Countdown Element */
-.live-countdown {
-  color: var(--warning-color, #eab308);
-  font-size: 0.85rem;
-  font-weight: 700;
-  margin-top: 8px;
-  font-family: monospace;
-  background: var(--bg-main);
-  border: 1px solid var(--border-color);
-  padding: 6px 10px;
-  border-radius: 6px;
-  display: inline-block;
-}
-
 .class-title { font-size: 1.15rem; margin-bottom: 0.5rem; }
-
-/* Prominent Pre-Class Brief Styling */
-.class-desc {
-  background: var(--bg-main);
-  border-left: 3px solid var(--primary);
-  padding: 10px 12px;
-  margin: 10px 0 1rem 0;
-  font-size: 0.9rem;
-  color: var(--text-main);
-  border-radius: 0 6px 6px 0;
-  border-top: 1px solid var(--border-color);
-  border-right: 1px solid var(--border-color);
-  border-bottom: 1px solid var(--border-color);
-}
-
+.class-desc { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem; }
 .class-details { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.3rem; }
 
 /* Post-Class Resources Box */
@@ -201,40 +173,3 @@ body { background-color: var(--bg-main); color: var(--text-main); min-height: 10
   background: var(--bg-main); color: var(--text-main); font-size: 0.9rem;
 }
 .modal-footer { display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem; }
-
-/* Hide hamburger toggle by default on large screens */
-.mobile-menu-toggle {
-  display: none;
-}
-
-/* Mobile responsive styles */
-@media screen and (max-width: 768px) {
-  .mobile-menu-toggle {
-    display: inline-flex;
-  }
-
-  .nav-links {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    width: 100%;
-    background: var(--bg-card);
-    flex-direction: column;
-    gap: 0;
-    border-bottom: 1px solid var(--border-color);
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-    max-height: 0;
-    overflow: hidden;
-    transition: max-height 0.3s ease-in-out;
-  }
-
-  .nav-links.show {
-    max-height: 300px;
-  }
-
-  .nav-links a {
-    padding: 0.9rem 1.5rem;
-    border-top: 1px solid var(--border-color);
-    width: 100%;
-  }
-}
