@@ -2,8 +2,12 @@
    SAMCAM SOLUTIONS - LIVE CLASSES & GOOGLE MEET ENGINE (ROLE & CLASS BASED)
    ========================================================================== */
 
-// Bulletproof dynamic database resolver
+// Global Firestore database reference
+const db = typeof firebase !== "undefined" ? firebase.firestore() : null;
+
+// Bulletproof dynamic database resolver fallback
 function getDatabaseInstance() {
+  if (db) return db;
   if (window.db) return window.db;
   if (typeof firebase !== 'undefined' && firebase.firestore) {
     try {
@@ -191,10 +195,8 @@ window.updateProfileUIImages = function(user) {
   const activeUser = user || getCurrentUserSession();
   const defaultAvatar = "images/default-avatar.png";
   
-  // Look for stored session details (where Firebase user document or profile link is cached)
   const storedSession = JSON.parse(localStorage.getItem('portal_session') || '{}');
   
-  // Check multiple possible keys where the storage URL might be saved
   const userAvatar = activeUser.profilePic || activeUser.photoURL || activeUser.avatarUrl || 
                      storedSession.profilePic || storedSession.photoURL || storedSession.avatarUrl || 
                      defaultAvatar;
@@ -207,10 +209,7 @@ window.updateProfileUIImages = function(user) {
   const usernameDisplay = document.getElementById('profileUsernameDisplay');
 
   if (bannerPic) {
-    // Directly apply the Firebase Storage URL link to the image source
     bannerPic.src = userAvatar;
-    
-    // Add an error fallback just in case an external storage link fails to load
     bannerPic.onerror = function() {
       this.src = defaultAvatar;
     };
@@ -223,7 +222,6 @@ window.updateProfileUIImages = function(user) {
 function syncLiveClassSession(user) {
   const session = getCurrentUserSession(user);
   
-  // Automatically update navbar elements upon session sync
   window.updateProfileUIImages(session);
 
   const combinedCheck = `${session.role} ${session.name} ${session.userClass}`.toLowerCase();
@@ -461,7 +459,7 @@ function startCountdownInterval() {
 
 function logAttendance(classId) {
   const session = getCurrentUserSession();
-  const database = getDatabaseInstance();
+  const database = db || getDatabaseInstance(); // Aligned with global db
   if (!database || !session.name) return;
 
   database.collection("live_classes").doc(classId).collection("attendance").add({
@@ -619,20 +617,6 @@ function closeScheduleModalDirect() {
    FIRESTORE SUBMIT / UPDATE / DELETE WORKFLOW
    ========================================================================== */
 
-// Helper to resolve db dynamically and bulletproof every operation
-function getDatabaseInstance() {
-  if (window.db) return window.db;
-  if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
-    try {
-      window.db = firebase.firestore();
-      return window.db;
-    } catch (e) {
-      console.error("Failed to initialize firestore directly:", e);
-    }
-  }
-  return null;
-}
-
 function handleScheduleSubmit(e) {
   e.preventDefault();
   
@@ -669,11 +653,11 @@ function handleScheduleSubmit(e) {
   }
 
   const submitBtn = document.getElementById('submitClassBtn');
+  const database = db || getDatabaseInstance(); // Use global db
 
   if (editingClassId) {
-    const database = getDatabaseInstance();
     if (!database) {
-      alert("Database connection is not available. Please ensure Firebase has loaded.");
+      alert("Database connection is not available.");
       return;
     }
 
@@ -701,7 +685,7 @@ function handleScheduleSubmit(e) {
   }
 
   if (!tokenClient) {
-    alert("Google Identity Services is still loading. Please wait a moment and try again.");
+    alert("Google Identity Services is still loading.");
     return;
   }
 
@@ -710,14 +694,13 @@ function handleScheduleSubmit(e) {
 
   tokenClient.callback = async (resp) => {
     if (resp.error !== undefined) {
-      alert("Google Authentication failed. Unable to generate Meet link.");
+      alert("Google Authentication failed.");
       submitBtn.disabled = false;
       submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Schedule Meet & Save`;
       return;
     }
 
     try {
-      // Step 1: Create Google Calendar Event & Meet Link
       const meetUrl = await createGoogleCalendarEvent(resp.access_token, {
         title, classLevel, instructorName, 
         startTime: startDate.toISOString(), 
@@ -725,13 +708,8 @@ function handleScheduleSubmit(e) {
         description, admissionType
       });
 
-      // Step 2: Resolve database instance right before writing
-      const database = getDatabaseInstance();
-      if (!database) {
-        throw new Error("Database connection is not available.");
-      }
+      if (!database) throw new Error("Database connection is not available.");
 
-      // Step 3: Save to Firestore
       await database.collection("live_classes").add({
         title, classLevel, instructorName,
         startTime: startDate.toISOString(),
@@ -745,10 +723,10 @@ function handleScheduleSubmit(e) {
       document.getElementById('scheduleForm').reset();
       
       if (meetingMode === 'instant') {
-        alert("Instant meeting created successfully! Launching Google Meet...");
+        alert("Instant meeting created successfully! Launching...");
         window.open(meetUrl, '_blank');
       } else {
-        alert("Class scheduled successfully with an automated Google Meet link!");
+        alert("Class scheduled successfully!");
       }
     } catch (err) {
       console.error("Error in scheduling process:", err);
@@ -764,11 +742,11 @@ function handleScheduleSubmit(e) {
 
 async function createGoogleCalendarEvent(accessToken, classData) {
   const restrictionNote = classData.admissionType === 'restricted' 
-    ? "\n\n🔒 [Access Policy: Restricted - Attendees will wait in the knocking room until admitted by the instructor]." 
-    : "\n\n🔓 [Access Policy: Open entry for class participants].";
+    ? "\n\n🔒 [Access Policy: Restricted]" 
+    : "\n\n🔓 [Access Policy: Open entry]";
 
-  const startIso = classData.startTime instanceof Date ? classData.startTime.toISOString() : new Date(classData.startTime).toISOString();
-  const endIso = classData.endTime instanceof Date ? classData.endTime.toISOString() : new Date(classData.endTime).toISOString();
+  const startIso = new Date(classData.startTime).toISOString();
+  const endIso = new Date(classData.endTime).toISOString();
 
   const event = {
     'summary': `[${classData.classLevel}] ${classData.title} - Samcam ICT Hub`,
@@ -785,52 +763,38 @@ async function createGoogleCalendarEvent(accessToken, classData) {
 
   const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1', {
     method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${accessToken}`,
-      'Content-Type': 'application/json'
-    },
+    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(event)
   });
 
   const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error?.message || "Failed to create calendar event via API.");
-  }
-
-  const meetLink = data.hangoutLink;
-  if (!meetLink) throw new Error("Google Meet link was not returned by the API.");
-  return meetLink;
+  if (!response.ok) throw new Error(data.error?.message || "Failed to create event.");
+  return data.hangoutLink;
 }
 
 function deleteClassSession(classId) {
-  const database = getDatabaseInstance();
+  const database = db || getDatabaseInstance();
   if (!database) {
     alert("Database connection is not available.");
     return;
   }
 
-  if (confirm("Are you sure you want to delete this class session? This action cannot be undone.")) {
-    database.collection("live_classes").doc(classId).delete().then(() => {
-      // Successfully deleted
-    }).catch(err => {
+  if (confirm("Are you sure you want to delete this session?")) {
+    database.collection("live_classes").doc(classId).delete().catch(err => {
       console.error("Error deleting session:", err);
-      alert("Failed to delete session: " + err.message);
+      alert("Failed to delete: " + err.message);
     });
   }
 }
 
 async function exportAttendanceReport(classId, format) {
-  const database = getDatabaseInstance();
-  if (!database) {
-    alert("Database connection is not available.");
-    return;
-  }
+  const database = db || getDatabaseInstance();
+  if (!database) return;
 
-  const attendanceRef = database.collection("live_classes").doc(classId).collection("attendance");
-  const snapshot = await attendanceRef.orderBy("joinedAt", "desc").get();
+  const snapshot = await database.collection("live_classes").doc(classId).collection("attendance").orderBy("joinedAt", "desc").get();
   
   if (snapshot.empty) {
-    alert("No attendance data found for this session.");
+    alert("No attendance data found.");
     return;
   }
 
@@ -846,27 +810,21 @@ async function exportAttendanceReport(classId, format) {
 
   if (format === 'csv') {
     let csvContent = "data:text/csv;charset=utf-8,Name,Role,Class,Joined At\n";
-    attendanceData.forEach(row => {
-      csvContent += `${row.name},${row.role},${row.class},"${row.time}"\n`;
-    });
-    const encodedUri = encodeURI(csvContent);
+    attendanceData.forEach(row => csvContent += `${row.name},${row.role},${row.class},"${row.time}"\n`);
     const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
+    link.setAttribute("href", encodeURI(csvContent));
     link.setAttribute("download", `attendance_${classId}.csv`);
     document.body.appendChild(link);
     link.click();
-  } 
-  else if (format === 'pdf') {
+  } else if (format === 'pdf') {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
-    
     doc.text("Attendance Report", 14, 15);
     doc.autoTable({
       head: [['Name', 'Role', 'Class', 'Joined At']],
       body: attendanceData.map(r => [r.name, r.role, r.class, r.time]),
       startY: 20
     });
-    
     doc.save(`attendance_${classId}.pdf`);
   }
 }
