@@ -641,10 +641,18 @@ function handleScheduleSubmit(e) {
 
   const submitBtn = document.getElementById('submitClassBtn');
   
-  // Safely resolve database instance using window.db with fallback
-  const database = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
+  // Helper to resolve db dynamically every time it's needed
+  const getDatabaseInstance = () => {
+    let dbInstance = window.db;
+    if (!dbInstance && typeof firebase !== 'undefined' && firebase.firestore) {
+      dbInstance = firebase.firestore();
+      window.db = dbInstance;
+    }
+    return dbInstance;
+  };
 
   if (editingClassId) {
+    const database = getDatabaseInstance();
     if (!database) {
       alert("Database connection is not available.");
       return;
@@ -703,6 +711,8 @@ function handleScheduleSubmit(e) {
         admissionType
       });
 
+      // Fresh-fetch the database instance inside the async callback
+      const database = getDatabaseInstance();
       if (!database) {
         throw new Error("Database connection is not available.");
       }
