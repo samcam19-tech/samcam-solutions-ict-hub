@@ -1317,23 +1317,40 @@ function loadUserProfileUI() {
 
 // --- AUTHENTICATION MOCK & SESSION UTILS ---
 function checkUserSession() {
-  const currentUser = JSON.parse(localStorage.getItem('currentLoggedInUser'));
-  if (currentUser) {
-    document.getElementById('loginSection').style.display = 'none';
-    document.getElementById('dashboardSection').style.display = 'block';
-    loadUserProfileUI();
+    // Read from 'portal_session' to match where executeLogin() saves the user
+    const sessionData = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
+    const currentUser = sessionData ? JSON.parse(sessionData) : null;
+    
+    if (currentUser) {
+        const loginSec = document.getElementById('loginSection');
+        if (loginSec) loginSec.style.display = 'none';
 
-    if (currentUser.role === 'teacher') {
-      document.getElementById('teacherControls').style.display = 'block';
-      document.getElementById('teacherReports').style.display = 'grid';
+        const dashSec = document.getElementById('dashboardSection');
+        if (dashSec) dashSec.style.display = 'block';
+
+        if (typeof loadUserProfileUI === 'function') {
+            loadUserProfileUI();
+        }
+
+        const teacherControls = document.getElementById('teacherControls');
+        const teacherReports = document.getElementById('teacherReports');
+
+        // Check user role securely
+        const role = (currentUser.role || currentUser.userType || '').trim().toLowerCase();
+        if (role === 'teacher' || role === 'admin' || role === 'instructor') {
+            if (teacherControls) teacherControls.style.display = 'block';
+            if (teacherReports) teacherReports.style.display = 'grid';
+        } else {
+            if (teacherControls) teacherControls.style.display = 'none';
+            if (teacherReports) teacherReports.style.display = 'none';
+        }
     } else {
-      document.getElementById('teacherControls').style.display = 'none';
-      document.getElementById('teacherReports').style.display = 'none';
+        const loginSec = document.getElementById('loginSection');
+        if (loginSec) loginSec.style.display = 'block';
+
+        const dashSec = document.getElementById('dashboardSection');
+        if (dashSec) dashSec.style.display = 'none';
     }
-  } else {
-    document.getElementById('loginSection').style.display = 'block';
-    document.getElementById('dashboardSection').style.display = 'none';
-  }
 }
 
 function handleLogin(e) {
