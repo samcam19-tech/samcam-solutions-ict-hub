@@ -88,6 +88,7 @@ async function handleLibraryFormSubmit(e) {
 
   const editingId = document.getElementById("editingResourceId").value;
   const title = document.getElementById("resTitle").value.trim();
+  const description = document.getElementById("resDescription").value.trim(); // Captured description field
   const classLevel = document.getElementById("resClass").value;
   const category = document.getElementById("resCategory").value;
   const accessType = document.getElementById("resAccessType").value;
@@ -120,6 +121,7 @@ async function handleLibraryFormSubmit(e) {
       // UPDATE EXISTING RECORD
       const updateData = {
         title,
+        description, // Include description in update payload
         classLevel,
         category,
         accessType,
@@ -145,6 +147,7 @@ async function handleLibraryFormSubmit(e) {
 
       await db.collection("e_library_resources").add({
         title,
+        description, // Include description in creation payload
         classLevel,
         category,
         accessType,
