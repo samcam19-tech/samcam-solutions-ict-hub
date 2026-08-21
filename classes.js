@@ -604,6 +604,21 @@ function closeScheduleModalDirect() {
 /* ==========================================================================
    FIRESTORE SUBMIT / UPDATE / DELETE WORKFLOW
    ========================================================================== */
+
+// Helper to resolve db dynamically and bulletproof every operation
+function getDatabaseInstance() {
+  if (window.db) return window.db;
+  if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
+    try {
+      window.db = firebase.firestore();
+      return window.db;
+    } catch (e) {
+      console.error("Failed to initialize firestore directly:", e);
+    }
+  }
+  return null;
+}
+
 function handleScheduleSubmit(e) {
   e.preventDefault();
   
@@ -640,16 +655,6 @@ function handleScheduleSubmit(e) {
   }
 
   const submitBtn = document.getElementById('submitClassBtn');
-  
-  // Helper to resolve db dynamically every time it's needed
-  const getDatabaseInstance = () => {
-    let dbInstance = window.db;
-    if (!dbInstance && typeof firebase !== 'undefined' && firebase.firestore) {
-      dbInstance = firebase.firestore();
-      window.db = dbInstance;
-    }
-    return dbInstance;
-  };
 
   if (editingClassId) {
     const database = getDatabaseInstance();
@@ -794,8 +799,14 @@ async function createGoogleCalendarEvent(accessToken, classData) {
 }
 
 function deleteClassSession(classId) {
+  const database = getDatabaseInstance();
+  if (!database) {
+    alert("Database connection is not available.");
+    return;
+  }
+
   if (confirm("Are you sure you want to delete this class session? This action cannot be undone.")) {
-    db.collection("live_classes").doc(classId).delete().then(() => {
+    database.collection("live_classes").doc(classId).delete().then(() => {
     }).catch(err => {
       console.error("Error deleting session:", err);
       alert("Failed to delete session: " + err.message);
@@ -804,7 +815,13 @@ function deleteClassSession(classId) {
 }
 
 async function exportAttendanceReport(classId, format) {
-  const attendanceRef = db.collection("live_classes").doc(classId).collection("attendance");
+  const database = getDatabaseInstance();
+  if (!database) {
+    alert("Database connection is not available.");
+    return;
+  }
+
+  const attendanceRef = database.collection("live_classes").doc(classId).collection("attendance");
   const snapshot = await attendanceRef.orderBy("joinedAt", "desc").get();
   
   if (snapshot.empty) {
@@ -823,7 +840,6 @@ async function exportAttendanceReport(classId, format) {
   });
 
   if (format === 'csv') {
-    // Generate CSV for Excel
     let csvContent = "data:text/csv;charset=utf-8,Name,Role,Class,Joined At\n";
     attendanceData.forEach(row => {
       csvContent += `${row.name},${row.role},${row.class},"${row.time}"\n`;
@@ -836,7 +852,6 @@ async function exportAttendanceReport(classId, format) {
     link.click();
   } 
   else if (format === 'pdf') {
-    // Generate PDF
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     
@@ -850,4 +865,3 @@ async function exportAttendanceReport(classId, format) {
     doc.save(`attendance_${classId}.pdf`);
   }
 }
-
