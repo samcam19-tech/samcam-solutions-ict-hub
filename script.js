@@ -7,21 +7,9 @@ let editingUsername = null;
 let currentStudentSubmissionsPage = 1;
 const ITEMS_PER_PAGE = 5;
 
-// --- FIREBASE INITIALIZATION ---
-const firebaseConfig = {
-  apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
-  authDomain: "samcam-system.firebaseapp.com",
-  projectId: "samcam-system",
-  storageBucket: "samcam-system.firebasestorage.app",
-  messagingSenderId: "74940789582",
-  appId: "1:74940789582:web:f159688165a194e841241f",
-  measurementId: "G-L2H4V8Y050"
-};
-
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);
-window.db = firebase.firestore();
-const storageRef = firebase.storage().ref();
+// --- FIREBASE SETUP ---
+// Firebase is already initialized in firebase-config.js. 
+// You can directly use window.db and window.storageRef across your scripts.
 
 // --- STATE VARIABLES ---
 let assessmentCurrentPage = 1;
