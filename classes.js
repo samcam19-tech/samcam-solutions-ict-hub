@@ -459,7 +459,7 @@ function startCountdownInterval() {
 
 function logAttendance(classId) {
   const session = getCurrentUserSession();
-  const database = db || getDatabaseInstance(); // Aligned with global db
+  const database = db || getDatabaseInstance();
   if (!database || !session.name) return;
 
   database.collection("live_classes").doc(classId).collection("attendance").add({
@@ -616,7 +616,6 @@ function closeScheduleModalDirect() {
 /* ==========================================================================
    FIRESTORE SUBMIT / UPDATE / DELETE WORKFLOW
    ========================================================================== */
-
 function handleScheduleSubmit(e) {
   e.preventDefault();
   
@@ -653,7 +652,7 @@ function handleScheduleSubmit(e) {
   }
 
   const submitBtn = document.getElementById('submitClassBtn');
-  const database = db || getDatabaseInstance(); // Use global db
+  const database = db || getDatabaseInstance();
 
   if (editingClassId) {
     if (!database) {
@@ -685,7 +684,7 @@ function handleScheduleSubmit(e) {
   }
 
   if (!tokenClient) {
-    alert("Google Identity Services is still loading.");
+    alert("Google Identity Services is still loading. Please wait a moment and try again.");
     return;
   }
 
@@ -694,7 +693,7 @@ function handleScheduleSubmit(e) {
 
   tokenClient.callback = async (resp) => {
     if (resp.error !== undefined) {
-      alert("Google Authentication failed.");
+      alert("Google Authentication failed. Unable to generate Meet link.");
       submitBtn.disabled = false;
       submitBtn.innerHTML = `<i class="fa-solid fa-video"></i> Schedule Meet & Save`;
       return;
@@ -708,7 +707,9 @@ function handleScheduleSubmit(e) {
         description, admissionType
       });
 
-      if (!database) throw new Error("Database connection is not available.");
+      if (!database) {
+        throw new Error("Database connection is not available.");
+      }
 
       await database.collection("live_classes").add({
         title, classLevel, instructorName,
@@ -723,10 +724,10 @@ function handleScheduleSubmit(e) {
       document.getElementById('scheduleForm').reset();
       
       if (meetingMode === 'instant') {
-        alert("Instant meeting created successfully! Launching...");
+        alert("Instant meeting created successfully! Launching Google Meet...");
         window.open(meetUrl, '_blank');
       } else {
-        alert("Class scheduled successfully!");
+        alert("Class scheduled successfully with an automated Google Meet link!");
       }
     } catch (err) {
       console.error("Error in scheduling process:", err);
@@ -742,11 +743,11 @@ function handleScheduleSubmit(e) {
 
 async function createGoogleCalendarEvent(accessToken, classData) {
   const restrictionNote = classData.admissionType === 'restricted' 
-    ? "\n\n🔒 [Access Policy: Restricted]" 
-    : "\n\n🔓 [Access Policy: Open entry]";
+    ? "\n\n🔒 [Access Policy: Restricted - Attendees will wait in the knocking room until admitted by the instructor]." 
+    : "\n\n🔓 [Access Policy: Open entry for class participants].";
 
-  const startIso = new Date(classData.startTime).toISOString();
-  const endIso = new Date(classData.endTime).toISOString();
+  const startIso = classData.startTime instanceof Date ? classData.startTime.toISOString() : new Date(classData.startTime).toISOString();
+  const endIso = classData.endTime instanceof Date ? classData.endTime.toISOString() : new Date(classData.endTime).toISOString();
 
   const event = {
     'summary': `[${classData.classLevel}] ${classData.title} - Samcam ICT Hub`,
@@ -763,13 +764,21 @@ async function createGoogleCalendarEvent(accessToken, classData) {
 
   const response = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1', {
     method: 'POST',
-    headers: { 'Authorization': `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
     body: JSON.stringify(event)
   });
 
   const data = await response.json();
-  if (!response.ok) throw new Error(data.error?.message || "Failed to create event.");
-  return data.hangoutLink;
+  if (!response.ok) {
+    throw new Error(data.error?.message || "Failed to create calendar event via API.");
+  }
+
+  const meetLink = data.hangoutLink;
+  if (!meetLink) throw new Error("Google Meet link was not returned by the API.");
+  return meetLink;
 }
 
 function deleteClassSession(classId) {
@@ -779,22 +788,26 @@ function deleteClassSession(classId) {
     return;
   }
 
-  if (confirm("Are you sure you want to delete this session?")) {
+  if (confirm("Are you sure you want to delete this class session? This action cannot be undone.")) {
     database.collection("live_classes").doc(classId).delete().catch(err => {
       console.error("Error deleting session:", err);
-      alert("Failed to delete: " + err.message);
+      alert("Failed to delete session: " + err.message);
     });
   }
 }
 
 async function exportAttendanceReport(classId, format) {
   const database = db || getDatabaseInstance();
-  if (!database) return;
+  if (!database) {
+    alert("Database connection is not available.");
+    return;
+  }
 
-  const snapshot = await database.collection("live_classes").doc(classId).collection("attendance").orderBy("joinedAt", "desc").get();
+  const attendanceRef = database.collection("live_classes").doc(classId).collection("attendance");
+  const snapshot = await attendanceRef.orderBy("joinedAt", "desc").get();
   
   if (snapshot.empty) {
-    alert("No attendance data found.");
+    alert("No attendance data found for this session.");
     return;
   }
 
@@ -810,21 +823,27 @@ async function exportAttendanceReport(classId, format) {
 
   if (format === 'csv') {
     let csvContent = "data:text/csv;charset=utf-8,Name,Role,Class,Joined At\n";
-    attendanceData.forEach(row => csvContent += `${row.name},${row.role},${row.class},"${row.time}"\n`);
+    attendanceData.forEach(row => {
+      csvContent += `${row.name},${row.role},${row.class},"${row.time}"\n`;
+    });
+    const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("href", encodedUri);
     link.setAttribute("download", `attendance_${classId}.csv`);
     document.body.appendChild(link);
     link.click();
-  } else if (format === 'pdf') {
+  } 
+  else if (format === 'pdf') {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
+    
     doc.text("Attendance Report", 14, 15);
     doc.autoTable({
       head: [['Name', 'Role', 'Class', 'Joined At']],
       body: attendanceData.map(r => [r.name, r.role, r.class, r.time]),
       startY: 20
     });
+    
     doc.save(`attendance_${classId}.pdf`);
   }
 }
