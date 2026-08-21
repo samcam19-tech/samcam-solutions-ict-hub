@@ -641,11 +641,19 @@ function handleScheduleSubmit(e) {
 
   const submitBtn = document.getElementById('submitClassBtn');
   
+  // Safely resolve database instance using window.db with fallback
+  const database = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
+
   if (editingClassId) {
+    if (!database) {
+      alert("Database connection is not available.");
+      return;
+    }
+
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Updating...`;
 
-    db.collection("live_classes").doc(editingClassId).update({
+    database.collection("live_classes").doc(editingClassId).update({
       title,
       classLevel,
       instructorName,
@@ -695,7 +703,11 @@ function handleScheduleSubmit(e) {
         admissionType
       });
 
-      await db.collection("live_classes").add({
+      if (!database) {
+        throw new Error("Database connection is not available.");
+      }
+
+      await database.collection("live_classes").add({
         title,
         classLevel,
         instructorName,
