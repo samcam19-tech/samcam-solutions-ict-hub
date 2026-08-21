@@ -194,7 +194,15 @@ window.executeLogin = async function() {
       if (snap.exists) {
         const userData = snap.data();
         if (userData.password === p) {
-          foundUser = userData;
+          // Normalize and enrich the user object with document ID as username
+          foundUser = {
+            username: snap.id,
+            name: userData.fullName || userData.name || snap.id,
+            role: userData.role || 'Student',
+            userClass: userData.class || userData.userClass || '',
+            profilePic: userData.profilePic || '',
+            ...userData
+          };
         }
       }
     } catch (err) {
@@ -206,9 +214,19 @@ window.executeLogin = async function() {
   if (!foundUser) {
     try {
       const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
-      foundUser = localUsers.find(
+      const match = localUsers.find(
         acc => (acc.username || '').toLowerCase() === u && acc.password === p
       );
+      if (match) {
+        foundUser = {
+          username: match.username || u,
+          name: match.fullName || match.name || match.username || u,
+          role: match.role || 'Student',
+          userClass: match.class || match.userClass || '',
+          profilePic: match.profilePic || '',
+          ...match
+        };
+      }
     } catch (e) {
       console.error("Error checking portal_users fallback:", e);
     }
@@ -287,7 +305,6 @@ window.handleLogout = function() {
   // 5. Force a hard redirect or reload to clear cached DOM memory
   window.location.href = 'assessments.html'; 
 };
-
 /* ==========================================================================
    PROFILE PICTURE UPLOAD & UI DISPLAY MODULE
    ========================================================================== */
