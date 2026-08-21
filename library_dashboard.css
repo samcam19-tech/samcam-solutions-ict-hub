@@ -237,3 +237,21 @@ th {
 .btn-delete:hover {
   background: #fecaca;
 }
+
+
+textarea {
+  width: 100%;
+  padding: 0.6rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  outline: none;
+  resize: vertical;
+  min-height: 80px;
+  transition: border-color 0.2s;
+  font-family: 'Inter', sans-serif;
+}
+
+textarea:focus {
+  border-color: var(--primary);
+}
