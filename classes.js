@@ -2,10 +2,6 @@
    SAMCAM SOLUTIONS - LIVE CLASSES & GOOGLE MEET ENGINE (ROLE & CLASS BASED)
    ========================================================================== */
 
-/* ==========================================================================
-   SAMCAM SOLUTIONS - LIVE CLASSES & GOOGLE MEET ENGINE (ROLE & CLASS BASED)
-   ========================================================================== */
-
 // Use the global db instance initialized in firebase-config.js
 const db = window.db || (typeof firebase !== "undefined" ? firebase.firestore() : null);
 
