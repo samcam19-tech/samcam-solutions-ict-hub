@@ -14,10 +14,9 @@ const itemsPerPage = 6; // Number of resource cards per page
 /* ==========================================================================
    BUSINESS PAYMENT CONFIGURATION
    ========================================================================== */
-const SAMCAM_MOMO_CONFIG = {
-  merchantName: "SAMCAM SOLUTIONS ICT HUB",
-  provider: "AIRTEL",
-  merchantNumber: "0703999089"
+const SAMCAM_BUSINESS_NUMBERS = {
+  MTN: "0761230833",
+  AIRTEL: "0703999089" 
 };
 
 
@@ -256,39 +255,38 @@ function initiateMoMoPayment(resourceId, resourceTitle, price) {
   }
 
   modal.innerHTML = `
-    <div class="card" style="width: 100%; max-width: 420px; margin: 1rem; position: relative; background: var(--card-bg);">
+    <div class="card" style="width: 100%; max-width: 440px; margin: 1rem; position: relative; background: var(--card-bg);">
       <button onclick="closeMomoModal()" style="position: absolute; top: 1rem; right: 1rem; background: transparent; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-muted);"><i class="fa-solid fa-xmark"></i></button>
-      <h3 style="margin-bottom: 0.5rem;"><i class="fa-solid fa-mobile-screen-button" style="color:var(--primary);"></i> Mobile Money Checkout</h3>
-      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Unlocking: <strong>${escapeHtml(resourceTitle)}</strong></p>
+      
+      <h3 style="margin-bottom: 0.5rem;"><i class="fa-solid fa-wallet" style="color:var(--primary);"></i> Manual Mobile Money Pay</h3>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">Resource: <strong>${escapeHtml(resourceTitle)}</strong></p>
       
       <div style="background: #f8fafc; padding: 12px; border-radius: 6px; margin-bottom: 1rem; border: 1px solid var(--border-color); font-size: 0.85rem;">
         <div style="display:flex; justify-content:space-between; margin-bottom:6px;">
-          <span>Payable Amount:</span>
-          <strong>UGX ${price.toLocaleString()}</strong>
+          <span>Amount to Pay:</span>
+          <strong style="color: var(--primary);">UGX ${price.toLocaleString()}</strong>
         </div>
-        <div style="display:flex; justify-content:space-between; color: var(--text-muted);">
-          <span>Merchant Number:</span>
-          <strong>${SAMCAM_MOMO_CONFIG.merchantNumber}</strong>
-        </div>
+        <hr style="border:0; border-top:1px solid #e2e8f0; margin: 6px 0;">
+        <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 4px;">Send money using your phone to:</p>
+        <div>📱 <strong>MTN:</strong> ${SAMCAM_BUSINESS_NUMBERS.MTN}</div>
+        <div>📱 <strong>Airtel:</strong> ${SAMCAM_BUSINESS_NUMBERS.AIRTEL}</div>
+        <div style="margin-top:4px; font-size:0.75rem; color:#64748b;">(Registered Name: AKUGIZIBWE SAMUEL)</div>
       </div>
 
-      <form onsubmit="processMomoCheckout(event, '${resourceId}')">
-        <div class="form-group" style="margin-bottom: 1rem;">
-          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Your Mobile Money Network</label>
-          <select id="momoProvider" required style="width:100%; padding: 0.6rem; border-radius:6px; border:1px solid var(--border-color);">
-            <option value="MTN">MTN Mobile Money</option>
-            <option value="AIRTEL">Airtel Money</option>
-          </select>
+      <form onsubmit="verifyManualPayment(event, '${resourceId}')">
+        <div class="form-group" style="margin-bottom: 0.8rem;">
+          <label style="font-size:0.8rem; font-weight:600; display:block; margin-bottom:3px;">Your Phone Number Used to Pay</label>
+          <input type="tel" id="studentPhone" placeholder="e.g. 0772123456" required style="width:100%; padding: 0.55rem; border-radius:6px; border:1px solid var(--border-color); font-size:0.9rem;">
         </div>
 
         <div class="form-group" style="margin-bottom: 1.2rem;">
-          <label style="font-size:0.85rem; font-weight:600; display:block; margin-bottom:4px;">Your Phone Number (For PIN Prompt)</label>
-          <input type="tel" id="momoPhone" placeholder="e.g. 0772xxxxxx or 0752xxxxxx" required style="width:100%; padding: 0.6rem; border-radius:6px; border:1px solid var(--border-color);">
-          <small style="color:var(--text-muted); font-size:0.75rem;">A prompt will be sent to your phone to authorize payment to ${SAMCAM_MOMO_CONFIG.merchantNumber}.</small>
+          <label style="font-size:0.8rem; font-weight:600; display:block; margin-bottom:3px;">Transaction ID / Message Code</label>
+          <input type="text" id="transactionId" placeholder="e.g. TID: 987654321 or Message Ref" required style="width:100%; padding: 0.55rem; border-radius:6px; border:1px solid var(--border-color); font-size:0.9rem;">
+          <small style="color:var(--text-muted); font-size:0.72rem;">Enter the confirmation code you received from MTN/Airtel.</small>
         </div>
 
-        <button type="submit" id="paySubmitBtn" class="btn-primary" style="width:100%; justify-content:center;">
-          <i class="fa-solid fa-shield-halved"></i> Authorize Payment
+        <button type="submit" id="verifyBtn" class="btn-primary" style="width:100%; justify-content:center;">
+          <i class="fa-solid fa-circle-check"></i> Unlock & Download Now
         </button>
       </form>
     </div>
@@ -302,30 +300,26 @@ function closeMomoModal() {
   if (modal) modal.style.display = 'none';
 }
 
-async function processMomoCheckout(e, resourceId) {
+function verifyManualPayment(e, resourceId) {
   e.preventDefault();
-  const phone = document.getElementById('momoPhone').value.trim();
-  const provider = document.getElementById('momoProvider').value;
-  const payBtn = document.getElementById('paySubmitBtn');
+  const phone = document.getElementById('studentPhone').value.trim();
+  const txId = document.getElementById('transactionId').value.trim();
+  const verifyBtn = document.getElementById('verifyBtn');
 
-  payBtn.disabled = true;
-  payBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Sending PIN prompt to ${phone}...`;
+  verifyBtn.disabled = true;
+  verifyBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Verifying Transaction Code...`;
 
-  // Simulate payment processing delay & gateway handshake
-  setTimeout(async () => {
-    payBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Waiting for authorization...`;
-    
-    setTimeout(() => {
-      alert(`Payment successful via ${provider}! Your download link is now unlocked.`);
-      closeMomoModal();
+  // Simulated verification delay (in a live school setting, you can also store this request in Firestore for admin auditing)
+  setTimeout(() => {
+    alert(`Payment reference (${txId}) received successfully! Enjoy your resource.`);
+    closeMomoModal();
 
-      // Find resource data and trigger automatic file download
-      const targetResource = allResources.find(r => r.id === resourceId);
-      if (targetResource && targetResource.fileUrl) {
-        window.open(targetResource.fileUrl, '_blank');
-      }
-    }, 2000);
-  }, 2000);
+    // Find the target resource and trigger automatic download
+    const targetResource = allResources.find(r => r.id === resourceId);
+    if (targetResource && targetResource.fileUrl) {
+      window.open(targetResource.fileUrl, '_blank');
+    }
+  }, 1500);
 }
 
 /* ==========================================================================
