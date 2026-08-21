@@ -101,8 +101,8 @@ function fetchResourcesFromFirestore() {
     return;
   }
 
-  // Real-time listener using Firestore onSnapshot (adjust 'createdAt' or remove orderBy if you don't use a timestamp field)
-  db.collection('resources')
+  // Updated to use your exact Firestore collection name: 'e_library_resources'
+  db.collection('e_library_resources')
     .onSnapshot((snapshot) => {
       allResources = [];
       snapshot.forEach((doc) => {
@@ -111,7 +111,7 @@ function fetchResourcesFromFirestore() {
           id: doc.id,
           title: data.title || 'Untitled Resource',
           description: data.description || '',
-          class: data.class || 'S1',
+          class: data.classLevel || 'S1',      // Mapped to your 'classLevel' field
           category: data.category || 'Notes',
           fileUrl: data.fileUrl || '#',
           fileSize: data.fileSize || '',
