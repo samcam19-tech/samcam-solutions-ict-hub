@@ -79,17 +79,18 @@ body { background-color: var(--bg-main); color: var(--text-main); min-height: 10
   text-align: left;
   line-height: 1.2;
 }
+/* User profile widget typography adjustments */
 .user-info-text span:first-child {
   font-weight: 600;
-  font-size: 0.8rem;
+  font-size: 0.75rem; /* Reduced font size so longer names fit */
   color: var(--text-main);
-  max-width: 130px;
+  max-width: 175px;   /* Slightly widened container space */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .user-info-text span:last-child {
-  font-size: 0.7rem;
+  font-size: 0.68rem;
   color: var(--text-muted);
 }
 
