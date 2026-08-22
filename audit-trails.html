@@ -11,11 +11,33 @@
 
   <!-- FIREBASE SDKs (Compat Version) -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 
   <!-- YOUR FIREBASE CONFIGURATION -->
   <script src="firebase-config.js"></script>
+
+  <!-- ADMIN ACCESS PROTECTION SCRIPT -->
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      // Check authentication state through Firebase
+      if (typeof firebase !== 'undefined' && firebase.auth) {
+        firebase.auth().onAuthStateChanged(async (user) => {
+          if (!user) {
+            // Not logged in at all -> redirect to portal/login
+            alert("Access Denied: Please log in with an administrator account.");
+            window.location.href = "assessments.html";
+          } else {
+            // Optional: Check custom claims or admin whitelist email/role if configured
+            // const idTokenResult = await user.getIdTokenResult();
+            // if (!idTokenResult.claims.admin) { ... }
+            console.log("Admin verified:", user.email);
+          }
+        });
+      }
+    });
+  </script>
 </head>
 <body>
 
