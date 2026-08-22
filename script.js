@@ -2212,32 +2212,40 @@ window.handleUpdateAccountDetails = function(event) {
           migratedData.password = newPassword;
         }
 
-        // Create new document first, then delete the old one
+        // 1. Create the new document with the new username
         db.collection("users").doc(newUsername).set(migratedData)
-          .then(() => userRef.delete())
           .then(() => {
-            currentUser.username = newUsername;
-            localStorage.setItem('portal_session', JSON.stringify(currentUser));
-            
+            // 2. Forcefully delete the old document
+            return userRef.delete();
+          })
+          .then(() => {
+            // 3. Clear local session & remembered details so they are forced to log in fresh
+            localStorage.removeItem('portal_session');
+            localStorage.removeItem('portal_remembered_user');
+            localStorage.removeItem('portal_remembered_pass');
+
             showCustomModal({
-              title: "Success",
-              message: "Username and account details updated successfully!",
+              title: "Username Updated Successfully",
+              message: "Your username has been changed. Please sign in again with your new username.",
               type: "success"
             });
-            
-            if (typeof clearFormAndFinish === 'function') clearFormAndFinish();
+
+            // Delay reload slightly so the user can read the modal before being sent back to login
+            setTimeout(() => {
+              window.location.reload();
+            }, 2000);
           })
           .catch((err) => {
-            console.error("Error migrating username:", err);
+            console.error("Error migrating username and cleaning old record:", err);
             showCustomModal({
               title: "Update Failed",
-              message: "Failed to update username. Check console.",
+              message: "Failed to complete username migration. Check console.",
               type: "error"
             });
           });
       });
     } 
-    // SCENARIO B: Only Password (or other profile fields) is updating in place
+    // SCENARIO B: Only Password is changing in place
     else {
       const updatePayload = {};
       if (updatingPassword) {
@@ -2247,16 +2255,16 @@ window.handleUpdateAccountDetails = function(event) {
       userRef.update(updatePayload).then(() => {
         showCustomModal({
           title: "Success",
-          message: "Account details updated successfully!",
+          message: "Password updated successfully!",
           type: "success"
         });
         
         if (typeof clearFormAndFinish === 'function') clearFormAndFinish();
       }).catch((err) => {
-        console.error("Error updating account:", err);
+        console.error("Error updating password:", err);
         showCustomModal({
           title: "Update Failed",
-          message: "Failed to update account details.",
+          message: "Failed to update password.",
           type: "error"
         });
       });
