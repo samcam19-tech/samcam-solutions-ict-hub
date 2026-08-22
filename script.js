@@ -2363,17 +2363,17 @@ window.renderSubmissions = async function() {
   submissions.sort((a, b) => new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0));
 
   container.innerHTML = submissions.map(sub => `
-    <div class="sub-item" style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem; border-bottom:1px solid #e2e8f0;">
-      <div>
+    <div class="sub-item" style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem; border-bottom:1px solid #e2e8f0; gap: 1rem;">
+      <div style="flex: 1; min-width: 0;">
         <strong>${sub.studentName}</strong> <small style="color:#2563eb;">(${sub.studentClass})</small><br>
-        <span style="color:#64748b; font-size:0.85rem;">${sub.testTitle} - <em>${sub.fileName}</em></span>
+        <span style="color:#64748b; font-size:0.85rem; word-break: break-word;">${sub.testTitle} - <em>${sub.fileName}</em></span>
         ${sub.grade ? `<br><span style="color:#16a34a; font-size:0.80rem; font-weight:600;"><i class="fa-solid fa-award"></i> Grade: ${sub.grade}</span>` : ''}
       </div>
-      <div style="display:flex; gap:0.4rem; align-items:center;">
-        <a href="${sub.fileUrl}" download="${sub.fileName || 'submission'}" target="_blank" rel="noopener noreferrer" class="btn-action btn-download" style="padding:0.3rem 0.6rem; font-size:0.75rem;">
+      <div style="display:flex; gap:0.4rem; align-items:center; flex-shrink: 0;">
+        <a href="${sub.fileUrl}" download="${sub.fileName || 'submission'}" target="_blank" rel="noopener noreferrer" class="btn-action btn-download" style="padding:0.4rem 0.75rem; font-size:0.8rem; white-space: nowrap;">
           <i class="fa-solid fa-download"></i> Get File
         </a>
-        <button type="button" onclick="openGradingModal('${sub.id}')" class="btn-action btn-edit" style="padding:0.3rem 0.6rem; font-size:0.75rem;">
+        <button type="button" onclick="openGradingModal('${sub.id}')" class="btn-action btn-edit" style="padding:0.4rem 0.75rem; font-size:0.8rem; white-space: nowrap;">
           <i class="fa-solid fa-star"></i> Grade
         </button>
       </div>
