@@ -1,6 +1,66 @@
 /**
  * Automatically load and render audit logs from Firestore or LocalStorage when the audit page opens
  */
+/**
+ * Advanced User Agent Parser for exact device identification
+ */
+function parseExactDevice(userAgentStr) {
+  if (!userAgentStr) return 'Unknown Device';
+  const ua = userAgentStr;
+  const uaLower = ua.toLowerCase();
+
+  let os = 'Unknown OS';
+  let deviceName = 'Desktop / PC';
+
+  // 1. Mobile Devices & Exact Models
+  if (uaLower.includes('iphone')) {
+    os = 'iOS';
+    deviceName = 'iPhone';
+  } else if (uaLower.includes('ipad')) {
+    os = 'iOS';
+    deviceName = 'iPad';
+  } else if (uaLower.includes('android')) {
+    os = 'Android';
+    deviceName = 'Smartphone';
+    
+    // Attempt to extract specific Android device model if present in parentheses
+    const match = ua.match(/\(([^)]+)\)/);
+    if (match && match[1]) {
+      const parts = match[1].split(';');
+      const potentialModel = parts[parts.length - 1].trim();
+      if (potentialModel && !potentialModel.includes('KHTML') && !potentialModel.includes('Mobile')) {
+        deviceName = potentialModel;
+      }
+    }
+  } else if (uaLower.includes('windows')) {
+    os = 'Windows';
+    deviceName = uaLower.includes('touch') ? 'Windows Tablet' : 'Windows PC';
+  } else if (uaLower.includes('macintosh') || uaLower.includes('mac os')) {
+    os = 'MacOS';
+    deviceName = 'Mac';
+  } else if (uaLower.includes('linux')) {
+    os = 'Linux';
+    deviceName = 'Linux PC';
+  }
+
+  // 2. Browser Detection
+  let browser = 'Browser';
+  if (uaLower.includes('chrome') && !uaLower.includes('edge') && !uaLower.includes('opr')) {
+    browser = 'Chrome';
+  } else if (uaLower.includes('safari') && !uaLower.includes('chrome')) {
+    browser = 'Safari';
+  } else if (uaLower.includes('firefox')) {
+    browser = 'Firefox';
+  } else if (uaLower.includes('edge') || uaLower.includes('edg')) {
+    browser = 'Edge';
+  }
+
+  return `${browser} / ${deviceName} (${os})`;
+}
+
+/**
+ * Automatically load and render audit logs from Firestore or LocalStorage when the audit page opens
+ */
 async function loadAuditLogs() {
   const tableBody = document.getElementById('auditLogsTableBody');
   if (!tableBody) return;
@@ -44,35 +104,8 @@ async function loadAuditLogs() {
         formattedDate = d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
       } catch (e) {}
 
-      // Robust User Agent Parser for accurate mobile/desktop display
-      const ua = (log.userAgent || '').toLowerCase();
-      let os = 'Desktop';
-      if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ios')) {
-        os = 'iOS';
-      } else if (ua.includes('android')) {
-        os = 'Android';
-      } else if (ua.includes('windows')) {
-        os = 'Windows';
-      } else if (ua.includes('macintosh') || ua.includes('mac os')) {
-        os = 'Mac';
-      } else if (ua.includes('linux')) {
-        os = 'Linux';
-      }
-
-      let browser = 'Browser';
-      if (ua.includes('chrome') && !ua.includes('edge') && !ua.includes('opr')) {
-        browser = 'Chrome';
-      } else if (ua.includes('safari') && !ua.includes('chrome')) {
-        browser = 'Safari';
-      } else if (ua.includes('firefox')) {
-        browser = 'Firefox';
-      } else if (ua.includes('edge') || ua.includes('edg')) {
-        browser = 'Edge';
-      } else if (ua.includes('mobi') || ua.includes('android') || ua.includes('iphone')) {
-        browser = 'Mobile Browser';
-      }
-
-      let shortDevice = `${browser} / ${os}`;
+      // Get exact device name using advanced parser
+      let shortDevice = parseExactDevice(log.userAgent);
 
       const tr = document.createElement('tr');
       tr.setAttribute('data-status', log.status);
@@ -98,7 +131,6 @@ async function loadAuditLogs() {
     filterAuditLogs();
   }
 }
-
 /**
  * Filter audit trail rows dynamically based on search text, status, and time range.
  */
