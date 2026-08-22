@@ -21,20 +21,26 @@
   <!-- ADMIN ACCESS PROTECTION SCRIPT -->
   <script>
     document.addEventListener("DOMContentLoaded", function () {
-      // Check authentication state through Firebase
-      if (typeof firebase !== 'undefined' && firebase.auth) {
-        firebase.auth().onAuthStateChanged(async (user) => {
-          if (!user) {
-            // Not logged in at all -> redirect to portal/login
-            alert("Access Denied: Please log in with an administrator account.");
-            window.location.href = "assessments.html";
-          } else {
-            // Optional: Check custom claims or admin whitelist email/role if configured
-            // const idTokenResult = await user.getIdTokenResult();
-            // if (!idTokenResult.claims.admin) { ... }
-            console.log("Admin verified:", user.email);
-          }
-        });
+      try {
+        const sessionData = localStorage.getItem('portal_session');
+        if (!sessionData) {
+          throw new Error("No active session found.");
+        }
+
+        const user = JSON.parse(sessionData);
+        const role = (user.role || '').toLowerCase();
+        
+        // Verify if the active session belongs to an admin/administrator
+        if (role !== 'admin' && role !== 'administrator') {
+          alert("Access Denied: Administrator privileges required.");
+          window.location.href = "assessments.html";
+        } else {
+          console.log("Admin session verified for:", user.name || user.username);
+        }
+      } catch (err) {
+        console.warn("Authentication check failed:", err.message);
+        alert("Access Denied: Please log in with an administrator account.");
+        window.location.href = "assessments.html";
       }
     });
   </script>
