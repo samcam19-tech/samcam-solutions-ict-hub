@@ -182,7 +182,7 @@ function toggleCardExpansion(postId) {
 /* ==========================================================================
    PUBLISH NEW POST TO FIRESTORE (Secured for Teachers & Admins)
    ========================================================================== */
-function openPublishModal() {
+async function openPublishModal() {
   if (!currentUser) {
     alert("Please log in as a teacher or administrator to publish new posts.");
     return;
@@ -192,6 +192,21 @@ function openPublishModal() {
   if (roleLower !== 'teacher' && roleLower !== 'admin' && roleLower !== 'administrator') {
     alert("Access Denied: Only teachers and administrators are authorized to publish blog posts.");
     return;
+  }
+
+  // Fetch the latest user profile directly from Firestore using their username/ID
+  try {
+    const userDocId = currentUser.username || currentUser.id;
+    if (userDocId) {
+      const userDoc = await db.collection('users').doc(userDocId).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        currentUser.profilePic = userData.profilePic || currentUser.profilePic;
+        currentUser.fullName = userData.fullName || currentUser.fullName;
+      }
+    }
+  } catch (err) {
+    console.warn("Could not fetch latest user profile from Firestore:", err);
   }
 
   // Pre-fill author name from session if available
@@ -224,7 +239,7 @@ function handlePublishSubmit(e) {
     title: document.getElementById('newTitle').value,
     category: document.getElementById('newCategory').value,
     author: document.getElementById('newAuthor').value || currentUser.fullName || 'Samcam ICT Dept',
-    authorAvatar: currentUser.profilePic || currentUser.avatar || '', // Captures profile picture from session
+    authorAvatar: currentUser.profilePic || currentUser.avatar || '', // Captures profile picture link from session/Firestore
     excerpt: document.getElementById('newExcerpt').value,
     content: document.getElementById('newContent').value,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
