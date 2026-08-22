@@ -1031,9 +1031,6 @@ window.deleteAllStudents = async function() {
   }
 };
 
-/* ==========================================================================
-   4. ASSESSMENT & SUBMISSION ENGINE
-   ========================================================================== */
 window.handleCreateAssessment = function(e) {
   e.preventDefault();
   if (!currentUser || currentUser.role !== 'Teacher') return;
@@ -1062,7 +1059,10 @@ window.handleCreateAssessment = function(e) {
   localStorage.setItem('portal_resources', JSON.stringify(resources));
 
   alert('Assessment published successfully!');
-  e.target.reset();
+  
+  // FIX: Reset the form by its specific ID instead of e.target
+  document.getElementById('assessmentForm').reset();
+  
   renderAssessments();
 };
 
