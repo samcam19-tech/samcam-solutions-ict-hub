@@ -55,6 +55,8 @@ body {
   margin-bottom: 2rem;
   border-left: 5px solid var(--primary);
   border: 1px solid var(--border-color);
+  flex-wrap: nowrap;
+  gap: 1.5rem;
 }
 
 .dash-header h2 {
@@ -74,14 +76,13 @@ body {
   display: flex;
   gap: 0.75rem;
   align-items: center;
+  flex-shrink: 0;
 }
 
-.dash-header .btn-secondary,
-.dash-header .btn-primary {
-  background: transparent !important;
-  color: var(--text-main) !important;
-  border: 1px solid var(--border-color) !important;
-  padding: 0.55rem 1rem;
+/* Header action links: borderless, single-line, colorful */
+.dash-header .header-actions a {
+  border: none !important;
+  padding: 0.6rem 1.1rem;
   border-radius: 8px;
   font-size: 0.875rem;
   font-weight: 600;
@@ -89,16 +90,25 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  white-space: nowrap !important;
   box-shadow: none !important;
   transition: all 0.2s ease;
 }
 
-.dash-header .btn-secondary:hover,
-.dash-header .btn-primary:hover {
-  background: #f8fafc !important;
-  border-color: var(--primary) !important;
-  color: var(--primary) !important;
+.dash-header .header-actions a:hover {
   transform: translateY(-1px);
+  opacity: 0.9;
+}
+
+/* Specific colorful fills for header action buttons */
+.dash-header .header-actions .btn-primary {
+  background: #d97706 !important; /* Vibrant Amber */
+  color: #ffffff !important;
+}
+
+.dash-header .header-actions .btn-secondary {
+  background: #4f46e5 !important; /* Vibrant Indigo */
+  color: #ffffff !important;
 }
 
 /* ==========================================================================
