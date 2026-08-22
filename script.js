@@ -2218,22 +2218,30 @@ window.openGradingModal = function(submissionId) {
     modal.innerHTML = `
       <div class="modal-content" style="background:#fff; padding:2rem; border-radius:12px; width:90%; max-width:500px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-          <h3 style="margin:0; color:#1e293b;">Grade Student Submission</h3>
+          <h3 style="margin:0; color:#1e293b;"><i class="fa-solid fa-award"></i> Grade Student Submission</h3>
           <button type="button" onclick="closeGradingModal()" style="background:none; border:none; font-size:1.2rem; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <form id="gradingForm" onsubmit="saveSubmissionGrade(event)">
           <input type="hidden" id="gradingSubmissionId">
-          <div style="margin-bottom:1rem;">
-            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.3rem;">Grade / Score</label>
+          <div style="margin-bottom:0.8rem;">
+            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.2rem;">Student Name</label>
+            <input type="text" id="modalStudentName" readonly style="width:100%; padding:0.5rem; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; color:#475569;">
+          </div>
+          <div style="margin-bottom:0.8rem;">
+            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.2rem;">Assessment Title</label>
+            <input type="text" id="modalAssessmentTitle" readonly style="width:100%; padding:0.5rem; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; color:#475569;">
+          </div>
+          <div style="margin-bottom:0.8rem;">
+            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.2rem;">Score / Grade</label>
             <input type="text" id="gradeScoreInput" placeholder="e.g. 85/100 or Distinction" required style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px;">
           </div>
           <div style="margin-bottom:1rem;">
-            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.3rem;">Teacher Feedback / Comments</label>
-            <textarea id="gradeFeedbackInput" rows="4" placeholder="Provide constructive feedback..." style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px;"></textarea>
+            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.2rem;">Teacher Feedback / Comments</label>
+            <textarea id="gradeFeedbackInput" rows="3" placeholder="Provide constructive feedback..." style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px;"></textarea>
           </div>
           <div style="display:flex; justify-content:flex-end; gap:0.5rem;">
-            <button type="button" onclick="closeGradingModal()" class="btn-action btn-secondary">Cancel</button>
-            <button type="submit" class="btn-action btn-upload">Save Grade & Feedback</button>
+            <button type="button" onclick="closeGradingModal()" class="btn-action btn-secondary" style="padding:0.5rem 1rem;">Cancel</button>
+            <button type="submit" class="btn-action btn-upload" style="padding:0.5rem 1rem;">Save Grade & Feedback</button>
           </div>
         </form>
       </div>
@@ -2241,19 +2249,17 @@ window.openGradingModal = function(submissionId) {
     document.body.appendChild(modal);
   }
 
-  // Make sure modal is visible immediately so inputs enter the DOM layout
+  // Display modal immediately
   modal.style.display = 'flex';
 
-  // Safely assign values once elements are guaranteed to exist
-  const idField = document.getElementById('gradingSubmissionId');
-  const scoreField = document.getElementById('gradeScoreInput');
-  const feedbackField = document.getElementById('gradeFeedbackInput');
+  // Set initial fields
+  document.getElementById('gradingSubmissionId').value = submissionId;
+  document.getElementById('modalStudentName').value = 'Loading...';
+  document.getElementById('modalAssessmentTitle').value = 'Loading...';
+  document.getElementById('gradeScoreInput').value = '';
+  document.getElementById('gradeFeedbackInput').value = '';
 
-  if (idField) idField.value = submissionId;
-  if (scoreField) scoreField.value = '';
-  if (feedbackField) feedbackField.value = '';
-
-  // Fetch existing data asynchronously in the background
+  // Fetch submission details asynchronously from Firestore or LocalStorage cache
   (async () => {
     let targetSub = null;
     if (window.db) {
@@ -2273,8 +2279,13 @@ window.openGradingModal = function(submissionId) {
     }
 
     if (targetSub) {
-      if (scoreField) scoreField.value = targetSub.grade || '';
-      if (feedbackField) feedbackField.value = targetSub.feedback || '';
+      document.getElementById('modalStudentName').value = targetSub.studentName || 'Unknown Student';
+      document.getElementById('modalAssessmentTitle').value = targetSub.testTitle || 'Untitled Assessment';
+      document.getElementById('gradeScoreInput').value = targetSub.grade || '';
+      document.getElementById('gradeFeedbackInput').value = targetSub.feedback || '';
+    } else {
+      document.getElementById('modalStudentName').value = 'Not Found';
+      document.getElementById('modalAssessmentTitle').value = 'Not Found';
     }
   })();
 };
