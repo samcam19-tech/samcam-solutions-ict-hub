@@ -1,101 +1,68 @@
 /* ==========================================================================
-   WORLD-CLASS ICT BLOG ENGINE (blog.js)
+   FIREBASE-CONNECTED ICT BLOG ENGINE (blog.js)
    ========================================================================== */
 
-// Sample Professional ICT Dataset (Pre-populated with rich articles spanning categories)
-let blogPosts = [
-  {
-    id: 1,
-    title: "Mastering UNEB Subsidiary ICT Practical Spreadsheets: Advanced XLOOKUP & Nested IFs",
-    category: "Practical",
-    date: "2026-08-20",
-    author: "Samcam ICT Dept",
-    excerpt: "A complete step-by-step breakdown of handling complex financial and academic database models using modern spreadsheet lookup vectors.",
-    content: "Full article content covering absolute referencing, data validation error trapping, and matrix sorting formulas for senior classes."
-  },
-  {
-    id: 2,
-    title: "Understanding Electronic Waste Management Protocols in Modern Computer Laboratories",
-    category: "General",
-    date: "2026-08-18",
-    author: "Environmental Tech Unit",
-    excerpt: "Exploring green computing principles, cathode-ray tube disposal safety measures, and institutional recycling frameworks.",
-    content: "Full article content addressing toxic heavy metal components, municipal e-waste collection standards, and sustainable hardware procurement."
-  },
-  {
-    id: 3,
-    title: "Database Normalization Made Easy: From First Normal Form to Boyce-Codd",
-    category: "Theory",
-    date: "2026-08-15",
-    author: "Database Architecture Team",
-    excerpt: "A simplified conceptual guide designed for Advanced Level students tackling relational database integrity and functional dependencies.",
-    content: "Full article content illustrating repeating groups elimination, primary-foreign key linkages, and anomaly prevention techniques."
-  },
-  {
-    id: 4,
-    title: "Standardized Assessment Datasets for Senior 3 & Senior 4 Termly Practical Exams",
-    category: "Datasets",
-    date: "2026-08-10",
-    author: "Curriculum Specialist",
-    excerpt: "Download curated CSV and Microsoft Access template files structured for competency-based evaluation rubrics.",
-    content: "Full article content outlining raw table structures, record relationships, and automated grading benchmark keys."
-  },
-  {
-    id: 5,
-    title: "Optimizing Client-Side PDF Generation with JavaScript and jsPDF AutoTable",
-    category: "Practical",
-    date: "2026-08-05",
-    author: "Web Engineering Unit",
-    excerpt: "Learn how to build dynamic student performance report slips directly in the browser without server-side rendering dependencies.",
-    content: "Full article content detailing canvas scaling, multi-page document pagination, and custom table cell styling scripts."
-  },
-  {
-    id: 6,
-    title: "Network Printer Troubleshooting: Resolving Error 0x0000011b on Windows Environments",
-    category: "General",
-    date: "2026-07-28",
-    author: "System Support Desk",
-    excerpt: "Quick registry modifications and RPC configuration steps to restore shared departmental network printing connectivity.",
-    content: "Full article content covering RpcAuthnLevelPrivacyEnabled adjustments and patch management protocols."
-  }
-];
-
 // Application State
+let blogPosts = [];
 let currentCategory = 'all';
 let searchQuery = '';
 let currentPage = 1;
 const postsPerPage = 4;
 
-// Initialize Blog on DOM Load
+// Initialize Blog and Attach Firestore Real-Time Listeners
 document.addEventListener('DOMContentLoaded', () => {
-  renderBlog();
+  fetchBlogPostsFromCloud();
 });
 
 /* ==========================================================================
-   CORE RENDERING & SORTING LOGIC (Reverse Chronological Order)
+   FIRESTORE DATA RETRIEVAL (Reverse Chronological Order)
+   ========================================================================== */
+function fetchBlogPostsFromCloud() {
+  const gridContainer = document.getElementById('blogGrid');
+  gridContainer.innerHTML = `<div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i> Syncing live ICT insights from Firestore...</div>`;
+
+  // Query Firestore collection 'blog_posts', ordered by publication timestamp descending (newest first)
+  db.collection('blog_posts')
+    .orderBy('createdAt', 'desc')
+    .onSnapshot((snapshot) => {
+      blogPosts = [];
+      snapshot.forEach((doc) => {
+        blogPosts.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      renderBlog();
+    }, (error) => {
+      console.error("Error fetching blog posts: ", error);
+      gridContainer.innerHTML = `<div class="no-posts" style="color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> Failed to load cloud posts. Please check your Firebase configuration.</div>`;
+    });
+}
+
+/* ==========================================================================
+   RENDERING & FILTERING ENGINE
    ========================================================================== */
 function renderBlog() {
   const gridContainer = document.getElementById('blogGrid');
   
-  // 1. Sort posts in Reverse Chronological Order (Newest date first)
-  let filteredPosts = blogPosts.sort((a, b) => new Date(b.date) - new Date(a.date));
+  let filteredPosts = [...blogPosts];
 
-  // 2. Filter by Category Tab
+  // 1. Filter by Category Tab
   if (currentCategory !== 'all') {
-    filteredPosts = filteredPosts.filter(post => post.category.toLowerCase() === currentCategory.toLowerCase());
+    filteredPosts = filteredPosts.filter(post => post.category && post.category.toLowerCase() === currentCategory.toLowerCase());
   }
 
-  // 3. Filter by Search Query (Title, excerpt, or category match)
+  // 2. Filter by Search Query
   if (searchQuery.trim() !== '') {
     const query = searchQuery.toLowerCase();
     filteredPosts = filteredPosts.filter(post => 
-      post.title.toLowerCase().includes(query) || 
-      post.excerpt.toLowerCase().includes(query) ||
-      post.category.toLowerCase().includes(query)
+      (post.title && post.title.toLowerCase().includes(query)) || 
+      (post.excerpt && post.excerpt.toLowerCase().includes(query)) ||
+      (post.category && post.category.toLowerCase().includes(query))
     );
   }
 
-  // 4. Handle Pagination Slicing
+  // 3. Handle Pagination Slicing
   const totalPosts = filteredPosts.length;
   const totalPages = Math.ceil(totalPosts / postsPerPage) || 1;
   
@@ -105,7 +72,7 @@ function renderBlog() {
   const startIndex = (currentPage - 1) * postsPerPage;
   const paginatedPosts = filteredPosts.slice(startIndex, startIndex + postsPerPage);
 
-  // 5. Render HTML Cards
+  // 4. Render HTML Cards
   if (paginatedPosts.length === 0) {
     gridContainer.innerHTML = `<div class="no-posts"><i class="fa-solid fa-folder-open" style="font-size: 2rem; margin-bottom: 0.75rem; display: block;"></i>No ICT posts found matching your criteria.</div>`;
     updatePaginationControls(0, 1);
@@ -119,18 +86,25 @@ function renderBlog() {
     else if (post.category === 'Theory') badgeClass = 'badge-theory';
     else if (post.category === 'Datasets') badgeClass = 'badge-datasets';
 
+    // Handle Firestore Timestamp formatting
+    let formattedDate = "Recent";
+    if (post.createdAt) {
+      const dateObj = post.createdAt.toDate ? post.createdAt.toDate() : new Date(post.createdAt);
+      formattedDate = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
     htmlContent += `
       <article class="blog-card">
         <div class="blog-card-header">
-          <span class="blog-badge ${badgeClass}">${post.category}</span>
-          <span class="blog-date"><i class="fa-regular fa-calendar"></i> ${formatDate(post.date)}</span>
+          <span class="blog-badge ${badgeClass}">${post.category || 'General'}</span>
+          <span class="blog-date"><i class="fa-regular fa-calendar"></i> ${formattedDate}</span>
         </div>
         <div class="blog-card-body">
           <h3>${post.title}</h3>
           <p>${post.excerpt}</p>
           <div class="blog-card-footer">
-            <span class="blog-author"><i class="fa-solid fa-user-pen"></i> ${post.author}</span>
-            <button class="read-more-btn" onclick="openPostDetail(${post.id})">
+            <span class="blog-author"><i class="fa-solid fa-user-pen"></i> ${post.author || 'Samcam ICT'}</span>
+            <button class="read-more-btn" onclick="openPostDetail('${post.id}')">
               Read Article <i class="fa-solid fa-arrow-right"></i>
             </button>
           </div>
@@ -144,13 +118,54 @@ function renderBlog() {
 }
 
 /* ==========================================================================
-   INTERACTION HANDLERS & FILTERS
+   PUBLISH NEW POST TO FIRESTORE
+   ========================================================================== */
+function openPublishModal() {
+  document.getElementById('publishModal').style.display = 'flex';
+}
+
+function closePublishModal() {
+  document.getElementById('publishModal').style.display = 'none';
+  document.getElementById('publishForm').reset();
+}
+
+function handlePublishSubmit(e) {
+  e.preventDefault();
+  const submitBtn = document.getElementById('submitPostBtn');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving to Cloud...';
+
+  const newPostData = {
+    title: document.getElementById('newTitle').value,
+    category: document.getElementById('newCategory').value,
+    author: document.getElementById('newAuthor').value,
+    excerpt: document.getElementById('newExcerpt').value,
+    content: document.getElementById('newContent').value,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp() // Ensures precise chronological ordering
+  };
+
+  db.collection('blog_posts').add(newPostData)
+    .then(() => {
+      alert('🚀 ICT post successfully published to Firestore!');
+      closePublishModal();
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Publish to Cloud';
+    })
+    .catch((error) => {
+      console.error("Error adding post: ", error);
+      alert('Failed to publish post. Check console logs.');
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = 'Publish to Cloud';
+    });
+}
+
+/* ==========================================================================
+   CONTROLS & INTERACTIONS
    ========================================================================== */
 function filterByCategory(category) {
   currentCategory = category;
-  currentPage = 1; // Reset to first page on category change
+  currentPage = 1;
 
-  // Update active states on tabs
   document.querySelectorAll('.tab-btn').forEach(btn => {
     if (btn.getAttribute('data-category') === category) {
       btn.classList.add('active');
@@ -163,9 +178,8 @@ function filterByCategory(category) {
 }
 
 function handleSearch() {
-  const inputElem = document.getElementById('blogSearchInput');
-  searchQuery = inputElem.value;
-  currentPage = 1; // Reset to first page on search
+  searchQuery = document.getElementById('blogSearchInput').value;
+  currentPage = 1;
   renderBlog();
 }
 
@@ -185,14 +199,13 @@ function updatePaginationControls(totalPosts, totalPages) {
   nextBtn.disabled = currentPage >= totalPages;
 }
 
-function formatDate(dateString) {
-  const options = { year: 'numeric', month: 'short', day: 'numeric' };
-  return new Date(dateString).toLocaleDateString('en-US', options);
-}
-
 function openPostDetail(postId) {
   const post = blogPosts.find(p => p.id === postId);
   if (post) {
-    alert(`📖 Reading: ${post.title}\n\nAuthor: ${post.author}\nPublished: ${post.date}\n\nSummary: ${post.content}`);
+    let dateStr = "Recent";
+    if (post.createdAt && post.createdAt.toDate) {
+      dateStr = post.createdAt.toDate().toLocaleDateString();
+    }
+    alert(`📖 ${post.title}\n\nCategory: ${post.category}\nAuthor: ${post.author} (${dateStr})\n\n----------------------------------------\n${post.content}`);
   }
 }
