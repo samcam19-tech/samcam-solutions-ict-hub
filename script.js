@@ -1171,6 +1171,8 @@ function renderAssessments() {
     const safeTitle = encodeURIComponent(a.title);
 
     let actionHTML = '';
+    
+    // Student Actions
     if (currentUser && currentUser.role === 'Student') {
         if (studentSub) {
             actionHTML = `<span style="color:#16a34a; font-size:0.85rem; font-weight:600;"><i class="fa-solid fa-circle-check"></i> Submitted (${studentSub.fileName})</span>`;
@@ -1189,6 +1191,13 @@ function renderAssessments() {
                 actionHTML = `<button type="button" onclick="openSubmissionModalWithDetails('${a.id}', '${safeTitle}')" class="btn-action btn-upload"><i class="fa-solid fa-file-arrow-up"></i> Upload Answer</button>`;
             }
         }
+    } 
+    // Teacher / Admin Actions
+    else if (currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin')) {
+        actionHTML = `
+            <button type="button" onclick="openEditAssessmentModal('${a.id}')" class="btn-action btn-edit"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+            <button type="button" onclick="handleDeleteAssessment('${a.id}')" class="btn-action btn-danger"><i class="fa-solid fa-trash-can"></i> Delete</button>
+        `;
     }
 
     return `
@@ -1208,6 +1217,109 @@ function renderAssessments() {
     `;
   }).join('');
 }
+
+// Open the Edit Assessment Modal and populate fields with current values
+function openEditAssessmentModal(assessmentId) {
+  const resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
+  const assessment = resources.find(r => String(r.id) === String(assessmentId));
+  
+  if (!assessment) {
+    alert("Assessment not found.");
+    return;
+  }
+
+  // Fill modal input fields
+  document.getElementById('editTestId').value = assessment.id;
+  document.getElementById('editTestTitle').value = assessment.title || '';
+  document.getElementById('editTargetClass').value = assessment.class || 'S1';
+  document.getElementById('editTestDesc').value = assessment.description || '';
+  
+  // Format date correctly for datetime-local input (YYYY-MM-DDTHH:mm)
+  if (assessment.deadline) {
+    const d = new Date(assessment.deadline);
+    const isoString = d.toISOString().slice(0, 16);
+    document.getElementById('editTestDeadline').value = isoString;
+  }
+
+  // Show the modal (adjusting depending on how you manage modal visibility, e.g., class toggle or display style)
+  const modal = document.getElementById('editAssessmentModal');
+  if (modal) modal.style.display = 'flex';
+}
+
+// Handle deletion of an assessment
+function handleDeleteAssessment(assessmentId) {
+  if (!confirm("Are you sure you want to delete this assessment? This will also remove associated student submissions.")) {
+    return;
+  }
+
+  let resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
+  resources = resources.filter(r => String(r.id) !== String(assessmentId));
+  localStorage.setItem('portal_resources', JSON.stringifyResources ? JSON.stringify(resources) : JSON.stringify(resources)); // Safe fallback
+
+  // Also clean up submissions tied to this test
+  let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+  submissions = submissions.filter(s => String(s.testId) !== String(assessmentId));
+  localStorage.setItem('portal_submissions', JSON.stringify(submissions));
+
+  alert("Assessment deleted successfully.");
+  renderAssessments(); // Refresh view
+}
+
+// Event listener setup for saving edits (typically run inside your DOMContentLoaded block)
+document.addEventListener('DOMContentLoaded', () => {
+  const editForm = document.getElementById('editAssessmentForm');
+  if (editForm) {
+    editForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const id = document.getElementById('editTestId').value;
+      const title = document.getElementById('editTestTitle').value;
+      const targetClass = document.getElementById('editTargetClass').value;
+      const description = document.getElementById('editTestDesc').value;
+      const deadline = document.getElementById('editTestDeadline').value;
+      const fileInput = document.getElementById('editTestFile');
+
+      let resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
+      let index = resources.findIndex(r => String(r.id) === String(id));
+
+      if (index !== -1) {
+        resources[index].title = title;
+        resources[index].class = targetClass;
+        resources[index].description = description;
+        resources[index].deadline = deadline;
+
+        // If a new file was attached, handle it (or mock the URL path update)
+        if (fileInput && fileInput.files.length > 0) {
+          const file = fileInput.files[0];
+          resources[index].fileName = file.name;
+          resources[index].fileUrl = URL.createObjectURL(file); // Or use your base64 upload logic
+        }
+
+        localStorage.setItem('portal_resources', JSON.stringify(resources));
+        
+        // Hide modal
+        const modal = document.getElementById('editAssessmentModal');
+        if (modal) modal.style.display = 'none';
+
+        alert("Assessment updated successfully!");
+        renderAssessments();
+      }
+    });
+  }
+
+  // Close modal bindings
+  const closeEditBtn = document.getElementById('closeEditAssessmentModalBtn');
+  const cancelEditBtn = document.getElementById('cancelEditAssessmentBtn');
+  const editModal = document.getElementById('editAssessmentModal');
+
+  [closeEditBtn, cancelEditBtn].forEach(btn => {
+    if (btn) {
+      btn.addEventListener('click', () => {
+        if (editModal) editModal.style.display = 'none';
+      });
+    }
+  });
+});
 
 // Live Countdown Timer Update Helper
 function updateCountdowns() {
