@@ -3,26 +3,68 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Library Administration Dashboard |SAMCAM SOLUTION ICT HUB</title>
+  <title>Library Administration Dashboard | SAMCAM SOLUTION ICT HUB</title>
   <link rel="stylesheet" href="library_dashboard.css">
   <!-- FontAwesome & Google Fonts -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <style>
+    /* Mobile Navigation & Responsive Enhancements */
+    .mobile-menu-toggle {
+      display: none;
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: var(--text-main, #1e293b);
+      cursor: pointer;
+    }
+
+    @media (max-width: 768px) {
+      .mobile-menu-toggle {
+        display: block;
+      }
+      .header-actions {
+        display: none !important;
+        flex-direction: column;
+        width: 100%;
+        gap: 0.75rem;
+        margin-top: 1rem;
+        padding-top: 1rem;
+        border-top: 1px solid var(--border-color, #e2e8f0);
+      }
+      .header-actions.active {
+        display: flex !important;
+      }
+      .dash-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+      }
+    }
+  </style>
 </head>
 <body>
 
   <div class="dashboard-container">
    <!-- Header -->
-    <header class="dash-header">
-      <div class="header-title">
-        <h2><i class="fa-solid fa-book-bookmark"></i> E-Library Management Portal</h2>
-        <p>Manage free & paid resources, upload documents, and track inventory.</p>
+    <header class="dash-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+      <div class="header-title" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <div>
+          <h2><i class="fa-solid fa-book-bookmark"></i> E-Library Management Portal</h2>
+          <p>Manage free & paid resources, upload documents, and track inventory.</p>
+        </div>
+        <!-- Hamburger Menu Button for Small Devices -->
+        <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle navigation menu">
+          <i class="fa-solid fa-bars" id="menuIcon"></i>
+        </button>
       </div>
-      <div class="header-actions" style="display: flex; gap: 0.5rem; align-items: center;">
-        <a href="verify_payments.html" class="btn-primary" style="background: var(--warning, #d97706); text-decoration: none;">
+
+      <!-- Action Buttons (Collapsible on Mobile) -->
+      <div class="header-actions" id="headerActions" style="display: flex; gap: 0.5rem; align-items: center;">
+        <a href="verify_payments.html" class="btn-primary" style="background: var(--warning, #d97706); text-decoration: none; justify-content: center;">
           <i class="fa-solid fa-shield-halved"></i> Verify Payments
         </a>
-        <a href="assessments.html" class="btn-secondary"><i class="fa-solid fa-arrow-left"></i> Back to Portal</a>
+        <a href="assessments.html" class="btn-secondary" style="justify-content: center;"><i class="fa-solid fa-arrow-left"></i> Back to Portal</a>
       </div>
     </header>
 
@@ -91,10 +133,10 @@
           </div>
 
           <div class="form-actions">
-            <button type="submit" id="saveResourceBtn" class="btn-primary">
+            <button type="submit" id="saveResourceBtn" class="btn-primary" style="justify-content: center;">
               <i class="fa-solid fa-upload"></i> Save Resource
             </button>
-            <button type="button" id="cancelEditBtn" class="btn-secondary" style="display:none;" onclick="resetLibraryForm()">
+            <button type="button" id="cancelEditBtn" class="btn-secondary" style="display:none; justify-content: center;" onclick="resetLibraryForm()">
               Cancel Edit
             </button>
           </div>
@@ -103,9 +145,9 @@
 
       <!-- Right: Resource Inventory Table -->
       <div class="card table-card">
-        <div class="table-header-flex">
+        <div class="table-header-flex" style="flex-wrap: wrap; gap: 0.75rem;">
           <h3><i class="fa-solid fa-list"></i> Existing Resources</h3>
-          <input type="text" id="librarySearch" placeholder="Search resources..." onkeyup="filterLibraryTable()">
+          <input type="text" id="librarySearch" placeholder="Search resources..." onkeyup="filterLibraryTable()" style="max-width: 100%;">
         </div>
         
         <div class="table-responsive">
@@ -128,6 +170,20 @@
 
     </div>
   </div>
+
+  <!-- Mobile Menu Toggle Script -->
+  <script>
+    function toggleMobileMenu() {
+      const actions = document.getElementById('headerActions');
+      const icon = document.getElementById('menuIcon');
+      actions.classList.toggle('active');
+      if (actions.classList.contains('active')) {
+        icon.className = 'fa-solid fa-xmark';
+      } else {
+        icon.className = 'fa-solid fa-bars';
+      }
+    }
+  </script>
 
   <!-- Firebase SDKs Compat (v9.23.0) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
