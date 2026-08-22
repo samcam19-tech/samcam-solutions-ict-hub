@@ -344,45 +344,69 @@
   <button id="logoutBtn" class="btn-logout"><i class="fa-solid fa-power-off"></i> Sign Out</button>
 </div>
 
-<!-- ACCOUNT & PROFILE SETTINGS PANEL -->
-<div class="card-box" style="margin-bottom: 1.5rem; background: #f8fafc; border: 1px solid #e2e8f0; width: 100%;">
-  <h3><i class="fa-solid fa-id-card"></i> Account & Profile Settings</h3>
+<!-- ACCOUNT & PROFILE SETTINGS WRAPPER (2-Column Layout) -->
+<div style="display: grid; grid-template-columns: 1fr 350px; gap: 1.5rem; align-items: start; width: 100%;">
   
-  <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; width: 100%;">
-    <div style="flex-shrink: 0;">
-      <img id="profilePicPreview" src="images/default-avatar.png" alt="Profile Picture" onerror="this.src='https://via.placeholder.com/80?text=👤'" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; display: block;">
+  <!-- LEFT COLUMN: Your Existing Settings Form Card -->
+  <div class="card-box" style="margin-bottom: 0; background: #f8fafc; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box; padding: 1.5rem; border-radius: 8px;">
+    <h3 style="margin-top: 0;"><i class="fa-solid fa-id-card"></i> Account & Profile Settings</h3>
+    
+    <div style="display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1.5rem; width: 100%;">
+      <div style="flex-shrink: 0;">
+        <img id="profilePicPreview" src="images/default-avatar.png" alt="Profile Picture" onerror="this.src='https://via.placeholder.com/80?text=👤'" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid #2563eb; display: block;">
+      </div>
+      <div style="flex-grow: 1;">
+        <h4 id="profileFullName" style="margin: 0 0 0.2rem 0; color: #0f172a; font-size: 1rem;">User Name</h4>
+        <p id="profileUsernameDisplay" style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: #64748b;"></p>
+        <label for="profilePicInput" class="btn-action btn-upload" style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;">
+          <i class="fa-solid fa-camera"></i> Change Picture
+        </label>
+        <input type="file" id="profilePicInput" accept="image/*" style="display: none;">
+      </div>
     </div>
-    <div style="flex-grow: 1;">
-      <h4 id="profileFullName" style="margin: 0 0 0.2rem 0; color: #0f172a; font-size: 1rem;">User Name</h4>
-      <p id="profileUsernameDisplay" style="margin: 0 0 0.5rem 0; font-size: 0.85rem; color: #64748b;"></p>
-      <label for="profilePicInput" class="btn-action btn-upload" style="display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer;">
-        <i class="fa-solid fa-camera"></i> Change Picture
+
+    <form id="updateAccountForm" style="width: 100%;" onsubmit="handleUpdateAccountDetails(event)">
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label for="updateUsername">Update Username</label>
+        <input type="text" id="updateUsername" placeholder="Enter new username..." required style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;">
+      </div>
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label for="currentPassword">Current Password (required for any changes)</label>
+        <input type="password" id="currentPassword" placeholder="Enter current password..." required style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;">
+      </div>
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label for="updatePassword">New Password (leave blank if keeping current)</label>
+        <input type="password" id="updatePassword" placeholder="Enter new password..." style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;">
+      </div>
+      <div class="form-group" style="margin-bottom: 1rem;">
+        <label for="confirmPassword">Confirm New Password</label>
+        <input type="password" id="confirmPassword" placeholder="Re-enter new password..." style="width: 100%; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 4px;">
+      </div>
+      <button type="submit" class="btn-submit" style="width: auto; padding: 0.6rem 1.2rem; cursor: pointer;"><i class="fa-solid fa-floppy-disk"></i> Save Account Changes</button>
+    </form>
+  </div>
+
+  <!-- RIGHT COLUMN: Instructions & Consent Panel -->
+  <div class="card-box" style="background: #ffffff; border: 1px solid #e2e8f0; padding: 1.5rem; border-radius: 8px; box-sizing: border-box;">
+    <h4 style="margin-top: 0; color: #0f172a; font-size: 1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem;">
+      <i class="fa-solid fa-circle-info" style="color: #2563eb;"></i> Guidelines & Consent
+    </h4>
+    
+    <div style="font-size: 0.82rem; color: #475569; line-height: 1.5; display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;">
+      <p style="margin: 0;"><strong>Username:</strong> Changing your username permanently migrates your account document ID. Your old record will be deleted, and you will need to sign in again.</p>
+      <p style="margin: 0;"><strong>Password:</strong> Provide your valid current password to authorize any changes.</p>
+      <p style="margin: 0;"><strong>Profile Picture:</strong> Select a clear image file to update your avatar preview across portal views.</p>
+    </div>
+
+    <div style="margin-top: 1.25rem; padding-top: 1rem; border-top: 1px solid #e2e8f0;">
+      <label style="display: flex; align-items: flex-start; gap: 0.5rem; font-size: 0.8rem; color: #1e293b; cursor: pointer;">
+        <input type="checkbox" id="settingsConsentCheck" style="margin-top: 0.2rem; cursor: pointer;" required>
+        <span>I understand that changing my username requires a mandatory re-login and consent to update my credentials.</span>
       </label>
-      <input type="file" id="profilePicInput" accept="image/*" style="display: none;">
     </div>
   </div>
 
-        <form id="updateAccountForm" style="width: 100%;">
-            <div class="form-group">
-              <label for="updateUsername">Update Username</label>
-              <input type="text" id="updateUsername" placeholder="Enter new username..." required>
-            </div>
-            <div class="form-group">
-              <label for="currentPassword">Current Password (required for any changes)</label>
-              <input type="password" id="currentPassword" placeholder="Enter current password..." required>
-            </div>
-            <div class="form-group">
-              <label for="updatePassword">New Password (leave blank if keeping current)</label>
-              <input type="password" id="updatePassword" placeholder="Enter new password...">
-            </div>
-            <div class="form-group">
-              <label for="confirmPassword">Confirm New Password</label>
-              <input type="password" id="confirmPassword" placeholder="Re-enter new password...">
-            </div>
-            <button type="submit" class="btn-submit" style="width: auto; padding: 0.6rem 1.2rem;"><i class="fa-solid fa-floppy-disk"></i> Save Account Changes</button>
-      </form>
-      </div>
-
+</div>
       <div class="portal-grid">
         
         <!-- TEACHER & ADMIN CONTROL PANELS -->
