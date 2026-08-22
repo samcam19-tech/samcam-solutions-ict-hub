@@ -2208,7 +2208,7 @@ function renderStudentModalTable() {}
 /* ==========================================================================
    TEACHER GRADING & FEEDBACK MODULE
    ========================================================================== */
-window.openGradingModal = async function(submissionId) {
+window.openGradingModal = function(submissionId) {
   let modal = document.getElementById('gradingModal');
   if (!modal) {
     modal = document.createElement('div');
@@ -2242,34 +2242,36 @@ window.openGradingModal = async function(submissionId) {
   }
 
   document.getElementById('gradingSubmissionId').value = submissionId;
-  
-  // Fetch existing submission details from Firestore first, fallback to LocalStorage
-  let targetSub = null;
-  if (window.db) {
-    try {
-      const docSnap = await window.db.collection('submissions').doc(submissionId).get();
-      if (docSnap.exists) {
-        targetSub = docSnap.data();
-      }
-    } catch (err) {
-      console.warn('Firestore fetch error for grading modal, checking local cache:', err);
-    }
-  }
+  document.getElementById('gradeScoreInput').value = '';
+  document.getElementById('gradeFeedbackInput').value = '';
 
-  if (!targetSub) {
-    let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
-    targetSub = submissions.find(s => s.id === submissionId);
-  }
-
-  if (targetSub) {
-    document.getElementById('gradeScoreInput').value = targetSub.grade || '';
-    document.getElementById('gradeFeedbackInput').value = targetSub.feedback || '';
-  } else {
-    document.getElementById('gradeScoreInput').value = '';
-    document.getElementById('gradeFeedbackInput').value = '';
-  }
-
+  // Show modal immediately for snappy UI response
   modal.style.display = 'flex';
+
+  // Fetch existing data asynchronously in the background
+  (async () => {
+    let targetSub = null;
+    if (window.db) {
+      try {
+        const docSnap = await window.db.collection('submissions').doc(submissionId).get();
+        if (docSnap.exists) {
+          targetSub = docSnap.data();
+        }
+      } catch (err) {
+        console.warn('Firestore fetch error for grading modal, checking local cache:', err);
+      }
+    }
+
+    if (!targetSub) {
+      let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+      targetSub = submissions.find(s => s.id === submissionId);
+    }
+
+    if (targetSub) {
+      document.getElementById('gradeScoreInput').value = targetSub.grade || '';
+      document.getElementById('gradeFeedbackInput').value = targetSub.feedback || '';
+    }
+  })();
 };
 
 window.closeGradingModal = function() {
@@ -2317,7 +2319,6 @@ window.renderSubmissions = async function() {
 
   let submissions = [];
   
-  // 1. Fetch live submissions from Firestore database
   if (window.db) {
     try {
       const snap = await window.db.collection('submissions').get();
@@ -2327,7 +2328,6 @@ window.renderSubmissions = async function() {
     }
   }
 
-  // 2. Fallback to LocalStorage if Firestore returned nothing or failed
   if (submissions.length === 0) {
     submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
   }
