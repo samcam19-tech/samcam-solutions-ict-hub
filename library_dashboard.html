@@ -14,9 +14,9 @@
 <body>
 
   <div class="dashboard-container">
-   <!-- Header -->
-    <header class="dash-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
-      <div class="header-title" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+  <!-- Header -->
+    <header class="dash-header">
+      <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
         <div>
           <h2><i class="fa-solid fa-book-bookmark"></i> E-Library Management Portal</h2>
           <p>Manage free & paid resources, upload documents, and track inventory.</p>
@@ -28,11 +28,13 @@
       </div>
 
       <!-- Action Buttons (Collapsible on Mobile) -->
-      <div class="header-actions" id="headerActions" style="display: flex; gap: 0.5rem; align-items: center;">
+      <div class="header-actions" id="headerActions">
         <a href="verify_payments.html" class="btn-primary" style="background: var(--warning, #d97706); text-decoration: none; justify-content: center;">
           <i class="fa-solid fa-shield-halved"></i> Verify Payments
         </a>
-        <a href="assessments.html" class="btn-secondary" style="justify-content: center;"><i class="fa-solid fa-arrow-left"></i> Back to Portal</a>
+        <a href="assessments.html" class="btn-secondary" style="justify-content: center;">
+          <i class="fa-solid fa-arrow-left"></i> Back to Portal
+        </a>
       </div>
     </header>
 
