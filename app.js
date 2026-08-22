@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SAMCAM SOLUTIONS - ACADEMIC PORTAL HUB ENGINE (v2.5 - Firebase Integrated)
+   SAMCAM SOLUTIONS - ACADEMIC PORTAL HUB ENGINE (v2.6 - Download Counter Integrated)
    ========================================================================== */
 
 let allResources = [];
@@ -126,6 +126,7 @@ function fetchResourcesFromFirestore() {
           fileName: data.fileName || '',
           fileType: data.fileType || '',
           date: data.date || '2026',
+          downloads: Number(data.downloads) || 0, // Download counter field
           createdAt: data.createdAt
         });
       });
@@ -240,6 +241,21 @@ function resetFilters() {
   renderCards();
 }
 
+// --- DOWNLOAD COUNTER INCREMENT HELPER ---
+async function trackDownload(resourceId) {
+  if (!db) return;
+  try {
+    const docRef = db.collection('e_library_resources').doc(resourceId);
+    await db.runTransaction(async (transaction) => {
+      const doc = await transaction.get(docRef);
+      if (!doc.exists) return;
+      const newDownloads = (doc.data().downloads || 0) + 1;
+      transaction.update(docRef, { downloads: newDownloads });
+    });
+  } catch (err) {
+    console.warn("Failed to increment download count:", err);
+  }
+}
 
 function initiateMoMoPayment(resourceId, resourceTitle, price) {
   let modal = document.getElementById('momoPaymentModal');
@@ -409,7 +425,7 @@ function getFileTypeIcon(url) {
 }
 
 /* ==========================================================================
-   UPDATED RESOURCE CARDS RENDERER WITH PAYMENT GATE LOGIC
+   UPDATED RESOURCE CARDS RENDERER WITH PAYMENT GATE & DOWNLOAD COUNTS
    ========================================================================== */
 function renderCards() {
   const container = document.getElementById('resource-grid');
@@ -457,7 +473,7 @@ function renderCards() {
   const endIndex = startIndex + itemsPerPage;
   const paginatedItems = filtered.slice(startIndex, endIndex);
 
-  // Check if current logged-in user is an admin (you can check localStorage session or auth state)
+  // Check if current logged-in user is an admin
   const isAdmin = localStorage.getItem('samcam_is_admin') === 'true';
 
   paginatedItems.forEach(item => {
@@ -467,6 +483,7 @@ function renderCards() {
     
     const accessType = item.accessType || 'free';
     const price = item.price || 0;
+    const downloadCount = item.downloads || 0;
 
     // Determine Action Button Markup based on Access Type & User Role
     let actionButtonHTML = '';
@@ -479,10 +496,10 @@ function renderCards() {
         </button>
       `;
     } else {
-      // Free items or Admin view: Direct download link visible
+      // Free items or Admin view: Direct download link visible with download tracking hook
       let badgeLabel = accessType === 'paid' ? ` <span style="font-size:0.7rem; background:#fee2e2; color:#991b1b; padding:1px 4px; border-radius:3px; margin-left:4px;">Admin Direct</span>` : '';
       actionButtonHTML = `
-        <a href="${item.fileUrl || '#'}" target="_blank" download class="download-btn">
+        <a href="${item.fileUrl || '#'}" target="_blank" download onclick="trackDownload('${item.id}')" class="download-btn">
           <i class="fa-solid ${fileMeta.icon}"></i> Download${badgeLabel}
         </a>
       `;
@@ -497,6 +514,7 @@ function renderCards() {
           <span class="tag tag-cat">${item.category}</span>
           <span class="tag tag-ext">${fileMeta.label}</span>
           ${accessType === 'paid' ? '<span class="tag" style="background:#fef3c7; color:#92400e;"><i class="fa-solid fa-lock"></i> Paid</span>' : ''}
+          <span class="tag" style="background:#f1f5f9; color:#475569; margin-left:auto;"><i class="fa-solid fa-download"></i> ${downloadCount} downloaded</span>
         </div>
         <h3 class="card-title">${escapeHtml(item.title)}</h3>
         <p class="card-description">${escapeHtml(item.description || 'No description provided.')}</p>
@@ -640,8 +658,8 @@ function openPreviewModal(encodedItem) {
     <h2 style="font-size:1.25rem; margin-bottom:0.75rem;">${escapeHtml(item.title)}</h2>
     <p style="color:#475569; font-size:0.9rem; margin-bottom:1.25rem;">${escapeHtml(item.description || 'No detailed description available.')}</p>
     <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #e2e8f0; padding-top:1rem;">
-      <small style="color:#64748b;"><i class="fa-solid fa-file"></i> Format: ${fileMeta.label}</small>
-      <a href="${item.fileUrl || '#'}" target="_blank" download class="download-btn">
+      <small style="color:#64748b;"><i class="fa-solid fa-file"></i> Format: ${fileMeta.label} | <i class="fa-solid fa-download"></i> ${item.downloads || 0} downloads</small>
+      <a href="${item.fileUrl || '#'}" target="_blank" download onclick="trackDownload('${item.id}')" class="download-btn">
         <i class="fa-solid ${fileMeta.icon}"></i> Download File
       </a>
     </div>
