@@ -191,16 +191,22 @@ document.addEventListener('DOMContentLoaded', () => {
    2. EXECUTE LOGIN (WITH SINGLE-DEVICE RESTRICTION & REMEMBER ME)
    ========================================================================== */
 /**
- * Helper function to fetch the user's actual public IP address
+ * Helper function to fetch the user's actual public IP address and approximate location
  */
-async function fetchClientIP() {
+async function fetchClientIPAndLocation() {
   try {
-    const response = await fetch('https://api.ipify.org?format=json');
+    const response = await fetch('https://ipapi.co/json/');
     const data = await response.json();
-    return data.ip || 'Unknown IP';
+    return {
+      ip: data.ip || '127.0.0.1',
+      location: data.city && data.country_name ? `${data.city}, ${data.country_name}` : 'Unknown Location'
+    };
   } catch (err) {
-    console.warn("Could not retrieve public IP address:", err);
-    return '127.0.0.1'; // Fallback for local testing / offline network
+    console.warn("Could not retrieve public IP or location:", err);
+    return {
+      ip: '127.0.0.1',
+      location: 'Unknown Location'
+    };
   }
 }
 
@@ -208,14 +214,15 @@ async function fetchClientIP() {
  * Helper function to record login attempts with guaranteed Firestore write confirmation
  */
 async function logAuthenticationAttempt(status, username, failureReason = '—') {
-  const clientIp = await fetchClientIP();
+  const clientData = await fetchClientIPAndLocation();
 
   const auditEntry = {
     status: status, // 'SUCCESS' or 'FAILED'
     timestamp: new Date().toISOString(),
     username: username || 'unknown_user',
     failureReason: failureReason,
-    ipAddress: clientIp,
+    ipAddress: clientData.ip,
+    location: clientData.location, // <--- Stores the location field
     userAgent: navigator.userAgent || 'Unknown Device',
     dateStr: new Date().toISOString().slice(0, 10)
   };
