@@ -58,6 +58,104 @@
       color: #94a3b8;
     }
 
+    /* --- CUSTOM MODAL DIALOG STYLES --- */
+    .custom-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+    }
+
+    .custom-modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .custom-modal-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 400px;
+      padding: 1.5rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+      transform: translateY(10px);
+      transition: transform 0.2s ease;
+      text-align: center;
+    }
+
+    .custom-modal-overlay.active .custom-modal-card {
+      transform: translateY(0);
+    }
+
+    .custom-modal-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .custom-modal-icon.success { color: #22c55e; }
+    .custom-modal-icon.error { color: #ef4444; }
+    .custom-modal-icon.warning { color: #f59e0b; }
+    .custom-modal-icon.info { color: #38bdf8; }
+
+    .custom-modal-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #f8fafc;
+      margin-bottom: 0.5rem;
+    }
+
+    .custom-modal-message {
+      font-size: 0.9rem;
+      color: #94a3b8;
+      margin-bottom: 1.5rem;
+      line-height: 1.4;
+    }
+
+    .custom-modal-actions {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+
+    .custom-modal-actions button {
+      flex: 1;
+      padding: 0.6rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+
+    .custom-modal-btn-primary {
+      background: #0284c7;
+      color: #ffffff;
+    }
+
+    .custom-modal-btn-primary:hover {
+      background: #0369a1;
+    }
+
+    .custom-modal-btn-secondary {
+      background: #334155;
+      color: #f8fafc;
+    }
+
+    .custom-modal-btn-secondary:hover {
+      background: #475569;
+    }
+
     @media (max-width: 768px) {
       .mobile-menu-toggle {
         display: block;
@@ -397,6 +495,7 @@
 
       </div>
     </div>
+
     <!-- =================================================================== -->
     <!-- EDIT PROFILE MODAL                                                  -->
     <!-- =================================================================== -->
@@ -429,9 +528,84 @@
       </div>
     </div>
 
+    <!-- =================================================================== -->
+    <!-- GLOBAL CUSTOM MODAL CONTAINER ELEMENT                               -->
+    <!-- =================================================================== -->
+    <div id="globalCustomModal" class="custom-modal-overlay">
+      <div class="custom-modal-card">
+        <div id="customModalIconContainer" class="custom-modal-icon success">
+          <i id="customModalIcon" class="fa-solid fa-circle-check"></i>
+        </div>
+        <h3 id="customModalTitle" class="custom-modal-title">Notification</h3>
+        <p id="customModalMessage" class="custom-modal-message">Message goes here...</p>
+        <div id="customModalActions" class="custom-modal-actions">
+          <button id="customModalConfirmBtn" class="custom-modal-btn-primary" onclick="closeCustomModal(true)">OK</button>
+          <button id="customModalCancelBtn" class="custom-modal-btn-secondary" style="display: none;" onclick="closeCustomModal(false)">Cancel</button>
+        </div>
+      </div>
+    </div>
+
   </main>
 
   <script>
+    // Global Custom Modal Dialog Function
+    let customModalCallback = null;
+
+    function showCustomModal({ title = "Notification", message = "", type = "success", showCancel = false, onConfirm = null }) {
+      const overlay = document.getElementById('globalCustomModal');
+      const titleEl = document.getElementById('customModalTitle');
+      const msgEl = document.getElementById('customModalMessage');
+      const iconContainer = document.getElementById('customModalIconContainer');
+      const iconEl = document.getElementById('customModalIcon');
+      const confirmBtn = document.getElementById('customModalConfirmBtn');
+      const cancelBtn = document.getElementById('customModalCancelBtn');
+
+      if (!overlay) return;
+
+      titleEl.textContent = title;
+      msgEl.textContent = message;
+      customModalCallback = onConfirm;
+
+      // Icon & Type Mapping
+      iconContainer.className = `custom-modal-icon ${type}`;
+      if (type === 'success') {
+        iconEl.className = "fa-solid fa-circle-check";
+        confirmBtn.className = "custom-modal-btn-primary";
+      } else if (type === 'error') {
+        iconEl.className = "fa-solid fa-circle-xmark";
+        confirmBtn.className = "custom-modal-btn-primary";
+        confirmBtn.style.background = "#ef4444";
+      } else if (type === 'warning') {
+        iconEl.className = "fa-solid fa-triangle-exclamation";
+        confirmBtn.className = "custom-modal-btn-primary";
+        confirmBtn.style.background = "#f59e0b";
+      } else {
+        iconEl.className = "fa-solid fa-circle-info";
+        confirmBtn.className = "custom-modal-btn-primary";
+        confirmBtn.style.background = "#0284c7";
+      }
+
+      if (showCancel) {
+        cancelBtn.style.display = "block";
+        confirmBtn.textContent = "Confirm";
+      } else {
+        cancelBtn.style.display = "none";
+        confirmBtn.textContent = "OK";
+      }
+
+      overlay.classList.add('active');
+    }
+
+    function closeCustomModal(isConfirmed) {
+      const overlay = document.getElementById('globalCustomModal');
+      if (overlay) overlay.classList.remove('active');
+
+      if (isConfirmed && typeof customModalCallback === 'function') {
+        customModalCallback();
+      }
+      customModalCallback = null;
+    }
+
     // Mobile Navigation Drawer Toggle Script
     function toggleMobileMenu() {
       const userProfile = document.getElementById('userProfileContainer');
@@ -528,7 +702,11 @@ async function handleSaveProfile(event) {
     // If the username is being changed, check if the new one is already taken
     if (updatedUsername.toLowerCase() !== oldUsername.toLowerCase()) {
       if (localUsers.some(u => u.username.toLowerCase() === updatedUsername.toLowerCase())) {
-        alert('Username already exists! Please choose a unique username.');
+        showCustomModal({
+          title: "Username Taken",
+          message: "Username already exists! Please choose a unique username.",
+          type: "warning"
+        });
         return;
       }
     }
@@ -582,7 +760,11 @@ async function handleSaveProfile(event) {
     }
 
     closeEditProfileModal();
-    alert('Profile updated successfully!');
+    showCustomModal({
+      title: "Success",
+      message: "Profile updated successfully!",
+      type: "success"
+    });
   }
 }
   </script>
