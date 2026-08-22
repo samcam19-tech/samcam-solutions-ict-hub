@@ -1,5 +1,5 @@
 /* ==========================================================================
-   FIREBASE-CONNECTED ICT BLOG ENGINE WITH ROLE-BASED ACCESS (blog.js)
+   FIREBASE-CONNECTED ICT BLOG ENGINE WITH INLINE CARD EXPANSION (blog.js)
    ========================================================================== */
 
 // Application State
@@ -9,6 +9,7 @@ let searchQuery = '';
 let currentPage = 1;
 const postsPerPage = 4;
 let currentUser = null;
+let expandedPostId = null; // Tracks which card is currently expanded
 
 // Initialize Blog, Load Session, and Attach Firestore Real-Time Listeners
 document.addEventListener('DOMContentLoaded', () => {
@@ -127,19 +128,27 @@ function renderBlog() {
       formattedDate = dateObj.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     }
 
+    const isExpanded = expandedPostId === post.id;
+
     htmlContent += `
-      <article class="blog-card">
+      <article class="blog-card ${isExpanded ? 'expanded-card' : ''}">
         <div class="blog-card-header">
           <span class="blog-badge ${badgeClass}">${post.category || 'General'}</span>
           <span class="blog-date"><i class="fa-regular fa-calendar"></i> ${formattedDate}</span>
         </div>
         <div class="blog-card-body">
           <h3>${post.title}</h3>
-          <p>${post.excerpt}</p>
+          
+          <!-- Dynamic Content Expansion -->
+          ${isExpanded 
+            ? `<div class="expanded-content" style="margin-bottom: 1.25rem; white-space: pre-line; color: var(--text-main, #334155); font-size: 0.95rem; line-height: 1.7;">${post.content || post.excerpt}</div>` 
+            : `<p>${post.excerpt}</p>`
+          }
+
           <div class="blog-card-footer">
             <span class="blog-author"><i class="fa-solid fa-user-pen"></i> ${post.author || 'Samcam ICT'}</span>
-            <button class="read-more-btn" onclick="openPostDetail('${post.id}')">
-              Read Article <i class="fa-solid fa-arrow-right"></i>
+            <button class="read-more-btn" onclick="toggleCardExpansion('${post.id}')">
+              ${isExpanded ? 'Read Less <i class="fa-solid fa-arrow-up"></i>' : 'Read Article <i class="fa-solid fa-arrow-right"></i>'}
             </button>
           </div>
         </div>
@@ -149,6 +158,18 @@ function renderBlog() {
 
   gridContainer.innerHTML = htmlContent;
   updatePaginationControls(totalPosts, totalPages);
+}
+
+/* ==========================================================================
+   INLINE CARD EXPANSION LOGIC
+   ========================================================================== */
+function toggleCardExpansion(postId) {
+  if (expandedPostId === postId) {
+    expandedPostId = null; // Collapse if already open
+  } else {
+    expandedPostId = postId; // Expand target card
+  }
+  renderBlog();
 }
 
 /* ==========================================================================
@@ -222,6 +243,7 @@ function handlePublishSubmit(e) {
 function filterByCategory(category) {
   currentCategory = category;
   currentPage = 1;
+  expandedPostId = null; // Reset expansion on filter
 
   document.querySelectorAll('.tab-btn').forEach(btn => {
     if (btn.getAttribute('data-category') === category) {
@@ -237,11 +259,13 @@ function filterByCategory(category) {
 function handleSearch() {
   searchQuery = document.getElementById('blogSearchInput').value;
   currentPage = 1;
+  expandedPostId = null; // Reset expansion on search
   renderBlog();
 }
 
 function changePage(direction) {
   currentPage += direction;
+  expandedPostId = null; // Reset expansion on page change
   renderBlog();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -254,15 +278,4 @@ function updatePaginationControls(totalPosts, totalPages) {
   indicator.textContent = `Page ${currentPage} of ${totalPages}`;
   prevBtn.disabled = currentPage <= 1;
   nextBtn.disabled = currentPage >= totalPages;
-}
-
-function openPostDetail(postId) {
-  const post = blogPosts.find(p => p.id === postId);
-  if (post) {
-    let dateStr = "Recent";
-    if (post.createdAt && post.createdAt.toDate) {
-      dateStr = post.createdAt.toDate().toLocaleDateString();
-    }
-    alert(`📖 ${post.title}\n\nCategory: ${post.category}\nAuthor: ${post.author} (${dateStr})\n\n----------------------------------------\n${post.content}`);
-  }
 }
