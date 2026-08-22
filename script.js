@@ -2129,14 +2129,13 @@ function handleLogout() {
   checkUserSession();
 }
 
-function handleUpdateAccountDetails(event) {
+window.handleUpdateAccountDetails = function(event) {
   event.preventDefault();
-  const newUsername = document.getElementById('updateUsername').value.trim();
+  const newUsername = document.getElementById('updateUsername').value.trim().toLowerCase();
   const currentPasswordInput = document.getElementById('currentPassword').value.trim();
   const newPassword = document.getElementById('updatePassword').value.trim();
   const confirmPassword = document.getElementById('confirmPassword').value.trim();
   
-  // FIXED: Using 'portal_session' which matches your login module key name
   const currentUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser'));
 
   if (!currentUser || !currentUser.username) {
@@ -2195,7 +2194,7 @@ function handleUpdateAccountDetails(event) {
       return;
     }
 
-    // SCENARIO A: Username is changing (Since Username = Document ID)
+    // SCENARIO A: Username is changing (Migrating Firestore Document ID)
     if (updatingUsername) {
       db.collection("users").doc(newUsername).get().then((newDocSnap) => {
         if (newDocSnap.exists) {
@@ -2213,6 +2212,7 @@ function handleUpdateAccountDetails(event) {
           migratedData.password = newPassword;
         }
 
+        // Create new document first, then delete the old one
         db.collection("users").doc(newUsername).set(migratedData)
           .then(() => userRef.delete())
           .then(() => {
@@ -2221,7 +2221,7 @@ function handleUpdateAccountDetails(event) {
             
             showCustomModal({
               title: "Success",
-              message: "Account details updated successfully!",
+              message: "Username and account details updated successfully!",
               type: "success"
             });
             
@@ -2237,21 +2237,26 @@ function handleUpdateAccountDetails(event) {
           });
       });
     } 
-    // SCENARIO B: Only Password is changing
-    else if (updatingPassword) {
-      userRef.update({ password: newPassword }).then(() => {
+    // SCENARIO B: Only Password (or other profile fields) is updating in place
+    else {
+      const updatePayload = {};
+      if (updatingPassword) {
+        updatePayload.password = newPassword;
+      }
+
+      userRef.update(updatePayload).then(() => {
         showCustomModal({
           title: "Success",
-          message: "Password updated successfully!",
+          message: "Account details updated successfully!",
           type: "success"
         });
         
         if (typeof clearFormAndFinish === 'function') clearFormAndFinish();
       }).catch((err) => {
-        console.error("Error updating password:", err);
+        console.error("Error updating account:", err);
         showCustomModal({
           title: "Update Failed",
-          message: "Failed to update password.",
+          message: "Failed to update account details.",
           type: "error"
         });
       });
@@ -2265,7 +2270,8 @@ function handleUpdateAccountDetails(event) {
       type: "error"
     });
   });
-}
+};
+
 function clearFormAndFinish() {
   document.getElementById('currentPassword').value = '';
   document.getElementById('updatePassword').value = '';
