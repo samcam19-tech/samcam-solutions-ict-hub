@@ -1031,7 +1031,7 @@ window.deleteAllStudents = async function() {
   }
 };
 
-window.handleCreateAssessment = function(e) {
+window.handleCreateAssessment = async function(e) {
   e.preventDefault();
   if (!currentUser || currentUser.role !== 'Teacher') return;
 
@@ -1040,30 +1040,59 @@ window.handleCreateAssessment = function(e) {
   const description = document.getElementById('testDesc').value;
   const deadline = document.getElementById('testDeadline').value;
   const fileInput = document.getElementById('testFile');
-  const fileName = (fileInput && fileInput.files[0]) ? fileInput.files[0].name : "assessment.pdf";
 
-  const resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
+  if (!fileInput || fileInput.files.length === 0) {
+    alert('Please select an assessment file to upload.');
+    return;
+  }
 
-  const newAssessment = {
-    "id": Date.now(),
-    "class": targetClass,
-    "category": "Question Paper",
-    "title": title,
-    "description": description,
-    "fileUrl": "uploads/" + fileName,
-    "date": new Date().toISOString().split('T')[0],
-    "deadline": deadline
-  };
-
-  resources.push(newAssessment);
-  localStorage.setItem('portal_resources', JSON.stringify(resources));
-
-  alert('Assessment published successfully!');
+  const file = fileInput.files[0];
   
-  // FIX: Reset the form by its specific ID instead of e.target
-  document.getElementById('assessmentForm').reset();
-  
-  renderAssessments();
+  try {
+    console.log("Uploading file to Firebase Storage...");
+
+    // 1. Create a reference inside Firebase Storage using window.storageRef
+    const fileRef = ref(window.storageRef, `assessments/${Date.now()}_${file.name}`);
+
+    // 2. Upload file bytes
+    const snapshot = await uploadBytes(fileRef, file);
+    
+    // 3. Get the public download URL
+    const downloadUrl = await getDownloadURL(snapshot.ref);
+
+    // 4. Construct the assessment object
+    const newAssessment = {
+      "id": Date.now(),
+      "class": targetClass,
+      "category": "Question Paper",
+      "title": title,
+      "description": description,
+      "fileUrl": downloadUrl,
+      "date": new Date().toISOString().split('T')[0],
+      "deadline": deadline,
+      "createdAt": new Date().toISOString()
+    };
+
+    // 5. Save to Firestore collection using window.db
+    await addDoc(collection(window.db, "portal_resources"), newAssessment);
+
+    // 6. Keep localStorage in sync for fast offline lookups if needed
+    const resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
+    resources.push(newAssessment);
+    localStorage.setItem('portal_resources', JSON.stringify(resources));
+
+    alert('Assessment published successfully!');
+    
+    // Reset the form
+    document.getElementById('assessmentForm').reset();
+    
+    // Refresh the UI view
+    renderAssessments();
+
+  } catch (error) {
+    console.error("Error uploading assessment:", error);
+    alert('Failed to upload assessment. Please check your network or console for details.');
+  }
 };
 
 /* ==========================================================================
