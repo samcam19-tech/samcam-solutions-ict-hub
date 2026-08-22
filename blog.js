@@ -132,30 +132,41 @@ function renderBlog() {
   
   let filteredPosts = [...blogPosts];
 
-  // 1. Filter by Category Tab
-  if (currentCategory !== 'all') {
-    filteredPosts = filteredPosts.filter(post => post.category && post.category.toLowerCase() === currentCategory.toLowerCase());
+  // If a post is expanded, isolate that specific post so it takes over the view container fully
+  if (expandedPostId) {
+    filteredPosts = filteredPosts.filter(post => post.id === expandedPostId);
+    gridContainer.classList.add('single-expanded-view');
+  } else {
+    gridContainer.classList.remove('single-expanded-view');
+
+    // 1. Filter by Category Tab
+    if (currentCategory !== 'all') {
+      filteredPosts = filteredPosts.filter(post => post.category && post.category.toLowerCase() === currentCategory.toLowerCase());
+    }
+
+    // 2. Filter by Search Query
+    if (searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase();
+      filteredPosts = filteredPosts.filter(post => 
+        (post.title && post.title.toLowerCase().includes(query)) || 
+        (post.excerpt && post.excerpt.toLowerCase().includes(query)) ||
+        (post.category && post.category.toLowerCase().includes(query))
+      );
+    }
   }
 
-  // 2. Filter by Search Query
-  if (searchQuery.trim() !== '') {
-    const query = searchQuery.toLowerCase();
-    filteredPosts = filteredPosts.filter(post => 
-      (post.title && post.title.toLowerCase().includes(query)) || 
-      (post.excerpt && post.excerpt.toLowerCase().includes(query)) ||
-      (post.category && post.category.toLowerCase().includes(query))
-    );
-  }
-
-  // 3. Handle Pagination Slicing
+  // 3. Handle Pagination Slicing (Bypassed if a single post is expanded)
   const totalPosts = filteredPosts.length;
   const totalPages = Math.ceil(totalPosts / postsPerPage) || 1;
   
-  if (currentPage > totalPages) currentPage = totalPages;
-  if (currentPage < 1) currentPage = 1;
+  let paginatedPosts = filteredPosts;
+  if (!expandedPostId) {
+    if (currentPage > totalPages) currentPage = totalPages;
+    if (currentPage < 1) currentPage = 1;
 
-  const startIndex = (currentPage - 1) * postsPerPage;
-  const paginatedPosts = filteredPosts.slice(startIndex, startIndex + postsPerPage);
+    const startIndex = (currentPage - 1) * postsPerPage;
+    paginatedPosts = filteredPosts.slice(startIndex, startIndex + postsPerPage);
+  }
 
   // 4. Render HTML Cards
   if (paginatedPosts.length === 0) {
@@ -199,27 +210,27 @@ function renderBlog() {
     }
 
     htmlContent += `
-      <article class="blog-card ${isExpanded ? 'expanded-card' : ''}">
+      <article class="blog-card ${isExpanded ? 'expanded-card full-page-card' : ''}" ${isExpanded ? 'style="width: 100%; max-width: 900px; margin: 0 auto; box-shadow: 0 10px 25px rgba(0,0,0,0.1);"' : ''}>
         <div class="blog-card-header">
           <span class="blog-badge ${badgeClass}">${post.category || 'General'}</span>
           <span class="blog-date"><i class="fa-regular fa-calendar"></i> ${formattedDate}</span>
         </div>
         <div class="blog-card-body">
-          <h3>${post.title}</h3>
+          <h3 style="${isExpanded ? 'font-size: 1.75rem; margin-bottom: 1rem;' : ''}">${post.title}</h3>
           
           <!-- Dynamic Content Expansion -->
           ${isExpanded 
-            ? `<div class="expanded-content" style="margin-bottom: 1.25rem; white-space: pre-line; color: var(--text-main, #334155); font-size: 0.95rem; line-height: 1.7;">${post.content || post.excerpt}</div>` 
+            ? `<div class="expanded-content" style="margin-bottom: 1.5rem; white-space: pre-line; color: var(--text-main, #334155); font-size: 1.05rem; line-height: 1.8;">${post.content || post.excerpt}</div>` 
             : `<p>${post.excerpt}</p>`
           }
 
           <div class="blog-card-footer" style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; border-top: 1px solid #f1f5f9; padding-top: 0.75rem;">
             <div class="blog-author" style="display: flex; align-items: center; gap: 0.5rem;">
-              <img src="${authorPic}" alt="${post.author || 'Author'}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1px solid #cbd5e1;" onerror="this.src='images/default-avatar.png'">
-              <span style="font-weight: 500; font-size: 0.85rem; color: var(--text-main, #334155);">${post.author || 'Samcam ICT'}</span>
+              <img src="${authorPic}" alt="${post.author || 'Author'}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid #cbd5e1;" onerror="this.src='images/default-avatar.png'">
+              <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-main, #334155);">${post.author || 'Samcam ICT'}</span>
             </div>
-            <button class="read-more-btn" onclick="toggleCardExpansion('${post.id}')">
-              ${isExpanded ? 'Read Less <i class="fa-solid fa-arrow-up"></i>' : 'Read Article <i class="fa-solid fa-arrow-right"></i>'}
+            <button class="read-more-btn" onclick="toggleCardExpansion('${post.id}')" style="font-weight: 600;">
+              ${isExpanded ? 'Close Article <i class="fa-solid fa-arrow-up"></i>' : 'Read Article <i class="fa-solid fa-arrow-right"></i>'}
             </button>
           </div>
 
@@ -231,16 +242,22 @@ function renderBlog() {
   });
 
   gridContainer.innerHTML = htmlContent;
-  updatePaginationControls(totalPosts, totalPages);
+  if (expandedPostId) {
+    updatePaginationControls(1, 1);
+    window.scrollTo({ top: gridContainer.offsetTop - 50, behavior: 'smooth' });
+  } else {
+    updatePaginationControls(totalPosts, totalPages);
+  }
 }
+
 /* ==========================================================================
    INLINE CARD EXPANSION LOGIC
    ========================================================================== */
 function toggleCardExpansion(postId) {
   if (expandedPostId === postId) {
-    expandedPostId = null; // Collapse if already open
+    expandedPostId = null; // Collapse back to grid view
   } else {
-    expandedPostId = postId; // Expand target card
+    expandedPostId = postId; // Expand target card to full-page view
   }
   renderBlog();
 }
@@ -378,7 +395,7 @@ function updatePaginationControls(totalPosts, totalPages) {
   const nextBtn = document.getElementById('nextPageBtn');
   const indicator = document.getElementById('pageIndicator');
 
-  indicator.textContent = `Page ${currentPage} of ${totalPages}`;
-  prevBtn.disabled = currentPage <= 1;
-  nextBtn.disabled = currentPage >= totalPages;
+  if (indicator) indicator.textContent = `Page ${currentPage} of ${totalPages}`;
+  if (prevBtn) prevBtn.disabled = currentPage <= 1;
+  if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
 }
