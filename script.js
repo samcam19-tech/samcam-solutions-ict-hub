@@ -1578,7 +1578,7 @@ function updateCountdowns() {
 /* ==========================================================================
    STUDENT SUBMISSION HANDLERS & SUBMISSION HISTORY
    ========================================================================== */
-window.handleFormSubmission = function(event) {
+window.handleFormSubmission = async function(event) {
   event.preventDefault();
 
   const nameEl = document.getElementById('studentName');
@@ -1596,64 +1596,109 @@ window.handleFormSubmission = function(event) {
     return;
   }
 
+  const testIdVal = testIdEl ? testIdEl.value : null;
+
+  // 1. Deadline Validation Check
+  const cachedQuizzes = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || [];
+  const currentQuiz = cachedQuizzes.find(q => String(q.id) === String(testIdVal));
+
+  if (currentQuiz && currentQuiz.deadline) {
+    const deadlineDate = new Date(currentQuiz.deadline);
+    if (new Date() > deadlineDate) {
+      showCustomModal({
+        title: "Deadline Passed",
+        message: "The submission deadline for this assessment has passed. You can no longer submit work.",
+        type: "error"
+      });
+      return;
+    }
+  }
+
   const file = fileInput.files[0];
-  if (file.size > 1048576) {
+  
+  // 2. File Size Validation (Max 20 MB = 20 * 1024 * 1024 bytes)
+  const MAX_FILE_SIZE = 20971520; 
+  if (file.size > MAX_FILE_SIZE) {
     showCustomModal({
       title: "File Too Large",
-      message: "File size exceeds 1 MB. Please upload a smaller document.",
+      message: "File size exceeds the 20 MB limit. Please upload a smaller document.",
       type: "warning"
     });
     return;
   }
 
-  const reader = new FileReader();
-  reader.onload = async function(e) {
-    const fileDataUrl = e.target.result;
-    const testIdVal = testIdEl ? testIdEl.value : null;
-    const studentNameVal = nameEl ? nameEl.value.trim() : (currentUser ? currentUser.fullName : '');
-    const submissionId = `sub_${testIdVal}_${studentNameVal.toLowerCase().replace(/[^a-z0-9]/g, '')}_${Date.now()}`;
+  const studentNameVal = nameEl ? nameEl.value.trim() : (currentUser ? currentUser.fullName : '');
+  const submissionId = `sub_${testIdVal}_${studentNameVal.toLowerCase().replace(/[^a-z0-9]/g, '')}_${Date.now()}`;
+  
+  let fileDownloadUrl = '';
 
-    const newSubmission = {
-      id: submissionId,
-      testId: String(testIdVal),
-      studentName: studentNameVal,
-      studentUsername: currentUser ? currentUser.username : '',
-      studentClass: classEl ? classEl.value.trim() : '',
-      testTitle: titleEl ? titleEl.value.trim() : '',
-      fileName: file.name,
-      fileUrl: fileDataUrl,
-      submittedAt: new Date().toISOString(),
-      grade: null,
-      feedback: null
-    };
-
-    if (window.db) {
-      try {
-        await window.db.collection('submissions').doc(submissionId).set(newSubmission, { merge: true });
-      } catch (err) {
-        console.error('Firestore save error:', err);
-      }
+  // 3. Upload file to Firebase Storage if available, otherwise fallback to Data URL
+  try {
+    if (window.firebase && window.firebase.storage) {
+      const storageRef = window.firebase.storage().ref();
+      const fileRef = storageRef.child(`submissions/${submissionId}_${file.name}`);
+      const snapshot = await fileRef.put(file);
+      fileDownloadUrl = await snapshot.ref.getDownloadURL();
     }
-
-    let localSubmissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
-    localSubmissions.unshift(newSubmission);
-    localStorage.setItem('portal_submissions', JSON.stringify(localSubmissions));
-
-    const form = document.getElementById('assignmentForm');
-    if (form) form.reset();
-    closeSubmissionModal();
-
+  } catch (storageErr) {
+    console.error('Firebase Storage upload error:', storageErr);
     showCustomModal({
-      title: "Success",
-      message: "Assignment submitted successfully!",
-      type: "success"
+      title: "Upload Warning",
+      message: "Cloud storage upload failed. Falling back to local data encoding.",
+      type: "warning"
     });
+  }
 
-    renderAssessments();
-    if (currentUser && currentUser.role === 'Teacher') renderSubmissions();
+  // Fallback if Firebase Storage wasn't used or failed
+  if (!fileDownloadUrl) {
+    fileDownloadUrl = await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  const newSubmission = {
+    id: submissionId,
+    testId: String(testIdVal),
+    studentName: studentNameVal,
+    studentUsername: currentUser ? currentUser.username : '',
+    studentClass: classEl ? classEl.value.trim() : '',
+    testTitle: titleEl ? titleEl.value.trim() : '',
+    fileName: file.name,
+    fileUrl: fileDownloadUrl,
+    submittedAt: new Date().toISOString(),
+    grade: null,
+    feedback: null
   };
 
-  reader.readAsDataURL(file);
+  // 4. Save submission details to Firestore Database
+  if (window.db) {
+    try {
+      await window.db.collection('submissions').doc(submissionId).set(newSubmission, { merge: true });
+    } catch (err) {
+      console.error('Firestore save error:', err);
+    }
+  }
+
+  // 5. Cache locally
+  let localSubmissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+  localSubmissions.unshift(newSubmission);
+  localStorage.setItem('portal_submissions', JSON.stringify(localSubmissions));
+
+  // 6. Cleanup & UI Feedback
+  const form = document.getElementById('assignmentForm');
+  if (form) form.reset();
+  closeSubmissionModal();
+
+  showCustomModal({
+    title: "Success",
+    message: "Assignment submitted successfully!",
+    type: "success"
+  });
+
+  renderAssessments();
+  if (currentUser && currentUser.role === 'Teacher') renderSubmissions();
 };
 
 window.cancelSubmission = async function(testId) {
@@ -2163,7 +2208,7 @@ function renderStudentModalTable() {}
 /* ==========================================================================
    TEACHER GRADING & FEEDBACK MODULE
    ========================================================================== */
-window.openGradingModal = function(submissionId) {
+window.openGradingModal = async function(submissionId) {
   let modal = document.getElementById('gradingModal');
   if (!modal) {
     modal = document.createElement('div');
@@ -2198,12 +2243,30 @@ window.openGradingModal = function(submissionId) {
 
   document.getElementById('gradingSubmissionId').value = submissionId;
   
-  // Load existing grade if available
-  let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
-  const sub = submissions.find(s => s.id === submissionId);
-  if (sub) {
-    document.getElementById('gradeScoreInput').value = sub.grade || '';
-    document.getElementById('gradeFeedbackInput').value = sub.feedback || '';
+  // Fetch existing submission details from Firestore first, fallback to LocalStorage
+  let targetSub = null;
+  if (window.db) {
+    try {
+      const docSnap = await window.db.collection('submissions').doc(submissionId).get();
+      if (docSnap.exists) {
+        targetSub = docSnap.data();
+      }
+    } catch (err) {
+      console.warn('Firestore fetch error for grading modal, checking local cache:', err);
+    }
+  }
+
+  if (!targetSub) {
+    let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+    targetSub = submissions.find(s => s.id === submissionId);
+  }
+
+  if (targetSub) {
+    document.getElementById('gradeScoreInput').value = targetSub.grade || '';
+    document.getElementById('gradeFeedbackInput').value = targetSub.feedback || '';
+  } else {
+    document.getElementById('gradeScoreInput').value = '';
+    document.getElementById('gradeFeedbackInput').value = '';
   }
 
   modal.style.display = 'flex';
@@ -2220,20 +2283,22 @@ window.saveSubmissionGrade = async function(e) {
   const grade = document.getElementById('gradeScoreInput').value.trim();
   const feedback = document.getElementById('gradeFeedbackInput').value.trim();
 
+  // 1. Update Firestore Database
+  if (window.db) {
+    try {
+      await window.db.collection('submissions').doc(subId).set({ grade, feedback }, { merge: true });
+    } catch (err) {
+      console.error('Firestore grade sync error:', err);
+    }
+  }
+
+  // 2. Update LocalStorage Cache
   let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
   const idx = submissions.findIndex(s => s.id === subId);
   if (idx !== -1) {
     submissions[idx].grade = grade;
     submissions[idx].feedback = feedback;
     localStorage.setItem('portal_submissions', JSON.stringify(submissions));
-
-    if (window.db) {
-      try {
-        await window.db.collection('submissions').doc(subId).set({ grade, feedback }, { merge: true });
-      } catch (err) {
-        console.error('Firestore grade sync error:', err);
-      }
-    }
   }
 
   showCustomModal({
@@ -2245,20 +2310,24 @@ window.saveSubmissionGrade = async function(e) {
   closeGradingModal();
   renderSubmissions();
 };
+
 window.renderSubmissions = async function() {
   const container = document.getElementById('submissionsContainer');
   if (!container) return;
 
   let submissions = [];
+  
+  // 1. Fetch live submissions from Firestore database
   if (window.db) {
     try {
       const snap = await window.db.collection('submissions').get();
-      snap.forEach(doc => submissions.push(doc.data()));
+      snap.forEach(doc => submissions.push({ id: doc.id, ...doc.data() }));
     } catch (err) {
-      console.warn('Firestore fallback:', err);
+      console.warn('Firestore submissions fetch warning:', err);
     }
   }
 
+  // 2. Fallback to LocalStorage if Firestore returned nothing or failed
   if (submissions.length === 0) {
     submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
   }
@@ -2278,7 +2347,7 @@ window.renderSubmissions = async function() {
         ${sub.grade ? `<br><span style="color:#16a34a; font-size:0.8rem; font-weight:600;"><i class="fa-solid fa-award"></i> Grade: ${sub.grade}</span>` : ''}
       </div>
       <div style="display:flex; gap:0.4rem; align-items:center;">
-        <a href="${sub.fileUrl}" download="${sub.fileName || 'submission'}" class="btn-action btn-download" style="padding:0.3rem 0.6rem; font-size:0.75rem;">
+        <a href="${sub.fileUrl}" download="${sub.fileName || 'submission'}" target="_blank" rel="noopener noreferrer" class="btn-action btn-download" style="padding:0.3rem 0.6rem; font-size:0.75rem;">
           <i class="fa-solid fa-download"></i> Get File
         </a>
         <button onclick="openGradingModal('${sub.id}')" class="btn-action btn-edit" style="padding:0.3rem 0.6rem; font-size:0.75rem;">
