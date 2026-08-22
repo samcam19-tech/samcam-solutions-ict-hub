@@ -2046,4 +2046,63 @@ window.addEventListener("blur", () => {
     handleCheatingViolation("You clicked outside the assessment window into a separate browser window or split screen.");
 });
 
+// Global Custom Modal Dialog Function
+    let customModalCallback = null;
+
+    function showCustomModal({ title = "Notification", message = "", type = "success", showCancel = false, onConfirm = null }) {
+      const overlay = document.getElementById('globalCustomModal');
+      const titleEl = document.getElementById('customModalTitle');
+      const msgEl = document.getElementById('customModalMessage');
+      const iconContainer = document.getElementById('customModalIconContainer');
+      const iconEl = document.getElementById('customModalIcon');
+      const confirmBtn = document.getElementById('customModalConfirmBtn');
+      const cancelBtn = document.getElementById('customModalCancelBtn');
+
+      if (!overlay) return;
+
+      titleEl.textContent = title;
+      msgEl.textContent = message;
+      customModalCallback = onConfirm;
+
+      // Icon & Type Mapping
+      iconContainer.className = `custom-modal-icon ${type}`;
+      if (type === 'success') {
+        iconEl.className = "fa-solid fa-circle-check";
+        confirmBtn.className = "custom-modal-btn-primary";
+      } else if (type === 'error') {
+        iconEl.className = "fa-solid fa-circle-xmark";
+        confirmBtn.className = "custom-modal-btn-primary";
+        confirmBtn.style.background = "#ef4444";
+      } else if (type === 'warning') {
+        iconEl.className = "fa-solid fa-triangle-exclamation";
+        confirmBtn.className = "custom-modal-btn-primary";
+        confirmBtn.style.background = "#f59e0b";
+      } else {
+        iconEl.className = "fa-solid fa-circle-info";
+        confirmBtn.className = "custom-modal-btn-primary";
+        confirmBtn.style.background = "#0284c7";
+      }
+
+      if (showCancel) {
+        cancelBtn.style.display = "block";
+        confirmBtn.textContent = "Confirm";
+      } else {
+        cancelBtn.style.display = "none";
+        confirmBtn.textContent = "OK";
+      }
+
+      overlay.classList.add('active');
+    }
+
+    function closeCustomModal(isConfirmed) {
+      const overlay = document.getElementById('globalCustomModal');
+      if (overlay) overlay.classList.remove('active');
+
+      if (isConfirmed && typeof customModalCallback === 'function') {
+        customModalCallback();
+      }
+      customModalCallback = null;
+    }
+
+
 
