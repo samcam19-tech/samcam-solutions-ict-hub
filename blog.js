@@ -76,6 +76,55 @@ function fetchBlogPostsFromCloud() {
 }
 
 /* ==========================================================================
+   ADMIN CONTROLS: EDIT & DELETE
+   ========================================================================== */
+function deletePost(postId) {
+  if (confirm("Are you sure you want to delete this post? This action cannot be undone.")) {
+    db.collection('blog_posts').doc(postId).delete()
+      .then(() => alert("Post deleted successfully!"))
+      .catch((err) => console.error("Error deleting post:", err));
+  }
+}
+
+function editPost(postId) {
+  const post = blogPosts.find(p => p.id === postId);
+  if (!post) return;
+
+  // Re-use your existing publish modal, but switch it to "Edit Mode"
+  document.getElementById('newTitle').value = post.title;
+  document.getElementById('newCategory').value = post.category;
+  document.getElementById('newExcerpt').value = post.excerpt;
+  document.getElementById('newContent').value = post.content;
+  
+  // Change submit button behavior
+  const submitBtn = document.getElementById('submitPostBtn');
+  submitBtn.innerText = 'Update Post';
+  submitBtn.onclick = function(e) { updatePostInFirestore(e, postId); };
+  
+  document.getElementById('publishModal').style.display = 'flex';
+}
+
+function updatePostInFirestore(e, postId) {
+  e.preventDefault();
+  const updatedData = {
+    title: document.getElementById('newTitle').value,
+    category: document.getElementById('newCategory').value,
+    excerpt: document.getElementById('newExcerpt').value,
+    content: document.getElementById('newContent').value,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  };
+
+  db.collection('blog_posts').doc(postId).update(updatedData)
+    .then(() => {
+      alert("Post updated!");
+      closePublishModal();
+      // Reset button back to original
+      location.reload(); 
+    })
+    .catch(err => console.error(err));
+}
+
+/* ==========================================================================
    RENDERING & FILTERING ENGINE
    ========================================================================== */
 function renderBlog() {
@@ -115,6 +164,10 @@ function renderBlog() {
     return;
   }
 
+  // Check if current user has administrative permissions
+  const roleLower = (currentUser?.role || '').toLowerCase();
+  const isAdmin = roleLower === 'teacher' || roleLower === 'admin' || roleLower === 'administrator';
+
   let htmlContent = '';
   paginatedPosts.forEach(post => {
     let badgeClass = 'badge-general';
@@ -130,9 +183,20 @@ function renderBlog() {
 
     const isExpanded = expandedPostId === post.id;
 
-    // Resolve Author Avatar (Fallback to default user icon if missing)
+    // Resolve Author Avatar (Fallback to default local avatar if missing)
     const defaultAvatar = "images/default-avatar.png";
     const authorPic = post.authorAvatar || defaultAvatar;
+
+    // Build Admin Action Buttons if authorized
+    let adminControls = '';
+    if (isAdmin) {
+      adminControls = `
+        <div class="admin-post-controls" style="margin-top: 0.75rem; border-top: 1px dashed #cbd5e1; padding-top: 0.75rem; display: flex; gap: 0.5rem; justify-content: flex-end;">
+          <button onclick="editPost('${post.id}')" style="background: #f59e0b; color: white; border: none; padding: 0.35rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 500;"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+          <button onclick="deletePost('${post.id}')" style="background: #ef4444; color: white; border: none; padding: 0.35rem 0.75rem; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-weight: 500;"><i class="fa-solid fa-trash"></i> Delete</button>
+        </div>
+      `;
+    }
 
     htmlContent += `
       <article class="blog-card ${isExpanded ? 'expanded-card' : ''}">
@@ -151,13 +215,16 @@ function renderBlog() {
 
           <div class="blog-card-footer" style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; border-top: 1px solid #f1f5f9; padding-top: 0.75rem;">
             <div class="blog-author" style="display: flex; align-items: center; gap: 0.5rem;">
-              <img src="${authorPic}" alt="${post.author || 'Author'}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1px solid #cbd5e1;" onerror="this.src='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/svgs/solid/user-circle.svg'">
+              <img src="${authorPic}" alt="${post.author || 'Author'}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1px solid #cbd5e1;" onerror="this.src='images/default-avatar.png'">
               <span style="font-weight: 500; font-size: 0.85rem; color: var(--text-main, #334155);">${post.author || 'Samcam ICT'}</span>
             </div>
             <button class="read-more-btn" onclick="toggleCardExpansion('${post.id}')">
               ${isExpanded ? 'Read Less <i class="fa-solid fa-arrow-up"></i>' : 'Read Article <i class="fa-solid fa-arrow-right"></i>'}
             </button>
           </div>
+
+          <!-- Render Edit/Delete controls for teachers/admins -->
+          ${adminControls}
         </div>
       </article>
     `;
@@ -166,7 +233,6 @@ function renderBlog() {
   gridContainer.innerHTML = htmlContent;
   updatePaginationControls(totalPosts, totalPages);
 }
-
 /* ==========================================================================
    INLINE CARD EXPANSION LOGIC
    ========================================================================== */
