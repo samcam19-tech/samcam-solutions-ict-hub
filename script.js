@@ -2382,6 +2382,63 @@ window.renderSubmissions = async function() {
 };
 
 /* ==========================================================================
+   STUDENT SUBMISSION LOCK & CARD VIEW HELPERS (30-Min Lock & Grades)
+   ========================================================================== */
+window.isSubmissionLocked = function(submittedAt) {
+  if (!submittedAt) return false;
+  const submissionTime = new Date(submittedAt).getTime();
+  const currentTime = new Date().getTime();
+  const thirtyMinutesInMs = 30 * 60 * 1000;
+  return (currentTime - submissionTime) > thirtyMinutesInMs;
+};
+
+window.getStudentSubmissionCardHTML = function(sub, assessmentId) {
+  if (!sub) {
+    return `
+      <div style="margin-top:1rem;">
+        <button type="button" onclick="openUploadModal('${assessmentId}')" class="btn-action btn-upload" style="padding:0.4rem 0.8rem; font-size:0.8rem;">
+          <i class="fa-solid fa-upload"></i> Submit Assignment
+        </button>
+      </div>
+    `;
+  }
+
+  const locked = window.isSubmissionLocked(sub.submittedAt);
+
+  return `
+    <div style="margin-top:1rem; padding:0.75rem; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px;">
+      <span style="color:#16a34a; font-size:0.85rem; font-weight:600;">
+        <i class="fa-solid fa-circle-check"></i> Submitted (${sub.fileName || 'file'})
+      </span>
+
+      <!-- Grade & Teacher Feedback Display on Card -->
+      ${sub.grade ? `
+        <div style="margin-top:0.5rem; background:#dcfce7; border:1px solid #bbf7d0; padding:0.5rem 0.75rem; border-radius:6px; color:#166534; font-size:0.85rem;">
+          <strong><i class="fa-solid fa-award"></i> Grade:</strong> ${sub.grade}
+          ${sub.feedback ? `<br><strong>Feedback:</strong> ${sub.feedback}` : ''}
+        </div>
+      ` : ''}
+
+      <!-- Action Buttons with 30-Minute Time Lock -->
+      <div style="display:flex; gap:0.5rem; margin-top:0.6rem; align-items:center; flex-wrap:wrap;">
+        ${locked ? `
+          <span style="color:#64748b; font-size:0.78rem; font-style:italic;">
+            <i class="fa-solid fa-lock"></i> Locked (30-min editing window closed)
+          </span>
+        ` : `
+          <button type="button" onclick="openUploadModal('${assessmentId}', '${sub.id}')" class="btn-action btn-upload" style="background:#eab308; color:#fff; padding:0.3rem 0.6rem; font-size:0.75rem;">
+            <i class="fa-solid fa-rotate"></i> Replace
+          </button>
+          <button type="button" onclick="deleteSubmission('${sub.id}')" class="btn-action btn-danger" style="background:#dc2626; color:#fff; padding:0.3rem 0.6rem; font-size:0.75rem;">
+            <i class="fa-solid fa-trash"></i> Delete
+          </button>
+        `}
+      </div>
+    </div>
+  `;
+};
+
+/* ==========================================================================
    STUDENT PORTAL: VIEW OWN GRADES & FEEDBACK MODULE
    ========================================================================== */
 window.renderStudentGrades = async function(currentStudentId) {
