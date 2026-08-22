@@ -424,32 +424,44 @@ function changeQuizzesPage(direction) {
 // DELETE QUIZ HANDLER
 // ==========================================================================
 async function deleteQuiz(quizId) {
-  if (!confirm("Are you sure you want to delete this quiz? This action cannot be undone.")) {
-    return;
-  }
+  showCustomModal({
+    title: "Delete Quiz",
+    message: "Are you sure you want to delete this quiz? This action cannot be undone.",
+    type: "warning",
+    showCancel: true,
+    onConfirm: async () => {
+      try {
+        if (db) {
+          await db.collection('quizzes').doc(quizId).delete();
+        }
+        
+        // Also remove from LocalStorage cache
+        let cached = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || [];
+        cached = cached.filter(q => q.id !== quizId);
+        localStorage.setItem('portal_quizzes_cache', JSON.stringify(cached));
 
-  try {
-    if (db) {
-      await db.collection('quizzes').doc(quizId).delete();
+        showCustomModal({
+          title: "Success",
+          message: "Quiz deleted successfully!",
+          type: "success"
+        });
+
+        // Refresh UI list
+        if (typeof fetchActiveQuizzes === 'function') {
+          fetchActiveQuizzes();
+        } else {
+          renderQuizCards(cached);
+        }
+      } catch (err) {
+        console.error("Error deleting quiz:", err);
+        showCustomModal({
+          title: "Deletion Failed",
+          message: "Failed to delete quiz: " + err.message,
+          type: "error"
+        });
+      }
     }
-    
-    // Also remove from LocalStorage cache
-    let cached = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || [];
-    cached = cached.filter(q => q.id !== quizId);
-    localStorage.setItem('portal_quizzes_cache', JSON.stringify(cached));
-
-    alert("Quiz deleted successfully!");
-
-    // Refresh UI list
-    if (typeof fetchActiveQuizzes === 'function') {
-      fetchActiveQuizzes();
-    } else {
-      renderQuizCards(cached);
-    }
-  } catch (err) {
-    console.error("Error deleting quiz:", err);
-    alert("Failed to delete quiz: " + err.message);
-  }
+  });
 }
 
 // ==========================================================================
@@ -545,20 +557,41 @@ async function handleDocumentImport(event) {
       // Basic text reader fallback for uploaded files
       textContent = await readDocxAsText(file);
     } else {
-      alert("Please upload a .txt or .docx file containing structured questions.");
+      showCustomModal({
+        title: "Unsupported File Format",
+        message: "Please upload a .txt or .docx file containing structured questions.",
+        type: "warning"
+      });
       return;
     }
 
+    // Sanitize special symbols (smart quotes, em/en dashes, non-breaking spaces, etc.)
+    if (textContent) {
+      textContent = textContent
+        .replace(/[\u2018\u2019]/g, "'")  // Normalize smart single quotes
+        .replace(/[\u201C\u201D]/g, '"')  // Normalize smart double quotes
+        .replace(/[\u2013\u2014]/g, '-')  // Normalize en/em dashes to standard hyphen
+        .replace(/\u00A0/g, ' ');        // Replace non-breaking spaces with normal spaces
+    }
+
     parseAndInjectQuestions(textContent);
-    alert("Questions imported successfully from document!");
+    
+    showCustomModal({
+      title: "Import Successful",
+      message: "Questions imported successfully from document!",
+      type: "success"
+    });
   } catch (err) {
     console.error("Error reading file:", err);
-    alert("Failed to parse document: " + err.message);
+    showCustomModal({
+      title: "Import Failed",
+      message: "Failed to parse document: " + err.message,
+      type: "error"
+    });
   } finally {
     event.target.value = ''; // Reset file input
   }
 }
-
 async function readDocxAsText(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -740,7 +773,11 @@ async function handleSaveQuiz(event) {
 
   const questionElements = document.querySelectorAll('#builderQuestionsContainer .question-item');
   if (questionElements.length === 0) {
-    alert("Please add at least one question before saving.");
+    showCustomModal({
+      title: "Missing Questions",
+      message: "Please add at least one question before saving.",
+      type: "warning"
+    });
     return;
   }
 
@@ -811,7 +848,11 @@ async function handleSaveQuiz(event) {
       if (editingQuizId && !isClassChanged) {
         // Same class: Update existing record normally
         await db.collection('quizzes').doc(editingQuizId).update(quizDoc);
-        alert("Quiz updated successfully!");
+        showCustomModal({
+          title: "Success",
+          message: "Quiz updated successfully!",
+          type: "success"
+        });
       } else {
         // Brand new quiz or class changed: Keep old quiz and create a separate new record
         quizDoc.createdBy = currentUser ? currentUser.username : "Admin";
@@ -819,9 +860,17 @@ async function handleSaveQuiz(event) {
         await db.collection('quizzes').add(quizDoc);
 
         if (isClassChanged) {
-          alert(`Class changed from "${originalQuizClass}" to "${targetClass}". The original quiz remains intact, and a new quiz variant has been created for ${targetClass}!`);
+          showCustomModal({
+            title: "Quiz Variant Created",
+            message: `Class changed from "${originalQuizClass}" to "${targetClass}". The original quiz remains intact, and a new quiz variant has been created for ${targetClass}!`,
+            type: "info"
+          });
         } else {
-          alert("Quiz created and published successfully!");
+          showCustomModal({
+            title: "Success",
+            message: "Quiz created and published successfully!",
+            type: "success"
+          });
         }
       }
     } else {
@@ -829,10 +878,18 @@ async function handleSaveQuiz(event) {
       let cached = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || MOCK_QUIZZES;
       if (editingQuizId && !isClassChanged) {
         cached = cached.map(q => q.id === editingQuizId ? { ...q, ...quizDoc } : q);
-        alert("Quiz updated locally!");
+        showCustomModal({
+          title: "Success",
+          message: "Quiz updated locally!",
+          type: "success"
+        });
       } else {
         cached.push({ id: `local_${Date.now()}`, ...quizDoc });
-        alert(isClassChanged ? "Class changed: Original quiz preserved and a new variant created!" : "Quiz created locally!");
+        showCustomModal({
+          title: "Success",
+          message: isClassChanged ? "Class changed: Original quiz preserved and a new variant created!" : "Quiz created locally!",
+          type: "success"
+        });
       }
       localStorage.setItem('portal_quizzes_cache', JSON.stringify(cached));
       renderQuizCards(cached);
@@ -846,7 +903,11 @@ async function handleSaveQuiz(event) {
     toggleQuizBuilder();
   } catch (err) {
     console.error("Error saving quiz:", err);
-    alert("Failed to save quiz: " + err.message);
+    showCustomModal({
+      title: "Save Failed",
+      message: "Failed to save quiz: " + err.message,
+      type: "error"
+    });
   }
 }
 // ==========================================================================
@@ -1094,16 +1155,27 @@ async function deleteQuizSubmission(docId) {
     // Re-render the current page to safely adjust total pages and row elements
     renderSubmissionsTablePage();
 
-  } catch (err) {
+  } } catch (err) {
     console.error("Error deleting quiz submission:", err);
-    alert("Failed to delete submission: " + err.message);
+    showCustomModal({
+      title: "Deletion Failed",
+      message: "Failed to delete submission: " + err.message,
+      type: "error"
+    });
   }
 }
 
 // Teacher Response Inspection Modal
 function inspectLearnerSubmission(docId) {
   const sub = globalTeacherResults.find(s => s.id === docId);
-  if (!sub) return alert("Submission payload not located.");
+  if (!sub) {
+    showCustomModal({
+      title: "Not Found",
+      message: "Submission payload not located.",
+      type: "warning"
+    });
+    return;
+  }
 
   const modal = document.getElementById('inspectorModal');
   const studentTitle = document.getElementById('modalStudentName');
@@ -1133,7 +1205,6 @@ function inspectLearnerSubmission(docId) {
   body.innerHTML = html;
   modal.style.display = 'flex';
 }
-
 function closeInspectorModal() {
   const modal = document.getElementById('inspectorModal');
   if (modal) modal.style.display = 'none';
@@ -1145,12 +1216,20 @@ function exportResultsToExcel() {
   const XLSXLib = window.XLSX || window.XLSXStyle;
 
   if (!XLSXLib) {
-    alert("SheetJS library is not loaded. Please ensure the Excel library script is included.");
+    showCustomModal({
+      title: "Library Missing",
+      message: "SheetJS library is not loaded. Please ensure the Excel library script is included.",
+      type: "warning"
+    });
     return;
   }
 
   if (!globalTeacherResults || globalTeacherResults.length === 0) {
-    alert("No student results available to export.");
+    showCustomModal({
+      title: "No Data Available",
+      message: "No student results available to export.",
+      type: "warning"
+    });
     return;
   }
 
@@ -1220,9 +1299,19 @@ function exportResultsToExcel() {
 
     const dateStr = new Date().toISOString().split('T')[0];
     XLSXLib.writeFile(wb, `Student_Quiz_Results_${dateStr}.xlsx`);
+    
+    showCustomModal({
+      title: "Export Successful",
+      message: "Student results have been successfully exported to Excel!",
+      type: "success"
+    });
   } catch (err) {
     console.error("Excel Export Error:", err);
-    alert("An error occurred while generating the Excel spreadsheet. Check console for details.");
+    showCustomModal({
+      title: "Export Failed",
+      message: "An error occurred while generating the Excel spreadsheet. Check console for details.",
+      type: "error"
+    });
   }
 }
 
@@ -1252,7 +1341,11 @@ async function deleteQuizSubmission(docId) {
 
   } catch (err) {
     console.error("Error deleting quiz submission:", err);
-    alert("Failed to delete submission: " + err.message);
+    showCustomModal({
+      title: "Deletion Failed",
+      message: "Failed to delete submission: " + err.message,
+      type: "error"
+    });
   }
 }
 // ==========================================================================
@@ -1265,7 +1358,11 @@ function editQuiz(quizId) {
   const quiz = cachedQuizzes.find(q => q.id === quizId);
   
   if (!quiz) {
-    alert("Quiz data not found.");
+    showCustomModal({
+      title: "Not Found",
+      message: "Quiz data not found.",
+      type: "warning"
+    });
     return;
   }
 
@@ -1320,12 +1417,20 @@ function shuffleArray(array) {
 async function startQuiz(quizId) {
   try {
     if (!currentUser) {
-      alert("Please log in to attempt an assessment.");
+      showCustomModal({
+        title: "Authentication Required",
+        message: "Please log in to attempt an assessment.",
+        type: "warning"
+      });
       return;
     }
 
     if (learnerSubmissionsMap[quizId]) {
-      alert("You have already submitted an entry for this quiz.");
+      showCustomModal({
+        title: "Already Submitted",
+        message: "You have already submitted an entry for this quiz.",
+        type: "warning"
+      });
       return;
     }
 
@@ -1348,7 +1453,11 @@ async function startQuiz(quizId) {
     }
 
     if (!foundQuiz) {
-      alert("Unable to locate quiz details.");
+      showCustomModal({
+        title: "Quiz Not Found",
+        message: "Unable to locate quiz details.",
+        type: "error"
+      });
       return;
     }
 
@@ -1390,6 +1499,11 @@ async function startQuiz(quizId) {
     startTimer(activeQuizData.durationMinutes || 10);
   } catch (err) {
     console.error("Error launching quiz session:", err);
+    showCustomModal({
+      title: "Launch Failed",
+      message: "An error occurred while launching the quiz: " + err.message,
+      type: "error"
+    });
   }
 }
 
@@ -1463,7 +1577,11 @@ function startTimer(durationMinutes) {
 
     if (secondsRemaining <= 0) {
       clearInterval(quizTimerInterval);
-      alert("Time has elapsed. Your answers are automatically submitting...");
+      showCustomModal({
+  title: "Time Expired",
+  message: "Time has elapsed. Your answers are automatically submitting...",
+  type: "warning"
+});
       submitQuizToFirestore();
     }
   }, 1000);
@@ -1621,7 +1739,11 @@ async function submitQuizToFirestore() {
     }
 
     const reviewNote = requiresTeacherReview ? "\n*(Note: Some text answers are pending educator moderation)*" : "";
-    alert(`Quiz Submitted Successfully!\nScore: ${score}/${total} (${percentage}%)\nTime Taken: ${formatSeconds(timeSpentSeconds)}${reviewNote}`);
+    showCustomModal({
+  title: "Quiz Submitted Successfully",
+  message: `Score: ${score}/${total} (${percentage}%)\nTime Taken: ${formatSeconds(timeSpentSeconds)}${reviewNote}`,
+  type: "success"
+});
 
     // Reset view to dashboard
     const runner = document.getElementById('quizRunner');
@@ -1644,7 +1766,11 @@ async function submitQuizToFirestore() {
     activeQuizData = null;
   } catch (err) {
     console.error("Error submitting quiz:", err);
-    alert("Submission completed locally, but cloud backup failed. Check connection.");
+    showCustomModal({
+  title: "Cloud Backup Warning",
+  message: "Submission completed locally, but cloud backup failed. Check connection.",
+  type: "warning"
+});
   }
 }
 
@@ -1722,13 +1848,21 @@ async function moderateAnswer(resultId, questionIndex, approve) {
       status: stillPending ? "Pending Review" : "Graded"
     });
 
-    alert("Moderation updated successfully!");
+   showCustomModal({
+  title: "Success",
+  message: "Moderation updated successfully!",
+  type: "success"
+});
     if (typeof fetchQuizResults === 'function') {
       fetchQuizResults();
     }
   } catch (err) {
     console.error("Error updating moderation status:", err);
-    alert("Failed to save moderation action.");
+    showCustomModal({
+  title: "Action Failed",
+  message: "Failed to save moderation action.",
+  type: "error"
+});
   }
 }
 // ==========================================================================
@@ -1736,10 +1870,22 @@ async function moderateAnswer(resultId, questionIndex, approve) {
 // ==========================================================================
 function generateLearnerPDF(quizId) {
   const attempt = learnerSubmissionsMap[quizId];
-  if (!attempt) return alert("No attempt record found for this assessment.");
+  if (!attempt) {
+  showCustomModal({
+    title: "Record Not Found",
+    message: "No attempt record found for this assessment.",
+    type: "warning"
+  });
+  return;
+}
 
   if (typeof window.jspdf === 'undefined') {
-    return alert("jsPDF library not loaded. Ensure jsPDF scripts are included in html.");
+   showCustomModal({
+  title: "Library Missing",
+  message: "jsPDF library not loaded. Ensure jsPDF scripts are included in html.",
+  type: "warning"
+});
+return;
   }
 
   const { jsPDF } = window.jspdf;
@@ -1829,10 +1975,18 @@ function handleCheatingViolation(reason) {
         tabSwitchCount++;
 
         if (tabSwitchCount < MAX_TAB_SWITCHES) {
-            alert(`⚠️ Security Warning #${tabSwitchCount} of ${MAX_TAB_SWITCHES}: ${reason}\n\nDoing this again will result in automatic quiz submission!`);
-        } else {
+    showCustomModal({
+        title: `Security Warning (${tabSwitchCount}/${MAX_TAB_SWITCHES})`,
+        message: `${reason}\n\nDoing this again will result in automatic quiz submission!`,
+        type: "warning"
+    });
+} else {
             hasQuizSubmittedDueToCheating = true;
-            alert(`🚨 Maximum limit reached (${MAX_TAB_SWITCHES} violations). Your assessment is being submitted automatically.`);
+           showCustomModal({
+    title: "Maximum Violations Reached",
+    message: `🚨 Maximum limit reached (${MAX_TAB_SWITCHES} violations). Your assessment is being submitted automatically.`,
+    type: "error"
+});
             
             if (typeof submitQuizToFirestore === 'function') {
                 submitQuizToFirestore();
@@ -1849,7 +2003,11 @@ function handleCheatingViolation(reason) {
         const quizRunner = document.getElementById("quizRunner");
         if (quizRunner && quizRunner.style.display !== "none") {
             e.preventDefault();
-            alert("Action blocked: Copying or pasting is strictly prohibited during assessments.");
+            showCustomModal({
+    title: "Action Blocked",
+    message: "Copying or pasting is strictly prohibited during assessments.",
+    type: "warning"
+});
         }
     });
 });
