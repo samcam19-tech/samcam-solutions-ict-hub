@@ -1051,14 +1051,15 @@ window.handleCreateAssessment = async function(e) {
   try {
     console.log("Uploading file to Firebase Storage...");
 
-    // 1. Create a reference inside Firebase Storage using window.storageRef
-    const fileRef = ref(window.storageRef, `assessments/${Date.now()}_${file.name}`);
+    // 1. Create a Storage reference using firebase.storage()
+    const storageRef = firebase.storage().ref();
+    const fileRef = storageRef.child(`assessments/${Date.now()}_${file.name}`);
 
     // 2. Upload file bytes
-    const snapshot = await uploadBytes(fileRef, file);
+    const snapshot = await fileRef.put(file);
     
     // 3. Get the public download URL
-    const downloadUrl = await getDownloadURL(snapshot.ref);
+    const downloadUrl = await snapshot.ref.getDownloadURL();
 
     // 4. Construct the assessment object
     const newAssessment = {
@@ -1073,20 +1074,16 @@ window.handleCreateAssessment = async function(e) {
       "createdAt": new Date().toISOString()
     };
 
-    // 5. Save to Firestore collection using window.db
-    await addDoc(collection(window.db, "portal_resources"), newAssessment);
+    // 5. Save to Firestore collection using firebase.firestore()
+    await firebase.firestore().collection("portal_resources").add(newAssessment);
 
-    // 6. Keep localStorage in sync for fast offline lookups if needed
+    // 6. Keep localStorage in sync
     const resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
     resources.push(newAssessment);
     localStorage.setItem('portal_resources', JSON.stringify(resources));
 
     alert('Assessment published successfully!');
-    
-    // Reset the form
     document.getElementById('assessmentForm').reset();
-    
-    // Refresh the UI view
     renderAssessments();
 
   } catch (error) {
@@ -1164,12 +1161,27 @@ window.filterAssessmentsByClass = function() {
   renderAssessments();
 };
 
-// 1. Render Assessments (Fetches from Firestore with LocalStorage fallback)
-function renderAssessments() {
+// 1. Render Assessments (Async fetch from Firestore with LocalStorage fallback)
+async function renderAssessments() {
   const container = document.getElementById('assessmentsContainer');
   if (!container) return;
 
-  const resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
+  // Optional: Try fetching live data from Firestore first
+  let resources = [];
+  try {
+    const snapshot = await firebase.firestore().collection("portal_resources").get();
+    if (!snapshot.empty) {
+      resources = snapshot.docs.map(doc => ({ firebaseDocId: doc.id, ...doc.data() }));
+      // Keep localStorage synced with the latest fetched data
+      localStorage.setItem('portal_resources', JSON.stringify(resources));
+    } else {
+      resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
+    }
+  } catch (error) {
+    console.warn("Offline or failed to fetch from Firestore, falling back to LocalStorage:", error);
+    resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
+  }
+
   const submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
   const now = new Date();
 
@@ -1329,31 +1341,31 @@ document.addEventListener('DOMContentLoaded', () => {
         let fileUrl = resources[index].fileUrl;
 
         try {
-          // If a new file was attached, upload it to Firebase Storage
+          // If a new replacement file is attached, upload it to Firebase Storage
           if (fileInput && fileInput.files.length > 0) {
             const file = fileInput.files[0];
-            const fileRef = ref(window.storageRef, `assessments/${Date.now()}_${file.name}`);
-            const snapshot = await uploadBytes(fileRef, file);
-            fileUrl = await getDownloadURL(snapshot.ref);
+            const storageRef = firebase.storage().ref();
+            const fileRef = storageRef.child(`assessments/${Date.now()}_${file.name}`);
+            const snapshot = await fileRef.put(file);
+            fileUrl = await snapshot.ref.getDownloadURL();
             resources[index].fileName = file.name;
           }
 
-          // Update local resource object fields
+          // Update local resource attributes
           resources[index].title = title;
           resources[index].class = targetClass;
           resources[index].description = description;
           resources[index].deadline = deadline;
           resources[index].fileUrl = fileUrl;
 
-          // Save back to localStorage
           localStorage.setItem('portal_resources', JSON.stringify(resources));
-          
-          // Sync update to Firebase Firestore
-          const querySnapshot = await getDocs(collection(window.db, "portal_resources"));
-          querySnapshot.forEach(async (documentSnapshot) => {
-            const data = documentSnapshot.data();
+
+          // Sync update to Firestore
+          const querySnapshot = await firebase.firestore().collection("portal_resources").get();
+          querySnapshot.forEach(async (docSnap) => {
+            const data = docSnap.data();
             if (String(data.id) === String(id)) {
-              await updateDoc(doc(window.db, "portal_resources", documentSnapshot.id), {
+              await firebase.firestore().collection("portal_resources").doc(docSnap.id).update({
                 title: title,
                 class: targetClass,
                 description: description,
@@ -1367,12 +1379,12 @@ document.addEventListener('DOMContentLoaded', () => {
           const modal = document.getElementById('editAssessmentModal');
           if (modal) modal.style.display = 'none';
 
-          alert("Assessment updated successfully in Firebase!");
+          alert("Assessment updated successfully!");
           renderAssessments();
 
         } catch (error) {
-          console.error("Error updating assessment to Firebase:", error);
-          alert("Failed to update assessment. Please check your connection.");
+          console.error("Error updating assessment:", error);
+          alert("Failed to update assessment in Firebase.");
         }
       }
     });
