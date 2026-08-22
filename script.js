@@ -329,7 +329,12 @@ setInterval(async () => {
         const remoteData = userDoc.data();
         // If the active session token in the database doesn't match local session, another device logged in!
         if (remoteData.activeSessionId && remoteData.activeSessionId !== currentSession.activeSessionId) {
-          alert("Your account was logged into from another device. You have been logged out.");
+         // Trigger the custom modal instead of the browser alert
+          showCustomModal({
+            title: "Session Terminated",
+            message: "Your account was logged into from another device. You have been logged out.",
+            type: "warning"
+          });
           localStorage.removeItem('portal_session');
           window.location.reload(); // Refresh back to the login screen
         }
