@@ -190,6 +190,58 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ==========================================================================
    2. EXECUTE LOGIN (WITH SINGLE-DEVICE RESTRICTION & REMEMBER ME)
    ========================================================================== */
+/**
+ * Helper function to fetch the user's actual public IP address
+ */
+async function fetchClientIP() {
+  try {
+    const response = await fetch('https://api.ipify.org?format=json');
+    const data = await response.json();
+    return data.ip || 'Unknown IP';
+  } catch (err) {
+    console.warn("Could not retrieve public IP address:", err);
+    return '127.0.0.1'; // Fallback for local testing / offline network
+  }
+}
+
+/**
+ * Helper function to record login attempts with the real IP address
+ */
+async function logAuthenticationAttempt(status, username, failureReason = '—') {
+  // Fetch the actual device IP address dynamically
+  const clientIp = await fetchClientIP();
+
+  const auditEntry = {
+    status: status, // 'SUCCESS' or 'FAILED'
+    timestamp: new Date().toISOString(),
+    username: username || 'unknown_user',
+    failureReason: failureReason,
+    ipAddress: clientIp, // Real dynamic IP captured here
+    userAgent: navigator.userAgent || 'Unknown Device',
+    dateStr: new Date().toISOString().slice(0, 10) // YYYY-MM-DD for date filtering
+  };
+
+  // 1. Try writing to Firestore
+  if (window.db) {
+    try {
+      await window.db.collection('audit_logs').add(auditEntry);
+      return;
+    } catch (err) {
+      console.warn("Could not save audit trail to Firestore:", err);
+    }
+  }
+
+  // 2. Fallback: Save to LocalStorage if offline or Firestore fails
+  try {
+    const localLogs = JSON.parse(localStorage.getItem('portal_audit_logs')) || [];
+    localLogs.unshift(auditEntry);
+    if (localLogs.length > 200) localLogs.pop();
+    localStorage.setItem('portal_audit_logs', JSON.stringify(localLogs));
+  } catch (e) {
+    console.error("Error saving audit log to localStorage fallback:", e);
+  }
+}
+
 window.executeLogin = async function() {
   const userEl = document.getElementById('loginUsername');
   const passEl = document.getElementById('loginPassword');
@@ -210,6 +262,7 @@ window.executeLogin = async function() {
   }
 
   let foundUser = null;
+  let failureReason = 'USER_NOT_FOUND';
 
   // 1. Primary Auth: Firebase Firestore
   if (window.db) {
@@ -226,6 +279,8 @@ window.executeLogin = async function() {
             profilePic: userData.profilePic || '',
             ...userData
           };
+        } else {
+          failureReason = 'INVALID_PASSWORD';
         }
       }
     } catch (err) {
@@ -238,25 +293,33 @@ window.executeLogin = async function() {
     try {
       const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
       const match = localUsers.find(
-        acc => (acc.username || '').toLowerCase() === u && acc.password === p
+        acc => (acc.username || '').toLowerCase() === u
       );
+      
       if (match) {
-        foundUser = {
-          username: match.username || u,
-          name: match.fullName || match.name || match.username || u,
-          role: match.role || 'Student',
-          userClass: match.class || match.userClass || '',
-          profilePic: match.profilePic || '',
-          ...match
-        };
+        if (match.password === p) {
+          foundUser = {
+            username: match.username || u,
+            name: match.fullName || match.name || match.username || u,
+            role: match.role || 'Student',
+            userClass: match.class || match.userClass || '',
+            profilePic: match.profilePic || '',
+            ...match
+          };
+        } else {
+          failureReason = 'INVALID_PASSWORD';
+        }
       }
     } catch (e) {
       console.error("Error checking portal_users fallback:", e);
     }
   }
 
-  // 3. Complete Login & Enforce Single Device Session
+  // 3. Complete Login & Record Audit Trail
   if (foundUser) {
+    // Log SUCCESS attempt
+    await logAuthenticationAttempt('SUCCESS', foundUser.username, '—');
+
     if (errEl) errEl.style.display = 'none';
 
     // Generate a unique session token to kick out any other active device
@@ -302,6 +365,9 @@ window.executeLogin = async function() {
 
     navigateToView('dashboard', true);
   } else {
+    // Log FAILED attempt
+    await logAuthenticationAttempt('FAILED', u, failureReason);
+
     if (errEl) {
       errEl.textContent = 'Invalid username or password!';
       errEl.style.display = 'block';
@@ -313,7 +379,6 @@ window.handleLogin = function(e) {
   if (e && e.preventDefault) e.preventDefault();
   window.executeLogin();
 };
-
 /// Check every 10 seconds if another device has logged into this same account
 setInterval(async () => {
   const sessionStr = localStorage.getItem('portal_session');
