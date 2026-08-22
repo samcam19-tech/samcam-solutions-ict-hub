@@ -44,11 +44,35 @@ async function loadAuditLogs() {
         formattedDate = d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
       } catch (e) {}
 
-      // Shorten user agent string for clean display
-      let shortDevice = log.userAgent || 'Unknown Device';
-      if (shortDevice.includes('Chrome')) shortDevice = 'Chrome / ' + (shortDevice.includes('Windows') ? 'Windows' : 'Device');
-      else if (shortDevice.includes('Android')) shortDevice = 'Mobile Safari / Android';
-      else if (shortDevice.includes('iPhone')) shortDevice = 'Mobile Safari / iOS';
+      // Robust User Agent Parser for accurate mobile/desktop display
+      const ua = (log.userAgent || '').toLowerCase();
+      let os = 'Desktop';
+      if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ios')) {
+        os = 'iOS';
+      } else if (ua.includes('android')) {
+        os = 'Android';
+      } else if (ua.includes('windows')) {
+        os = 'Windows';
+      } else if (ua.includes('macintosh') || ua.includes('mac os')) {
+        os = 'Mac';
+      } else if (ua.includes('linux')) {
+        os = 'Linux';
+      }
+
+      let browser = 'Browser';
+      if (ua.includes('chrome') && !ua.includes('edge') && !ua.includes('opr')) {
+        browser = 'Chrome';
+      } else if (ua.includes('safari') && !ua.includes('chrome')) {
+        browser = 'Safari';
+      } else if (ua.includes('firefox')) {
+        browser = 'Firefox';
+      } else if (ua.includes('edge') || ua.includes('edg')) {
+        browser = 'Edge';
+      } else if (ua.includes('mobi') || ua.includes('android') || ua.includes('iphone')) {
+        browser = 'Mobile Browser';
+      }
+
+      let shortDevice = `${browser} / ${os}`;
 
       const tr = document.createElement('tr');
       tr.setAttribute('data-status', log.status);
@@ -175,7 +199,6 @@ function exportAuditLogs() {
         const timestamp = cols[1].innerText.trim();
         const username = cols[2].innerText.trim();
         
-        // Clean up failure reason: convert weird encoding characters or placeholder dashes to a clean hyphen or blank
         let reason = cols[3].innerText.trim();
         if (reason === '—' || reason.includes('â') || !reason) {
           reason = '-';
