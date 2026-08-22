@@ -329,7 +329,7 @@ setInterval(async () => {
         const remoteData = userDoc.data();
         // If the active session token in the database doesn't match local session, another device logged in!
         if (remoteData.activeSessionId && remoteData.activeSessionId !== currentSession.activeSessionId) {
-         // Trigger the custom modal instead of the browser alert
+         // Trigger the custom modal
           showCustomModal({
             title: "Session Terminated",
             message: "Your account was logged into from another device. You have been logged out.",
