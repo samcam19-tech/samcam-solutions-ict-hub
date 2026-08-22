@@ -1,5 +1,5 @@
 /* ==========================================================================
-   FIREBASE-CONNECTED ICT BLOG ENGINE WITH INLINE CARD EXPANSION (blog.js)
+   FIREBASE-CONNECTED ICT BLOG ENGINE WITH INLINE CARD EXPANSION & AVATARS (blog.js)
    ========================================================================== */
 
 // Application State
@@ -130,6 +130,10 @@ function renderBlog() {
 
     const isExpanded = expandedPostId === post.id;
 
+    // Resolve Author Avatar (Fallback to default user icon if missing)
+    const defaultAvatar = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/svgs/solid/user-circle.svg";
+    const authorPic = post.authorAvatar || defaultAvatar;
+
     htmlContent += `
       <article class="blog-card ${isExpanded ? 'expanded-card' : ''}">
         <div class="blog-card-header">
@@ -145,8 +149,11 @@ function renderBlog() {
             : `<p>${post.excerpt}</p>`
           }
 
-          <div class="blog-card-footer">
-            <span class="blog-author"><i class="fa-solid fa-user-pen"></i> ${post.author || 'Samcam ICT'}</span>
+          <div class="blog-card-footer" style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; border-top: 1px solid #f1f5f9; padding-top: 0.75rem;">
+            <div class="blog-author" style="display: flex; align-items: center; gap: 0.5rem;">
+              <img src="${authorPic}" alt="${post.author || 'Author'}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1px solid #cbd5e1;" onerror="this.src='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/svgs/solid/user-circle.svg'">
+              <span style="font-weight: 500; font-size: 0.85rem; color: var(--text-main, #334155);">${post.author || 'Samcam ICT'}</span>
+            </div>
             <button class="read-more-btn" onclick="toggleCardExpansion('${post.id}')">
               ${isExpanded ? 'Read Less <i class="fa-solid fa-arrow-up"></i>' : 'Read Article <i class="fa-solid fa-arrow-right"></i>'}
             </button>
@@ -217,6 +224,7 @@ function handlePublishSubmit(e) {
     title: document.getElementById('newTitle').value,
     category: document.getElementById('newCategory').value,
     author: document.getElementById('newAuthor').value || currentUser.fullName || 'Samcam ICT Dept',
+    authorAvatar: currentUser.profilePic || currentUser.avatar || '', // Captures profile picture from session
     excerpt: document.getElementById('newExcerpt').value,
     content: document.getElementById('newContent').value,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
