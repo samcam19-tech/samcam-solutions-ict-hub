@@ -1164,6 +1164,7 @@ window.filterAssessmentsByClass = function() {
   renderAssessments();
 };
 
+// 1. Render Assessments (Fetches from Firestore with LocalStorage fallback)
 function renderAssessments() {
   const container = document.getElementById('assessmentsContainer');
   if (!container) return;
@@ -1221,7 +1222,7 @@ function renderAssessments() {
             }
         }
     } 
-    // Teacher / Admin Actions
+    // Teacher / Admin Actions (Uses assessment id)
     else if (currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin')) {
         actionHTML = `
             <button type="button" onclick="openEditAssessmentModal('${a.id}')" class="btn-action btn-edit"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
@@ -1247,7 +1248,7 @@ function renderAssessments() {
   }).join('');
 }
 
-// Open the Edit Assessment Modal and populate fields with current values
+// 2. Open Edit Modal
 function openEditAssessmentModal(assessmentId) {
   const resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
   const assessment = resources.find(r => String(r.id) === String(assessmentId));
@@ -1270,35 +1271,48 @@ function openEditAssessmentModal(assessmentId) {
     document.getElementById('editTestDeadline').value = isoString;
   }
 
-  // Show the modal (adjusting depending on how you manage modal visibility, e.g., class toggle or display style)
   const modal = document.getElementById('editAssessmentModal');
   if (modal) modal.style.display = 'flex';
 }
 
-// Handle deletion of an assessment
-function handleDeleteAssessment(assessmentId) {
+// 3. Handle Deletion (Removes from LocalStorage and triggers Firestore sync if applicable)
+async function handleDeleteAssessment(assessmentId) {
   if (!confirm("Are you sure you want to delete this assessment? This will also remove associated student submissions.")) {
     return;
   }
 
-  let resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
-  resources = resources.filter(r => String(r.id) !== String(assessmentId));
-  localStorage.setItem('portal_resources', JSON.stringifyResources ? JSON.stringify(resources) : JSON.stringify(resources)); // Safe fallback
+  try {
+    // Optional Firestore deletion logic if syncing via document query
+    const querySnapshot = await getDocs(collection(window.db, "portal_resources"));
+    querySnapshot.forEach(async (documentSnapshot) => {
+      const data = documentSnapshot.data();
+      if (String(data.id) === String(assessmentId)) {
+        await deleteDoc(doc(window.db, "portal_resources", documentSnapshot.id));
+      }
+    });
 
-  // Also clean up submissions tied to this test
-  let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
-  submissions = submissions.filter(s => String(s.testId) !== String(assessmentId));
-  localStorage.setItem('portal_submissions', JSON.stringify(submissions));
+    // Update LocalStorage state
+    let resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
+    resources = resources.filter(r => String(r.id) !== String(assessmentId));
+    localStorage.setItem('portal_resources', JSON.stringify(resources));
 
-  alert("Assessment deleted successfully.");
-  renderAssessments(); // Refresh view
+    // Clean up submissions tied to this test
+    let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+    submissions = submissions.filter(s => String(s.testId) !== String(assessmentId));
+    localStorage.setItem('portal_submissions', JSON.stringify(submissions));
+
+    alert("Assessment deleted successfully.");
+    renderAssessments();
+  } catch (error) {
+    console.error("Error deleting assessment:", error);
+    alert("Failed to delete assessment completely from database.");
+  }
 }
 
-// Event listener setup for saving edits (typically run inside your DOMContentLoaded block)
 document.addEventListener('DOMContentLoaded', () => {
   const editForm = document.getElementById('editAssessmentForm');
   if (editForm) {
-    editForm.addEventListener('submit', (e) => {
+    editForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       
       const id = document.getElementById('editTestId').value;
@@ -1312,26 +1326,54 @@ document.addEventListener('DOMContentLoaded', () => {
       let index = resources.findIndex(r => String(r.id) === String(id));
 
       if (index !== -1) {
-        resources[index].title = title;
-        resources[index].class = targetClass;
-        resources[index].description = description;
-        resources[index].deadline = deadline;
+        let fileUrl = resources[index].fileUrl;
 
-        // If a new file was attached, handle it (or mock the URL path update)
-        if (fileInput && fileInput.files.length > 0) {
-          const file = fileInput.files[0];
-          resources[index].fileName = file.name;
-          resources[index].fileUrl = URL.createObjectURL(file); // Or use your base64 upload logic
+        try {
+          // If a new file was attached, upload it to Firebase Storage
+          if (fileInput && fileInput.files.length > 0) {
+            const file = fileInput.files[0];
+            const fileRef = ref(window.storageRef, `assessments/${Date.now()}_${file.name}`);
+            const snapshot = await uploadBytes(fileRef, file);
+            fileUrl = await getDownloadURL(snapshot.ref);
+            resources[index].fileName = file.name;
+          }
+
+          // Update local resource object fields
+          resources[index].title = title;
+          resources[index].class = targetClass;
+          resources[index].description = description;
+          resources[index].deadline = deadline;
+          resources[index].fileUrl = fileUrl;
+
+          // Save back to localStorage
+          localStorage.setItem('portal_resources', JSON.stringify(resources));
+          
+          // Sync update to Firebase Firestore
+          const querySnapshot = await getDocs(collection(window.db, "portal_resources"));
+          querySnapshot.forEach(async (documentSnapshot) => {
+            const data = documentSnapshot.data();
+            if (String(data.id) === String(id)) {
+              await updateDoc(doc(window.db, "portal_resources", documentSnapshot.id), {
+                title: title,
+                class: targetClass,
+                description: description,
+                deadline: deadline,
+                fileUrl: fileUrl
+              });
+            }
+          });
+
+          // Hide modal
+          const modal = document.getElementById('editAssessmentModal');
+          if (modal) modal.style.display = 'none';
+
+          alert("Assessment updated successfully in Firebase!");
+          renderAssessments();
+
+        } catch (error) {
+          console.error("Error updating assessment to Firebase:", error);
+          alert("Failed to update assessment. Please check your connection.");
         }
-
-        localStorage.setItem('portal_resources', JSON.stringify(resources));
-        
-        // Hide modal
-        const modal = document.getElementById('editAssessmentModal');
-        if (modal) modal.style.display = 'none';
-
-        alert("Assessment updated successfully!");
-        renderAssessments();
       }
     });
   }
