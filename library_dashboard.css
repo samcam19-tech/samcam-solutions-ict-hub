@@ -323,3 +323,89 @@ tr:hover td {
 .btn-delete:hover {
   background: #fecdd3;
 }
+
+/* ==========================================================================
+   MOBILE RESPONSIVE & HAMBURGER MENU ADDITIONS
+   ========================================================================== */
+
+/* 1. Hamburger Toggle Button Styling */
+.mobile-menu-toggle {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  width: 40px;
+  height: 40px;
+  font-size: 1.2rem;
+  color: var(--text-main);
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.mobile-menu-toggle:hover {
+  background: #f8fafc;
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* 2. Small Screen Optimizations & Collapsible Header Actions */
+@media (max-width: 768px) {
+  body {
+    padding: 1rem 0.75rem; /* Reduce outer padding on mobile phones */
+  }
+
+  .mobile-menu-toggle {
+    display: flex; /* Reveal hamburger icon on phones */
+  }
+
+  .dash-header {
+    flex-direction: column;
+    align-items: flex-start !important;
+    padding: 1.25rem;
+  }
+
+  .dash-header .header-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+  }
+
+  /* Hide action links by default on mobile until toggled */
+  .dash-header .header-actions {
+    display: none !important;
+    flex-direction: column;
+    width: 100%;
+    gap: 0.5rem;
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+  }
+
+  /* Active class triggered via JS to reveal the menu */
+  .dash-header .header-actions.active {
+    display: flex !important;
+  }
+
+  .dash-header .header-actions a {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Prevent form rows and tables from squishing */
+  .form-row {
+    grid-template-columns: 1fr; /* Stack form inputs vertically on small screens */
+    gap: 0;
+  }
+
+  .table-header-flex {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .table-header-flex input {
+    max-width: 100%;
+  }
+}
