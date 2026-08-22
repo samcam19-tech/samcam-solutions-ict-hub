@@ -158,13 +158,14 @@ async function refreshAuditLogs() {
 
 /**
  * Triggered when clicking Export CSV.
- * Converts the current visible log dataset into a downloadable CSV file.
+ * Converts the current visible log dataset into a downloadable CSV file with correct UTF-8 encoding.
  */
 function exportAuditLogs() {
   console.log('Exporting audit logs dataset to CSV format...');
   
   const rows = document.querySelectorAll('#auditLogsTableBody tr');
-  let csvContent = "data:text/csv;charset=utf-8,Status,Timestamp,Username,Failure Reason,IP Address,Device\n";
+  let csvContent = "\uFEFF"; // Adds UTF-8 BOM so Excel reads special characters & dashes correctly
+  csvContent += "Status,Timestamp,Username,Failure Reason,IP Address,Device\n";
 
   rows.forEach(row => {
     if (row.style.display !== 'none') {
@@ -173,7 +174,13 @@ function exportAuditLogs() {
         const status = cols[0].innerText.trim();
         const timestamp = cols[1].innerText.trim();
         const username = cols[2].innerText.trim();
-        const reason = cols[3].innerText.trim();
+        
+        // Clean up failure reason: convert weird encoding characters or placeholder dashes to a clean hyphen or blank
+        let reason = cols[3].innerText.trim();
+        if (reason === '—' || reason.includes('â') || !reason) {
+          reason = '-';
+        }
+
         const ip = cols[4].innerText.trim();
         const device = cols[5].innerText.trim();
         
@@ -182,9 +189,10 @@ function exportAuditLogs() {
     }
   });
 
-  const encodedUri = encodeURI(csvContent);
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
+  link.setAttribute("href", url);
   link.setAttribute("download", `system_audit_logs_${new Date().toISOString().slice(0,10)}.csv`);
   document.body.appendChild(link);
   link.click();
