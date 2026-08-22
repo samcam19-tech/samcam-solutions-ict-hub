@@ -205,10 +205,9 @@ async function fetchClientIP() {
 }
 
 /**
- * Helper function to record login attempts with the real IP address
+ * Helper function to record login attempts with guaranteed Firestore write confirmation
  */
 async function logAuthenticationAttempt(status, username, failureReason = '—') {
-  // Fetch the actual device IP address dynamically
   const clientIp = await fetchClientIP();
 
   const auditEntry = {
@@ -216,30 +215,39 @@ async function logAuthenticationAttempt(status, username, failureReason = '—')
     timestamp: new Date().toISOString(),
     username: username || 'unknown_user',
     failureReason: failureReason,
-    ipAddress: clientIp, // Real dynamic IP captured here
+    ipAddress: clientIp,
     userAgent: navigator.userAgent || 'Unknown Device',
-    dateStr: new Date().toISOString().slice(0, 10) // YYYY-MM-DD for date filtering
+    dateStr: new Date().toISOString().slice(0, 10)
   };
+
+  let firestoreSuccess = false;
 
   // 1. Try writing to Firestore
   if (window.db) {
     try {
+      console.log("Writing audit log to Firestore collection 'audit_logs'...");
       await window.db.collection('audit_logs').add(auditEntry);
-      return;
+      console.log("Audit log successfully written to Firestore!");
+      firestoreSuccess = true;
     } catch (err) {
-      console.warn("Could not save audit trail to Firestore:", err);
+      console.error("Firestore audit log write failed:", err.message);
     }
+  } else {
+    console.warn("window.db is not available. Skipping Firestore write.");
   }
 
-  // 2. Fallback: Save to LocalStorage if offline or Firestore fails
+  // 2. Always fallback / mirror to LocalStorage to guarantee data persistence
   try {
     const localLogs = JSON.parse(localStorage.getItem('portal_audit_logs')) || [];
     localLogs.unshift(auditEntry);
     if (localLogs.length > 200) localLogs.pop();
     localStorage.setItem('portal_audit_logs', JSON.stringify(localLogs));
+    console.log("Audit log saved to localStorage fallback.");
   } catch (e) {
     console.error("Error saving audit log to localStorage fallback:", e);
   }
+
+  return firestoreSuccess;
 }
 
 window.executeLogin = async function() {
@@ -315,14 +323,12 @@ window.executeLogin = async function() {
     }
   }
 
-  // 3. Complete Login & Record Audit Trail
+  // 3. Complete Login & Record Audit Trail (Awaited fully before moving views)
   if (foundUser) {
-    // Log SUCCESS attempt
     await logAuthenticationAttempt('SUCCESS', foundUser.username, '—');
 
     if (errEl) errEl.style.display = 'none';
 
-    // Generate a unique session token to kick out any other active device
     const currentDeviceSessionId = 'sess_' + Math.random().toString(36).substring(2) + Date.now();
     foundUser.activeSessionId = currentDeviceSessionId;
 
@@ -336,7 +342,6 @@ window.executeLogin = async function() {
       }
     }
 
-    // Handle "Remember Me" preferences
     if (rememberCheck && rememberCheck.checked) {
       localStorage.setItem('portal_remembered_user', u);
       localStorage.setItem('portal_remembered_pass', p);
@@ -345,7 +350,6 @@ window.executeLogin = async function() {
       localStorage.removeItem('portal_remembered_pass');
     }
 
-    // Save active session locally
     localStorage.setItem('portal_session', JSON.stringify(foundUser));
     
     if (typeof broadcastSessionUpdate === 'function') {
@@ -365,7 +369,7 @@ window.executeLogin = async function() {
 
     navigateToView('dashboard', true);
   } else {
-    // Log FAILED attempt
+    // Await failed audit log to ensure it commits before UI updates/errors display
     await logAuthenticationAttempt('FAILED', u, failureReason);
 
     if (errEl) {
