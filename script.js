@@ -361,14 +361,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // Check if session loader exists
     if (typeof loadSessionFromStorage !== 'function') {
       console.error("❌ Error: 'loadSessionFromStorage' function is not defined.");
-      alert("System configuration error: Session manager missing.");
+      showCustomModal({
+        title: "Configuration Error",
+        message: "System configuration error: Session manager missing.",
+        type: "error"
+      });
       return;
     }
 
     const currentUser = loadSessionFromStorage();
     if (!currentUser || !currentUser.username) {
       console.warn("⚠️ No active user session found in storage.");
-      alert("Please sign in again to update your profile picture.");
+      showCustomModal({
+        title: "Session Expired",
+        message: "Please sign in again to update your profile picture.",
+        type: "warning"
+      });
       return;
     }
 
@@ -405,11 +413,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Update Firestore database document using the user's username as the document ID
       if (window.db) {
-        // Target Firestore document by username (adjust .toLowerCase() if your document IDs are lowercase)
         const docId = currentUser.username;
         const userDocRef = window.db.collection('users').doc(docId);
         
-        // Use set with merge: true to update or create safely
         await userDocRef.set({ profilePic: downloadURL }, { merge: true });
         console.log("💾 Firestore user profilePic updated for document (username):", docId);
       }
@@ -419,11 +425,19 @@ document.addEventListener('DOMContentLoaded', () => {
         window.updateProfileUIImages(currentUser);
       }
       
-      alert("Profile picture updated successfully!");
+      showCustomModal({
+        title: "Success",
+        message: "Profile picture updated successfully!",
+        type: "success"
+      });
 
     } catch (error) {
       console.error("❌ Error during profile picture upload process:", error);
-      alert("Failed to upload profile picture: " + error.message);
+      showCustomModal({
+        title: "Upload Failed",
+        message: "Failed to upload profile picture: " + error.message,
+        type: "error"
+      });
     } finally {
       if (uploadLabel) {
         uploadLabel.innerHTML = originalLabelHTML;
@@ -476,7 +490,11 @@ async function handleRegisterStaff(e) {
   const password = document.getElementById("staffPassword").value.trim();
 
   if (!fullName || !role || !username || !password) {
-    alert("Please fill in all required fields for staff registration.");
+    showCustomModal({
+      title: "Missing Information",
+      message: "Please fill in all required fields for staff registration.",
+      type: "warning"
+    });
     return;
   }
 
@@ -484,7 +502,11 @@ async function handleRegisterStaff(e) {
     // Check if username already exists in Firestore users collection
     const existingUser = await db.collection("users").where("username", "==", username).get();
     if (!existingUser.empty) {
-      alert("This username is already taken. Please choose another username.");
+      showCustomModal({
+        title: "Username Taken",
+        message: "This username is already taken. Please choose another username.",
+        type: "warning"
+      });
       return;
     }
 
@@ -497,7 +519,12 @@ async function handleRegisterStaff(e) {
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    alert(`Successfully registered ${role.toUpperCase()} account for ${fullName}!`);
+    showCustomModal({
+      title: "Success",
+      message: `Successfully registered ${role.toUpperCase()} account for ${fullName}!`,
+      type: "success"
+    });
+
     document.getElementById("registerStaffForm").reset();
 
     // Refresh staff table if modal is open
@@ -506,7 +533,11 @@ async function handleRegisterStaff(e) {
     }
   } catch (error) {
     console.error("Error registering staff account:", error);
-    alert("Failed to register account. Check console for details.");
+    showCustomModal({
+      title: "Registration Failed",
+      message: "Failed to register account. Check console for details.",
+      type: "error"
+    });
   }
 }
 
@@ -597,7 +628,11 @@ async function updateStaffAccount(docId) {
   const newPass = document.getElementById(`staff-pass-${docId}`).value.trim();
 
   if (!newName || !newUser || !newPass) {
-    alert("Fields cannot be left empty.");
+    showCustomModal({
+      title: "Missing Fields",
+      message: "Fields cannot be left empty.",
+      type: "warning"
+    });
     return;
   }
 
@@ -608,26 +643,52 @@ async function updateStaffAccount(docId) {
       username: newUser,
       password: newPass
     });
-    alert("Staff account updated successfully!");
+    
+    showCustomModal({
+      title: "Success",
+      message: "Staff account updated successfully!",
+      type: "success"
+    });
+    
     loadStaffTableData();
   } catch (error) {
     console.error("Error updating staff account:", error);
-    alert("Failed to update account.");
+    showCustomModal({
+      title: "Update Failed",
+      message: "Failed to update account.",
+      type: "error"
+    });
   }
 }
 
 // 5. Delete Individual Staff Record
 async function deleteStaffAccount(docId) {
-  if (!confirm("Are you sure you want to delete this staff/admin account?")) return;
-
-  try {
-    await db.collection("users").doc(docId).delete();
-    alert("Account deleted successfully.");
-    loadStaffTableData();
-  } catch (error) {
-    console.error("Error deleting account:", error);
-    alert("Failed to delete account.");
-  }
+  showCustomModal({
+    title: "Confirm Deletion",
+    message: "Are you sure you want to delete this staff/admin account?",
+    type: "warning",
+    showCancel: true,
+    onConfirm: async () => {
+      try {
+        await db.collection("users").doc(docId).delete();
+        
+        showCustomModal({
+          title: "Deleted",
+          message: "Account deleted successfully.",
+          type: "success"
+        });
+        
+        loadStaffTableData();
+      } catch (error) {
+        console.error("Error deleting account:", error);
+        showCustomModal({
+          title: "Deletion Failed",
+          message: "Failed to delete account.",
+          type: "error"
+        });
+      }
+    }
+  });
 }
 
 // 6. Filter Staff Table by Search Input
@@ -680,14 +741,23 @@ window.handleRegisterStudent = async function(e) {
 
   const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
   if (localUsers.some(u => u.username.toLowerCase() === username.toLowerCase())) {
-    alert('Username already exists! Please assign a unique username.');
+    showCustomModal({
+      title: "Username Exists",
+      message: "Username already exists! Please assign a unique username.",
+      type: "warning"
+    });
     return;
   }
 
   const newUser = { fullName, class: studentClass, username, password, role: "Student" };
   await saveUserToCloud(newUser);
 
-  alert(`Student "${fullName}" registered successfully!`);
+  showCustomModal({
+    title: "Success",
+    message: `Student "${fullName}" registered successfully!`,
+    type: "success"
+  });
+
   e.target.reset();
 
   if (typeof renderStudentModalTable === 'function') renderStudentModalTable();
@@ -709,7 +779,11 @@ window.handleBulkImport = function() {
   const targetClass = document.getElementById('bulkClass').value;
 
   if (!fileInput || !fileInput.files.length) {
-    alert('Please select an Excel or CSV file to import.');
+    showCustomModal({
+      title: "Missing File",
+      message: "Please select an Excel or CSV file to import.",
+      type: "warning"
+    });
     return;
   }
 
@@ -760,16 +834,27 @@ window.handleBulkImport = function() {
       });
 
       await Promise.all(savePromises);
-      alert(`Imported ${addedCount} student account(s) into ${targetClass}!`);
+      
+      showCustomModal({
+        title: "Import Successful",
+        message: `Imported ${addedCount} student account(s) into ${targetClass}!`,
+        type: "success"
+      });
+
       fileInput.value = '';
       if (typeof renderStudentModalTable === 'function') renderStudentModalTable();
     } catch (err) {
       console.error(err);
-      alert('Error parsing or saving file data.');
+      showCustomModal({
+        title: "Import Error",
+        message: "Error parsing or saving file data.",
+        type: "error"
+      });
     }
   };
   reader.readAsArrayBuffer(fileInput.files[0]);
 };
+
 window.downloadStudentCSV = async function() {
   let students = [];
   if (window.db) {
@@ -787,7 +872,11 @@ window.downloadStudentCSV = async function() {
   }
 
   if (students.length === 0) {
-    alert('No registered students found to export.');
+    showCustomModal({
+      title: "No Data",
+      message: "No registered students found to export.",
+      type: "info"
+    });
     return;
   }
 
@@ -804,7 +893,6 @@ window.downloadStudentCSV = async function() {
   link.click();
   document.body.removeChild(link);
 };
-
 
 
 /* ==========================================================================
@@ -1042,7 +1130,11 @@ window.handleCreateAssessment = async function(e) {
   const fileInput = document.getElementById('testFile');
 
   if (!fileInput || fileInput.files.length === 0) {
-    alert('Please select an assessment file to upload.');
+    showCustomModal({
+      title: "Missing File",
+      message: "Please select an assessment file to upload.",
+      type: "warning"
+    });
     return;
   }
 
@@ -1082,13 +1174,22 @@ window.handleCreateAssessment = async function(e) {
     resources.push(newAssessment);
     localStorage.setItem('portal_resources', JSON.stringify(resources));
 
-    alert('Assessment published successfully!');
+    showCustomModal({
+      title: "Success",
+      message: "Assessment published successfully!",
+      type: "success"
+    });
+
     document.getElementById('assessmentForm').reset();
     renderAssessments();
 
   } catch (error) {
     console.error("Error uploading assessment:", error);
-    alert('Failed to upload assessment. Please check your network or console for details.');
+    showCustomModal({
+      title: "Upload Failed",
+      message: "Failed to upload assessment. Please check your network or console for details.",
+      type: "error"
+    });
   }
 };
 
@@ -1266,7 +1367,11 @@ function openEditAssessmentModal(assessmentId) {
   const assessment = resources.find(r => String(r.id) === String(assessmentId));
   
   if (!assessment) {
-    alert("Assessment not found.");
+    showCustomModal({
+      title: "Not Found",
+      message: "Assessment not found.",
+      type: "error"
+    });
     return;
   }
 
@@ -1402,12 +1507,21 @@ document.addEventListener('DOMContentLoaded', () => {
           const modal = document.getElementById('editAssessmentModal');
           if (modal) modal.style.display = 'none';
 
-          alert("Assessment updated successfully!");
+          showCustomModal({
+            title: "Success",
+            message: "Assessment updated successfully!",
+            type: "success"
+          });
+          
           renderAssessments();
 
         } catch (error) {
           console.error("Error updating assessment:", error);
-          alert("Failed to update assessment in Firebase.");
+          showCustomModal({
+            title: "Update Failed",
+            message: "Failed to update assessment in Firebase.",
+            type: "error"
+          });
         }
       }
     });
@@ -1474,13 +1588,21 @@ window.handleFormSubmission = function(event) {
   const fileInput = document.getElementById('assignmentFile');
 
   if (!fileInput || !fileInput.files.length) {
-    alert("Please select a file to upload.");
+    showCustomModal({
+      title: "Missing File",
+      message: "Please select a file to upload.",
+      type: "warning"
+    });
     return;
   }
 
   const file = fileInput.files[0];
   if (file.size > 1048576) {
-    alert("File size exceeds 1 MB. Please upload a smaller document.");
+    showCustomModal({
+      title: "File Too Large",
+      message: "File size exceeds 1 MB. Please upload a smaller document.",
+      type: "warning"
+    });
     return;
   }
 
@@ -1521,7 +1643,12 @@ window.handleFormSubmission = function(event) {
     if (form) form.reset();
     closeSubmissionModal();
 
-    alert("Assignment submitted successfully!");
+    showCustomModal({
+      title: "Success",
+      message: "Assignment submitted successfully!",
+      type: "success"
+    });
+
     renderAssessments();
     if (currentUser && currentUser.role === 'Teacher') renderSubmissions();
   };
@@ -1532,30 +1659,42 @@ window.handleFormSubmission = function(event) {
 window.cancelSubmission = async function(testId) {
   if (!currentUser || currentUser.role !== 'Student') return;
 
-  if (!confirm("Are you sure you want to cancel your submission?")) return;
+  showCustomModal({
+    title: "Cancel Submission",
+    message: "Are you sure you want to cancel your submission?",
+    type: "warning",
+    showCancel: true,
+    onConfirm: async () => {
+      const studentName = currentUser.fullName;
 
-  const studentName = currentUser.fullName;
+      if (window.db) {
+        try {
+          const snap = await window.db.collection('submissions').where('testId', '==', String(testId)).where('studentName', '==', studentName).get();
+          const batch = window.db.batch();
+          snap.forEach(doc => batch.delete(doc.ref));
+          await batch.commit();
+        } catch (err) {
+          console.error('Firestore delete error:', err);
+        }
+      }
 
-  if (window.db) {
-    try {
-      const snap = await window.db.collection('submissions').where('testId', '==', String(testId)).where('studentName', '==', studentName).get();
-      const batch = window.db.batch();
-      snap.forEach(doc => batch.delete(doc.ref));
-      await batch.commit();
-    } catch (err) {
-      console.error('Firestore delete error:', err);
+      let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+      submissions = submissions.filter(s => !(String(s.testId) === String(testId) && s.studentName.toLowerCase() === studentName.toLowerCase()));
+      localStorage.setItem('portal_submissions', JSON.stringify(submissions));
+
+      showCustomModal({
+        title: "Cancelled",
+        message: "Your submission has been successfully cancelled.",
+        type: "success"
+      });
+
+      renderAssessments();
     }
-  }
-
-  let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
-  submissions = submissions.filter(s => !(String(s.testId) === String(testId) && s.studentName.toLowerCase() === studentName.toLowerCase()));
-  localStorage.setItem('portal_submissions', JSON.stringify(submissions));
-
-  renderAssessments();
+  });
 };
 
-
-const navHomeLink = document.getElementById('navHomeLink');
+document.addEventListener('DOMContentLoaded', () => {
+  const navHomeLink = document.getElementById('navHomeLink');
   if (navHomeLink) {
     navHomeLink.addEventListener('click', (e) => navigateTo(e, 'home'));
   }
@@ -1597,9 +1736,9 @@ const navHomeLink = document.getElementById('navHomeLink');
   }
 
   const assessmentForm = document.getElementById('assessmentForm');
-   if (assessmentForm) {
-     assessmentForm.addEventListener('submit', handleCreateAssessment);
-   }
+  if (assessmentForm) {
+    assessmentForm.addEventListener('submit', handleCreateAssessment);
+  }
 
   const filterAssessmentClass = document.getElementById('filterAssessmentClass');
   if (filterAssessmentClass) {
@@ -1639,7 +1778,7 @@ const navHomeLink = document.getElementById('navHomeLink');
     gradingForm.addEventListener('submit', saveStudentGrade);
   }
 
-// Modal Close Listeners
+  // Modal Close Listeners
   const closeSubmissionModalBtn = document.getElementById('closeSubmissionModalBtn');
   if (closeSubmissionModalBtn) closeSubmissionModalBtn.addEventListener('click', closeSubmissionModal);
 
@@ -1655,10 +1794,11 @@ const navHomeLink = document.getElementById('navHomeLink');
   const cancelGradingBtn = document.getElementById('cancelGradingBtn');
   if (cancelGradingBtn) cancelGradingBtn.addEventListener('click', closeGradingModal);
 
-  // Initial check on load (Ensure checkUserSession exists or use broadcastSessionUpdate)
+  // Initial check on load
   if (typeof checkUserSession === 'function') {
     checkUserSession();
-   }
+  }
+});
 // --- CORE UTILS & FUNCTIONS ---
 
 function toggleMobileMenu() {
@@ -1727,7 +1867,11 @@ function handleProfilePicUpload(event) {
   const filePath = `profile_pictures/${currentUser.username}_${Date.now()}_${file.name}`;
   const fileRef = storageRef.child(filePath);
 
-  alert("Uploading profile picture...");
+  showCustomModal({
+    title: "Uploading",
+    message: "Uploading profile picture...",
+    type: "info"
+  });
 
   fileRef.put(file).then((snapshot) => {
     return snapshot.ref.getDownloadURL();
@@ -1742,14 +1886,24 @@ function handleProfilePicUpload(event) {
         doc.ref.update({ profilePic: JSON.parse(localStorage.getItem('currentLoggedInUser')).profilePic });
       });
     }
-    alert("Profile picture updated successfully!");
+    
+    showCustomModal({
+      title: "Success",
+      message: "Profile picture updated successfully!",
+      type: "success"
+    });
+    
     loadUserProfileUI();
   }).catch((error) => {
     console.error("Error uploading profile picture: ", error);
-    alert("Failed to upload image.");
+    
+    showCustomModal({
+      title: "Upload Failed",
+      message: "Failed to upload image.",
+      type: "error"
+    });
   });
 }
-
 function loadUserProfileUI() {
   const currentUser = JSON.parse(localStorage.getItem('currentLoggedInUser'));
   if (!currentUser) return;
@@ -1849,13 +2003,21 @@ function handleUpdateAccountDetails(event) {
   const currentUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser'));
 
   if (!currentUser || !currentUser.username) {
-    alert("No active session found. Please sign in again.");
+    showCustomModal({
+      title: "Session Expired",
+      message: "No active session found. Please sign in again.",
+      type: "warning"
+    });
     return;
   }
 
   // 1. Check if new passwords match when attempting to change it
   if (newPassword && newPassword !== confirmPassword) {
-    alert("New passwords do not match! Please re-enter.");
+    showCustomModal({
+      title: "Password Mismatch",
+      message: "New passwords do not match! Please re-enter.",
+      type: "warning"
+    });
     return;
   }
 
@@ -1864,7 +2026,11 @@ function handleUpdateAccountDetails(event) {
 
   userRef.get().then((docSnapshot) => {
     if (!docSnapshot.exists) {
-      alert("User record not found in database.");
+      showCustomModal({
+        title: "User Not Found",
+        message: "User record not found in database.",
+        type: "error"
+      });
       return;
     }
 
@@ -1872,7 +2038,11 @@ function handleUpdateAccountDetails(event) {
 
     // Verify current password matches database record
     if (userData.password !== currentPasswordInput) {
-      alert("Incorrect current password! Changes rejected.");
+      showCustomModal({
+        title: "Authentication Failed",
+        message: "Incorrect current password! Changes rejected.",
+        type: "error"
+      });
       return;
     }
 
@@ -1880,7 +2050,11 @@ function handleUpdateAccountDetails(event) {
     const updatingPassword = Boolean(newPassword);
 
     if (!updatingUsername && !updatingPassword) {
-      alert("No changes detected.");
+      showCustomModal({
+        title: "No Changes",
+        message: "No changes detected.",
+        type: "info"
+      });
       return;
     }
 
@@ -1888,7 +2062,11 @@ function handleUpdateAccountDetails(event) {
     if (updatingUsername) {
       db.collection("users").doc(newUsername).get().then((newDocSnap) => {
         if (newDocSnap.exists) {
-          alert("Username is already taken. Choose another one.");
+          showCustomModal({
+            title: "Username Taken",
+            message: "Username is already taken. Choose another one.",
+            type: "warning"
+          });
           return;
         }
 
@@ -1903,36 +2081,65 @@ function handleUpdateAccountDetails(event) {
           .then(() => {
             currentUser.username = newUsername;
             localStorage.setItem('portal_session', JSON.stringify(currentUser));
-            clearFormAndFinish();
+            
+            showCustomModal({
+              title: "Success",
+              message: "Account details updated successfully!",
+              type: "success"
+            });
+            
+            if (typeof clearFormAndFinish === 'function') clearFormAndFinish();
           })
           .catch((err) => {
             console.error("Error migrating username:", err);
-            alert("Failed to update username. Check console.");
+            showCustomModal({
+              title: "Update Failed",
+              message: "Failed to update username. Check console.",
+              type: "error"
+            });
           });
       });
     } 
     // SCENARIO B: Only Password is changing
     else if (updatingPassword) {
       userRef.update({ password: newPassword }).then(() => {
-        clearFormAndFinish();
+        showCustomModal({
+          title: "Success",
+          message: "Password updated successfully!",
+          type: "success"
+        });
+        
+        if (typeof clearFormAndFinish === 'function') clearFormAndFinish();
       }).catch((err) => {
         console.error("Error updating password:", err);
-        alert("Failed to update password.");
+        showCustomModal({
+          title: "Update Failed",
+          message: "Failed to update password.",
+          type: "error"
+        });
       });
     }
 
   }).catch((error) => {
     console.error("Error accessing database:", error);
-    alert("Error processing request. Check console for details.");
+    showCustomModal({
+      title: "Database Error",
+      message: "Error processing request. Check console for details.",
+      type: "error"
+    });
   });
 }
-
 function clearFormAndFinish() {
   document.getElementById('currentPassword').value = '';
   document.getElementById('updatePassword').value = '';
   document.getElementById('confirmPassword').value = '';
 
-  alert("Account details and security credentials updated successfully!");
+  showCustomModal({
+    title: "Success",
+    message: "Account details and security credentials updated successfully!",
+    type: "success"
+  });
+
   if (typeof loadUserProfileUI === 'function') {
     loadUserProfileUI();
   }
@@ -2029,11 +2236,15 @@ window.saveSubmissionGrade = async function(e) {
     }
   }
 
-  alert('Grade and feedback saved successfully!');
+  showCustomModal({
+    title: "Success",
+    message: "Grade and feedback saved successfully!",
+    type: "success"
+  });
+
   closeGradingModal();
   renderSubmissions();
 };
-
 window.renderSubmissions = async function() {
   const container = document.getElementById('submissionsContainer');
   if (!container) return;
