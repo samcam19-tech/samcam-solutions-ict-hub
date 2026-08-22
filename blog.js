@@ -289,7 +289,7 @@ function closePublishModal() {
   document.getElementById('publishForm').reset();
 }
 
-function handlePublishSubmit(e) {
+async function handlePublishSubmit(e) {
   e.preventDefault();
   
   if (!currentUser) {
@@ -301,11 +301,25 @@ function handlePublishSubmit(e) {
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving to Cloud...';
 
+  // Ensure we grab the absolute latest profilePic directly from Firestore right before saving
+  let latestAvatar = currentUser.profilePic || currentUser.avatar || '';
+  try {
+    const userDocId = currentUser.username || currentUser.id;
+    if (userDocId) {
+      const userDoc = await db.collection('users').doc(userDocId).get();
+      if (userDoc.exists && userDoc.data().profilePic) {
+        latestAvatar = userDoc.data().profilePic;
+      }
+    }
+  } catch (err) {
+    console.warn("Could not fetch latest avatar from Firestore:", err);
+  }
+
   const newPostData = {
     title: document.getElementById('newTitle').value,
     category: document.getElementById('newCategory').value,
     author: document.getElementById('newAuthor').value || currentUser.fullName || 'Samcam ICT Dept',
-    authorAvatar: currentUser.profilePic || currentUser.avatar || '', // Captures profile picture link from session/Firestore
+    authorAvatar: latestAvatar, // Captures the guaranteed profile picture link
     excerpt: document.getElementById('newExcerpt').value,
     content: document.getElementById('newContent').value,
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
