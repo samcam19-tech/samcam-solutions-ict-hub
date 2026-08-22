@@ -138,24 +138,29 @@
         </div>
       </div>
 
-      <!-- Mobile Hamburger Button -->
+     <!-- Mobile Hamburger Button -->
       <button type="button" class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle Navigation Menu">
         <i class="fa-solid fa-bars" id="menuToggleIcon"></i>
       </button>
 
       <div class="nav-actions" id="navActionsContainer" style="display: flex; align-items: center; gap: 0.75rem;">
         
-        <!-- Theme Toggle Button -->
-        <button id="themeToggleBtn" class="nav-action-item" aria-label="Toggle Dark/Light Mode" title="Toggle Theme">
-          <i class="fa-solid fa-moon"></i> <span>Theme</span>
-        </button>
-
-        <!-- Link to Assessment Portal -->
+        <!-- Item 1: Link to Academic Portal -->
         <a href="assessments.html" class="nav-action-item">
           <i class="fa-solid fa-file-pen"></i> Academic Portal
         </a>
 
-         <!-- Notification Bell Icon with Live Badge Counter -->
+        <!-- Item 2: Link to Blog -->
+        <a href="blog.html" class="nav-action-item">
+          <i class="fa-solid fa-blog"></i> Blog
+        </a>
+
+        <!-- Item 3: Theme Toggle Button -->
+        <button id="themeToggleBtn" class="nav-action-item" aria-label="Toggle Dark/Light Mode" title="Toggle Theme">
+          <i class="fa-solid fa-moon"></i> <span>Theme</span>
+        </button>
+
+        <!-- Last: Notification Bell Icon with Live Badge Counter -->
         <button id="notificationsBellBtn" class="nav-action-item" onclick="toggleAnnouncementsDropdown(event)" aria-label="Institutional Announcements" title="Announcements & Notices">
           <span style="position: relative; display: inline-flex; align-items: center;">
             <i class="fa-solid fa-bell" style="font-size: 1rem;"></i>
