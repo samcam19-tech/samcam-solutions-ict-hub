@@ -610,37 +610,6 @@
     </div>
   </div>
 
-  <!-- MODAL 3: TEACHER GRADING & FEEDBACK -->
-  <div id="gradingModal" class="modal" style="display:none;">
-    <div class="modal-card">
-      <button type="button" class="modal-close-btn" id="closeGradingModalBtn"><i class="fa-solid fa-xmark"></i></button>
-      <h3 style="margin-bottom:1.25rem;"><i class="fa-solid fa-award"></i> Grade Student Submission</h3>
-      <form id="gradingForm">
-        <input type="hidden" id="gradeSubmissionId">
-        <div class="form-group">
-          <label>Student Name</label>
-          <input type="text" id="gradeStudentName" disabled style="background: #f8fafc;">
-        </div>
-        <div class="form-group">
-          <label>Assessment Title</label>
-          <input type="text" id="gradeTestTitle" disabled style="background: #f8fafc;">
-        </div>
-        <div class="form-group">
-          <label for="gradeScore">Score / Grade</label>
-          <input type="text" id="gradeScore" placeholder="Enter score..." required>
-        </div>
-        <div class="form-group">
-          <label for="gradeFeedback">Teacher Feedback / Comments</label>
-          <textarea id="gradeFeedback" rows="3" placeholder="Provide constructive feedback..."></textarea>
-        </div>
-        <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.5rem; flex-wrap: wrap;">
-          <button type="button" id="cancelGradingBtn" class="btn-action btn-secondary">Cancel</button>
-          <button type="submit" class="btn-action btn-upload"><i class="fa-solid fa-floppy-disk"></i> Save Grade & Feedback</button>
-        </div>
-      </form>
-    </div>
-  </div>
-
   <!-- MODAL: EDIT ASSESSMENT -->
   <div id="editAssessmentModal" class="modal" style="display:none;">
     <div class="modal-card">
