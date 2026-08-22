@@ -1,7 +1,4 @@
 /**
- * Automatically load and render audit logs from Firestore or LocalStorage when the audit page opens
- */
-/**
  * Advanced User Agent Parser for exact device identification
  */
 function parseExactDevice(userAgentStr) {
@@ -106,6 +103,9 @@ async function loadAuditLogs() {
 
       // Get exact device name using advanced parser
       let shortDevice = parseExactDevice(log.userAgent);
+      
+      // Get location if saved in log
+      const displayLocation = log.location || 'Unknown Location';
 
       const tr = document.createElement('tr');
       tr.setAttribute('data-status', log.status);
@@ -120,7 +120,10 @@ async function loadAuditLogs() {
         <td class="nowrap">${formattedDate}</td>
         <td class="font-weight-500 text-dark">${log.username}</td>
         <td>${log.failureReason && log.failureReason !== '—' ? `<span class="reason-tag">${log.failureReason}</span>` : '<span class="text-muted">—</span>'}</td>
-        <td class="font-mono">${log.ipAddress || '127.0.0.1'}</td>
+        <td>
+          <div class="font-mono">${log.ipAddress || '127.0.0.1'}</div>
+          <small class="text-muted"><i class="fa-solid fa-location-dot"></i> ${displayLocation}</small>
+        </td>
         <td class="text-secondary" title="${log.userAgent}">${shortDevice}</td>
       `;
 
@@ -131,6 +134,7 @@ async function loadAuditLogs() {
     filterAuditLogs();
   }
 }
+
 /**
  * Filter audit trail rows dynamically based on search text, status, and time range.
  */
@@ -221,7 +225,7 @@ function exportAuditLogs() {
   
   const rows = document.querySelectorAll('#auditLogsTableBody tr');
   let csvContent = "\uFEFF"; // Adds UTF-8 BOM so Excel reads special characters & dashes correctly
-  csvContent += "Status,Timestamp,Username,Failure Reason,IP Address,Device\n";
+  csvContent += "Status,Timestamp,Username,Failure Reason,IP Address & Location,Device\n";
 
   rows.forEach(row => {
     if (row.style.display !== 'none') {
@@ -236,10 +240,10 @@ function exportAuditLogs() {
           reason = '-';
         }
 
-        const ip = cols[4].innerText.trim();
+        const ipLocation = cols[4].innerText.trim().replace(/\n/g, ' - ');
         const device = cols[5].innerText.trim();
         
-        csvContent += `"${status}","${timestamp}","${username}","${reason}","${ip}","${device}"\n`;
+        csvContent += `"${status}","${timestamp}","${username}","${reason}","${ipLocation}","${device}"\n`;
       }
     }
   });
