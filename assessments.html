@@ -641,6 +641,44 @@
     </div>
   </div>
 
+  <!-- MODAL: EDIT ASSESSMENT -->
+  <div id="editAssessmentModal" class="modal" style="display:none;">
+    <div class="modal-card">
+      <button type="button" class="modal-close-btn" id="closeEditAssessmentModalBtn"><i class="fa-solid fa-xmark"></i></button>
+      <h3 style="margin-bottom:1.25rem;"><i class="fa-solid fa-pen-to-square"></i> Edit Assessment</h3>
+      <form id="editAssessmentForm">
+        <input type="hidden" id="editTestId">
+        <div class="form-group">
+          <label for="editTestTitle">Assessment Title</label>
+          <input type="type" id="editTestTitle" placeholder="e.g. Wakissha UCE ICT 2 MOCK 2026" required>
+        </div>
+        <div class="form-group">
+          <label for="editTargetClass">Target Class</label>
+          <select id="editTargetClass" required>
+            <option value="S1">S.1</option><option value="S2">S.2</option><option value="S3">S.3</option>
+            <option value="S4">S.4</option><option value="S5">S.5</option><option value="S6">S.6</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="editTestDesc">Description</label>
+          <textarea id="editTestDesc" rows="2" placeholder="Instructions for learners..."></textarea>
+        </div>
+        <div class="form-group">
+          <label for="editTestDeadline">Submission Deadline</label>
+          <input type="datetime-local" id="editTestDeadline" required>
+        </div>
+        <div class="form-group">
+          <label for="editTestFile">New Assessment File (Optional - leave blank to keep current)</label>
+          <input type="file" id="editTestFile">
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:1.5rem; flex-wrap: wrap;">
+          <button type="button" id="cancelEditAssessmentBtn" class="btn-action btn-secondary">Cancel</button>
+          <button type="submit" class="btn-action btn-edit"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Firebase & Scripts -->
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
