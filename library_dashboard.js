@@ -236,3 +236,14 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+function toggleMobileMenu() {
+      const actions = document.getElementById('headerActions');
+      const icon = document.getElementById('menuIcon');
+      actions.classList.toggle('active');
+      if (actions.classList.contains('active')) {
+        icon.className = 'fa-solid fa-xmark';
+      } else {
+        icon.className = 'fa-solid fa-bars';
+      }
+    }
