@@ -1379,9 +1379,9 @@ const navHomeLink = document.getElementById('navHomeLink');
   }
 
   const assessmentForm = document.getElementById('assessmentForm');
-  if (assessmentForm) {
-    assessmentForm.addEventListener('click', handleCreateAssessment); // Or standard submit handler
-  }
+   if (assessmentForm) {
+     assessmentForm.addEventListener('submit', handleCreateAssessment);
+   }
 
   const filterAssessmentClass = document.getElementById('filterAssessmentClass');
   if (filterAssessmentClass) {
