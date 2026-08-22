@@ -2382,6 +2382,57 @@ window.renderSubmissions = async function() {
 };
 
 /* ==========================================================================
+   STUDENT PORTAL: VIEW OWN GRADES & FEEDBACK MODULE
+   ========================================================================== */
+window.renderStudentGrades = async function(currentStudentId) {
+  const container = document.getElementById('studentGradesContainer');
+  if (!container) return;
+
+  let submissions = [];
+  
+  if (window.db) {
+    try {
+      const snap = await window.db.collection('submissions').where('studentId', '==', currentStudentId).get();
+      snap.forEach(doc => submissions.push({ id: doc.id, ...doc.data() }));
+    } catch (err) {
+      console.warn('Firestore student grades fetch warning:', err);
+    }
+  }
+
+  if (submissions.length === 0) {
+    submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+    submissions = submissions.filter(s => s.studentId === currentStudentId);
+  }
+
+  if (submissions.length === 0) {
+    container.innerHTML = '<p style="color:#64748b; font-size:0.85rem;">No submissions found for your profile.</p>';
+    return;
+  }
+
+  container.innerHTML = submissions.map(sub => `
+    <div style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:1rem; margin-bottom:0.75rem; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">
+        <div>
+          <strong style="color:#1e293b; font-size:0.95rem;">${sub.testTitle}</strong><br>
+          <span style="color:#64748b; font-size:0.8rem;">File: <em>${sub.fileName}</em></span>
+        </div>
+        <div>
+          ${sub.grade 
+            ? `<span style="background:#dcfce7; color:#16a34a; padding:0.25rem 0.6rem; border-radius:20px; font-size:0.8rem; font-weight:600;"><i class="fa-solid fa-award"></i> Grade: ${sub.grade}</span>`
+            : `<span style="background:#fef3c7; color:#d97706; padding:0.25rem 0.6rem; border-radius:20px; font-size:0.8rem; font-weight:600;">Pending Review</span>`
+          }
+        </div>
+      </div>
+      ${sub.feedback ? `
+        <div style="margin-top:0.5rem; background:#f8fafc; border-left:3px solid #2563eb; padding:0.5rem 0.75rem; font-size:0.85rem; color:#334155;">
+          <strong>Teacher Feedback:</strong> ${sub.feedback}
+        </div>
+      ` : ''}
+    </div>
+  `).join('');
+};
+
+/* ==========================================================================
    MODAL TOGGLES
    ========================================================================== */
 window.openSubmissionModal = function() {
