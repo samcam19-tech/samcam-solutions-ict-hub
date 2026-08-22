@@ -2219,7 +2219,7 @@ window.openGradingModal = function(submissionId) {
       <div class="modal-content" style="background:#fff; padding:2rem; border-radius:12px; width:90%; max-width:500px; box-shadow:0 10px 25px rgba(0,0,0,0.2);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
           <h3 style="margin:0; color:#1e293b;">Grade Student Submission</h3>
-          <button onclick="closeGradingModal()" style="background:none; border:none; font-size:1.2rem; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+          <button type="button" onclick="closeGradingModal()" style="background:none; border:none; font-size:1.2rem; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <form id="gradingForm" onsubmit="saveSubmissionGrade(event)">
           <input type="hidden" id="gradingSubmissionId">
@@ -2241,12 +2241,17 @@ window.openGradingModal = function(submissionId) {
     document.body.appendChild(modal);
   }
 
-  document.getElementById('gradingSubmissionId').value = submissionId;
-  document.getElementById('gradeScoreInput').value = '';
-  document.getElementById('gradeFeedbackInput').value = '';
-
-  // Show modal immediately for snappy UI response
+  // Make sure modal is visible immediately so inputs enter the DOM layout
   modal.style.display = 'flex';
+
+  // Safely assign values once elements are guaranteed to exist
+  const idField = document.getElementById('gradingSubmissionId');
+  const scoreField = document.getElementById('gradeScoreInput');
+  const feedbackField = document.getElementById('gradeFeedbackInput');
+
+  if (idField) idField.value = submissionId;
+  if (scoreField) scoreField.value = '';
+  if (feedbackField) feedbackField.value = '';
 
   // Fetch existing data asynchronously in the background
   (async () => {
@@ -2268,8 +2273,8 @@ window.openGradingModal = function(submissionId) {
     }
 
     if (targetSub) {
-      document.getElementById('gradeScoreInput').value = targetSub.grade || '';
-      document.getElementById('gradeFeedbackInput').value = targetSub.feedback || '';
+      if (scoreField) scoreField.value = targetSub.grade || '';
+      if (feedbackField) feedbackField.value = targetSub.feedback || '';
     }
   })();
 };
@@ -2344,13 +2349,13 @@ window.renderSubmissions = async function() {
       <div>
         <strong>${sub.studentName}</strong> <small style="color:#2563eb;">(${sub.studentClass})</small><br>
         <span style="color:#64748b; font-size:0.85rem;">${sub.testTitle} - <em>${sub.fileName}</em></span>
-        ${sub.grade ? `<br><span style="color:#16a34a; font-size:0.8rem; font-weight:600;"><i class="fa-solid fa-award"></i> Grade: ${sub.grade}</span>` : ''}
+        ${sub.grade ? `<br><span style="color:#16a34a; font-size:0.80rem; font-weight:600;"><i class="fa-solid fa-award"></i> Grade: ${sub.grade}</span>` : ''}
       </div>
       <div style="display:flex; gap:0.4rem; align-items:center;">
         <a href="${sub.fileUrl}" download="${sub.fileName || 'submission'}" target="_blank" rel="noopener noreferrer" class="btn-action btn-download" style="padding:0.3rem 0.6rem; font-size:0.75rem;">
           <i class="fa-solid fa-download"></i> Get File
         </a>
-        <button onclick="openGradingModal('${sub.id}')" class="btn-action btn-edit" style="padding:0.3rem 0.6rem; font-size:0.75rem;">
+        <button type="button" onclick="openGradingModal('${sub.id}')" class="btn-action btn-edit" style="padding:0.3rem 0.6rem; font-size:0.75rem;">
           <i class="fa-solid fa-star"></i> Grade
         </button>
       </div>
