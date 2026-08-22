@@ -1,10 +1,91 @@
 /**
+ * Automatically load and render audit logs from Firestore or LocalStorage when the audit page opens
+ */
+async function loadAuditLogs() {
+  const tableBody = document.getElementById('auditLogsTableBody');
+  if (!tableBody) return;
+
+  let logs = [];
+
+  // 1. Try fetching from Firestore 'audit_logs' collection
+  if (window.db) {
+    try {
+      const snapshot = await window.db.collection('audit_logs').orderBy('timestamp', 'desc').get();
+      snapshot.forEach(doc => {
+        logs.push(doc.data());
+      });
+    } catch (err) {
+      console.warn("Could not fetch audit logs from Firestore, checking local storage:", err);
+    }
+  }
+
+  // 2. Fallback to LocalStorage if Firestore returned nothing or failed
+  if (logs.length === 0) {
+    try {
+      logs = JSON.parse(localStorage.getItem('portal_audit_logs')) || [];
+    } catch (e) {
+      console.error("Error reading local audit logs:", e);
+    }
+  }
+
+  // 3. If we have logs, render them into the table
+  if (logs.length > 0) {
+    tableBody.innerHTML = ''; // Clear hardcoded dummy rows
+
+    logs.forEach(log => {
+      const isSuccess = log.status === 'SUCCESS';
+      const badgeClass = isSuccess ? 'badge-success' : 'badge-failed';
+      const iconClass = isSuccess ? 'fa-circle-check' : 'fa-circle-xmark';
+      
+      // Format timestamp nicely
+      let formattedDate = log.timestamp;
+      try {
+        const d = new Date(log.timestamp);
+        formattedDate = d.toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      } catch (e) {}
+
+      // Shorten user agent string for clean display
+      let shortDevice = log.userAgent || 'Unknown Device';
+      if (shortDevice.includes('Chrome')) shortDevice = 'Chrome / ' + (shortDevice.includes('Windows') ? 'Windows' : 'Device');
+      else if (shortDevice.includes('Android')) shortDevice = 'Mobile Safari / Android';
+      else if (shortDevice.includes('iPhone')) shortDevice = 'Mobile Safari / iOS';
+
+      const tr = document.createElement('tr');
+      tr.setAttribute('data-status', log.status);
+      tr.setAttribute('data-date', log.dateStr || new Date().toISOString().slice(0, 10));
+
+      tr.innerHTML = `
+        <td>
+          <span class="badge ${badgeClass}">
+            <i class="fa-solid ${iconClass}"></i> ${log.status}
+          </span>
+        </td>
+        <td class="nowrap">${formattedDate}</td>
+        <td class="font-weight-500 text-dark">${log.username}</td>
+        <td>${log.failureReason && log.failureReason !== '—' ? `<span class="reason-tag">${log.failureReason}</span>` : '<span class="text-muted">—</span>'}</td>
+        <td class="font-mono">${log.ipAddress || '127.0.0.1'}</td>
+        <td class="text-secondary" title="${log.userAgent}">${shortDevice}</td>
+      `;
+
+      tableBody.appendChild(tr);
+    });
+
+    // Update counter text & apply any active filters
+    filterAuditLogs();
+  }
+}
+
+/**
  * Filter audit trail rows dynamically based on search text, status, and time range.
  */
 function filterAuditLogs() {
-  const searchText = document.getElementById('auditSearchInput').value.toLowerCase();
-  const statusFilter = document.getElementById('auditStatusFilter').value;
-  const dateFilter = document.getElementById('auditDateFilter').value;
+  const searchInput = document.getElementById('auditSearchInput');
+  const statusSelect = document.getElementById('auditStatusFilter');
+  const dateSelect = document.getElementById('auditDateFilter');
+  
+  const searchText = searchInput ? searchInput.value.toLowerCase() : '';
+  const statusFilter = statusSelect ? statusSelect.value : 'ALL';
+  const dateFilter = dateSelect ? dateSelect.value : 'ALL';
   const rows = document.querySelectorAll('#auditLogsTableBody tr');
   
   let visibleCount = 0;
@@ -46,15 +127,16 @@ function filterAuditLogs() {
   // Update counter text dynamically
   const counterText = document.getElementById('auditCounterText');
   if (counterText) {
-    counterText.innerHTML = `Showing <strong>${visibleCount}</strong> of <strong>${rows.length}</strong> total audit events`;
+    const totalRows = rows.length;
+    counterText.innerHTML = `Showing <strong>${visibleCount}</strong> of <strong>${totalRows}</strong> total audit events`;
   }
 }
 
 /**
  * Triggered when clicking the Refresh button.
- * Fetches latest records and provides a non-intrusive status notification.
+ * Fetches latest records from database and updates the table view.
  */
-function refreshAuditLogs() {
+async function refreshAuditLogs() {
   console.log('Fetching latest audit logs from server...');
   
   const refreshBtn = document.querySelector('.audit-actions .btn-secondary');
@@ -63,11 +145,14 @@ function refreshAuditLogs() {
     refreshBtn.innerHTML = '<i class="fa-solid fa-rotate fa-spin"></i> Refreshing...';
     refreshBtn.disabled = true;
 
+    // Reload logs from database/storage
+    await loadAuditLogs();
+
     setTimeout(() => {
       refreshBtn.innerHTML = originalHTML;
       refreshBtn.disabled = false;
       showToast('Audit logs synchronized successfully.', 'success');
-    }, 800);
+    }, 500);
   }
 }
 
@@ -152,3 +237,8 @@ function showToast(message, type = 'success') {
     setTimeout(() => toast.remove(), 300);
   }, 3000);
 }
+
+// Automatically load logs when the audit page finishes opening
+document.addEventListener("DOMContentLoaded", function () {
+  loadAuditLogs();
+});
