@@ -131,7 +131,7 @@ function renderBlog() {
     const isExpanded = expandedPostId === post.id;
 
     // Resolve Author Avatar (Fallback to default user icon if missing)
-    const defaultAvatar = "https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/svgs/solid/user-circle.svg";
+    const defaultAvatar = "images/default-avatar.png";
     const authorPic = post.authorAvatar || defaultAvatar;
 
     htmlContent += `
