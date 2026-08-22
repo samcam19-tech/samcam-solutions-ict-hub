@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ICT Knowledge Base & Blog | SAMCAM SOLUTION ICT HUB</title>
+  <link rel="stylesheet" href="blog.css">
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+  <div class="blog-container">
+    <!-- Header / Navigation Bar -->
+    <header class="blog-header">
+      <div class="header-title">
+        <h2><i class="fa-solid fa-blog"></i> SAMCAM ICT Insights</h2>
+        <p>Expert articles, practical tutorials, theory guides, and pedagogical resources.</p>
+      </div>
+      <div class="header-actions">
+        <a href="assessments.html" class="btn-secondary">
+          <i class="fa-solid fa-arrow-left"></i> Back to Portal
+        </a>
+      </div>
+    </header>
+
+    <!-- Search & Filter Control Hub -->
+    <section class="control-hub">
+      <!-- Category Tabs -->
+      <div class="category-tabs" id="categoryTabs">
+        <button class="tab-btn active" data-category="all" onclick="filterByCategory('all')">All Posts</button>
+        <button class="tab-btn" data-category="Practical" onclick="filterByCategory('Practical')">Practical Scenarios</button>
+        <button class="tab-btn" data-category="Theory" onclick="filterByCategory('Theory')">Theory & Concepts</button>
+        <button class="tab-btn" data-category="Datasets" onclick="filterByCategory('Datasets')">Datasets & Guides</button>
+        <button class="tab-btn" data-category="General" onclick="filterByCategory('General')">General Knowledge</button>
+      </div>
+
+      <!-- Search Bar -->
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="blogSearchInput" placeholder="Search articles by title, keyword, or tag..." onkeyup="handleSearch()">
+      </div>
+    </section>
+
+    <!-- Main Blog Grid Container -->
+    <main class="blog-grid" id="blogGrid">
+      <!-- Dynamic blog cards will be injected here by JavaScript in reverse chronological order -->
+      <div class="loading-state">Loading latest ICT publications...</div>
+    </main>
+
+    <!-- Pagination / Navigation Footer -->
+    <footer class="blog-pagination-footer" id="paginationFooter">
+      <button class="btn-page" id="prevPageBtn" onclick="changePage(-1)" disabled>
+        <i class="fa-solid fa-chevron-left"></i> Newer Posts
+      </button>
+      <span id="pageIndicator" class="page-indicator">Page 1 of 1</span>
+      <button class="btn-page" id="nextPageBtn" onclick="changePage(1)" disabled>
+        Older Posts <i class="fa-solid fa-chevron-right"></i>
+      </button>
+    </footer>
+  </div>
+
+  <!-- Script Files -->
+  <script src="blog.js"></script>
+</body>
+</html>
