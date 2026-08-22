@@ -1,5 +1,5 @@
 /* ==========================================================================
-   FIREBASE-CONNECTED ICT BLOG ENGINE (blog.js)
+   FIREBASE-CONNECTED ICT BLOG ENGINE WITH ROLE-BASED ACCESS (blog.js)
    ========================================================================== */
 
 // Application State
@@ -8,11 +8,47 @@ let currentCategory = 'all';
 let searchQuery = '';
 let currentPage = 1;
 const postsPerPage = 4;
+let currentUser = null;
 
-// Initialize Blog and Attach Firestore Real-Time Listeners
+// Initialize Blog, Load Session, and Attach Firestore Real-Time Listeners
 document.addEventListener('DOMContentLoaded', () => {
+  loadUserSession();
   fetchBlogPostsFromCloud();
 });
+
+/* ==========================================================================
+   SESSION & ROLE MANAGEMENT
+   ========================================================================== */
+function loadUserSession() {
+  try {
+    const sessionData = localStorage.getItem('portal_session');
+    if (sessionData) {
+      currentUser = JSON.parse(sessionData);
+    }
+  } catch (err) {
+    console.warn("Error reading portal session:", err);
+  }
+  
+  updateBlogUIPermissions();
+}
+
+function updateBlogUIPermissions() {
+  const newPostBtn = document.getElementById('openNewPostBtn');
+  if (!newPostBtn) return;
+
+  if (!currentUser) {
+    newPostBtn.style.display = 'none';
+    return;
+  }
+
+  const roleLower = (currentUser.role || '').toLowerCase();
+  // Allow only Teachers, Admins, and Administrators to publish articles
+  if (roleLower === 'teacher' || roleLower === 'admin' || roleLower === 'administrator') {
+    newPostBtn.style.display = 'inline-flex';
+  } else {
+    newPostBtn.style.display = 'none';
+  }
+}
 
 /* ==========================================================================
    FIRESTORE DATA RETRIEVAL (Reverse Chronological Order)
@@ -21,7 +57,6 @@ function fetchBlogPostsFromCloud() {
   const gridContainer = document.getElementById('blogGrid');
   gridContainer.innerHTML = `<div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i> Syncing live ICT insights from Firestore...</div>`;
 
-  // Query Firestore collection 'blog_posts', ordered by publication timestamp descending (newest first)
   db.collection('blog_posts')
     .orderBy('createdAt', 'desc')
     .onSnapshot((snapshot) => {
@@ -86,7 +121,6 @@ function renderBlog() {
     else if (post.category === 'Theory') badgeClass = 'badge-theory';
     else if (post.category === 'Datasets') badgeClass = 'badge-datasets';
 
-    // Handle Firestore Timestamp formatting
     let formattedDate = "Recent";
     if (post.createdAt) {
       const dateObj = post.createdAt.toDate ? post.createdAt.toDate() : new Date(post.createdAt);
@@ -118,9 +152,26 @@ function renderBlog() {
 }
 
 /* ==========================================================================
-   PUBLISH NEW POST TO FIRESTORE
+   PUBLISH NEW POST TO FIRESTORE (Secured for Teachers & Admins)
    ========================================================================== */
 function openPublishModal() {
+  if (!currentUser) {
+    alert("Please log in as a teacher or administrator to publish new posts.");
+    return;
+  }
+
+  const roleLower = (currentUser.role || '').toLowerCase();
+  if (roleLower !== 'teacher' && roleLower !== 'admin' && roleLower !== 'administrator') {
+    alert("Access Denied: Only teachers and administrators are authorized to publish blog posts.");
+    return;
+  }
+
+  // Pre-fill author name from session if available
+  const authorField = document.getElementById('newAuthor');
+  if (authorField && currentUser.fullName) {
+    authorField.value = currentUser.fullName;
+  }
+
   document.getElementById('publishModal').style.display = 'flex';
 }
 
@@ -131,6 +182,12 @@ function closePublishModal() {
 
 function handlePublishSubmit(e) {
   e.preventDefault();
+  
+  if (!currentUser) {
+    alert("Session expired. Please log in again.");
+    return;
+  }
+
   const submitBtn = document.getElementById('submitPostBtn');
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving to Cloud...';
@@ -138,10 +195,10 @@ function handlePublishSubmit(e) {
   const newPostData = {
     title: document.getElementById('newTitle').value,
     category: document.getElementById('newCategory').value,
-    author: document.getElementById('newAuthor').value,
+    author: document.getElementById('newAuthor').value || currentUser.fullName || 'Samcam ICT Dept',
     excerpt: document.getElementById('newExcerpt').value,
     content: document.getElementById('newContent').value,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp() // Ensures precise chronological ordering
+    createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
 
   db.collection('blog_posts').add(newPostData)
