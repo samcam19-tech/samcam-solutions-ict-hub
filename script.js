@@ -272,6 +272,30 @@ window.handleLogin = function(e) {
   window.executeLogin();
 };
 
+/* ==========================================================================
+   PASSWORD VISIBILITY TOGGLE HELPER
+   ========================================================================== */
+window.togglePasswordVisibility = function(passwordFieldId, iconElementId) {
+  const passField = document.getElementById(passwordFieldId);
+  const icon = document.getElementById(iconElementId);
+
+  if (!passField) return;
+
+  if (passField.type === 'password') {
+    passField.type = 'text';
+    if (icon) {
+      icon.classList.remove('fa-eye');
+      icon.classList.add('fa-eye-slash');
+    }
+  } else {
+    passField.type = 'password';
+    if (icon) {
+      icon.classList.remove('fa-eye-slash');
+      icon.classList.add('fa-eye');
+    }
+  }
+};
+
 window.handleLogout = function() {
   // 1. Clear ALL possible session storage locations
   localStorage.removeItem('portal_session');
