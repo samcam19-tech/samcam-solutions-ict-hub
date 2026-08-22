@@ -18,7 +18,10 @@
         <h2><i class="fa-solid fa-blog"></i> SAMCAM ICT Insights</h2>
         <p>Expert articles, practical tutorials, theory guides, and pedagogical resources.</p>
       </div>
-      <div class="header-actions">
+      <div class="header-actions" style="display: flex; gap: 0.75rem; align-items: center;">
+        <button class="btn-secondary" onclick="openPublishModal()" style="background: var(--warning, #f59e0b) !important; color: #fff; border:none; cursor:pointer;">
+          <i class="fa-solid fa-plus"></i> New Post
+        </button>
         <a href="assessments.html" class="btn-secondary">
           <i class="fa-solid fa-arrow-left"></i> Back to Portal
         </a>
@@ -45,8 +48,7 @@
 
     <!-- Main Blog Grid Container -->
     <main class="blog-grid" id="blogGrid">
-      <!-- Dynamic blog cards will be injected here by JavaScript in reverse chronological order -->
-      <div class="loading-state">Loading latest ICT publications...</div>
+      <div class="loading-state">Fetching live ICT articles from Firestore...</div>
     </main>
 
     <!-- Pagination / Navigation Footer -->
@@ -61,7 +63,51 @@
     </footer>
   </div>
 
-  <!-- Script Files -->
+  <!-- Publish Post Modal (Hidden by default) -->
+  <div id="publishModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1000; justify-content:center; align-items:center; padding:1rem;">
+    <div style="background:#fff; padding:2rem; border-radius:12px; width:100%; max-width:600px; box-shadow:0 10px 25px rgba(0,0,0,0.1);">
+      <h3 style="margin-bottom:1.25rem;"><i class="fa-solid fa-pen-nib"></i> Publish New ICT Article</h3>
+      <form id="publishForm" onsubmit="handlePublishSubmit(event)">
+        <div style="margin-bottom:1rem;">
+          <label style="display:block; font-size:0.8rem; font-weight:600; margin-bottom:0.3rem;">Article Title</label>
+          <input type="text" id="newTitle" required style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px;">
+        </div>
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:1rem; margin-bottom:1rem;">
+          <div>
+            <label style="display:block; font-size:0.8rem; font-weight:600; margin-bottom:0.3rem;">Category</label>
+            <select id="newCategory" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px;">
+              <option value="Practical">Practical Scenarios</option>
+              <option value="Theory">Theory & Concepts</option>
+              <option value="Datasets">Datasets & Guides</option>
+              <option value="General">General Knowledge</option>
+            </select>
+          </div>
+          <div>
+            <label style="display:block; font-size:0.8rem; font-weight:600; margin-bottom:0.3rem;">Author</label>
+            <input type="text" id="newAuthor" value="Samcam ICT Dept" required style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px;">
+          </div>
+        </div>
+        <div style="margin-bottom:1rem;">
+          <label style="display:block; font-size:0.8rem; font-weight:600; margin-bottom:0.3rem;">Short Excerpt / Summary</label>
+          <textarea id="newExcerpt" rows="2" required style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px;"></textarea>
+        </div>
+        <div style="margin-bottom:1.25rem;">
+          <label style="display:block; font-size:0.8rem; font-weight:600; margin-bottom:0.3rem;">Full Content</label>
+          <textarea id="newContent" rows="4" required style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px;"></textarea>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+          <button type="button" onclick="closePublishModal()" style="background:#e2e8f0; border:none; padding:0.6rem 1.2srem; border-radius:6px; font-weight:600; cursor:pointer;">Cancel</button>
+          <button type="submit" id="submitPostBtn" style="background:var(--primary); color:#fff; border:none; padding:0.6rem 1.2rem; border-radius:6px; font-weight:600; cursor:pointer;">Publish to Cloud</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs Compat (v9.23.0) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+  <script src="firebase-config.js"></script>
   <script src="blog.js"></script>
 </body>
 </html>
