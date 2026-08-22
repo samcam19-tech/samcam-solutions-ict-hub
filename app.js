@@ -514,7 +514,7 @@ function renderCards() {
           <span class="tag tag-cat">${item.category}</span>
           <span class="tag tag-ext">${fileMeta.label}</span>
           ${accessType === 'paid' ? '<span class="tag" style="background:#fef3c7; color:#92400e;"><i class="fa-solid fa-lock"></i> Paid</span>' : ''}
-          <span class="tag" style="background:#f1f5f9; color:#475569; margin-left:auto;"><i class="fa-solid fa-download"></i> ${downloadCount} downloaded</span>
+          <span class="tag" style="background:#f1f5f9; color:#475569; margin-left:auto;"><i class="fa-solid fa-download"></i> ${downloadCount} downloads</span>
         </div>
         <h3 class="card-title">${escapeHtml(item.title)}</h3>
         <p class="card-description">${escapeHtml(item.description || 'No description provided.')}</p>
