@@ -191,18 +191,36 @@ document.addEventListener('DOMContentLoaded', () => {
    2. EXECUTE LOGIN (WITH SINGLE-DEVICE RESTRICTION & REMEMBER ME)
    ========================================================================== */
 /**
- * Helper function to fetch the user's actual public IP address and approximate location
+ * Helper function to fetch the user's actual public IP address and approximate location using ipwho.is
  */
 async function fetchClientIPAndLocation() {
   try {
-    const response = await fetch('https://ipapi.co/json/');
+    const response = await fetch('https://ipwho.is/');
     const data = await response.json();
-    return {
-      ip: data.ip || '127.0.0.1',
-      location: data.city && data.country_name ? `${data.city}, ${data.country_name}` : 'Unknown Location'
-    };
+    
+    if (data.success) {
+      return {
+        ip: data.ip || '127.0.0.1',
+        location: `${data.city || 'Unknown City'}, ${data.country || 'Unknown Country'}`
+      };
+    } else {
+      throw new Error(data.message || 'Geolocation lookup failed');
+    }
   } catch (err) {
-    console.warn("Could not retrieve public IP or location:", err);
+    console.warn("Could not retrieve public IP or location via ipwho.is, trying fallback:", err);
+    
+    // Fallback backup API
+    try {
+      const fallbackRes = await fetch('https://ipapi.co/json/');
+      const fallbackData = await fallbackRes.json();
+      if (fallbackData.ip) {
+        return {
+          ip: fallbackData.ip,
+          location: `${fallbackData.city || 'Unknown City'}, ${fallbackData.country_name || 'Unknown Country'}`
+        };
+      }
+    } catch (e) {}
+
     return {
       ip: '127.0.0.1',
       location: 'Unknown Location'
