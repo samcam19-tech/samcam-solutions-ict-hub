@@ -1155,7 +1155,7 @@ async function deleteQuizSubmission(docId) {
     // Re-render the current page to safely adjust total pages and row elements
     renderSubmissionsTablePage();
 
-  } } catch (err) {
+} catch (err) {
     console.error("Error deleting quiz submission:", err);
     showCustomModal({
       title: "Deletion Failed",
