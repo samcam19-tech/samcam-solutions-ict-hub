@@ -8,18 +8,66 @@
   <!-- FontAwesome & Google Fonts -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* Inline Mobile Menu Responsiveness Styling */
+    @media (max-width: 768px) {
+      .blog-header {
+        flex-direction: column;
+        align-items: flex-start !important;
+        gap: 1rem;
+      }
+      .mobile-menu-toggle {
+        display: flex !important;
+        align-self: flex-end;
+        margin-top: -3.5rem;
+        background: none;
+        border: 1px solid var(--border-color, #cbd5e1);
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 1.1rem;
+        color: var(--text-main, #334155);
+      }
+      .header-actions {
+        display: none !important;
+        width: 100%;
+        flex-direction: column;
+        gap: 0.5rem;
+        padding-top: 0.5rem;
+      }
+      .header-actions.mobile-active {
+        display: flex !important;
+      }
+      .header-actions .btn-secondary {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+      }
+    }
+    @media (min-width: 769px) {
+      .mobile-menu-toggle {
+        display: none !important;
+      }
+    }
+  </style>
 </head>
 <body>
 
   <div class="blog-container">
     <!-- Header / Navigation Bar -->
-    <header class="blog-header">
+    <header class="blog-header" style="position: relative;">
       <div class="header-title">
         <h2><i class="fa-solid fa-blog"></i> SAMCAM ICT Insights</h2>
         <p>Expert articles, practical tutorials, theory guides, and pedagogical resources.</p>
       </div>
-      <div class="header-actions" style="display: flex; gap: 0.75rem; align-items: center;">
-        <button class="btn-secondary" id="openNewPostBtn" onclick="openPublishModal()" style="background: var(--warning, #f59e0b) !important; color: #fff; border:none; cursor:pointer;">
+
+      <!-- Mobile Hamburger Button -->
+      <button type="button" class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle Navigation Menu">
+        <i class="fa-solid fa-bars" id="menuToggleIcon"></i>
+      </button>
+
+      <div class="header-actions" id="headerActionsContainer" style="display: flex; gap: 0.75rem; align-items: center;">
+        <button class="btn-secondary" id="openNewPostBtn" onclick="openPublishModal()" style="background: var(--warning, #f59e0b) !important; color: #fff; border:none; cursor:pointer; display:none;">
           <i class="fa-solid fa-plus"></i> New Post
         </button>
         <a href="assessments.html" class="btn-secondary">
@@ -96,12 +144,27 @@
           <textarea id="newContent" rows="4" required style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px;"></textarea>
         </div>
         <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
-          <button type="button" onclick="closePublishModal()" style="background:#e2e8f0; border:none; padding:0.6rem 1.2srem; border-radius:6px; font-weight:600; cursor:pointer;">Cancel</button>
+          <button type="button" onclick="closePublishModal()" style="background:#e2e8f0; border:none; padding:0.6rem 1.2rem; border-radius:6px; font-weight:600; cursor:pointer;">Cancel</button>
           <button type="submit" id="submitPostBtn" style="background:var(--primary); color:#fff; border:none; padding:0.6rem 1.2rem; border-radius:6px; font-weight:600; cursor:pointer;">Publish to Cloud</button>
         </div>
       </form>
     </div>
   </div>
+
+  <!-- Mobile Menu Toggle Script -->
+  <script>
+    function toggleMobileMenu() {
+      const actionsContainer = document.getElementById('headerActionsContainer');
+      const icon = document.getElementById('menuToggleIcon');
+      if (actionsContainer.classList.contains('mobile-active')) {
+        actionsContainer.classList.remove('mobile-active');
+        icon.className = 'fa-solid fa-bars';
+      } else {
+        actionsContainer.classList.add('mobile-active');
+        icon.className = 'fa-solid fa-xmark';
+      }
+    }
+  </script>
 
   <!-- Firebase SDKs Compat (v9.23.0) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
