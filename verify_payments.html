@@ -3,272 +3,273 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Payment Verification Portal | SAMCAM SOLUTIONS ICT HUB</title>
-  <link rel="stylesheet" href="library_dashboard.css">
+  <title>System Audit Trails | Admin Dashboard</title>
+  <!-- FontAwesome for Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- External CSS -->
+  <link rel="stylesheet" href="audit-styles.css">
+
+  <!-- FIREBASE SDKs (Compat Version) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+
+  <!-- YOUR FIREBASE CONFIGURATION -->
+  <script src="firebase-config.js"></script>
+
+  <!-- CUSTOM MODAL & ACCESS STYLES -->
   <style type="text/css">
-        /* Full-width container variation for admin data tables */
-        .dashboard-container {
-          max-width: 1400px;
-          margin: 0 auto;
-          animation: fadeIn 0.3s ease-in-out;
-        }
-        
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(6px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        
-        /* Table Card Layout */
-        .card.table-card {
-          padding: 1.5rem 2rem;
-          overflow: hidden;
-        }
-        
-        /* Table Header Controls & Search */
-        .table-header-flex {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 1.5rem;
-          gap: 1.25rem;
-          flex-wrap: wrap;
-        }
-        
-        .table-header-flex h3 {
-          margin-bottom: 0;
-          font-size: 1.2rem;
-          color: var(--text-main);
-          display: flex;
-          align-items: center;
-          gap: 0.65rem;
-        }
-        
-        .table-header-flex h3 i {
-          color: var(--primary);
-        }
-        
-        .table-header-flex input[type="text"] {
-          max-width: 320px;
-          padding: 0.65rem 1rem;
-          border-radius: 8px;
-          border: 1px solid var(--border-color);
-          background-color: #f8fafc;
-          font-size: 0.9rem;
-          transition: all 0.2s ease;
-        }
-        
-        .table-header-flex input[type="text"]:focus {
-          background-color: #fff;
-          border-color: var(--primary);
-          box-shadow: 0 0 0 3px var(--primary-light);
-        }
-        
-        /* Modern Data Table Polish */
-        .table-responsive {
-          width: 100%;
-          overflow-x: auto;
-          border-radius: 10px;
-          border: 1px solid var(--border-color);
-          background: #ffffff;
-        }
-        
-        table {
-          width: 100%;
-          border-collapse: collapse;
-          text-align: left;
-          font-size: 0.925rem;
-          white-space: nowrap;
-        }
-        
-        th, td {
-          padding: 1rem 1.25rem;
-          border-bottom: 1px solid var(--border-color);
-        }
-        
-        th {
-          background: #f8fafc;
-          color: #475569;
-          font-weight: 600;
-          text-transform: uppercase;
-          font-size: 0.725rem;
-          letter-spacing: 0.06em;
-          border-bottom: 2px solid var(--border-color);
-        }
-        
-        tr:last-child td {
-          border-bottom: none;
-        }
-        
-        tr tbody tr, tr {
-          transition: background-color 0.15s ease;
-        }
-        
-        tr:hover td {
-          background-color: #f8fafc;
-        }
-        
-        /* Verification State Badges */
-        .badge-pending {
-          background: #fef3c7;
-          color: #b45309;
-          border: 1px solid #fde68a;
-        }
-        
-        .badge-verified {
-          background: #d1fae5;
-          color: #065f46;
-          border: 1px solid #a7f3d0;
-        }
-        
-        .badge-rejected {
-          background: #ffe4e6;
-          color: #be123c;
-          border: 1px solid #fecdd3;
-        }
-        
-        /* Action Buttons inside Tables */
-        td button, td .btn-action {
-          padding: 0.4rem 0.8rem;
-          font-size: 0.8rem;
-          font-weight: 600;
-          border-radius: 6px;
-          border: none;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          display: inline-flex;
-          align-items: center;
-          gap: 0.35rem;
-        }
-        
-        .btn-approve {
-          background: #d1fae5;
-          color: #065f46;
-        }
-        
-        .btn-approve:hover {
-          background: #a7f3d0;
-        }
-        
-        .btn-reject {
-          background: #ffe4e6;
-          color: #be123c;
-        }
-        
-        .btn-reject:hover {
-          background: #fecdd3;
-        }
-        
-        /* Restricted Auth State Card */
-        #authRestrictedView {
-          max-width: 550px;
-          margin: 4rem auto;
-          text-align: center;
-          padding: 3rem 2rem !important;
-          background: var(--card-bg);
-          border-radius: var(--radius);
-          box-shadow: var(--shadow-lg);
-          border: 1px solid var(--border-color);
-        }
-        
-        #authRestrictedView i.fa-triangle-exclamation {
-          font-size: 3rem;
-          color: var(--warning);
-          margin-bottom: 1.25rem;
-        }
-        
-        #authRestrictedView h3 {
-          font-size: 1.5rem;
-          font-weight: 700;
-          color: var(--text-main);
-          margin-bottom: 0.5rem;
-        }
-        
-        #authRestrictedView p {
-          color: var(--text-muted);
-          font-size: 0.95rem;
-          margin-bottom: 1.75rem;
-          line-height: 1.6;
-        }
-        
-        #authRestrictedView .btn-primary {
-          display: inline-flex;
-          width: auto;
-          margin: 0 auto;
-          background: var(--primary);
-          color: #fff;
-          padding: 0.7rem 1.5rem;
-          border-radius: 8px;
-          text-decoration: none;
-          font-weight: 600;
-          box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
-          transition: all 0.2s ease;
-        }
-        
-        #authRestrictedView .btn-primary:hover {
-          background: var(--primary-dark);
-          transform: translateY(-1px);
-        }
+    /* Modal Backdrop Overlay */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+    }
+
+    .modal-backdrop.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Modal Box Container */
+    .custom-modal {
+      background: #ffffff;
+      width: 100%;
+      max-width: 440px;
+      padding: 2.5rem 2rem;
+      border-radius: 16px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      text-align: center;
+      transform: translateY(15px);
+      transition: transform 0.25s ease;
+      border: 1px solid #e2e8f0;
+    }
+
+    .modal-backdrop.active .custom-modal {
+      transform: translateY(0);
+    }
+
+    .custom-modal .modal-icon {
+      width: 64px;
+      height: 64px;
+      background: #fef3c7;
+      color: #d97706;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.75rem;
+      margin: 0 auto 1.25rem auto;
+    }
+
+    .custom-modal h3 {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #1e293b;
+      margin-bottom: 0.5rem;
+    }
+
+    .custom-modal p {
+      color: #64748b;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      margin-bottom: 1.75rem;
+    }
+
+    .custom-modal .btn-modal-action {
+      display: block;
+      width: 100%;
+      background: #4f46e5;
+      color: #ffffff;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
+      transition: background 0.2s ease;
+    }
+
+    .custom-modal .btn-modal-action:hover {
+      background: #4338ca;
+    }
   </style>
 </head>
 <body>
 
-  <div class="dashboard-container">
-    <!-- Header -->
-    <header class="dash-header">
-      <div class="header-title">
-        <h2><i class="fa-solid fa-shield-halved"></i> Mobile Money Payment Reconciliation</h2>
-        <p>Verify student Transaction IDs against line statements and grant resource access.</p>
+  <!-- CUSTOM ACCESS DENIED MODAL DIALOG -->
+  <div id="accessDeniedModal" class="modal-backdrop">
+    <div class="custom-modal">
+      <div class="modal-icon">
+        <i class="fa-solid fa-triangle-exclamation"></i>
       </div>
-      <div class="header-actions">
-        <a href="library_dashboard.html" class="btn-secondary"><i class="fa-solid fa-arrow-left"></i> Library Dashboard</a>
+      <h3>Access Denied</h3>
+      <p>Administrator privileges are required to view system audit trails. Please log in using an authorized account.</p>
+      <button type="button" class="btn-modal-action" onclick="redirectToPortal()">Return to Portal</button>
+    </div>
+  </div>
+
+  <!-- MAIN DASHBOARD CONTENT CONTAINER -->
+  <main class="audit-dashboard-container" id="adminDashboardContent" style="display: none;">
+    <!-- TOP HEADER & ACTION BAR -->
+    <header class="audit-header">
+      <div>
+        <h2><i class="fa-solid fa-shield-halved"></i> System Audit Trails</h2>
+        <p>Monitor and review all successful and failed authentication attempts across the portal.</p>
+      </div>
+      <div class="audit-actions">
+        <button type="button" class="btn btn-secondary" onclick="refreshAuditLogs()">
+          <i class="fa-solid fa-rotate"></i> Refresh
+        </button>
+        <button type="button" class="btn btn-primary" onclick="exportAuditLogs()">
+          <i class="fa-solid fa-download"></i> Export CSV
+        </button>
       </div>
     </header>
 
-    <!-- Restricted Content Wrapper -->
-    <div id="authRestrictedView" style="display: none; text-align: center; padding: 3rem;" class="card">
-      <i class="fa-solid fa-triangle-exclamation" style="font-size: 3rem; color: var(--warning, #d97706); margin-bottom: 1rem;"></i>
-      <h3>Access Denied</h3>
-      <p style="color: var(--text-muted); margin-bottom: 1rem;">This reconciliation module is strictly restricted to Administrators and Teachers.</p>
-      <a href="assessments.html" class="btn-primary" style="display: inline-flex; width: auto; margin: 0 auto;">Return to Portal</a>
-    </div>
-
-    <!-- Main Verification Panel -->
-    <div id="adminVerificationPanel" class="card table-card" style="display: none;">
-      <div class="table-header-flex">
-        <h3><i class="fa-solid fa-clock-rotate-left"></i> Pending Student Payments</h3>
-        <input type="text" id="paymentSearch" placeholder="Search phone or TID..." onkeyup="filterPendingPayments()">
+    <!-- FILTER CONTROLS BAR -->
+    <section class="audit-filters">
+      <div class="filter-group">
+        <label for="auditSearchInput">Search User / IP</label>
+        <input type="text" id="auditSearchInput" placeholder="Filter by username or IP..." onkeyup="filterAuditLogs()">
       </div>
-      
+      <div class="filter-group">
+        <label for="auditStatusFilter">Status</label>
+        <select id="auditStatusFilter" onchange="filterAuditLogs()">
+          <option value="ALL">All Statuses</option>
+          <option value="SUCCESS">Success Only</option>
+          <option value="FAILED">Failed Only</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="auditDateFilter">Time Range</label>
+        <select id="auditDateFilter" onchange="filterAuditLogs()">
+          <option value="TODAY">Last 24 Hours</option>
+          <option value="7DAYS">Last 7 Days</option>
+          <option value="30DAYS">Last 30 Days</option>
+          <option value="ALL">All Time</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- AUDIT LOGS TABLE CONTAINER -->
+    <section class="audit-table-card">
       <div class="table-responsive">
         <table>
           <thead>
             <tr>
-              <th>Date / Time</th>
-              <th>Network / Phone</th>
-              <th>Resource ID</th>
-              <th>Transaction ID (TID)</th>
               <th>Status</th>
-              <th>Actions</th>
+              <th>Timestamp</th>
+              <th>Username / Account</th>
+              <th>Failure Reason</th>
+              <th>IP Address</th>
+              <th>Device / User Agent</th>
             </tr>
           </thead>
-          <tbody id="pendingPaymentsTableBody">
-            <tr><td colspan="6" style="text-align:center; color:#64748b;">Loading pending requests...</td></tr>
+          <tbody id="auditLogsTableBody">
+            <tr data-status="SUCCESS" data-date="2026-08-22">
+              <td>
+                <span class="badge badge-success">
+                  <i class="fa-solid fa-circle-check"></i> SUCCESS
+                </span>
+              </td>
+              <td class="nowrap">Aug 22, 2026, 23:15</td>
+              <td class="font-weight-500 text-dark">samuel_admin</td>
+              <td class="text-muted">—</td>
+              <td class="font-mono">192.168.1.45</td>
+              <td class="text-secondary" title="Mozilla/5.0 (Windows NT 10.0; Win64; x64)">Chrome / Windows</td>
+            </tr>
+            <tr data-status="FAILED" data-date="2026-08-22">
+              <td>
+                <span class="badge badge-failed">
+                  <i class="fa-solid fa-circle-xmark"></i> FAILED
+                </span>
+              </td>
+              <td class="nowrap">Aug 22, 2026, 22:40</td>
+              <td class="font-weight-500 text-dark">bursary_user</td>
+              <td><span class="reason-tag">INVALID_PASSWORD</span></td>
+              <td class="font-mono">105.186.2.14</td>
+              <td class="text-secondary" title="Mozilla/5.0 (Android 13)">Mobile Safari / Android</td>
+            </tr>
+            <tr data-status="FAILED" data-date="2026-08-22">
+              <td>
+                <span class="badge badge-failed">
+                  <i class="fa-solid fa-circle-xmark"></i> FAILED
+                </span>
+              </td>
+              <td class="nowrap">Aug 22, 2026, 21:05</td>
+              <td class="font-weight-500 text-dark">unknown_intruder</td>
+              <td><span class="reason-tag">USER_NOT_FOUND</span></td>
+              <td class="font-mono">41.210.14.88</td>
+              <td class="text-secondary" title="PostmanRuntime/7.32.3">API Client / Python</td>
+            </tr>
           </tbody>
         </table>
       </div>
-    </div>
-  </div>
 
-  <!-- Firebase SDKs Compat (v9.23.0) -->
-  <!-- Firebase SDKs Compat (v9.23.0) -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
-  <!-- ADD THIS LINE TO FIX THE STORAGE ERROR -->
-  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
-  
-  <script src="firebase-config.js"></script>
-  <script src="admin_verification.js"></script>
+      <!-- PAGINATION FOOTER -->
+      <footer class="audit-pagination">
+        <div id="auditCounterText">Showing <strong>3</strong> of <strong>3</strong> total audit events</div>
+        <div class="pagination-buttons">
+          <button type="button" class="btn-page" disabled>Previous</button>
+          <button type="button" class="btn-page active">1</button>
+          <button type="button" class="btn-page" disabled>Next</button>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <!-- ACCESS CHECK SCRIPT & REDIRECT HANDLER -->
+  <script>
+    function redirectToPortal() {
+      window.location.href = "assessments.html";
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      const modalBackdrop = document.getElementById('accessDeniedModal');
+      const dashboardContent = document.getElementById('adminDashboardContent');
+
+      try {
+        const sessionData = localStorage.getItem('portal_session');
+        if (!sessionData) {
+          throw new Error("No active session found.");
+        }
+
+        const user = JSON.parse(sessionData);
+        const role = (user.role || '').toLowerCase();
+        
+        if (role !== 'admin' && role !== 'administrator') {
+          // Show custom modal dialog and keep dashboard hidden
+          if (modalBackdrop) modalBackdrop.classList.add('active');
+          if (dashboardContent) dashboardContent.style.display = 'none';
+        } else {
+          // Hide modal and show full dashboard content
+          if (modalBackdrop) modalBackdrop.classList.remove('active');
+          if (dashboardContent) dashboardContent.style.display = 'block';
+          console.log("Admin session verified for:", user.name || user.username);
+        }
+      } catch (err) {
+        console.warn("Authentication check failed:", err.message);
+        if (modalBackdrop) modalBackdrop.classList.add('active');
+        if (dashboardContent) dashboardContent.style.display = 'none';
+      }
+    });
+  </script>
+
+  <!-- External JS -->
+  <script src="audit-script.js"></script>
 </body>
 </html>
