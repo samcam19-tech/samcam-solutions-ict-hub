@@ -2228,6 +2228,10 @@ window.openGradingModal = function(submissionId) {
             <input type="text" id="modalStudentName" readonly style="width:100%; padding:0.5rem; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; color:#475569;">
           </div>
           <div style="margin-bottom:0.8rem;">
+            <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.2rem;">Learner's Class</label>
+            <input type="text" id="modalStudentClass" readonly style="width:100%; padding:0.5rem; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; color:#475569;">
+          </div>
+          <div style="margin-bottom:0.8rem;">
             <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.2rem;">Assessment Title</label>
             <input type="text" id="modalAssessmentTitle" readonly style="width:100%; padding:0.5rem; background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; color:#475569;">
           </div>
@@ -2255,6 +2259,7 @@ window.openGradingModal = function(submissionId) {
   // Set initial fields
   document.getElementById('gradingSubmissionId').value = submissionId;
   document.getElementById('modalStudentName').value = 'Loading...';
+  document.getElementById('modalStudentClass').value = 'Loading...';
   document.getElementById('modalAssessmentTitle').value = 'Loading...';
   document.getElementById('gradeScoreInput').value = '';
   document.getElementById('gradeFeedbackInput').value = '';
@@ -2280,11 +2285,13 @@ window.openGradingModal = function(submissionId) {
 
     if (targetSub) {
       document.getElementById('modalStudentName').value = targetSub.studentName || 'Unknown Student';
+      document.getElementById('modalStudentClass').value = targetSub.studentClass || 'N/A';
       document.getElementById('modalAssessmentTitle').value = targetSub.testTitle || 'Untitled Assessment';
       document.getElementById('gradeScoreInput').value = targetSub.grade || '';
       document.getElementById('gradeFeedbackInput').value = targetSub.feedback || '';
     } else {
       document.getElementById('modalStudentName').value = 'Not Found';
+      document.getElementById('modalStudentClass').value = 'Not Found';
       document.getElementById('modalAssessmentTitle').value = 'Not Found';
     }
   })();
