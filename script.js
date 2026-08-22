@@ -165,11 +165,35 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* ==========================================================================
-   1. AUTHENTICATION MODULE
+   1. AUTO-FILL REMEMBERED DETAILS ON PAGE LOAD
+   ========================================================================== */
+document.addEventListener('DOMContentLoaded', () => {
+  const savedUser = localStorage.getItem('portal_remembered_user');
+  const savedPass = localStorage.getItem('portal_remembered_pass');
+  
+  const userEl = document.getElementById('loginUsername');
+  const passEl = document.getElementById('loginPassword');
+  const rememberCheck = document.getElementById('rememberMeCheck');
+
+  if (savedUser && userEl) {
+    userEl.value = savedUser;
+    if (savedPass && passEl) {
+      passEl.value = savedPass;
+    }
+    if (rememberCheck) {
+      rememberCheck.checked = true;
+    }
+  }
+});
+
+
+/* ==========================================================================
+   2. EXECUTE LOGIN (WITH SINGLE-DEVICE RESTRICTION & REMEMBER ME)
    ========================================================================== */
 window.executeLogin = async function() {
   const userEl = document.getElementById('loginUsername');
   const passEl = document.getElementById('loginPassword');
+  const rememberCheck = document.getElementById('rememberMeCheck');
   const errEl = document.getElementById('loginError');
 
   if (!userEl || !passEl) return;
@@ -194,7 +218,6 @@ window.executeLogin = async function() {
       if (snap.exists) {
         const userData = snap.data();
         if (userData.password === p) {
-          // Normalize and enrich the user object with document ID as username
           foundUser = {
             username: snap.id,
             name: userData.fullName || userData.name || snap.id,
@@ -232,20 +255,40 @@ window.executeLogin = async function() {
     }
   }
 
-  // 3. Complete Login
+  // 3. Complete Login & Enforce Single Device Session
   if (foundUser) {
     if (errEl) errEl.style.display = 'none';
 
-    // Save to LocalStorage
+    // Generate a unique session token to kick out any other active device
+    const currentDeviceSessionId = 'sess_' + Math.random().toString(36).substring(2) + Date.now();
+    foundUser.activeSessionId = currentDeviceSessionId;
+
+    if (window.db) {
+      try {
+        await window.db.collection('users').doc(foundUser.username).set({
+          activeSessionId: currentDeviceSessionId
+        }, { merge: true });
+      } catch (err) {
+        console.warn("Could not sync active session token to Firestore:", err);
+      }
+    }
+
+    // Handle "Remember Me" preferences
+    if (rememberCheck && rememberCheck.checked) {
+      localStorage.setItem('portal_remembered_user', u);
+      localStorage.setItem('portal_remembered_pass', p);
+    } else {
+      localStorage.removeItem('portal_remembered_user');
+      localStorage.removeItem('portal_remembered_pass');
+    }
+
+    // Save active session locally
     localStorage.setItem('portal_session', JSON.stringify(foundUser));
     
-    // Broadcast to global window and all running scripts
-    broadcastSessionUpdate(foundUser);
+    if (typeof broadcastSessionUpdate === 'function') {
+      broadcastSessionUpdate(foundUser);
+    }
 
-    userEl.value = '';
-    passEl.value = '';
-
-    // Reveal protected navigation links upon successful login
     const navActions = document.getElementById('authNavActions');
     if (navActions) {
       navActions.style.display = 'flex';
@@ -253,7 +296,6 @@ window.executeLogin = async function() {
 
     if (typeof updatePortalUI === 'function') updatePortalUI();
     
-    // Clean up any trailing hashes like #login from the URL bar
     if (window.location.hash) {
       history.replaceState(null, document.title, window.location.pathname + window.location.search);
     }
@@ -271,6 +313,32 @@ window.handleLogin = function(e) {
   if (e && e.preventDefault) e.preventDefault();
   window.executeLogin();
 };
+
+// Check every 10 seconds if another device has logged into this same account
+setInterval(async () => {
+  const sessionStr = localStorage.getItem('portal_session');
+  if (!sessionStr) return;
+
+  const currentSession = JSON.parse(sessionStr);
+  if (!currentSession || !currentSession.username || !currentSession.activeSessionId) return;
+
+  if (window.db) {
+    try {
+      const userDoc = await window.db.collection('users').doc(currentSession.username).get();
+      if (userDoc.exists) {
+        const remoteData = userDoc.data();
+        // If the active session token in the database doesn't match local session, another device logged in!
+        if (remoteData.activeSessionId && remoteData.activeSessionId !== currentSession.activeSessionId) {
+          alert("Your account was logged into from another device. You have been logged out.");
+          localStorage.removeItem('portal_session');
+          window.location.reload(); // Refresh back to the login screen
+        }
+      }
+    } catch (err) {
+      // Ignore network blips during background check
+    }
+  }
+}, 10000); // Checks every 10 seconds
 
 /* ==========================================================================
    PASSWORD VISIBILITY TOGGLE HELPER
