@@ -314,7 +314,7 @@ window.handleLogin = function(e) {
   window.executeLogin();
 };
 
-// Check every 10 seconds if another device has logged into this same account
+/// Check every 10 seconds if another device has logged into this same account
 setInterval(async () => {
   const sessionStr = localStorage.getItem('portal_session');
   if (!sessionStr) return;
@@ -329,14 +329,21 @@ setInterval(async () => {
         const remoteData = userDoc.data();
         // If the active session token in the database doesn't match local session, another device logged in!
         if (remoteData.activeSessionId && remoteData.activeSessionId !== currentSession.activeSessionId) {
-         // Trigger the custom modal
+          
+          // Clear session immediately so background requests stop
+          localStorage.removeItem('portal_session');
+
+          // Trigger the custom modal
           showCustomModal({
             title: "Session Terminated",
             message: "Your account was logged into from another device. You have been logged out.",
             type: "warning"
           });
-          localStorage.removeItem('portal_session');
-          window.location.reload(); // Refresh back to the login screen
+
+          // Wait 4 seconds (4000 milliseconds) before refreshing back to the login screen
+          setTimeout(() => {
+            window.location.reload();
+          }, 5000);
         }
       }
     } catch (err) {
