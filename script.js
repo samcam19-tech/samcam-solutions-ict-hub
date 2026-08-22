@@ -1287,38 +1287,61 @@ function openEditAssessmentModal(assessmentId) {
   if (modal) modal.style.display = 'flex';
 }
 
-// 3. Handle Deletion (Removes from LocalStorage and triggers Firestore sync if applicable)
 async function handleDeleteAssessment(assessmentId) {
-  if (!confirm("Are you sure you want to delete this assessment? This will also remove associated student submissions.")) {
-    return;
-  }
+  showCustomModal({
+    title: "Delete Assessment",
+    message: "Are you sure you want to delete this assessment? This will also remove associated student submissions permanently.",
+    type: "warning",
+    showCancel: true,
+    onConfirm: async () => {
+      try {
+        const db = firebase.firestore();
+        
+        // 1. Find and delete the matching document from Firestore
+        const querySnapshot = await db.collection("portal_resources").where("id", "==", assessmentId).get();
+        
+        if (!querySnapshot.empty) {
+          const deletePromises = querySnapshot.docs.map(docSnap => docSnap.ref.delete());
+          await Promise.all(deletePromises);
+        } else {
+          const allDocs = await db.collection("portal_resources").get();
+          const deletePromises = [];
+          allDocs.forEach(docSnap => {
+            const data = docSnap.data();
+            if (String(data.id) === String(assessmentId)) {
+              deletePromises.push(docSnap.ref.delete());
+            }
+          });
+          await Promise.all(deletePromises);
+        }
 
-  try {
-    // Optional Firestore deletion logic if syncing via document query
-    const querySnapshot = await getDocs(collection(window.db, "portal_resources"));
-    querySnapshot.forEach(async (documentSnapshot) => {
-      const data = documentSnapshot.data();
-      if (String(data.id) === String(assessmentId)) {
-        await deleteDoc(doc(window.db, "portal_resources", documentSnapshot.id));
+        // 2. Update LocalStorage state
+        let resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
+        resources = resources.filter(r => String(r.id) !== String(assessmentId));
+        localStorage.setItem('portal_resources', JSON.stringify(resources));
+
+        // 3. Clean up submissions tied to this test
+        let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+        submissions = submissions.filter(s => String(s.testId) !== String(assessmentId));
+        localStorage.setItem('portal_submissions', JSON.stringify(submissions));
+
+        showCustomModal({
+          title: "Success",
+          message: "Assessment deleted successfully.",
+          type: "success"
+        });
+        
+        renderAssessments();
+      } catch (error) {
+        console.error("Error deleting assessment:", error);
+        showCustomModal({
+          title: "Error",
+          message: "Failed to delete assessment completely from database. Check console for details.",
+          type: "error"
+        });
       }
-    });
-
-    // Update LocalStorage state
-    let resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
-    resources = resources.filter(r => String(r.id) !== String(assessmentId));
-    localStorage.setItem('portal_resources', JSON.stringify(resources));
-
-    // Clean up submissions tied to this test
-    let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
-    submissions = submissions.filter(s => String(s.testId) !== String(assessmentId));
-    localStorage.setItem('portal_submissions', JSON.stringify(submissions));
-
-    alert("Assessment deleted successfully.");
-    renderAssessments();
-  } catch (error) {
-    console.error("Error deleting assessment:", error);
-    alert("Failed to delete assessment completely from database.");
-  }
+    }
+  });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -2177,4 +2200,65 @@ function renderPaginationControls(totalItems, rowsPerPage, currentPage, containe
   nextBtn.disabled = currentPage === totalPages;
   nextBtn.onclick = () => onPageChangeCallback(currentPage + 1);
   containerElement.appendChild(nextBtn);
+}
+
+// Global Custom Dialog Helper
+function showCustomModal({ title, message, type = 'info', showCancel = false, onConfirm, onCancel }) {
+  const modal = document.getElementById('customModal');
+  const iconEl = document.getElementById('customModalIcon');
+  const titleEl = document.getElementById('customModalTitle');
+  const msgEl = document.getElementById('customModalMessage');
+  const actionsEl = document.getElementById('customModalActions');
+
+  if (!modal) return;
+
+  // Set Content
+  titleEl.textContent = title;
+  msgEl.textContent = message;
+
+  // Style Icons & Colors based on Type
+  let iconHtml = '';
+  let btnColor = '#2563eb';
+
+  if (type === 'success') {
+    iconHtml = '<i class="fa-solid fa-circle-check" style="color: #16a34a;"></i>';
+    btnColor = '#16a34a';
+  } else if (type === 'error') {
+    iconHtml = '<i class="fa-solid fa-triangle-exclamation" style="color: #dc2626;"></i>';
+    btnColor = '#dc2626';
+  } else if (type === 'warning' || type === 'confirm') {
+    iconHtml = '<i class="fa-solid fa-circle-exclamation" style="color: #eab308;"></i>';
+    btnColor = '#d97706';
+  } else {
+    iconHtml = '<i class="fa-solid fa-circle-info" style="color: #2563eb;"></i>';
+  }
+
+  iconEl.innerHTML = iconHtml;
+
+  // Build Action Buttons
+  actionsEl.innerHTML = '';
+  
+  if (showCancel) {
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'btn-action btn-secondary';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.onclick = () => {
+      modal.style.display = 'none';
+      if (typeof onCancel === 'function') onCancel();
+    };
+    actionsEl.appendChild(cancelBtn);
+  }
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'btn-action';
+  confirmBtn.style.background = btnColor;
+  confirmBtn.style.color = '#ffffff';
+  confirmBtn.textContent = 'OK';
+  confirmBtn.onclick = () => {
+    modal.style.display = 'none';
+    if (typeof onConfirm === 'function') onConfirm();
+  };
+  actionsEl.appendChild(confirmBtn);
+
+  modal.style.display = 'flex';
 }
