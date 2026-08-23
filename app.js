@@ -342,7 +342,7 @@ function initiateMoMoPayment(resourceId, resourceTitle, price) {
 }
 
 function closeMomoModal() {
-  const modal = document.getElementById('momoPlatformModal') || document.getElementById('momoPaymentModal');
+  const modal = document.getElementById('momoPaymentModal');
   if (modal) modal.style.display = 'none';
 }
 
