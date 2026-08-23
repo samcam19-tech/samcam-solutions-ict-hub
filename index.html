@@ -89,36 +89,6 @@
       }
     }
   </style>
- <script>
-  (function () {
-    let activeUser = null;
-    
-    // Attempt to retrieve active session
-    try {
-      const sessionData = localStorage.getItem('currentLoggedInUser') || 
-                          localStorage.getItem('portal_session') || 
-                          sessionStorage.getItem('portal_session');
-      if (sessionData) {
-        activeUser = JSON.parse(sessionData);
-      }
-    } catch (e) {}
-
-    if (!activeUser && window.currentUser) {
-      activeUser = window.currentUser;
-    }
-
-    // Check if user is missing, or is explicitly logged in as a Guest
-    const username = (activeUser && activeUser.username || '').toLowerCase();
-    const role = (activeUser && (activeUser.role || activeUser.userType) || '').toLowerCase();
-    
-    const isGuest = !activeUser || username === 'guest' || username === 'admin_guest' || role.includes('guest');
-
-    if (isGuest) {
-      // Immediately redirect unauthorized/guest users to your login/portal entry page
-      window.location.replace('assessments.html'); 
-    }
-  })();
-</script>
 
   <!-- Firebase App & Firestore Compatibility SDKs -->
   <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
