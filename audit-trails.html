@@ -32,18 +32,34 @@
         
         // Verify if the active session belongs to an admin/administrator
         if (role !== 'admin' && role !== 'administrator') {
-          alert("Access Denied: Administrator privileges required.");
-          window.location.href = "assessments.html";
+          if (typeof showCustomModal === 'function') {
+            showCustomModal({
+              title: 'Access Denied',
+              message: 'Administrator privileges are required to access this portal section.',
+              type: 'error',
+              onClose: () => { window.location.href = "assessments.html"; }
+            });
+          } else {
+            window.location.href = "assessments.html";
+          }
         } else {
           console.log("Admin session verified for:", user.name || user.username);
         }
       } catch (err) {
         console.warn("Authentication check failed:", err.message);
-        alert("Access Denied: Please log in with an administrator account.");
-        window.location.href = "assessments.html";
+        if (typeof showCustomModal === 'function') {
+          showCustomModal({
+            title: 'Authentication Required',
+            message: 'Please log in with an administrator account to continue.',
+            type: 'warning',
+            onClose: () => { window.location.href = "assessments.html"; }
+          });
+        } else {
+          window.location.href = "assessments.html";
+        }
       }
     });
-  </script>
+</script>
 </head>
 <body>
 
