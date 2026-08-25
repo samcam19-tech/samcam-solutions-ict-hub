@@ -557,3 +557,11 @@ tr:hover td {
   font-size: 0.875rem;
   color: #1e40af;
 }
+
+.graph-card {
+  background: var(--card-bg);
+  padding: 1.75rem;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-color);
+}
