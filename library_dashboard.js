@@ -92,7 +92,13 @@ function renderDownloadsChart() {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          display: false
+          display: true, // Enabled legend to display dataset label
+          position: 'top',
+          labels: {
+            font: { family: 'Inter', size: 12 },
+            boxWidth: 14,
+            usePointStyle: true
+          }
         },
         tooltip: {
           backgroundColor: '#0f172a',
@@ -106,17 +112,28 @@ function renderDownloadsChart() {
         y: {
           beginAtZero: true,
           grid: { color: '#f1f5f9' },
-          ticks: { font: { family: 'Inter' }, precision: 0 }
+          ticks: { font: { family: 'Inter' }, precision: 0 },
+          title: {
+            display: true,
+            text: 'Number of Downloads',
+            font: { family: 'Inter', size: 12, weight: '600' },
+            color: '#475569'
+          }
         },
         x: {
           grid: { display: false },
-          ticks: { font: { family: 'Inter' } }
+          ticks: { font: { family: 'Inter' } },
+          title: {
+            display: true,
+            text: 'Class Level',
+            font: { family: 'Inter', size: 12, weight: '600' },
+            color: '#475569'
+          }
         }
       }
     }
   });
 }
-
 // Advanced Filtering (Combining Search, Class Level, and Access Type)
 function applyAdvancedFilters() {
   const searchQuery = document.getElementById("librarySearch").value.toLowerCase().trim();
