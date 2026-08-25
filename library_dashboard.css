@@ -427,6 +427,19 @@ tr:hover td {
     justify-content: center;
   }
 
+  /* Stack the new stats table and chart side-by-side row vertically on mobile */
+  .dash-grid[style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+
+  .table-responsive {
+    max-height: 240px;
+  }
+
+  .card {
+    margin-bottom: 1rem !important;
+  }
+
   .form-row {
     grid-template-columns: 1fr;
     gap: 0;
@@ -435,13 +448,13 @@ tr:hover td {
   .table-header-flex {
     flex-direction: column;
     align-items: stretch;
+    gap: 0.5rem;
   }
 
   .table-header-flex input {
     max-width: 100%;
   }
 }
-
 /* ==========================================================================
    MODERN DASHBOARD KPI METRICS CARDS
    ========================================================================== */
