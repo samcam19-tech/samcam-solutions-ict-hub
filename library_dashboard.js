@@ -42,6 +42,7 @@ async function fetchLibraryResources() {
     tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--danger);">Error loading resources.</td></tr>`;
   }
 }
+
 // Update KPI Metrics Cards
 function updateKpiMetrics() {
   const total = allResources.length;
@@ -134,6 +135,7 @@ function renderDownloadsChart() {
     }
   });
 }
+
 // Advanced Filtering (Combining Search, Class Level, and Access Type)
 function applyAdvancedFilters() {
   const searchQuery = document.getElementById("librarySearch").value.toLowerCase().trim();
@@ -231,35 +233,44 @@ function updateBulkActionBar() {
   }
 }
 
-// Bulk Delete Action
+// Bulk Delete Action (Using Custom Modal)
 async function bulkDeleteResources() {
-  if (!confirm(`Are you sure you want to delete ${selectedResourceIds.size} selected resources?`)) return;
+  showCustomModal(
+    "Confirm Bulk Deletion", 
+    `Are you sure you want to delete ${selectedResourceIds.size} selected resources?`, 
+    "warning", 
+    true, 
+    async function(confirmed) {
+      if (!confirmed) return;
 
-  try {
-    const batchPromises = Array.from(selectedResourceIds).map(async id => {
-      const res = allResources.find(r => r.id === id);
-      await db.collection("e_library_resources").doc(id).delete();
-      if (res && res.fileUrl) {
-        try {
-          await firebase.storage().refFromURL(res.fileUrl).delete();
-        } catch (e) {
-          console.warn("Storage delete warning:", e);
-        }
+      try {
+        const batchPromises = Array.from(selectedResourceIds).map(async id => {
+          const res = allResources.find(r => r.id === id);
+          await db.collection("e_library_resources").doc(id).delete();
+          if (res && res.fileUrl) {
+            try {
+              await firebase.storage().refFromURL(res.fileUrl).delete();
+            } catch (e) {
+              console.warn("Storage delete warning:", e);
+            }
+          }
+        });
+
+        await Promise.all(batchPromises);
+        selectedResourceIds.clear();
+        updateBulkActionBar();
+        
+        showCustomModal("Success", "Selected resources deleted successfully.", "success");
+        fetchLibraryResources();
+      } catch (error) {
+        console.error("Bulk delete error:", error);
+        showCustomModal("Error", "Failed to complete bulk deletion.", "error");
       }
-    });
-
-    await Promise.all(batchPromises);
-    selectedResourceIds.clear();
-    updateBulkActionBar();
-    alert("Selected resources deleted successfully.");
-    fetchLibraryResources();
-  } catch (error) {
-    console.error("Bulk delete error:", error);
-    alert("Failed to complete bulk deletion.");
-  }
+    }
+  );
 }
 
-// Handle Form Submission for Create & Update
+// Handle Form Submission for Create & Update (Using Custom Modal)
 async function handleLibraryFormSubmit(e) {
   e.preventDefault();
 
@@ -310,10 +321,10 @@ async function handleLibraryFormSubmit(e) {
       }
 
       await db.collection("e_library_resources").doc(editingId).update(updateData);
-      alert("Resource updated successfully!");
+      showCustomModal("Success", "Resource updated successfully!", "success");
     } else {
       if (!file) {
-        alert("Please select a file for a new resource.");
+        showCustomModal("Validation Error", "Please select a file for a new resource.", "warning");
         saveBtn.disabled = false;
         saveBtn.innerHTML = `<i class="fa-solid fa-upload"></i> Save Resource`;
         return;
@@ -331,7 +342,7 @@ async function handleLibraryFormSubmit(e) {
         fileType,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-      alert("Resource uploaded successfully!");
+      showCustomModal("Success", "Resource uploaded successfully!", "success");
     }
 
     resetLibraryForm();
@@ -339,7 +350,7 @@ async function handleLibraryFormSubmit(e) {
 
   } catch (error) {
     console.error("Error saving resource:", error);
-    alert("Operation failed. Check console for details.");
+    showCustomModal("Error", "Operation failed. Check console for details.", "error");
   } finally {
     saveBtn.disabled = false;
     saveBtn.innerHTML = `<i class="fa-solid fa-upload"></i> Save Resource`;
@@ -376,28 +387,36 @@ function resetLibraryForm() {
   document.getElementById("cancelEditBtn").style.display = "none";
 }
 
-// Delete Single Resource
+// Delete Single Resource (Using Custom Modal)
 async function deleteResource(id, fileUrl) {
-  if (!confirm("Are you sure you want to delete this resource?")) return;
+  showCustomModal(
+    "Confirm Deletion", 
+    "Are you sure you want to delete this resource?", 
+    "warning", 
+    true, 
+    async function(confirmed) {
+      if (!confirmed) return;
 
-  try {
-    await db.collection("e_library_resources").doc(id).delete();
-
-    if (fileUrl) {
       try {
-        const desertRef = firebase.storage().refFromURL(fileUrl);
-        await desertRef.delete();
-      } catch (storageErr) {
-        console.warn("Could not delete physical file from storage:", storageErr);
+        await db.collection("e_library_resources").doc(id).delete();
+
+        if (fileUrl) {
+          try {
+            const desertRef = firebase.storage().refFromURL(fileUrl);
+            await desertRef.delete();
+          } catch (storageErr) {
+            console.warn("Could not delete physical file from storage:", storageErr);
+          }
+        }
+
+        showCustomModal("Success", "Resource deleted successfully.", "success");
+        fetchLibraryResources();
+      } catch (error) {
+        console.error("Error deleting resource:", error);
+        showCustomModal("Error", "Failed to delete resource.", "error");
       }
     }
-
-    alert("Resource deleted successfully.");
-    fetchLibraryResources();
-  } catch (error) {
-    console.error("Error deleting resource:", error);
-    alert("Failed to delete resource.");
-  }
+  );
 }
 
 function escapeHtml(str) {
