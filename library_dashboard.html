@@ -81,17 +81,17 @@
           <h3><i class="fa-solid fa-table-list"></i> Resource Download Stats</h3>
           <span style="font-size: 0.85rem; color: var(--text-muted);">Downloads per resource</span>
         </div>
-        <div class="table-responsive" style="max-height: 280px; overflow-y: auto;">
-          <table style="width: 100%; border-collapse: collapse;">
+        <div class="table-responsive stats-table-container">
+          <table class="stats-table">
             <thead>
-              <tr style="border-bottom: 2px solid var(--border-color, #e2e8f0); text-align: left;">
-                <th style="padding: 0.5rem 0; font-size: 0.9rem;">Resource Name</th>
-                <th style="padding: 0.5rem 0; font-size: 0.9rem; width: 80px; text-align: center;">Class</th>
-                <th style="padding: 0.5rem 0; font-size: 0.9rem; width: 100px; text-align: right;">Downloads</th>
+              <tr>
+                <th>Resource Name</th>
+                <th class="text-center" style="width: 75px;">Class</th>
+                <th class="text-right" style="width: 90px;">Downloads</th>
               </tr>
             </thead>
             <tbody id="resourceStatsTableBody">
-              <tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding: 1rem;">Loading stats...</td></tr>
+              <tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding: 1.5rem;">Loading stats...</td></tr>
             </tbody>
           </table>
         </div>
