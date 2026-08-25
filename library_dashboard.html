@@ -17,7 +17,7 @@
       <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
         <div>
           <h2><i class="fa-solid fa-book-bookmark"></i> E-Library Management Portal</h2>
-          <p>Manage free & paid resources, upload documents, and track inventory.</p>
+          <p>Modern administration hub for digital assets, pricing control, and resource inventory.</p>
         </div>
         <!-- Hamburger Menu Button for Small Devices -->
         <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle navigation menu">
@@ -25,7 +25,7 @@
         </button>
       </div>
 
-      <!-- Action Buttons (Collapsible on Mobile) -->
+      <!-- Action Buttons -->
       <div class="header-actions" id="headerActions">
         <a href="audit-trails.html" class="btn-primary" style="background: var(--primary, #2563eb); text-decoration: none; justify-content: center;">
           <i class="fa-solid fa-shield-halved"></i> Audit Trails
@@ -38,6 +38,38 @@
         </a>
       </div>
     </header>
+
+    <!-- KPI Metrics Summary Bar -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background: #e0e7ff; color: #4f46e5;"><i class="fa-solid fa-folder-open"></i></div>
+        <div>
+          <span class="kpi-label">Total Resources</span>
+          <h3 id="kpiTotal">0</h3>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background: #d1fae5; color: #059669;"><i class="fa-solid fa-gift"></i></div>
+        <div>
+          <span class="kpi-label">Free Resources</span>
+          <h3 id="kpiFree">0</h3>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background: #fef3c7; color: #d97706;"><i class="fa-solid fa-tag"></i></div>
+        <div>
+          <span class="kpi-label">Paid / Premium</span>
+          <h3 id="kpiPaid">0</h3>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background: #fee2e2; color: #dc2626;"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+        <div>
+          <span class="kpi-label">Categories Tracked</span>
+          <h3 id="kpiCategories">5</h3>
+        </div>
+      </div>
+    </div>
 
     <!-- Main Content Grid -->
     <div class="dash-grid">
@@ -55,7 +87,7 @@
 
           <div class="form-group">
             <label>Description</label>
-            <textarea id="resDescription" placeholder="Briefly describe the resource content..." rows="3" required style="width: 100%; padding: 0.75rem; border: 1px solid #e2e8f0; border-radius: 8px;"></textarea>
+            <textarea id="resDescription" placeholder="Briefly describe the resource content..." rows="3" required></textarea>
           </div>
 
           <div class="form-row">
@@ -76,8 +108,8 @@
               <select id="resCategory" required>
                 <option value="Notes">Notes & Handouts</option>
                 <option value="Past Papers">Past Papers</option>
-                <option value="Datasets">Marking Guides</option>
-                <option value="Datasets">Support Files</option>
+                <option value="Marking Guides">Marking Guides</option>
+                <option value="Support Files">Support Files</option>
                 <option value="Software">Software & Tools</option>
               </select>
             </div>
@@ -114,18 +146,48 @@
         </form>
       </div>
 
-      <!-- Right: Resource Inventory Table -->
+      <!-- Right: Resource Inventory Table & Advanced Controls -->
       <div class="card table-card">
-        <div class="table-header-flex" style="flex-wrap: wrap; gap: 0.75rem;">
+        <div class="table-toolbar">
           <h3><i class="fa-solid fa-list"></i> Existing Resources</h3>
-          <input type="text" id="librarySearch" placeholder="Search resources..." onkeyup="filterLibraryTable()" style="max-width: 100%;">
+          
+          <!-- Advanced Filtering Controls Toolbar -->
+          <div class="filter-controls">
+            <select id="filterClass" onchange="applyAdvancedFilters()" class="filter-select">
+              <option value="">All Classes</option>
+              <option value="S1">Senior 1</option>
+              <option value="S2">Senior 2</option>
+              <option value="S3">Senior 3</option>
+              <option value="S4">Senior 4</option>
+              <option value="S5">Senior 5</option>
+              <option value="S6">Senior 6</option>
+              <option value="General">General</option>
+            </select>
+
+            <select id="filterAccess" onchange="applyAdvancedFilters()" class="filter-select">
+              <option value="">All Access Types</option>
+              <option value="free">Free Only</option>
+              <option value="paid">Paid Only</option>
+            </select>
+
+            <input type="text" id="librarySearch" placeholder="Search title or category..." onkeyup="applyAdvancedFilters()">
+          </div>
+        </div>
+
+        <!-- Bulk Action Bar (Hidden unless items selected) -->
+        <div id="bulkActionBar" class="bulk-action-bar" style="display: none;">
+          <span><strong id="selectedCount">0</strong> items selected</span>
+          <button onclick="bulkDeleteResources()" class="btn-action btn-delete">
+            <i class="fa-solid fa-trash"></i> Delete Selected
+          </button>
         </div>
         
         <div class="table-responsive">
           <table>
             <thead>
               <tr>
-                <th>Title</th>
+                <th style="width: 40px;"><input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll(this)"></th>
+                <th>Title & Description</th>
                 <th>Class / Category</th>
                 <th>Access</th>
                 <th>Price</th>
@@ -133,7 +195,7 @@
               </tr>
             </thead>
             <tbody id="libraryTableBody">
-              <tr><td colspan="5" style="text-align:center; color:#64748b;">Loading resources...</td></tr>
+              <tr><td colspan="6" style="text-align:center; color:#64748b;">Loading resources...</td></tr>
             </tbody>
           </table>
         </div>
@@ -141,7 +203,6 @@
 
     </div>
   </div>
-
 
   <!-- Firebase SDKs Compat (v9.23.0) -->
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
