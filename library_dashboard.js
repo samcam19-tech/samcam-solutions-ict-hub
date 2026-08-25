@@ -1,4 +1,5 @@
 let allResources = [];
+let selectedResourceIds = new Set();
 
 document.addEventListener("DOMContentLoaded", () => {
   fetchLibraryResources();
@@ -30,11 +31,44 @@ async function fetchLibraryResources() {
     snapshot.forEach(doc => {
       allResources.push({ id: doc.id, ...doc.data() });
     });
-    renderLibraryTable(allResources);
+    
+    updateKpiMetrics();
+    applyAdvancedFilters();
   } catch (error) {
     console.error("Error fetching library data:", error);
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger);">Error loading resources.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger);">Error loading resources.</td></tr>`;
   }
+}
+
+// Update KPI Metrics Cards
+function updateKpiMetrics() {
+  const total = allResources.length;
+  const free = allResources.filter(r => r.accessType === 'free').length;
+  const paid = allResources.filter(r => r.accessType === 'paid').length;
+
+  document.getElementById("kpiTotal").textContent = total;
+  document.getElementById("kpiFree").textContent = free;
+  document.getElementById("kpiPaid").textContent = paid;
+}
+
+// Advanced Filtering (Combining Search, Class Level, and Access Type)
+function applyAdvancedFilters() {
+  const searchQuery = document.getElementById("librarySearch").value.toLowerCase().trim();
+  const classFilter = document.getElementById("filterClass").value;
+  const accessFilter = document.getElementById("filterAccess").value;
+
+  const filtered = allResources.filter(r => {
+    const matchesSearch = (r.title || '').toLowerCase().includes(searchQuery) ||
+                          (r.category || '').toLowerCase().includes(searchQuery) ||
+                          (r.description || '').toLowerCase().includes(searchQuery);
+    
+    const matchesClass = !classFilter || r.classLevel === classFilter;
+    const matchesAccess = !accessFilter || r.accessType === accessFilter;
+
+    return matchesSearch && matchesClass && matchesAccess;
+  });
+
+  renderLibraryTable(filtered);
 }
 
 function renderLibraryTable(resources) {
@@ -42,44 +76,104 @@ function renderLibraryTable(resources) {
   if (!tbody) return;
 
   if (resources.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No resources found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding: 2rem;">No matching resources found.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = resources.map(res => `
-    <tr>
-      <td>
-        <strong>${escapeHtml(res.title)}</strong><br>
-        <small style="color:var(--text-muted);">${escapeHtml(res.fileName || 'No file attached')}</small>
-      </td>
-      <td>
-        <span class="badge" style="background:#e0f2fe; color:#0369a1;">${res.classLevel}</span>
-        <span style="font-size:0.8rem; color:var(--text-muted); display:block; margin-top:2px;">${res.category}</span>
-      </td>
-      <td>
-        <span class="badge ${res.accessType === 'paid' ? 'badge-paid' : 'badge-free'}">
-          ${res.accessType === 'paid' ? 'Paid / Private' : 'Free'}
-        </span>
-      </td>
-      <td>${res.accessType === 'paid' ? `UGX ${Number(res.price || 0).toLocaleString()}` : '-'}</td>
-      <td>
-        <div style="display:flex; gap:0.4rem;">
-          <button onclick="editResource('${res.id}')" class="btn-action btn-edit" title="Edit"><i class="fa-solid fa-pen"></i></button>
-          <button onclick="deleteResource('${res.id}', '${res.fileUrl || ''}')" class="btn-action btn-delete" title="Delete"><i class="fa-solid fa-trash"></i></button>
-        </div>
-      </td>
-    </tr>
-  `).join('');
+  tbody.innerHTML = resources.map(res => {
+    const isChecked = selectedResourceIds.has(res.id) ? 'checked' : '';
+    return `
+      <tr class="${isChecked ? 'selected-row' : ''}">
+        <td>
+          <input type="checkbox" value="${res.id}" ${isChecked} onclick="toggleRowSelection('${res.id}', this)">
+        </td>
+        <td>
+          <strong>${escapeHtml(res.title)}</strong><br>
+          <small style="color:var(--text-muted);">${escapeHtml(res.description || res.fileName || 'No description provided')}</small>
+        </td>
+        <td>
+          <span class="badge" style="background:#e0f2fe; color:#0369a1;">${res.classLevel}</span>
+          <span style="font-size:0.8rem; color:var(--text-muted); display:block; margin-top:2px;">${res.category}</span>
+        </td>
+        <td>
+          <span class="badge ${res.accessType === 'paid' ? 'badge-paid' : 'badge-free'}">
+            ${res.accessType === 'paid' ? 'Paid / Private' : 'Free'}
+          </span>
+        </td>
+        <td>${res.accessType === 'paid' ? `UGX ${Number(res.price || 0).toLocaleString()}` : '-'}</td>
+        <td>
+          <div style="display:flex; gap:0.4rem;">
+            <button onclick="editResource('${res.id}')" class="btn-action btn-edit" title="Edit"><i class="fa-solid fa-pen"></i></button>
+            <button onclick="deleteResource('${res.id}', '${res.fileUrl || ''}')" class="btn-action btn-delete" title="Delete"><i class="fa-solid fa-trash"></i></button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
 
-function filterLibraryTable() {
-  const query = document.getElementById("librarySearch").value.toLowerCase().trim();
-  const filtered = allResources.filter(r => 
-    (r.title || '').toLowerCase().includes(query) ||
-    (r.category || '').toLowerCase().includes(query) ||
-    (r.classLevel || '').toLowerCase().includes(query)
-  );
-  renderLibraryTable(filtered);
+// Row & Bulk Selection Management
+function toggleRowSelection(id, checkbox) {
+  if (checkbox.checked) {
+    selectedResourceIds.add(id);
+  } else {
+    selectedResourceIds.delete(id);
+  }
+  updateBulkActionBar();
+}
+
+function toggleSelectAll(selectAllCheckbox) {
+  const checkboxes = document.querySelectorAll('#libraryTableBody input[type="checkbox"]');
+  checkboxes.forEach(cb => {
+    cb.checked = selectAllCheckbox.checked;
+    if (selectAllCheckbox.checked) {
+      selectedResourceIds.add(cb.value);
+    } else {
+      selectedResourceIds.delete(cb.value);
+    }
+  });
+  updateBulkActionBar();
+}
+
+function updateBulkActionBar() {
+  const bar = document.getElementById("bulkActionBar");
+  const countSpan = document.getElementById("selectedCount");
+  const count = selectedResourceIds.size;
+
+  if (count > 0) {
+    bar.style.display = "flex";
+    countSpan.textContent = count;
+  } else {
+    bar.style.display = "none";
+  }
+}
+
+// Bulk Delete Action
+async function bulkDeleteResources() {
+  if (!confirm(`Are you sure you want to delete ${selectedResourceIds.size} selected resources?`)) return;
+
+  try {
+    const batchPromises = Array.from(selectedResourceIds).map(async id => {
+      const res = allResources.find(r => r.id === id);
+      await db.collection("e_library_resources").doc(id).delete();
+      if (res && res.fileUrl) {
+        try {
+          await firebase.storage().refFromURL(res.fileUrl).delete();
+        } catch (e) {
+          console.warn("Storage delete warning:", e);
+        }
+      }
+    });
+
+    await Promise.all(batchPromises);
+    selectedResourceIds.clear();
+    updateBulkActionBar();
+    alert("Selected resources deleted successfully.");
+    fetchLibraryResources();
+  } catch (error) {
+    console.error("Bulk delete error:", error);
+    alert("Failed to complete bulk deletion.");
+  }
 }
 
 // Handle Form Submission for Create & Update
@@ -88,7 +182,7 @@ async function handleLibraryFormSubmit(e) {
 
   const editingId = document.getElementById("editingResourceId").value;
   const title = document.getElementById("resTitle").value.trim();
-  const description = document.getElementById("resDescription").value.trim(); // Captured description field
+  const description = document.getElementById("resDescription").value.trim();
   const classLevel = document.getElementById("resClass").value;
   const category = document.getElementById("resCategory").value;
   const accessType = document.getElementById("resAccessType").value;
@@ -105,7 +199,6 @@ async function handleLibraryFormSubmit(e) {
     let fileName = "";
     let fileType = "";
 
-    // If a new file is uploaded, push it to Firebase Storage
     if (file) {
       const storageRef = firebase.storage().ref();
       const safeName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
@@ -118,10 +211,9 @@ async function handleLibraryFormSubmit(e) {
     }
 
     if (editingId) {
-      // UPDATE EXISTING RECORD
       const updateData = {
         title,
-        description, // Include description in update payload
+        description,
         classLevel,
         category,
         accessType,
@@ -137,7 +229,6 @@ async function handleLibraryFormSubmit(e) {
       await db.collection("e_library_resources").doc(editingId).update(updateData);
       alert("Resource updated successfully!");
     } else {
-      // CREATE NEW RECORD
       if (!file) {
         alert("Please select a file for a new resource.");
         saveBtn.disabled = false;
@@ -147,7 +238,7 @@ async function handleLibraryFormSubmit(e) {
 
       await db.collection("e_library_resources").add({
         title,
-        description, // Include description in creation payload
+        description,
         classLevel,
         category,
         accessType,
@@ -179,6 +270,7 @@ function editResource(id) {
 
   document.getElementById("editingResourceId").value = res.id;
   document.getElementById("resTitle").value = res.title || '';
+  document.getElementById("resDescription").value = res.description || '';
   document.getElementById("resClass").value = res.classLevel || 'S1';
   document.getElementById("resCategory").value = res.category || 'Notes';
   document.getElementById("resAccessType").value = res.accessType || 'free';
@@ -201,15 +293,13 @@ function resetLibraryForm() {
   document.getElementById("cancelEditBtn").style.display = "none";
 }
 
-// Delete Resource
+// Delete Single Resource
 async function deleteResource(id, fileUrl) {
   if (!confirm("Are you sure you want to delete this resource?")) return;
 
   try {
-    // Delete document from Firestore
     await db.collection("e_library_resources").doc(id).delete();
 
-    // Optional: Attempt to delete file from Firebase Storage if URL exists
     if (fileUrl) {
       try {
         const desertRef = firebase.storage().refFromURL(fileUrl);
@@ -238,12 +328,12 @@ function escapeHtml(str) {
 }
 
 function toggleMobileMenu() {
-      const actions = document.getElementById('headerActions');
-      const icon = document.getElementById('menuIcon');
-      actions.classList.toggle('active');
-      if (actions.classList.contains('active')) {
-        icon.className = 'fa-solid fa-xmark';
-      } else {
-        icon.className = 'fa-solid fa-bars';
-      }
-    }
+  const actions = document.getElementById('headerActions');
+  const icon = document.getElementById('menuIcon');
+  actions.classList.toggle('active');
+  if (actions.classList.contains('active')) {
+    icon.className = 'fa-solid fa-xmark';
+  } else {
+    icon.className = 'fa-solid fa-bars';
+  }
+}
