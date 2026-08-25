@@ -496,12 +496,13 @@ function closeCustomModal(result) {
 }
 
 // Render Resource-Specific Download Statistics Table
+// Render Resource-Specific Download Statistics Table
 function renderResourceStatsTable() {
   const tbody = document.getElementById("resourceStatsTableBody");
   if (!tbody) return;
 
   if (allResources.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding: 1rem;">No resources available.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding: 1.5rem;">No resources available.</td></tr>`;
     return;
   }
 
@@ -509,16 +510,16 @@ function renderResourceStatsTable() {
   const sortedResources = [...allResources].sort((a, b) => (Number(b.downloads) || 0) - (Number(a.downloads) || 0));
 
   tbody.innerHTML = sortedResources.map(res => `
-    <tr style="border-bottom: 1px solid var(--border-color, #f1f5f9);">
-      <td style="padding: 0.75rem 0; font-size: 0.9rem;">
-        <strong>${escapeHtml(res.title)}</strong>
-        <span style="display: block; font-size: 0.75rem; color: var(--text-muted);">${escapeHtml(res.category || '')}</span>
+    <tr>
+      <td>
+        <span class="stat-resource-title">${escapeHtml(res.title)}</span>
+        <span class="stat-resource-cat">${escapeHtml(res.category || 'General')}</span>
       </td>
-      <td style="padding: 0.75rem 0; text-align: center;">
-        <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size: 0.75rem;">${res.classLevel}</span>
+      <td class="text-center">
+        <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size: 0.75rem; padding: 2px 8px;">${res.classLevel}</span>
       </td>
-      <td style="padding: 0.75rem 0; text-align: right; font-weight: 600; color: var(--primary, #4f46e5);">
-        ${Number(res.downloads || 0).toLocaleString()}
+      <td class="text-right">
+        <span class="stat-download-count">${Number(res.downloads || 0).toLocaleString()}</span>
       </td>
     </tr>
   `).join('');
