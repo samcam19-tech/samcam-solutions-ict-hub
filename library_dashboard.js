@@ -420,3 +420,57 @@ function toggleMobileMenu() {
     icon.className = 'fa-solid fa-bars';
   }
 }
+
+// Global callback reference for confirmation dialogs
+let modalCallback = null;
+
+// Display custom alert or confirmation dialog
+function showCustomModal(title, message, type = 'info', isConfirm = false, callback = null) {
+  const modal = document.getElementById("customModal");
+  const modalTitle = document.getElementById("modalTitle");
+  const modalMessage = document.getElementById("modalMessage");
+  const modalIcon = document.getElementById("modalIcon");
+  const cancelBtn = document.getElementById("modalCancelBtn");
+  const confirmBtn = document.getElementById("modalConfirmBtn");
+
+  modalTitle.textContent = title;
+  modalMessage.textContent = message;
+  modalCallback = callback;
+
+  // Set icon and colors based on type
+  if (type === 'success') {
+    modalIcon.className = "fa-solid fa-circle-check";
+    modalIcon.style.color = "#059669";
+  } else if (type === 'error') {
+    modalIcon.className = "fa-solid fa-circle-exclamation";
+    modalIcon.style.color = "#dc2626";
+  } else if (type === 'warning') {
+    modalIcon.className = "fa-solid fa-triangle-exclamation";
+    modalIcon.style.color = "#d97706";
+  } else {
+    modalIcon.className = "fa-solid fa-circle-info";
+    modalIcon.style.color = "#4f46e5";
+  }
+
+  // Show/Hide cancel button for confirm dialogs
+  if (isConfirm) {
+    cancelBtn.style.display = "block";
+    confirmBtn.textContent = "Yes, Proceed";
+  } else {
+    cancelBtn.style.display = "none";
+    confirmBtn.textContent = "OK";
+  }
+
+  modal.style.display = "flex";
+}
+
+// Close modal and trigger callback if it was a confirmation
+function closeCustomModal(result) {
+  const modal = document.getElementById("customModal");
+  modal.style.display = "none";
+
+  if (modalCallback && typeof modalCallback === 'function') {
+    modalCallback(result);
+    modalCallback = null;
+  }
+}
