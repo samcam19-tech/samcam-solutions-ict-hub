@@ -1,4 +1,5 @@
 let allResources = [];
+let downloadsChartInstance = null;
 let selectedResourceIds = new Set();
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -32,14 +33,15 @@ async function fetchLibraryResources() {
       allResources.push({ id: doc.id, ...doc.data() });
     });
     
+    // Update KPI metrics, download stats, chart, and apply table filters
     updateKpiMetrics();
+    renderDownloadsChart();
     applyAdvancedFilters();
   } catch (error) {
     console.error("Error fetching library data:", error);
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--danger);">Error loading resources.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--danger);">Error loading resources.</td></tr>`;
   }
 }
-
 // Update KPI Metrics Cards
 function updateKpiMetrics() {
   const total = allResources.length;
@@ -49,6 +51,70 @@ function updateKpiMetrics() {
   document.getElementById("kpiTotal").textContent = total;
   document.getElementById("kpiFree").textContent = free;
   document.getElementById("kpiPaid").textContent = paid;
+}
+
+// Render or Update Chart.js Bar Graph
+function renderDownloadsChart() {
+  const ctx = document.getElementById("downloadsChart").getContext("2d");
+
+  // Define class levels to track
+  const classes = ["S1", "S2", "S3", "S4", "S5", "S6", "General"];
+  
+  // Aggregate downloads per class level
+  const downloadCountsByClass = classes.map(cls => {
+    return allResources
+      .filter(r => r.classLevel === cls)
+      .reduce((sum, r) => sum + (Number(r.downloads) || 0), 0);
+  });
+
+  // If chart already exists, update its data instead of recreating
+  if (downloadsChartInstance) {
+    downloadsChartInstance.data.datasets[0].data = downloadCountsByClass;
+    downloadsChartInstance.update();
+    return;
+  }
+
+  // Create new Chart instance
+  downloadsChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ["Senior 1", "Senior 2", "Senior 3", "Senior 4", "Senior 5", "Senior 6", "General"],
+      datasets: [{
+        label: 'Total Downloads',
+        data: downloadCountsByClass,
+        backgroundColor: '#4f46e5',
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          backgroundColor: '#0f172a',
+          titleFont: { family: 'Inter', size: 13 },
+          bodyFont: { family: 'Inter', size: 12 },
+          padding: 10,
+          cornerRadius: 8
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          grid: { color: '#f1f5f9' },
+          ticks: { font: { family: 'Inter' }, precision: 0 }
+        },
+        x: {
+          grid: { display: false },
+          ticks: { font: { family: 'Inter' } }
+        }
+      }
+    }
+  });
 }
 
 // Advanced Filtering (Combining Search, Class Level, and Access Type)
