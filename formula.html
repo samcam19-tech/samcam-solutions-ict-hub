@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ICT Hub Formula & Query Verifier</title>
+    <link rel="stylesheet" href="formula.css">
+
+    <!-- Firebase App (Core) SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <!-- Firebase Firestore SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ICT Formula & Access Query Verifier</h1>
+            <p>Master Excel logical, lookup, and conditional functions along with Access criteria rules.</p>
+        </header>
+
+        <main>
+            <section class="challenge-selector">
+                <label for="challengeSelect"><strong>Select Practice Challenge:</strong></label>
+                <select id="challengeSelect">
+                    <option value="excel_if">Excel: IF Function (Conditional Check)</option>
+                    <option value="excel_vlookup">Excel: VLOOKUP Function</option>
+                    <option value="excel_hlookup">Excel: HLOOKUP Function</option>
+                    <option value="excel_lookup">Excel: LOOKUP Function</option>
+                    <option value="excel_sumif">Excel: SUMIF Function</option>
+                    <option value="excel_countif">Excel: COUNTIF Function</option>
+                    <option value="excel_averageif">Excel: AVERAGEIF Function</option>
+                    <option value="access_criteria">Access: Query Criteria & Wildcards</option>
+                </select>
+            </section>
+
+            <section class="workspace">
+                <div class="prompt-box">
+                    <h3>Challenge Instructions</h3>
+                    <p id="challengePrompt">Loading prompt...</p>
+                    <div class="hint-box" id="challengeHint"></div>
+                </div>
+
+                <div class="input-area">
+                    <label for="studentAnswer" id="inputLabel">Enter your formula or expression:</label>
+                    <textarea id="studentAnswer" placeholder="Type your formula here... e.g. =IF(A1>50, 'Pass', 'Fail')" rows="3"></textarea>
+                    <button id="verifyBtn" class="primary-btn">Verify Answer</button>
+                </div>
+
+                <div class="result-box" id="resultBox">
+                    <h3>Feedback</h3>
+                    <div id="feedbackOutput" class="feedback-placeholder">Submit an answer to see real-time verification and grading.</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Firebase Configuration & Initialization -->
+    <script src="firebase-config.js"></script>
+    <!-- Main Application Script -->
+    <script src="formula.js"></script>
+</body>
+</html>
