@@ -21,10 +21,11 @@
         <div class="nav-right">
             <div class="user-menu-container" id="userMenuContainer">
                 <div class="user-profile-trigger" id="userProfileTrigger">
-                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces" alt="Avatar" class="user-avatar">
+                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces" alt="Avatar" class="user-avatar" id="userAvatar">
                     <div class="user-info">
-                        <span class="user-name">Akugizibwe Samuel</span>
-                        <span class="user-handle">@martinz</span>
+                        <!-- Added IDs to make user info dynamic instead of hardcoded -->
+                        <span class="user-name" id="navUserName">Loading...</span>
+                        <span class="user-handle" id="navUserHandle">@user</span>
                     </div>
                     <span class="dropdown-arrow">▼</span>
                 </div>
@@ -32,7 +33,7 @@
                     <a href="#" class="dropdown-item">👤 View Profile</a>
                     <a href="#" class="dropdown-item">✏️ Edit Profile</a>
                     <div class="dropdown-divider"></div>
-                    <a href="#" class="dropdown-item logout-item">🚪 Logout</a>
+                    <a href="#" class="dropdown-item logout-item" id="logoutBtn">🚪 Logout</a>
                 </div>
             </div>
             <button class="back-btn" onclick="history.back()">← Back</button>
@@ -86,18 +87,52 @@
     <!-- Main Application Script -->
     <script src="formula.js"></script>
     <script>
-        // Interactive dropdown toggle logic for the user profile menu
-        const trigger = document.getElementById('userProfileTrigger');
-        const menu = document.getElementById('userDropdownMenu');
-        
-        trigger.addEventListener('click', (e) => {
-            e.stopPropagation();
-            menu.classList.toggle('show');
-        });
+        // Populate the navigation bar dynamically from portal_session or window.currentUser
+        document.addEventListener("DOMContentLoaded", () => {
+            let activeUser = window.currentUser;
 
-        window.addEventListener('click', () => {
-            if (menu.classList.contains('show')) {
-                menu.classList.remove('show');
+            if (!activeUser) {
+                const sessionData = localStorage.getItem('portal_session');
+                if (sessionData) {
+                    try {
+                        activeUser = JSON.parse(sessionData);
+                    } catch (e) {
+                        console.error("Error parsing portal_session from localStorage:", e);
+                    }
+                }
+            }
+
+            if (activeUser) {
+                const nameEl = document.getElementById('navUserName');
+                const handleEl = document.getElementById('navUserHandle');
+                
+                if (nameEl) nameEl.textContent = activeUser.username || activeUser.name || "Student User";
+                if (handleEl) handleEl.textContent = activeUser.handle ? `@${activeUser.handle}` : (activeUser.role ? `@${activeUser.role.toLowerCase()}` : "@student");
+            }
+
+            // Interactive dropdown toggle logic for the user profile menu
+            const trigger = document.getElementById('userProfileTrigger');
+            const menu = document.getElementById('userDropdownMenu');
+            
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menu.classList.toggle('show');
+            });
+
+            window.addEventListener('click', () => {
+                if (menu.classList.contains('show')) {
+                    menu.classList.remove('show');
+                }
+            });
+
+            // Optional logout handler clearing session
+            const logoutItem = document.querySelector('.logout-item');
+            if (logoutItem) {
+                logoutItem.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    localStorage.removeItem('portal_session');
+                    window.location.href = 'index.html'; // Adjust to your login page
+                });
             }
         });
     </script>
