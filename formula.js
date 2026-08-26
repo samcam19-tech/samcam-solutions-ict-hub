@@ -1,3 +1,27 @@
+// Function to retrieve the active user session dynamically based on your portal setup
+function getCurrentUserProfile() {
+    let activeUser = window.currentUser;
+
+    if (!activeUser) {
+        const sessionData = localStorage.getItem('portal_session');
+        if (sessionData) {
+            try {
+                activeUser = JSON.parse(sessionData);
+            } catch (e) {
+                console.error("Error parsing portal_session from localStorage:", e);
+                activeUser = null;
+            }
+        }
+    }
+
+    // Fallback if no active session is found
+    return activeUser || {
+        username: "Guest Student",
+        role: "Student",
+        institution: "Standard College Ntungamo"
+    };
+}
+
 const challenges = {
     excel_if: {
         type: "EXCEL",
@@ -178,7 +202,10 @@ verifyBtn.addEventListener("click", async () => {
         feedbackOutput.textContent = "✘ " + result.message;
     }
 
-    // Save attempt to Firestore if db is initialized
+    // Retrieve active session dynamically using the portal_session logic
+    const activeUser = getCurrentUserProfile();
+
+    // Save attempt to Firestore including the live session profile fields
     if (typeof db !== 'undefined') {
         try {
             await db.collection("formulaSubmissions").add({
@@ -187,9 +214,11 @@ verifyBtn.addEventListener("click", async () => {
                 submission: val,
                 isCorrect: result.correct,
                 feedbackMessage: result.message,
+                user: activeUser.username || activeUser.name || "Unknown",
+                role: activeUser.role || "Student",
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
-            console.log("Submission successfully saved to Firestore!");
+            console.log("Submission successfully saved to Firestore with portal_session context!");
         } catch (error) {
             console.error("Error saving submission to Firestore: ", error);
         }
