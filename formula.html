@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ICT Hub Formula & Query Verifier</title>
+    <title>ICT Assessment Engine - Formula & Query Verifier</title>
     <link rel="stylesheet" href="formula.css">
 
     <!-- Firebase App (Core) SDK -->
@@ -12,8 +12,35 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
+    <!-- Top Navigation Bar matching the ICT Assessment Engine design -->
+    <header class="app-navbar">
+        <div class="nav-brand">
+            <span class="nav-icon">🎓</span>
+            <span class="nav-title">ICT Assessment Engine</span>
+        </div>
+        <div class="nav-right">
+            <div class="user-menu-container" id="userMenuContainer">
+                <div class="user-profile-trigger" id="userProfileTrigger">
+                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces" alt="Avatar" class="user-avatar">
+                    <div class="user-info">
+                        <span class="user-name">Akugizibwe Samuel</span>
+                        <span class="user-handle">@martinz</span>
+                    </div>
+                    <span class="dropdown-arrow">▼</span>
+                </div>
+                <div class="dropdown-menu" id="userDropdownMenu">
+                    <a href="#" class="dropdown-item">👤 View Profile</a>
+                    <a href="#" class="dropdown-item">✏️ Edit Profile</a>
+                    <div class="dropdown-divider"></div>
+                    <a href="#" class="dropdown-item logout-item">🚪 Logout</a>
+                </div>
+            </div>
+            <button class="back-btn" onclick="history.back()">← Back</button>
+        </div>
+    </header>
+
     <div class="container">
-        <header>
+        <header class="content-header">
             <h1>ICT Formula & Access Query Verifier</h1>
             <p>Master Excel logical, lookup, and conditional functions along with Access criteria rules.</p>
         </header>
@@ -58,5 +85,21 @@
     <script src="firebase-config.js"></script>
     <!-- Main Application Script -->
     <script src="formula.js"></script>
+    <script>
+        // Interactive dropdown toggle logic for the user profile menu
+        const trigger = document.getElementById('userProfileTrigger');
+        const menu = document.getElementById('userDropdownMenu');
+        
+        trigger.addEventListener('click', (e) => {
+            e.stopPropagation();
+            menu.classList.toggle('show');
+        });
+
+        window.addEventListener('click', () => {
+            if (menu.classList.contains('show')) {
+                menu.classList.remove('show');
+            }
+        });
+    </script>
 </body>
 </html>
