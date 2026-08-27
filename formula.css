@@ -293,3 +293,22 @@ main {
 .back-btn:hover {
     background-color: #334155;
 }
+
+.admin-panel {
+    background: #f8f9fa;
+    border: 2px dashed #007bff;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-family: inherit;
+}
+.admin-panel h3 {
+    margin-top: 0;
+    color: #0056b3;
+}
+.next-action-btn {
+    background-color: #28a745 !important;
+}
+.next-action-btn:hover {
+    background-color: #218838 !important;
+}
