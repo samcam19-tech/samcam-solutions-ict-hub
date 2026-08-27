@@ -209,7 +209,7 @@ function setupAdminImportModule() {
         adminContainer.innerHTML = `
             <h3>🔒 Admin / Teacher: Bulk Import Questions</h3>
             <p style="font-size: 0.9em; color: #555;">Paste JSON data containing an array of questions to batch upload to Firestore.</p>
-            <label for="categoryInput"><strong>Target Category Key:</strong></label><br>
+            <label for="importCategory"><strong>Target Category Key:</strong></label><br>
             <input type="text" id="importCategory" value="excel_if" style="width: 100%; padding: 6px; margin-bottom: 10px;" /><br>
             <label for="jsonInput"><strong>Questions JSON Data:</strong></label><br>
             <textarea id="jsonInput" rows="6" style="width: 100%; font-family: monospace;" placeholder='[{"type":"EXCEL", "prompt":"...", "hint":"...", "validationLogic":"return {correct: true, message: \\"Correct!\\"};"}]'></textarea><br>
@@ -229,8 +229,10 @@ function setupAdminImportModule() {
         adminContainer.style.display = "block";
         
         document.getElementById("uploadBatchBtn").addEventListener("click", async () => {
-            const targetCategory = document.getElementById("importCategory").value.trim();
-            const rawJson = document.getElementById("jsonInput").value.trim();
+            const targetCategoryInput = document.getElementById("importCategory");
+            const jsonInputBox = document.getElementById("jsonInput");
+            const targetCategory = targetCategoryInput.value.trim();
+            const rawJson = jsonInputBox.value.trim();
             const feedbackDiv = document.getElementById("uploadFeedback");
 
             if (!targetCategory || !rawJson) {
@@ -263,8 +265,12 @@ function setupAdminImportModule() {
 
                 await batch.commit();
                 feedbackDiv.style.color = "green";
-                feedbackDiv.textContent = "✔ Successfully imported all questions into Firestore! Refreshing list...";
+                feedbackDiv.textContent = "✔ Successfully imported all questions into Firestore! Clearing fields & refreshing list...";
                 
+                // Clear out the form fields after successful import
+                jsonInputBox.value = "";
+                targetCategoryInput.value = "";
+
                 // Refresh client dropdown view
                 setTimeout(() => {
                     loadChallengesFromFirestore();
