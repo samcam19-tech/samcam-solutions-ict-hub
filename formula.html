@@ -12,18 +12,24 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 </head>
 <body>
-    <!-- Top Navigation Bar matching the ICT Assessment Engine design -->
     <header class="app-navbar">
         <div class="nav-brand">
             <span class="nav-icon">🎓</span>
             <span class="nav-title">Formula & Query Verifier</span>
         </div>
-        <div class="nav-right">
+        
+        <!-- Hamburger Menu Toggle Button -->
+        <button class="hamburger-btn" id="hamburgerBtn" aria-label="Toggle navigation">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+
+        <div class="nav-right" id="navRight">
             <div class="user-menu-container" id="userMenuContainer">
                 <div class="user-profile-trigger" id="userProfileTrigger">
                     <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces" alt="Avatar" class="user-avatar" id="userAvatar">
                     <div class="user-info">
-                        <!-- Added IDs to make user info dynamic instead of hardcoded -->
                         <span class="user-name" id="navUserName">Loading...</span>
                         <span class="user-handle" id="navUserHandle">@user</span>
                     </div>
