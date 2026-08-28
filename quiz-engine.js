@@ -214,9 +214,13 @@ function fetchActiveQuizzes() {
     </div>
   `;
 
+  // Resolve active school ID cleanly from currentUser or window context to enforce tenant isolation
+  const activeSchoolId = (typeof currentSchoolId !== 'undefined' && currentSchoolId) ? currentSchoolId : (currentUser && currentUser.schoolId ? currentUser.schoolId : '');
+
   const cachedQuizzes = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || [];
   if (cachedQuizzes.length > 0) {
-    renderQuizCards(cachedQuizzes);
+    const filteredCached = activeSchoolId ? cachedQuizzes.filter(q => !q.schoolId || q.schoolId.toUpperCase() === activeSchoolId.toUpperCase()) : cachedQuizzes;
+    renderQuizCards(filteredCached);
   }
 
   if (!db) {
@@ -226,8 +230,8 @@ function fetchActiveQuizzes() {
   }
 
   let query = db.collection('quizzes');
-  if (typeof currentSchoolId !== 'undefined' && currentSchoolId) {
-    query = query.where('schoolId', '==', currentSchoolId);
+  if (activeSchoolId) {
+    query = query.where('schoolId', '==', activeSchoolId.toUpperCase());
   }
 
   query.onSnapshot((snapshot) => {
@@ -236,7 +240,7 @@ function fetchActiveQuizzes() {
       freshQuizzes.push({ id: doc.id, ...doc.data() });
     });
 
-    const quizzesToDisplay = freshQuizzes.length > 0 ? freshQuizzes : MOCK_QUIZZES;
+    const quizzesToDisplay = freshQuizzes.length > 0 ? freshQuizzes : (cachedQuizzes.length > 0 ? cachedQuizzes : MOCK_QUIZZES);
     localStorage.setItem('portal_quizzes_cache', JSON.stringify(quizzesToDisplay));
     renderQuizCards(quizzesToDisplay);
   }, (err) => {
@@ -260,9 +264,14 @@ function renderQuizCards(quizzesList) {
 
   const userRole = (currentUser && currentUser.role ? currentUser.role : '').toLowerCase();
   const isAdminOrTeacher = userRole === 'admin' || userRole === 'teacher';
+  const activeSchoolId = (typeof currentSchoolId !== 'undefined' && currentSchoolId) ? currentSchoolId.toUpperCase() : (currentUser && currentUser.schoolId ? currentUser.schoolId.toUpperCase() : '');
 
-  // Filter quizzes based on user role and class
+  // Filter quizzes based on tenant schoolId, user role, and class
   globalFilteredQuizzes = quizzesList.filter(q => {
+    // Enforce strict tenant isolation by schoolId if present on the quiz document
+    if (activeSchoolId && q.schoolId && q.schoolId.toUpperCase() !== activeSchoolId) {
+      return false;
+    }
     if (isAdminOrTeacher) return true;
     if (!currentUser || !currentUser.class) return true;
     const target = q.targetClass || 'All';
