@@ -599,6 +599,10 @@ function displayCurrentQuestion() {
         verifyBtn.style.display = "none";
         feedbackOutput.className = "feedback-correct";
         feedbackOutput.textContent = "Session complete. Great work!";
+        
+        // Clear backdrop if it exists
+        const backdrop = document.getElementById('formulaBackdrop');
+        if (backdrop) backdrop.innerHTML = '';
         return;
     }
 
@@ -608,7 +612,14 @@ function displayCurrentQuestion() {
     const current = currentQuestionsList[currentIndex];
     challengePrompt.textContent = `Question ${currentIndex + 1} of ${currentQuestionsList.length}: ${current.prompt}`;
     challengeHint.textContent = "Hint: " + current.hint;
+    
+    // Reset answer and explicitly trigger editor update to clear/refresh backdrop colors
     studentAnswer.value = "";
+    const backdrop = document.getElementById('formulaBackdrop');
+    if (backdrop) {
+        backdrop.innerHTML = highlightFormula("") + ' ';
+    }
+
     isAnswerCorrect = false;
     
     verifyBtn.textContent = "Verify Answer";
