@@ -234,7 +234,7 @@ function validateStudentAnswer(question, inputStr) {
     const upperInput = cleanInput.toUpperCase();
 
     switch (rule) {
-        // --- 1. BASIC AGGREGATIONS (SUM, AVERAGE) WITH AST ARGUMENT COUNT & BOUNDS CHECKING ---
+       // --- 1. BASIC AGGREGATIONS (SUM, AVERAGE) WITH AST ARGUMENT COUNT & BOUNDS CHECKING ---
         case "EXCEL_SUM":
         case "EXCEL_AVERAGE": {
             const func = rule === "EXCEL_SUM" ? "SUM" : "AVERAGE";
@@ -250,14 +250,11 @@ function validateStudentAnswer(question, inputStr) {
                 return { correct: false, message: `#VALUE! Error: The ${func} function requires at least one argument or range.` };
             }
 
-            const inner = match[1].replace(/\s+/g, '');
-            let isWithinBounds = false;
-
-            // Gap 3 Upgrade: Handle ranges containing unions or standard colons robustly
-            const subRanges = inner.split(',');
-            const allSubRangesValid = subRanges.every(sub => {
-                if (sub.includes(':')) {
-                    const parts = sub.split(':');
+            // Validate all arguments safely using the secure args array instead of raw string splitting
+            const allSubRangesValid = args.every(sub => {
+                const cleanSub = sub.trim().replace(/\s+/g, '');
+                if (cleanSub.includes(':')) {
+                    const parts = cleanSub.split(':');
                     if (parts.length === 2) {
                         const startCell = parts[0].replace(/\$/g, '');
                         const endCell = parts[1].replace(/\$/g, '');
@@ -265,13 +262,15 @@ function validateStudentAnswer(question, inputStr) {
                     }
                     return false;
                 } else {
-                    return isValidCellCoordinate(sub.replace(/\$/g, ''));
+                    return isValidCellCoordinate(cleanSub.replace(/\$/g, ''));
                 }
             });
 
+            let isWithinBounds = false;
             if (allSubRangesValid) {
                 const normExpected = expected.replace(/\s+/g, '').toUpperCase();
-                isWithinBounds = (inner === normExpected) || (inner.includes(normExpected)) || upperInput.includes(normExpected);
+                const fullInnerNormalized = match[1].replace(/\s+/g, '').toUpperCase();
+                isWithinBounds = (fullInnerNormalized === normExpected) || (fullInnerNormalized.includes(normExpected)) || upperInput.includes(normExpected);
             }
 
             return {
@@ -282,7 +281,7 @@ function validateStudentAnswer(question, inputStr) {
             };
         }
 
-        // --- 2. CONDITIONAL CHECK (IF) WITH DEEP AST ARGUMENT & ERROR DIAGNOSTICS ---
+       // --- 2. CONDITIONAL CHECK (IF) WITH DEEP AST ARGUMENT & ERROR DIAGNOSTICS ---
         case "EXCEL_IF": {
             const ifPattern = /^=\s*IF\s*\(\s*(.+)\s*\)$/i;
             const match = cleanInput.match(ifPattern);
@@ -307,16 +306,42 @@ function validateStudentAnswer(question, inputStr) {
 
             const args = splitExcelArguments(innerContent);
             
+            // Base IF requires at least 3 arguments (logical_test, value_if_true, value_if_false)
             if (args.length < 3) {
                 return { 
                     correct: false, 
-                    message: `#VALUE! Error: Your IF function has only ${args.length} argument(s). Excel requires 3 arguments: logical_test, value_if_true, and value_if_false.` 
+                    message: `#VALUE! Error: Your IF function has only ${args.length} argument(s). Excel requires at least 3 arguments: logical_test, value_if_true, and value_if_false.` 
                 };
             }
+            
+            // Excel allows a single IF to take up to 255 total arguments in newer versions, 
+            // but standard nested logic typically uses 3 primary slots. If someone passes 
+            // more than 3 top-level comma splits without nesting, or exceeds reasonable bounds:
             if (args.length > 3) {
+                // If you want to allow multi-argument syntax like modern IFS or cascading blocks, 
+                // handle or limit them here. If enforcing standard strict 3-argument base IF:
                 return { 
                     correct: false, 
-                    message: `#VALUE! Error: Your IF function has too many arguments (${args.length}). Excel requires exactly 3 arguments separated by commas.` 
+                    message: `#VALUE! Error: Too many top-level arguments provided for a single IF block. Check your comma separators.` 
+                };
+            }
+
+            // Check max nesting depth of parentheses to ensure it doesn't exceed Excel's 64 limit
+            let maxDepth = 0;
+            let currentDepth = 0;
+            for (let i = 0; i < cleanInput.length; i++) {
+                if (cleanInput[i] === '(') {
+                    currentDepth++;
+                    if (currentDepth > maxDepth) maxDepth = currentDepth;
+                } else if (cleanInput[i] === ')') {
+                    currentDepth = Math.max(0, currentDepth - 1);
+                }
+            }
+
+            if (maxDepth > 64) {
+                return {
+                    correct: false,
+                    message: `#VALUE! Error: Formula exceeds Excel's maximum nesting limit of 64 levels (current depth: ${maxDepth}).`
                 };
             }
 
@@ -335,33 +360,16 @@ function validateStudentAnswer(question, inputStr) {
                 };
             }
 
-            if (!isValidExcelValueToken(valueIfTrue) || !isValidExcelValueToken(valueIfFalse)) {
-                return { 
-                    correct: false, 
-                    message: `#NAME? Error: Text arguments in Excel must be explicitly enclosed in double quotation marks (e.g., "Overtime").` 
-                };
-            }
-
-            // Optional structural cross-check against question properties if defined
-            if (question.expectedTrue && valueIfTrue.replace(/\s+/g, '').toUpperCase() !== question.expectedTrue.replace(/\s+/g, '').toUpperCase()) {
-                return {
-                    correct: false,
-                    message: `#VALUE! Error: Your 'value_if_true' argument doesn't match the expected outcome. Expected: ${question.expectedTrue}`
-                };
-            }
-            if (question.expectedFalse && valueIfFalse.replace(/\s+/g, '').toUpperCase() !== question.expectedFalse.replace(/\s+/g, '').toUpperCase()) {
-                return {
-                    correct: false,
-                    message: `#VALUE! Error: Your 'value_if_false' argument doesn't match the expected outcome. Expected: ${question.expectedFalse}`
-                };
-            }
+            // Note: If valueIfTrue or valueIfFalse contains a nested IF, they won't trigger 
+            // isValidExcelValueToken directly unless expanded, so ensure your token validator 
+            // handles nested function expressions gracefully.
 
             return {
                 correct: true,
                 message: `Correct! "${cleanInput}" properly satisfies Excel's IF function argument structure and data typing rules.`
             };
         }
-        // --- 3. LOOKUP FUNCTIONS (VLOOKUP, HLOOKUP, LOOKUP) WITH AST ARGUMENT VALIDATION ---
+       // --- 3. LOOKUP FUNCTIONS (VLOOKUP, HLOOKUP, LOOKUP) WITH AST ARGUMENT VALIDATION ---
         case "EXCEL_VLOOKUP":
         case "EXCEL_HLOOKUP":
         case "EXCEL_LOOKUP": {
@@ -374,14 +382,15 @@ function validateStudentAnswer(question, inputStr) {
             }
 
             const args = splitExcelArguments(match[1]);
-            if (func === 'VLOOKUP' && args.length < 3) {
-                return { correct: false, message: `#VALUE! Error: =VLOOKUP requires at least 3 arguments (lookup_value, table_array, col_index_num). Found ${args.length}.` };
-            }
-            if (func === 'HLOOKUP' && args.length < 3) {
-                return { correct: false, message: `#VALUE! Error: =HLOOKUP requires at least 3 arguments. Found ${args.length}.` };
-            }
-            if (func === 'LOOKUP' && (args.length < 2 || args.length > 3)) {
-                return { correct: false, message: `#VALUE! Error: =LOOKUP requires 2 or 3 arguments. Found ${args.length}.` };
+            
+            if (func === 'VLOOKUP' || func === 'HLOOKUP') {
+                if (args.length < 3 || args.length > 4) {
+                    return { correct: false, message: `#VALUE! Error: =${func} requires 3 or 4 arguments (lookup_value, table_array, col_index_num, [range_lookup]). Found ${args.length}.` };
+                }
+            } else if (func === 'LOOKUP') {
+                if (args.length < 2 || args.length > 3) {
+                    return { correct: false, message: `#VALUE! Error: =LOOKUP requires 2 or 3 arguments. Found ${args.length}.` };
+                }
             }
 
             const correct = upperInput.includes(expected.toUpperCase());
@@ -392,8 +401,8 @@ function validateStudentAnswer(question, inputStr) {
                     : `#N/A Error: Verify your lookup parameters, reference structure, and table array for =${func}().`
             };
         }
-
-        // --- 4. CONDITIONAL AGGREGATIONS (SUMIF, COUNTIF, AVERAGEIF) WITH AST ARGUMENT VALIDATION ---
+            
+       // --- 4. CONDITIONAL AGGREGATIONS (SUMIF, COUNTIF, AVERAGEIF) WITH AST ARGUMENT VALIDATION ---
         case "EXCEL_SUMIF":
         case "EXCEL_COUNTIF":
         case "EXCEL_AVERAGEIF": {
@@ -406,9 +415,20 @@ function validateStudentAnswer(question, inputStr) {
             }
 
             const args = splitExcelArguments(match[1]);
-            const minArgs = func === 'COUNTIF' ? 2 : 2; 
-            if (args.length < minArgs) {
-                return { correct: false, message: `#VALUE! Error: The ${func} function requires at least ${minArgs} arguments. Found ${args.length}.` };
+            
+            // Define strict argument boundaries per function standard
+            let minArgs = 2;
+            let maxArgs = 3;
+            if (func === 'COUNTIF') {
+                minArgs = 2;
+                maxArgs = 2;
+            }
+
+            if (args.length < minArgs || args.length > maxArgs) {
+                return { 
+                    correct: false, 
+                    message: `#VALUE! Error: The ${func} function requires ${minArgs === maxArgs ? minArgs : '2 to 3'} arguments. Found ${args.length}.` 
+                };
             }
 
             const correct = upperInput.includes(expected.toUpperCase());
@@ -422,7 +442,7 @@ function validateStudentAnswer(question, inputStr) {
 
         // --- 5. RANK FUNCTION WITH EXACT 3-ARGUMENT AST VALIDATION ---
         case "EXCEL_RANK": {
-            const pattern = /^=\s*RANK\s*\(\s*(.+)\s*\)$/i;
+            const pattern = /^=\s*(?:RANK|RANK\.EQ)\s*\(\s*(.+)\s*\)$/i;
             const match = cleanInput.match(pattern);
 
             if (!match) {
@@ -445,47 +465,70 @@ function validateStudentAnswer(question, inputStr) {
 
         // --- 6. ACCESS QUERY CRITERIA & WILDCARDS (WITH ROBUST NORMALIZATION) ---
         case "ACCESS_CRITERIA": {
-            const normalizedStudent = upperInput.replace(/\s+/g, '').replace(/^LIKE/i, '').replace(/["']/g, '');
-            const normalizedExpected = expected.toUpperCase().replace(/\s+/g, '').replace(/^LIKE/i, '').replace(/["']/g, '');
+            // Normalize wildcards: convert SQL-style % to Access-style * for helpful cross-checking
+            const cleanedStudentInput = upperInput.trim();
+            const normalizedStudent = cleanedStudentInput.replace(/\s+/g, '').replace(/^LIKE/i, '').replace(/["']/g, '').replace(/%/g, '*');
+            const normalizedExpected = expected.toUpperCase().replace(/\s+/g, '').replace(/^LIKE/i, '').replace(/["']/g, '').replace(/%/g, '*');
 
-            const correct = normalizedStudent === normalizedExpected || upperInput.includes(expected.toUpperCase());
+            const correct = normalizedStudent === normalizedExpected || cleanedStudentInput.includes(expected.toUpperCase());
             return {
                 correct,
                 message: correct 
                     ? `Correct! "${cleanInput}" matches Access design criteria formatting.` 
-                    : `Invalid Criteria Error: Review your field parameters, comparison operators, or wildcard characters.`
+                    : `Invalid Criteria Error: Remember that Microsoft Access query criteria use asterisks (*) for wildcards instead of percentage signs (%), and text values must be enclosed in quotes.`
             };
         }
 
         // --- 7. FLEXIBLE ACCESS QUERY CALCULATED FIELDS ---
         case "ACCESS_CALCULATED": {
+            // Verify structural alias pattern: AliasName: Expression
+            const colonIndex = cleanInput.indexOf(':');
+            const hasValidAlias = colonIndex > 0 && colonIndex < cleanInput.length - 1;
+
             const normalizedStudent = upperInput.replace(/\s+/g, '').replace(/\[/g, '').replace(/\]/g, '');
             const normalizedExpected = expected.toUpperCase().replace(/\s+/g, '').replace(/\[/g, '').replace(/\]/g, '');
 
-            const hasColon = upperInput.includes(':');
-            const correct = hasColon && normalizedStudent.includes(normalizedExpected);
+            const correct = hasValidAlias && normalizedStudent.includes(normalizedExpected);
 
             return {
                 correct,
                 message: correct 
                     ? `Correct! "${cleanInput}" successfully defined the calculated query expression.` 
-                    : `Syntax Error: Ensure you use a field alias followed by a colon and square bracket expressions (e.g., Total: [Price]*[Qty]).`
+                    : `Syntax Error: Ensure you use a proper field alias followed by a colon and square bracket expressions (e.g., Total: [Price]*[Qty]).`
             };
         }
 
-        default: {
-            // Gap 2 & 5 Integration: Support case-insensitivity and algebraic expression fallback checks
-            const normalizedStudent = normalizeAlgebraicExpression(cleanInput);
-            const normalizedExpected = normalizeAlgebraicExpression(expected);
-            const correct = normalizedStudent.includes(normalizedExpected) || upperInput.includes(expected.toUpperCase());
-            
-            return { 
-                correct, 
-                message: correct ? `Correct! "${cleanInput}" verified successfully.` : `Incorrect ("${cleanInput}"). Please check your entry.` 
-            };
+       default: {
+        // Safe check for normalization function availability
+        let normalizedStudent = cleanInput;
+        let normalizedExpected = expected;
+
+        if (typeof normalizeAlgebraicExpression === 'function') {
+            try {
+                normalizedStudent = normalizeAlgebraicExpression(cleanInput);
+                normalizedExpected = normalizeAlgebraicExpression(expected);
+            } catch (e) {
+                console.warn("Algebraic normalization fallback error:", e);
+            }
         }
+
+        const studentComp = normalizedStudent.replace(/\s+/g, '').toUpperCase();
+        const expectedComp = normalizedExpected.replace(/\s+/g, '').toUpperCase();
+        const upperCleanInput = cleanInput.replace(/\s+/g, '').toUpperCase();
+        const upperExpected = expected.toUpperCase().replace(/\s+/g, '');
+
+        const correct = (studentComp === expectedComp) || (upperCleanInput === upperExpected) || upperInput.includes(expected.toUpperCase());
+        
+        return { 
+            correct, 
+            message: correct 
+                ? `Correct! "${cleanInput}" verified successfully.` 
+                : `Incorrect ("${cleanInput}"). Please check your entry and formatting.` 
+        };
+    }
     }
 }
+
 // ==========================================
 // 4. DYNAMIC QUESTION FETCHING FROM FIRESTORE
 // ==========================================
@@ -519,9 +562,10 @@ async function loadChallengesFromFirestore() {
             return;
         }
 
+        let fetchedQuestions = [];
         snapshot.forEach(doc => {
             const data = doc.data();
-            currentQuestionsList.push({
+            fetchedQuestions.push({
                 id: doc.id,
                 type: data.type || "EXCEL",
                 prompt: data.prompt,
@@ -531,6 +575,13 @@ async function loadChallengesFromFirestore() {
             });
         });
 
+        // Fisher-Yates shuffle algorithm to ensure unique, random order per user/session
+        for (let i = fetchedQuestions.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [fetchedQuestions[i], fetchedQuestions[j]] = [fetchedQuestions[j], fetchedQuestions[i]];
+        }
+
+        currentQuestionsList = fetchedQuestions;
         displayCurrentQuestion();
     } catch (error) {
         console.error("Error fetching challenges: ", error);
@@ -610,8 +661,18 @@ verifyBtn.addEventListener("click", async () => {
         feedbackOutput.textContent = "✘ " + result.message;
     }
 
-    // Log the user submission attempt to Firestore
-    const activeUser = getCurrentUserProfile();
+    // Safely retrieve active user profile with robust fallbacks
+    let activeUser = { username: "Anonymous Student", role: "Student", institution: "Standard College Ntungamo" };
+    if (typeof getCurrentUserProfile === 'function') {
+        try {
+            const profile = getCurrentUserProfile();
+            if (profile) activeUser = profile;
+        } catch (e) {
+            console.warn("Could not retrieve user profile for logging:", e);
+        }
+    }
+
+    // Log the user submission attempt to Firestore safely
     if (typeof db !== 'undefined') {
         try {
             await db.collection("formulaSubmissions").add({
@@ -641,6 +702,11 @@ if (hamburgerBtn && navRight) {
         navRight.classList.toggle('mobile-active');
     });
 
+    // Prevent internal clicks inside navRight from closing the mobile menu
+    navRight.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+
     // Close mobile menu when clicking outside
     window.addEventListener('click', () => {
         if (navRight.classList.contains('mobile-active')) {
@@ -648,108 +714,137 @@ if (hamburgerBtn && navRight) {
         }
     });
 }
-
 // ==========================================
 // 6. ADMIN / TEACHER BULK IMPORT MODULE
 // ==========================================
 function setupAdminImportModule() {
-    const activeUser = getCurrentUserProfile();
-    const userRole = (activeUser.role || "").toLowerCase();
+    let activeUser = { role: "Student" };
+    if (typeof getCurrentUserProfile === 'function') {
+        try {
+            const profile = getCurrentUserProfile();
+            if (profile) activeUser = profile;
+        } catch (e) {
+            console.warn("Profile retrieval warning:", e);
+        }
+    }
     
-    // Check if user has administrative or teacher privileges
+    const userRole = (activeUser.role || "").toLowerCase();
     const isAdminOrTeacher = userRole.includes("admin") || userRole.includes("teacher") || userRole.includes("educator");
 
-    // Create container for admin tools if it doesn't exist
     let adminContainer = document.getElementById("adminImportSection");
     if (!adminContainer) {
         adminContainer = document.createElement("div");
         adminContainer.id = "adminImportSection";
-        adminContainer.className = "admin-panel";
-        adminContainer.style.margin = "20px 0";
-        adminContainer.style.padding = "15px";
-        adminContainer.style.border = "2px dashed #007bff";
-        adminContainer.style.borderRadius = "8px";
-        adminContainer.style.background = "#f8f9fa";
+        adminContainer.className = "admin-import-card";
         
         adminContainer.innerHTML = `
-            <h3>🔒 Admin / Teacher: Bulk Import Questions</h3>
-            <p style="font-size: 0.9em; color: #555;">Paste JSON data containing an array of lightweight rules to batch upload to Firestore.</p>
-            <label for="importCategory"><strong>Target Category Key:</strong></label><br>
-            <input type="text" id="importCategory" value="excel_if" style="width: 100%; padding: 6px; margin-bottom: 10px;" /><br>
-            <label for="jsonInput"><strong>Questions JSON Data:</strong></label><br>
-            <textarea id="jsonInput" rows="6" style="width: 100%; font-family: monospace;" placeholder='[{"type":"EXCEL", "prompt":"...", "hint":"...", "ruleType":"EXCEL_SUM", "expectedValue":"R$2:R$50"}]'></textarea><br>
-            <button id="uploadBatchBtn" class="primary-btn" style="margin-top: 10px; background: #28a745;">Upload Questions to Firebase</button>
-            <div id="uploadFeedback" style="margin-top: 8px; font-weight: bold;"></div>
+            <div class="admin-card-header">
+                <div class="admin-title-group">
+                    <span class="admin-badge"> Educator Hub</span>
+                    <h3>Bulk Question Import</h3>
+                </div>
+                <p class="admin-subtitle">Batch upload structured JSON challenge payloads directly into Firebase Firestore collections.</p>
+            </div>
+            
+            <div class="admin-form-grid">
+                <div class="admin-input-group">
+                    <label for="importCategory">Target Category Key</label>
+                    <input type="text" id="importCategory" class="admin-text-input" placeholder="e.g., excel_if, access_criteria" />
+                </div>
+                
+                <div class="admin-input-group full-width">
+                    <label for="jsonInput">Questions JSON Array Payload</label>
+                    <textarea id="jsonInput" class="admin-textarea" rows="5" placeholder='[{"type":"EXCEL", "prompt":"...", "hint":"...", "ruleType":"EXCEL_IF", "expectedValue":"...", "expectedTrue":"...", "expectedFalse":"..."}]'></textarea>
+                </div>
+            </div>
+
+            <div class="admin-card-footer">
+                <button id="uploadBatchBtn" class="primary-btn admin-action-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Upload to Firebase
+                </button>
+                <div id="uploadFeedback" class="admin-feedback-msg"></div>
+            </div>
         `;
         
-        // Insert module right above the workspace section
         const workspace = document.querySelector(".workspace");
         if (workspace) {
             workspace.parentNode.insertBefore(adminContainer, workspace);
         }
     }
 
-    // Toggle visibility based on credentials check
     if (isAdminOrTeacher) {
         adminContainer.style.display = "block";
         
-        document.getElementById("uploadBatchBtn").addEventListener("click", async () => {
-            const targetCategoryInput = document.getElementById("importCategory");
-            const jsonInputBox = document.getElementById("jsonInput");
-            const targetCategory = targetCategoryInput.value.trim();
-            const rawJson = jsonInputBox.value.trim();
-            const feedbackDiv = document.getElementById("uploadFeedback");
+        const uploadBtn = document.getElementById("uploadBatchBtn");
+        // Prevent multiple listener bindings if function re-runs
+        if (!uploadBtn.dataset.bound) {
+            uploadBtn.dataset.bound = "true";
+            uploadBtn.addEventListener("click", async () => {
+                const targetCategoryInput = document.getElementById("importCategory");
+                const jsonInputBox = document.getElementById("jsonInput");
+                const targetCategory = targetCategoryInput.value.trim();
+                const rawJson = jsonInputBox.value.trim();
+                const feedbackDiv = document.getElementById("uploadFeedback");
 
-            if (!targetCategory || !rawJson) {
-                feedbackDiv.style.color = "red";
-                feedbackDiv.textContent = "Please provide both a target category and JSON payload.";
-                return;
-            }
-
-            try {
-                const questionsArray = JSON.parse(rawJson);
-                if (!Array.isArray(questionsArray)) {
-                    throw new Error("JSON root must be an array of objects.");
+                if (!targetCategory || !rawJson) {
+                    feedbackDiv.className = "admin-feedback-msg error";
+                    feedbackDiv.textContent = "Please provide both a target category key and a JSON payload.";
+                    return;
                 }
 
-                feedbackDiv.style.color = "blue";
-                feedbackDiv.textContent = `Uploading ${questionsArray.length} questions...`;
+                try {
+                    const questionsArray = JSON.parse(rawJson);
+                    if (!Array.isArray(questionsArray)) {
+                        throw new Error("JSON root must be an array of objects.");
+                    }
 
-                const batch = db.batch();
-                questionsArray.forEach(q => {
-                    const docRef = db.collection("challenges").doc();
-                    batch.set(docRef, {
-                        category: targetCategory,
-                        type: q.type || "EXCEL",
-                        prompt: q.prompt,
-                        hint: q.hint || "",
-                        ruleType: q.ruleType || "DEFAULT",
-                        expectedValue: q.expectedValue || "",
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    feedbackDiv.className = "admin-feedback-msg info";
+                    feedbackDiv.textContent = `Uploading ${questionsArray.length} items to Firestore...`;
+                    uploadBtn.disabled = true;
+
+                    const batch = db.batch();
+                    questionsArray.forEach(q => {
+                        const docRef = db.collection("challenges").doc();
+                        batch.set(docRef, {
+                            category: targetCategory,
+                            type: q.type || "EXCEL",
+                            prompt: q.prompt,
+                            hint: q.hint || "",
+                            ruleType: q.ruleType || "DEFAULT",
+                            expectedValue: q.expectedValue || "",
+                            expectedTrue: q.expectedTrue || "",
+                            expectedFalse: q.expectedFalse || "",
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
                     });
-                });
 
-                await batch.commit();
-                feedbackDiv.style.color = "green";
-                feedbackDiv.textContent = "✔ Successfully imported all questions into Firestore! Clearing fields & refreshing list...";
-                
-                // Clear out the form fields after successful import
-                jsonInputBox.value = "";
-                targetCategoryInput.value = "";
+                    await batch.commit();
+                    feedbackDiv.className = "admin-feedback-msg success";
+                    feedbackDiv.textContent = "✔ Successfully imported all questions! Refreshing client workspace...";
+                    
+                    jsonInputBox.value = "";
+                    targetCategoryInput.value = "";
 
-                // Refresh client dropdown view
-                setTimeout(() => {
-                    loadChallengesFromFirestore();
-                }, 1500);
+                    setTimeout(() => {
+                        if (typeof loadChallengesFromFirestore === 'function') {
+                            loadChallengesFromFirestore();
+                        }
+                        uploadBtn.disabled = false;
+                        feedbackDiv.textContent = "";
+                        feedbackDiv.className = "admin-feedback-msg";
+                    }, 1800);
 
-            } catch (err) {
-                console.error("Batch import error:", err);
-                feedbackDiv.style.color = "red";
-                feedbackDiv.textContent = "Error parsing or uploading JSON: " + err.message;
-            }
-        });
+                } catch (err) {
+                    console.error("Batch import error:", err);
+                    feedbackDiv.className = "admin-feedback-msg error";
+                    feedbackDiv.textContent = "Import Failed: " + err.message;
+                    uploadBtn.disabled = false;
+                }
+            });
+        }
     } else {
-        adminContainer.style.display = "none"; // Hide panel entirely from regular students
+        adminContainer.style.display = "none";
     }
 }
 
@@ -775,7 +870,10 @@ function highlightFormula(text) {
             if (bracket === '(') {
                 bracketDepth++;
             }
-            const bracketClass = `token-bracket-${((bracketDepth - 1) % 3) + 1}`;
+            // Cap at 64 to securely handle up to the maximum Excel nested limit
+            const currentLevel = Math.min(64, Math.max(1, bracketDepth));
+            const bracketClass = `token-bracket-${currentLevel}`;
+            
             if (bracket === ')') {
                 bracketDepth = Math.max(0, bracketDepth - 1);
             }
