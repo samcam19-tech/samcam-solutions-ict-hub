@@ -2,9 +2,22 @@ let allResources = [];
 let downloadsChartInstance = null;
 let selectedResourceIds = new Set();
 
+// Assume current school ID is defined globally or retrieved from an environment/session variable
+// e.g., const currentSchoolId = "SCH001"; 
+
 document.addEventListener("DOMContentLoaded", () => {
   fetchLibraryResources();
 });
+
+// Lightweight small ID generator (7 characters alphanumeric)
+function generateSmallId(length = 7) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
 
 function togglePriceField() {
   const accessType = document.getElementById("resAccessType").value;
@@ -21,13 +34,19 @@ function togglePriceField() {
   }
 }
 
-// Fetch resources from Firestore collection 'e_library_resources'
+// Fetch resources from Firestore collection 'e_library_resources' filtered by schoolId
 async function fetchLibraryResources() {
   const tbody = document.getElementById("libraryTableBody");
   if (!db) return;
 
   try {
-    const snapshot = await db.collection("e_library_resources").orderBy("createdAt", "desc").get();
+    // Filter documents by the current school ID using .where()
+    let query = db.collection("e_library_resources");
+    if (typeof currentSchoolId !== 'undefined' && currentSchoolId) {
+      query = query.where("schoolId", "==", currentSchoolId);
+    }
+    
+    const snapshot = await query.orderBy("createdAt", "desc").get();
     allResources = [];
     snapshot.forEach(doc => {
       allResources.push({ id: doc.id, ...doc.data() });
@@ -271,7 +290,7 @@ async function bulkDeleteResources() {
   );
 }
 
-// Handle Form Submission for Create & Update (Using Custom Modal)
+// Handle Form Submission for Create & Update (Using Custom Modal & Small ID)
 async function handleLibraryFormSubmit(e) {
   e.preventDefault();
 
@@ -331,7 +350,12 @@ async function handleLibraryFormSubmit(e) {
         return;
       }
 
-      await db.collection("e_library_resources").add({
+      // Generate a clean custom small ID for the new document
+      const customSmallId = generateSmallId(7);
+
+      await db.collection("e_library_resources").doc(customSmallId).set({
+        id: customSmallId,
+        schoolId: typeof currentSchoolId !== 'undefined' ? currentSchoolId : '',
         title,
         description,
         classLevel,
@@ -341,7 +365,7 @@ async function handleLibraryFormSubmit(e) {
         fileUrl,
         fileName,
         fileType,
-        downloads: 0, // Initialized new resource download counter safely to 0
+        downloads: 0,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       showCustomModal("Success", "Resource uploaded successfully!", "success");
