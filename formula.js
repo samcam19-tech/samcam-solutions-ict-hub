@@ -184,6 +184,24 @@ verifyBtn.addEventListener("click", async () => {
     }
 });
 
+// Hamburger Mobile Menu Toggle
+const hamburgerBtn = document.getElementById('hamburgerBtn');
+const navRight = document.getElementById('navRight');
+
+if (hamburgerBtn && navRight) {
+    hamburgerBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        navRight.classList.toggle('mobile-active');
+    });
+
+    // Close mobile menu when clicking outside
+    window.addEventListener('click', () => {
+        if (navRight.classList.contains('mobile-active')) {
+            navRight.classList.remove('mobile-active');
+        }
+    });
+}
+
 // ==========================================
 // 5. ADMIN / TEACHER BULK IMPORT MODULE
 // ==========================================
