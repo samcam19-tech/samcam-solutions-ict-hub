@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SAMCAM SOLUTIONS - ANNOUNCEMENTS ENGINE (SAFE LAZY-LOADED DB)
+   SAMCAM SOLUTIONS - ANNOUNCEMENTS ENGINE (SAFE LAZY-LOADED DB & SCHOOLID SCOPED)
    ========================================================================== */
 
 // --- APPLICATION STATE ---
@@ -19,14 +19,16 @@ function getDb() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Extract schoolId from URL parameters or session if present
+  // Extract schoolId from URL parameters or session if present, defaulting to 'stacon'
   const params = new URLSearchParams(window.location.search);
   if (params.has('schoolId')) {
     currentSchoolId = params.get('schoolId').toLowerCase().trim();
   } else {
     const session = getCurrentUserSession();
-    if (session && session.schoolId) {
-      currentSchoolId = session.schoolId.toLowerCase().trim();
+    if (session && (session.schoolId || session.schoolID || session.institutionId)) {
+      currentSchoolId = (session.schoolId || session.schoolID || session.institutionId).toLowerCase().trim();
+    } else {
+      currentSchoolId = 'stacon';
     }
   }
 
@@ -45,7 +47,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// 1. Fetch & Listen to Firestore in Real-Time (Scoped by schoolId if active)
+// 1. Fetch & Listen to Firestore in Real-Time (Strictly scoped by schoolId)
 function loadAnnouncementsRealtime() {
   const database = getDb();
   if (!database) return;
@@ -63,19 +65,23 @@ function loadAnnouncementsRealtime() {
       const data = doc.data();
       let formattedDate = 'Just now';
       if (data.createdAt) {
-        formattedDate = data.createdAt.toDate().toLocaleString([], {  
-          dateStyle: 'medium',  
-          timeStyle: 'short'  
-        });
+        if (typeof data.createdAt.toDate === 'function') {
+          formattedDate = data.createdAt.toDate().toLocaleString([], {  
+            dateStyle: 'medium',  
+            timeStyle: 'short'  
+          });
+        } else {
+          formattedDate = new Date(data.createdAt).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+        }
       }
 
       announcementsList.push({
         id: doc.id,
         title: data.title,
-        priority: data.priority,
-        body: data.body,
-        author: data.author,
-        schoolId: data.schoolId || 'global',
+        priority: data.priority || 'Normal',
+        body: data.body || data.message || '',
+        author: data.author || 'System Administrator',
+        schoolId: data.schoolId || currentSchoolId || 'stacon',
         date: formattedDate
       });
     });
@@ -86,7 +92,7 @@ function loadAnnouncementsRealtime() {
     console.error("Error loading announcements: ", error);
     const feed = document.getElementById('announcementsFeed');
     if (feed) {
-      feed.innerHTML = '<div class="empty-state" style="color:#ef4444;">Failed to load announcements from server.</div>';
+      feed.innerHTML = '<div class="empty-state" style="color:#ef4444;">Failed to load announcements from server. Check collection indices or rules.</div>';
     }
   });
 }
@@ -97,7 +103,7 @@ function renderAnnouncements(items) {
   if (!feed) return;
 
   if (items.length === 0) {
-    feed.innerHTML = '<div class="empty-state"><i class="fa-regular fa-folder-open fa-2x" style="margin-bottom:0.5rem;"></i><p>No matching announcements found.</p></div>';
+    feed.innerHTML = '<div class="empty-state"><i class="fa-regular fa-folder-open fa-2x" style="margin-bottom:0.5rem;"></i><p>No matching announcements found for this institution.</p></div>';
     return;
   }
 
@@ -112,7 +118,7 @@ function renderAnnouncements(items) {
     const isRead = readList.includes(item.id);
     let badgeClass = 'badge-general';
     let cardClass = '';
-    const itemSchoolId = item.schoolId || 'global';
+    const itemSchoolId = item.schoolId || currentSchoolId || 'stacon';
 
     if (item.priority === 'Urgent') {
       badgeClass = 'badge-urgent';
@@ -301,20 +307,23 @@ async function handlePostAnnouncement(e) {
   const body = bodyInput.value.trim();
 
   const session = getCurrentUserSession();
-  const authorName = session.name || session.fullName || 'Staff Member';
-  const noticeSchoolId = currentSchoolId || session.schoolId || 'global';
+  const authorName = session.name || session.fullName || 'System Administrator';
+  const noticeSchoolId = currentSchoolId || session.schoolId || session.schoolID || session.institutionId || 'stacon';
 
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publishing...';
 
   try {
+    // Aligns with Firestore schema: author, body, createdAt, priority, schoolId, title
     await database.collection('announcements').add({
       title: title,
       priority: priority,
       body: body,
       author: authorName,
       schoolId: noticeSchoolId.toLowerCase(),
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      createdAt: (typeof firebase !== 'undefined' && firebase.firestore) 
+                 ? firebase.firestore.FieldValue.serverTimestamp() 
+                 : new Date().toISOString()
     });
 
     closeAnnouncementModal();
@@ -349,7 +358,7 @@ function getCurrentUserSession() {
       return JSON.parse(sessionData); 
     }
   } catch (e) {}
-  return { name: 'Learner', role: 'Student' };
+  return { name: 'Learner', role: 'Student', schoolId: 'stacon' };
 }
 
 function checkUserRolePermissions() {
