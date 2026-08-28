@@ -950,8 +950,16 @@ async function fetchQuizResults() {
     return;
   }
 
+  // Resolve active school ID cleanly from currentUser or window context to enforce tenant isolation
+  const activeSchoolId = (typeof currentSchoolId !== 'undefined' && currentSchoolId) ? currentSchoolId : (currentUser && currentUser.schoolId ? currentUser.schoolId : '');
+
   try {
-    const snapshot = await db.collection('quiz_results').orderBy('submittedAt', 'desc').get();
+    let query = db.collection('quiz_results');
+    if (activeSchoolId) {
+      query = query.where('schoolId', '==', activeSchoolId.toUpperCase());
+    }
+    
+    const snapshot = await query.orderBy('submittedAt', 'desc').get();
     if (snapshot.empty) {
       resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:1rem;">No submissions registered yet.</td></tr>`;
       const paginationContainer = document.getElementById('submissionsPagination');
@@ -983,7 +991,17 @@ function renderSubmissionsTablePage() {
   
   if (!resultsContainer) return;
 
-  if (!globalTeacherResults || globalTeacherResults.length === 0) {
+  const activeSchoolId = (typeof currentSchoolId !== 'undefined' && currentSchoolId) ? currentSchoolId.toUpperCase() : (currentUser && currentUser.schoolId ? currentUser.schoolId.toUpperCase() : '');
+
+  // Double-check client side filtering by activeSchoolId to ensure strict tenant boundaries
+  const filteredTeacherResults = (globalTeacherResults || []).filter(res => {
+    if (activeSchoolId && res.schoolId && res.schoolId.toUpperCase() !== activeSchoolId) {
+      return false;
+    }
+    return true;
+  });
+
+  if (filteredTeacherResults.length === 0) {
     resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:1rem;">No submissions registered yet.</td></tr>`;
     if (paginationContainer) paginationContainer.style.display = 'none';
     return;
@@ -991,13 +1009,13 @@ function renderSubmissionsTablePage() {
 
   if (paginationContainer) paginationContainer.style.display = 'flex';
 
-  const totalPages = Math.ceil(globalTeacherResults.length / submissionsPerPage) || 1;
+  const totalPages = Math.ceil(filteredTeacherResults.length / submissionsPerPage) || 1;
   if (currentSubmissionsPage > totalPages) currentSubmissionsPage = totalPages;
   if (currentSubmissionsPage < 1) currentSubmissionsPage = 1;
 
   const start = (currentSubmissionsPage - 1) * submissionsPerPage;
   const end = start + submissionsPerPage;
-  const paginatedItems = globalTeacherResults.slice(start, end);
+  const paginatedItems = filteredTeacherResults.slice(start, end);
 
   let rowsHtml = '';
   paginatedItems.forEach(res => {
@@ -1052,7 +1070,7 @@ function renderSubmissionsTablePage() {
   const prevBtn = document.getElementById('subPrevBtn');
   const nextBtn = document.getElementById('subNextBtn');
 
-  if (infoEl) infoEl.innerText = `Showing ${start + 1} to ${Math.min(end, globalTeacherResults.length)} of ${globalTeacherResults.length} entries`;
+  if (infoEl) infoEl.innerText = `Showing ${start + 1} to ${Math.min(end, filteredTeacherResults.length)} of ${filteredTeacherResults.length} entries`;
   if (pageIndEl) pageIndEl.innerText = `Page ${currentSubmissionsPage} of ${totalPages}`;
   
   if (prevBtn) {
