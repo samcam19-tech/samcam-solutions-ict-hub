@@ -283,7 +283,7 @@ function validateStudentAnswer(question, inputStr) {
             };
         }
 
-        case "EXCEL_IF": {
+       case "EXCEL_IF": {
             const ifPattern = /^=\s*IF\s*\(\s*(.+)\s*\)$/i;
             const match = cleanInput.match(ifPattern);
 
@@ -329,18 +329,28 @@ function validateStudentAnswer(question, inputStr) {
                 };
             }
 
-            const logicalTest = args[0];
-            const valueIfTrue = args[1];
-            const valueIfFalse = args[2];
+            const logicalTest = args[0].trim();
+            const valueIfTrue = args[1].trim();
+            const valueIfFalse = args[2].trim();
 
-            const expectedNormalized = expected.replace(/\s+/g, '').toUpperCase();
+            // Handle whether expectedValue was stored as just the condition (e.g. "D4<=0") or the whole formula
+            let targetCondition = expected.trim();
+            if (targetCondition.toUpperCase().startsWith("=IF(")) {
+                const expectedMatch = targetCondition.match(/^=\s*IF\s*\(\s*(.+)\s*\)$/i);
+                if (expectedMatch) {
+                    const expectedArgs = splitExcelArguments(expectedMatch[1]);
+                    targetCondition = expectedArgs[0].trim();
+                }
+            }
+
+            const expectedNormalized = targetCondition.replace(/\s+/g, '').toUpperCase();
             const logicalNormalized = logicalTest.replace(/\s+/g, '').toUpperCase();
-            const isLogicalValid = logicalNormalized.includes(expectedNormalized);
+            const isLogicalValid = logicalNormalized === expectedNormalized || logicalNormalized.includes(expectedNormalized);
 
             if (!isLogicalValid) {
                 return { 
                     correct: false, 
-                    message: `#VALUE! Error in logical condition. Expected core criteria component missing: ${expected}.` 
+                    message: `#VALUE! Error in logical condition. Expected core criteria component missing: ${targetCondition}.` 
                 };
             }
 
@@ -349,6 +359,7 @@ function validateStudentAnswer(question, inputStr) {
                 message: `Correct! "${cleanInput}" properly satisfies Excel's IF function argument structure and data typing rules.`
             };
         }
+            
         case "EXCEL_VLOOKUP":
         case "EXCEL_HLOOKUP":
         case "EXCEL_LOOKUP": {
