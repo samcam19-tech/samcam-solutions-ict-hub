@@ -791,6 +791,9 @@ async function handleSaveQuiz(event) {
   const targetClass = document.getElementById('builderClass').value;
   const duration = parseInt(document.getElementById('builderDuration').value, 10);
 
+  // Resolve active school ID cleanly from currentUser or window context to attach to the quiz document
+  const activeSchoolId = (typeof currentSchoolId !== 'undefined' && currentSchoolId) ? currentSchoolId.toUpperCase() : (currentUser && currentUser.schoolId ? currentUser.schoolId.toUpperCase() : '');
+
   const questionElements = document.querySelectorAll('#builderQuestionsContainer .question-item');
   if (questionElements.length === 0) {
     showCustomModal({
@@ -860,6 +863,7 @@ async function handleSaveQuiz(event) {
     targetClass,
     durationMinutes: duration,
     questions,
+    schoolId: activeSchoolId, // Attached current/active schoolId for strict multi-tenant scoping
     updatedAt: firebase.firestore.FieldValue ? firebase.firestore.FieldValue.serverTimestamp() : new Date()
   };
 
