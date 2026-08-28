@@ -39,9 +39,9 @@ let currentQuestionsList = [];
 let currentIndex = 0;
 let isAnswerCorrect = false;
 
-// Helper function to verify matching parenthesis depth
+// Helper function to verify matching parenthesis depth (deduplicated)
 function areParenthesesBalanced(str) {
-    let count = 0;
+    let depth = 0;
     let inString = false;
     let stringChar = '';
 
@@ -58,12 +58,12 @@ function areParenthesesBalanced(str) {
         }
 
         if (!inString) {
-            if (char === '(') count++;
-            if (char === ')') count--;
-            if (count < 0) return false; // Closed before opened
+            if (char === '(') depth++;
+            if (char === ')') depth--;
+            if (depth < 0) return false; // Closed before opened
         }
     }
-    return count === 0;
+    return depth === 0;
 }
 
 // ==========================================
@@ -90,30 +90,6 @@ function isValidCellCoordinate(cellStr) {
     const MAX_ROW = 1048576;
 
     return colNum >= 1 && colNum <= MAX_COL && rowNum >= 1 && rowNum <= MAX_ROW;
-}
-
-function areParenthesesBalanced(str) {
-    let depth = 0;
-    let inString = false;
-    let stringChar = '';
-
-    for (let i = 0; i < str.length; i++) {
-        let char = str[i];
-        if ((char === '"' || char === "'") && (i === 0 || str[i - 1] !== '\\')) {
-            if (!inString) {
-                inString = true;
-                stringChar = char;
-            } else if (stringChar === char) {
-                inString = false;
-            }
-        }
-        if (!inString) {
-            if (char === '(') depth++;
-            if (char === ')') depth--;
-            if (depth < 0) return false;
-        }
-    }
-    return depth === 0;
 }
 
 function tokenizeFormula(formulaStr) {
@@ -557,19 +533,21 @@ function validateStudentAnswer(question, inputStr) {
 // 4. DYNAMIC QUESTION FETCHING FROM FIRESTORE
 // ==========================================
 async function loadChallengesFromFirestore() {
-    const selectedCategory = challengeSelect.value; 
+    const selectedCategory = challengeSelect ? challengeSelect.value : ""; 
     currentQuestionsList = [];
     currentIndex = 0;
     
-    challengePrompt.textContent = "Loading challenges from the database...";
-    challengeHint.textContent = "";
-    studentAnswer.value = "";
-    verifyBtn.textContent = "Verify Answer";
-    verifyBtn.style.display = "block";
-    studentAnswer.style.display = "block";
+    if (challengePrompt) challengePrompt.textContent = "Loading challenges from the database...";
+    if (challengeHint) challengeHint.textContent = "";
+    if (studentAnswer) studentAnswer.value = "";
+    if (verifyBtn) {
+        verifyBtn.textContent = "Verify Answer";
+        verifyBtn.style.display = "block";
+    }
+    if (studentAnswer) studentAnswer.style.display = "block";
 
     if (typeof db === 'undefined') {
-        challengePrompt.textContent = "Database connection not found.";
+        if (challengePrompt) challengePrompt.textContent = "Database connection not found.";
         return;
     }
 
@@ -579,10 +557,10 @@ async function loadChallengesFromFirestore() {
             .get();
 
         if (snapshot.empty) {
-            challengePrompt.textContent = "No challenges found for this category in the database yet.";
-            challengeHint.textContent = "Ask an administrator/teacher to add questions for this section.";
-            studentAnswer.style.display = "none";
-            verifyBtn.style.display = "none";
+            if (challengePrompt) challengePrompt.textContent = "No challenges found for this category in the database yet.";
+            if (challengeHint) challengeHint.textContent = "Ask an administrator/teacher to add questions for this section.";
+            if (studentAnswer) studentAnswer.style.display = "none";
+            if (verifyBtn) verifyBtn.style.display = "none";
             return;
         }
 
@@ -595,7 +573,9 @@ async function loadChallengesFromFirestore() {
                 prompt: data.prompt,
                 hint: data.hint || "",
                 ruleType: data.ruleType || "DEFAULT",
-                expectedValue: data.expectedValue || ""
+                expectedValue: data.expectedValue || "",
+                expectedTrue: data.expectedTrue || "",
+                expectedFalse: data.expectedFalse || ""
             });
         });
 
@@ -609,20 +589,22 @@ async function loadChallengesFromFirestore() {
         displayCurrentQuestion();
     } catch (error) {
         console.error("Error fetching challenges: ", error);
-        challengePrompt.textContent = "Error loading challenges from server.";
+        if (challengePrompt) challengePrompt.textContent = "Error loading challenges from server.";
     }
 }
 
 function displayCurrentQuestion() {
-    if (currentQuestionsList.length === 0) return;
+    if (!currentQuestionsList || currentQuestionsList.length === 0) return;
 
     if (currentIndex >= currentQuestionsList.length) {
-        challengePrompt.textContent = "🎉 Congratulations! You have completed all questions in this category set.";
-        challengeHint.textContent = "";
-        studentAnswer.style.display = "none";
-        verifyBtn.style.display = "none";
-        feedbackOutput.className = "feedback-correct";
-        feedbackOutput.textContent = "Session complete. Great work!";
+        if (challengePrompt) challengePrompt.textContent = "🎉 Congratulations! You have completed all questions in this category set.";
+        if (challengeHint) challengeHint.textContent = "";
+        if (studentAnswer) studentAnswer.style.display = "none";
+        if (verifyBtn) verifyBtn.style.display = "none";
+        if (feedbackOutput) {
+            feedbackOutput.className = "feedback-correct";
+            feedbackOutput.textContent = "Session complete. Great work!";
+        }
         
         // Clear backdrop if it exists
         const backdrop = document.getElementById('formulaBackdrop');
@@ -630,15 +612,15 @@ function displayCurrentQuestion() {
         return;
     }
 
-    studentAnswer.style.display = "block";
-    verifyBtn.style.display = "block";
+    if (studentAnswer) studentAnswer.style.display = "block";
+    if (verifyBtn) verifyBtn.style.display = "block";
     
     const current = currentQuestionsList[currentIndex];
-    challengePrompt.textContent = `Question ${currentIndex + 1} of ${currentQuestionsList.length}: ${current.prompt}`;
-    challengeHint.textContent = "Hint: " + current.hint;
+    if (challengePrompt) challengePrompt.textContent = `Question ${currentIndex + 1} of ${currentQuestionsList.length}: ${current.prompt}`;
+    if (challengeHint) challengeHint.textContent = "Hint: " + (current.hint || "None provided.");
     
     // Reset answer and explicitly trigger editor update to clear/refresh backdrop colors
-    studentAnswer.value = "";
+    if (studentAnswer) studentAnswer.value = "";
     const backdrop = document.getElementById('formulaBackdrop');
     if (backdrop) {
         backdrop.innerHTML = highlightFormula("") + ' ';
@@ -646,86 +628,103 @@ function displayCurrentQuestion() {
 
     isAnswerCorrect = false;
     
-    verifyBtn.textContent = "Verify Answer";
-    verifyBtn.className = "primary-btn";
+    if (verifyBtn) {
+        verifyBtn.textContent = "Verify Answer";
+        verifyBtn.className = "primary-btn";
+    }
     
-    feedbackOutput.className = "feedback-placeholder";
-    feedbackOutput.textContent = "Submit an answer to see real-time verification and grading.";
+    if (feedbackOutput) {
+        feedbackOutput.className = "feedback-placeholder";
+        feedbackOutput.textContent = "Submit an answer to see real-time verification and grading.";
+    }
 }
 
 // ==========================================
 // 5. VERIFICATION & PROGRESSION EVENT HANDLER
 // ==========================================
-challengeSelect.addEventListener("change", loadChallengesFromFirestore);
+if (challengeSelect) {
+    challengeSelect.addEventListener("change", loadChallengesFromFirestore);
+}
 
-verifyBtn.addEventListener("click", async () => {
-    const current = currentQuestionsList[currentIndex];
+if (verifyBtn) {
+    verifyBtn.addEventListener("click", async () => {
+        if (!currentQuestionsList || currentQuestionsList.length === 0 || currentIndex >= currentQuestionsList.length) return;
+        const current = currentQuestionsList[currentIndex];
 
-    // If already answered correctly, clicking advances to the next question in sequence
-    if (isAnswerCorrect) {
-        currentIndex++;
-        displayCurrentQuestion();
-        return;
-    }
-
-    const val = studentAnswer.value;
-    if (!val.trim()) {
-        feedbackOutput.className = "feedback-incorrect";
-        feedbackOutput.textContent = "Please enter an expression before verifying.";
-        return;
-    }
-
-    let result;
-    try {
-        result = validateStudentAnswer(current, val);
-    } catch (err) {
-        console.error("Validation execution error:", err);
-        result = { correct: false, message: "Syntax execution issue while validating formula." };
-    }
-
-    if (result.correct) {
-        isAnswerCorrect = true;
-        feedbackOutput.className = "feedback-correct";
-        feedbackOutput.textContent = "✔ " + result.message;
-        
-        // Switch button to Next action style
-        verifyBtn.textContent = currentIndex < currentQuestionsList.length - 1 ? "Next Question →" : "Finish Set 🎉";
-        verifyBtn.className = "primary-btn next-action-btn";
-    } else {
-        feedbackOutput.className = "feedback-incorrect";
-        feedbackOutput.textContent = "✘ " + result.message;
-    }
-
-    // Safely retrieve active user profile with robust fallbacks
-    let activeUser = { username: "Anonymous Student", role: "Student", institution: "Standard College Ntungamo" };
-    if (typeof getCurrentUserProfile === 'function') {
-        try {
-            const profile = getCurrentUserProfile();
-            if (profile) activeUser = profile;
-        } catch (e) {
-            console.warn("Could not retrieve user profile for logging:", e);
+        // If already answered correctly, clicking advances to the next question in sequence
+        if (isAnswerCorrect) {
+            currentIndex++;
+            displayCurrentQuestion();
+            return;
         }
-    }
 
-    // Log the user submission attempt to Firestore safely
-    if (typeof db !== 'undefined') {
-        try {
-            await db.collection("formulaSubmissions").add({
-                challengeId: current.id,
-                challengeType: current.type,
-                submission: val,
-                isCorrect: result.correct,
-                feedbackMessage: result.message,
-                user: activeUser.username || activeUser.name || "Unknown",
-                role: activeUser.role || "Student",
-                institution: activeUser.institution || "Standard College Ntungamo",
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        } catch (error) {
-            console.error("Error saving submission to Firestore: ", error);
+        const val = studentAnswer ? studentAnswer.value : "";
+        if (!val.trim()) {
+            if (feedbackOutput) {
+                feedbackOutput.className = "feedback-incorrect";
+                feedbackOutput.textContent = "Please enter an expression before verifying.";
+            }
+            return;
         }
-    }
-});
+
+        let result;
+        try {
+            result = validateStudentAnswer(current, val);
+        } catch (err) {
+            console.error("Validation execution error:", err);
+            result = { correct: false, message: "Syntax execution issue while validating formula." };
+        }
+
+        if (result.correct) {
+            isAnswerCorrect = true;
+            if (feedbackOutput) {
+                feedbackOutput.className = "feedback-correct";
+                feedbackOutput.textContent = "✔ " + result.message;
+            }
+            
+            // Switch button to Next action style
+            verifyBtn.textContent = currentIndex < currentQuestionsList.length - 1 ? "Next Question →" : "Finish Set 🎉";
+            verifyBtn.className = "primary-btn next-action-btn";
+        } else {
+            if (feedbackOutput) {
+                feedbackOutput.className = "feedback-incorrect";
+                feedbackOutput.textContent = "✘ " + result.message;
+            }
+        }
+
+        // Safely retrieve active user profile with robust fallbacks
+        let activeUser = { username: "Anonymous Student", role: "Student", institution: "Standard College Ntungamo" };
+        if (typeof getCurrentUserProfile === 'function') {
+            try {
+                const profile = getCurrentUserProfile();
+                if (profile) activeUser = profile;
+            } catch (e) {
+                console.warn("Could not retrieve user profile for logging:", e);
+            }
+        }
+
+        // Log the user submission attempt to Firestore safely
+        if (typeof db !== 'undefined') {
+            try {
+                await db.collection("formulaSubmissions").add({
+                    challengeId: current.id,
+                    challengeType: current.type,
+                    ruleType: current.ruleType || "DEFAULT",
+                    expectedValue: current.expectedValue || "",
+                    submission: val,
+                    isCorrect: result.correct,
+                    feedbackMessage: result.message,
+                    user: activeUser.username || activeUser.name || "Unknown",
+                    role: activeUser.role || "Student",
+                    institution: activeUser.institution || "Standard College Ntungamo",
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } catch (error) {
+                console.error("Error saving submission to Firestore: ", error);
+            }
+        }
+    });
+}
 
 // Hamburger Mobile Menu Toggle
 const hamburgerBtn = document.getElementById('hamburgerBtn');
@@ -764,12 +763,10 @@ function setupAdminImportModule() {
         }
     }
     
-    // Debug log to check what role your profile currently holds in the browser console
     console.log("Current Active User Profile:", activeUser);
 
     const userRole = (activeUser.role || "").toLowerCase().trim();
     
-    // Expanded role matching to catch variations (Admin, Teacher, Educator, ICT Teacher, Head of Department, etc.)
     const isAdminOrTeacher = 
         userRole.includes("admin") || 
         userRole.includes("teach") || 
@@ -901,7 +898,6 @@ function setupAdminImportModule() {
 function highlightFormula(text) {
     if (!text) return '';
     
-    // 1. Escape HTML entities first to ensure safety
     const safeText = text
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -909,8 +905,6 @@ function highlightFormula(text) {
 
     let bracketDepth = 0;
 
-    // 2. Use a single regex scanner that matches strings, cells, functions, operators, and brackets simultaneously,
-    // preventing any sequential replacement overlap or attribute corruption.
     const tokenRegex = /(".*?"|'.*?')|([A-Z][A-Z0-9_]*\b(?=\())|([A-Z]+\d+:[A-Z]+\d+|\$[A-Z]+\$\d+[A-Z]?|[A-Z]+\d+)|(=)|([()]+)|([+\-*/^=<>]=?)/g;
 
     return safeText.replace(tokenRegex, (match, str, func, cell, eq, bracket, op) => {
@@ -927,7 +921,6 @@ function highlightFormula(text) {
             return `<span class="token-equals">${eq}</span>`;
         }
         if (bracket) {
-            // Handle multi-character or individual bracket sequences securely
             let result = '';
             for (let char of bracket) {
                 if (char === '(') bracketDepth++;
@@ -949,34 +942,31 @@ document.addEventListener("DOMContentLoaded", () => {
     const backdropCode = document.getElementById('formulaBackdrop');
 
     if (textarea && backdropCode) {
-        // FORCE WIPE: If corrupted HTML code is sitting in the textarea value, clear it immediately
         if (textarea.value.includes('<span') || textarea.value.includes('token-')) {
             textarea.value = '';
         }
 
-       function updateEditor() {
-        let rawText = textarea.value;
-        
-        // Double-guard: never process text that contains HTML span tags
-        if (rawText.includes('<span')) {
-            textarea.value = '';
-            backdropCode.innerHTML = ' ';
-            return;
-        }
+        function updateEditor() {
+            let rawText = textarea.value;
+            
+            if (rawText.includes('<span')) {
+                textarea.value = '';
+                backdropCode.innerHTML = ' ';
+                return;
+            }
     
-        // Globally and aggressively strip spaces after ANY function name before an opening bracket
-        const sanitizedText = rawText.replace(/([A-Z][A-Z0-9_]*)\s+(\()/g, '$1$2');
-        
-        if (sanitizedText !== rawText) {
-            const cursorPosition = textarea.selectionStart;
-            textarea.value = sanitizedText;
-            // Keep the cursor positioned correctly after the fix
-            const newCursorPos = Math.max(0, cursorPosition - 1);
-            textarea.setSelectionRange(newCursorPos, newCursorPos);
-        }
+            const sanitizedText = rawText.replace(/([A-Z][A-Z0-9_]*)\s+(\()/g, '$1$2');
+            
+            if (sanitizedText !== rawText) {
+                const cursorPosition = textarea.selectionStart;
+                textarea.value = sanitizedText;
+                const newCursorPos = Math.max(0, cursorPosition - 1);
+                textarea.setSelectionRange(newCursorPos, newCursorPos);
+            }
     
-        backdropCode.innerHTML = highlightFormula(textarea.value) + ' ';
-    }
+            backdropCode.innerHTML = highlightFormula(textarea.value) + ' ';
+        }
+
         textarea.addEventListener('input', updateEditor);
         
         textarea.addEventListener('scroll', () => {
