@@ -21,19 +21,19 @@ function showCustomModal(title, message, type = "alert", inputPlaceholder = "") 
     inputField.value = "";
 
     if (type === "confirm") {
-      cancelBtn.style.display = "inline-block";
-      inputContainer.style.display = "none";
+      cancelBtn.classList.remove("modal-hidden");
+      inputContainer.classList.add("modal-hidden");
     } else if (type === "prompt") {
-      cancelBtn.style.display = "inline-block";
-      inputContainer.style.display = "block";
+      cancelBtn.classList.remove("modal-hidden");
+      inputContainer.classList.remove("modal-hidden");
       inputField.placeholder = inputPlaceholder;
       inputField.type = inputPlaceholder.toLowerCase().includes("key") || inputPlaceholder.toLowerCase().includes("password") ? "password" : "text";
     } else {
-      cancelBtn.style.display = "none";
-      inputContainer.style.display = "none";
+      cancelBtn.classList.add("modal-hidden");
+      inputContainer.classList.add("modal-hidden");
     }
 
-    modal.style.display = "flex";
+    modal.classList.add("modal-active");
     if (type === "prompt") inputField.focus();
 
     const newConfirm = confirmBtn.cloneNode(true);
@@ -42,12 +42,12 @@ function showCustomModal(title, message, type = "alert", inputPlaceholder = "") 
     cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
 
     newConfirm.addEventListener("click", () => {
-      modal.style.display = "none";
+      modal.classList.remove("modal-active");
       resolve(type === "prompt" ? inputField.value : true);
     });
 
     newCancel.addEventListener("click", () => {
-      modal.style.display = "none";
+      modal.classList.remove("modal-active");
       resolve(type === "prompt" ? null : false);
     });
   });
@@ -83,13 +83,13 @@ document.addEventListener("DOMContentLoaded", () => {
   // Bind Logout functionality to admin profile header
   const adminProfileEl = document.querySelector(".admin-profile");
   if (adminProfileEl) {
-    adminProfileEl.style.cursor = "pointer";
+    adminProfileEl.classList.add("interactive-admin-profile");
     adminProfileEl.title = "Click to log out of Super Admin session";
     
     adminProfileEl.innerHTML = `
       <span>Master Administrator</span>
-      <span style="display:inline-flex;align-items:center;margin-left:6px;padding-left:8px;border-left:1px solid rgba(255,255,255,0.15);color:#ef4444;" title="Logout">
-        <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+      <span class="logout-badge" title="Logout">
+        <svg class="logout-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
       </span>
     `;
 
@@ -135,7 +135,7 @@ async function enforceFirestoreMasterKeyGate() {
         );
 
         if (createdKey === null) {
-          document.body.innerHTML = `<div style="display:flex;height:100vh;justify-content:center;align-items:center;background:#030712;color:white;font-family:system-ui;text-align:center;padding:20px;"><div><h2 style="color:#ef4444;margin-bottom:8px;">Access Cancelled</h2><p style="color:#94a3b8;">Master key setup is required.</p></div></div>`;
+          document.body.innerHTML = `<div class="fatal-error-container"><div><h2 class="error-heading">Access Cancelled</h2><p class="error-text">Master key setup is required.</p></div></div>`;
           return;
         }
         if (createdKey.trim().length < 6) {
@@ -174,7 +174,7 @@ async function enforceFirestoreMasterKeyGate() {
         sessionStorage.setItem("samcam_super_auth", currentMasterKey);
         authorized = true;
       } else if (enteredKey === null) {
-        document.body.innerHTML = `<div style="display:flex;height:100vh;justify-content:center;align-items:center;background:#030712;color:white;font-family:system-ui;text-align:center;padding:20px;"><div><h2 style="color:#ef4444;margin-bottom:8px;">Access Denied</h2><p style="color:#94a3b8;">Authentication required.</p></div></div>`;
+        document.body.innerHTML = `<div class="fatal-error-container"><div><h2 class="error-heading">Access Denied</h2><p class="error-text">Authentication required.</p></div></div>`;
         return;
       } else {
         await showCustomModal("Access Denied", "Incorrect master admin key provided.");
@@ -184,7 +184,7 @@ async function enforceFirestoreMasterKeyGate() {
     await initializeSuperAdminPortal(configDocRef);
 
   } catch (error) {
-    document.body.innerHTML = `<div style="display:flex;height:100vh;justify-content:center;align-items:center;background:#030712;color:white;font-family:system-ui;text-align:center;padding:20px;"><div><h2 style="color:#ef4444;margin-bottom:8px;">Connection Error</h2><p style="color:#94a3b8;">Failed to verify configuration against Firestore.</p></div></div>`;
+    document.body.innerHTML = `<div class="fatal-error-container"><div><h2 class="error-heading">Connection Error</h2><p class="error-text">Failed to verify configuration against Firestore.</p></div></div>`;
   }
 }
 
@@ -220,14 +220,14 @@ async function loadRegisteredSchools() {
     if (totalSchoolsEl) totalSchoolsEl.innerText = querySnapshot.size;
 
     if (querySnapshot.empty) {
-      if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No schools registered yet. Provision your first tenant above.</td></tr>`;
+      if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" class="table-empty-notice">No schools registered yet. Provision your first tenant above.</td></tr>`;
       return;
     }
 
     querySnapshot.forEach((docSnap) => {
       const data = docSnap.data();
       const dateStr = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleDateString() : "Just now";
-      const statusBadge = data.status === 'suspended' ? '<span style="color:#ef4444;font-weight:600;">Suspended</span>' : '<span style="color:#10b981;font-weight:600;">Active</span>';
+      const statusBadge = data.status === 'suspended' ? '<span class="status-badge-suspended">Suspended</span>' : '<span class="status-badge-active">Active</span>';
       
       if (tableBody) {
         tableBody.innerHTML += `
@@ -250,7 +250,7 @@ async function loadRegisteredSchools() {
     });
 
   } catch (error) {
-    if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: red;">Failed to fetch tenant data from Firestore.</td></tr>`;
+    if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" class="table-error-notice">Failed to fetch tenant data from Firestore.</td></tr>`;
   }
 }
 
@@ -341,19 +341,29 @@ async function logAuditAction(actionType, details) {
 // 10 FULLY FUNCTIONAL SUPER ADMIN FEATURES
 // ==========================================
 
+// Helper function to create feature sections cleanly without inline styles
+function createFeatureSection(titleText, elementId) {
+  const wrapper = document.createElement("div");
+  wrapper.id = elementId;
+  wrapper.className = "admin-feature-card";
+  const mainContent = document.querySelector("main") || document.body;
+  mainContent.appendChild(wrapper);
+  return wrapper;
+}
+
 // Feature 1: Global Announcement Broadcaster
 function initGlobalAnnouncements() {
   const container = document.getElementById("featureAnnouncements") || createFeatureSection("Global Announcement Broadcaster", "featureAnnouncements");
   container.innerHTML = `
-    <h3 style="margin-bottom:12px;color:var(--text-main);">📢 Global Announcement Broadcaster</h3>
-    <textarea id="globalAnnounceText" placeholder="Type platform-wide broadcast message..." style="width:100%;height:80px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-main);padding:8px;border-radius:6px;margin-bottom:8px;resize:vertical;"></textarea>
-    <div style="display:flex;gap:10px;align-items:center;">
-      <select id="announceTarget" style="background:var(--bg-card);color:var(--text-main);border:1px solid var(--border-color);padding:6px;border-radius:6px;">
+    <h3 class="feature-title">📢 Global Announcement Broadcaster</h3>
+    <textarea id="globalAnnounceText" placeholder="Type platform-wide broadcast message..." class="feature-textarea"></textarea>
+    <div class="feature-controls-row">
+      <select id="announceTarget" class="feature-select">
         <option value="all">All Schools & Users</option>
         <option value="teachers">Teachers Only</option>
         <option value="students">Students Only</option>
       </select>
-      <button id="sendBroadcastBtn" style="background:var(--primary-color);color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;">Publish Broadcast</button>
+      <button id="sendBroadcastBtn" class="btn-primary">Publish Broadcast</button>
     </div>
   `;
 
@@ -384,10 +394,10 @@ function initGlobalAnnouncements() {
 function initTenantSubscriptionManager() {
   const container = document.getElementById("featureTenants") || createFeatureSection("Tenant Status & Subscription Manager", "featureTenants");
   container.innerHTML = `
-    <h3 style="margin-bottom:12px;color:var(--text-main);">🏫 Tenant Status & Subscriptions</h3>
-    <div style="display:flex;gap:10px;margin-bottom:10px;">
-      <input type="text" id="manageSchoolIdInput" placeholder="Enter exact School ID..." style="flex:1;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-main);padding:6px 10px;border-radius:6px;" />
-      <button id="toggleStatusBtn" style="background:#f59e0b;color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:600;">Toggle Active/Suspended</button>
+    <h3 class="feature-title">🏫 Tenant Status & Subscriptions</h3>
+    <div class="feature-controls-row">
+      <input type="text" id="manageSchoolIdInput" placeholder="Enter exact School ID..." class="feature-input-flex" />
+      <button id="toggleStatusBtn" class="btn-warning">Toggle Active/Suspended</button>
     </div>
   `;
 
@@ -423,12 +433,12 @@ function initTenantSubscriptionManager() {
 function initCrossTenantSearch() {
   const container = document.getElementById("featureSearch") || createFeatureSection("Cross-Tenant Global Search", "featureSearch");
   container.innerHTML = `
-    <h3 style="margin-bottom:12px;color:var(--text-main);">🔍 Cross-Tenant Global Search</h3>
-    <div style="display:flex;gap:10px;margin-bottom:10px;">
-      <input type="text" id="globalSearchQuery" placeholder="Search users, quizzes, threads..." style="flex:1;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-main);padding:6px 10px;border-radius:6px;" />
-      <button id="executeGlobalSearchBtn" style="background:var(--primary-color);color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:600;">Search</button>
+    <h3 class="feature-title">🔍 Cross-Tenant Global Search</h3>
+    <div class="feature-controls-row">
+      <input type="text" id="globalSearchQuery" placeholder="Search users, quizzes, threads..." class="feature-input-flex" />
+      <button id="executeGlobalSearchBtn" class="btn-primary">Search</button>
     </div>
-    <div id="globalSearchResults" style="max-height:150px;overflow-y:auto;font-size:13px;color:var(--text-muted);"></div>
+    <div id="globalSearchResults" class="feature-results-box"></div>
   `;
 
   document.getElementById("executeGlobalSearchBtn").addEventListener("click", async () => {
@@ -449,14 +459,14 @@ function initCrossTenantSearch() {
           const stringified = JSON.stringify(data).toLowerCase();
           if (stringified.includes(query)) {
             matches++;
-            html += `<div style="padding:4px 0;border-bottom:1px solid var(--border-color);">[<b>${col}</b>] ID: ${doc.id} (School: ${data.schoolId || 'N/A'})</div>`;
+            html += `<div class="search-result-item">[<b>${col}</b>] ID: ${doc.id} (School: ${data.schoolId || 'N/A'})</div>`;
           }
         });
       }
 
       resultsContainer.innerHTML = matches > 0 ? html : `<div>No matching records found for "${query}".</div>`;
     } catch (err) {
-      resultsContainer.innerHTML = `<span style="color:red;">Search failed due to permissions or connection.</span>`;
+      resultsContainer.innerHTML = `<span class="text-error">Search failed due to permissions or connection.</span>`;
     }
   });
 }
@@ -465,9 +475,9 @@ function initCrossTenantSearch() {
 function initAuditLogsViewer() {
   const container = document.getElementById("featureAudit") || createFeatureSection("System Audit Logs", "featureAudit");
   container.innerHTML = `
-    <h3 style="margin-bottom:12px;color:var(--text-main);">📋 Comprehensive Audit Trail</h3>
-    <button id="refreshAuditBtn" style="background:var(--bg-card);color:var(--text-main);border:1px solid var(--border-color);padding:6px 12px;border-radius:6px;cursor:pointer;margin-bottom:8px;font-size:12px;">Refresh Logs</button>
-    <div id="auditLogsList" style="max-height:140px;overflow-y:auto;font-size:12px;color:var(--text-muted);background:var(--bg-card);padding:8px;border-radius:6px;">Click Refresh to load system audit trails.</div>
+    <h3 class="feature-title">📋 Comprehensive Audit Trail</h3>
+    <button id="refreshAuditBtn" class="btn-secondary-small">Refresh Logs</button>
+    <div id="auditLogsList" class="audit-logs-container">Click Refresh to load system audit trails.</div>
   `;
 
   document.getElementById("refreshAuditBtn").addEventListener("click", async () => {
@@ -483,11 +493,11 @@ function initAuditLogsViewer() {
       snap.forEach(doc => {
         const d = doc.data();
         const time = d.timestamp ? new Date(d.timestamp.seconds * 1000).toLocaleString() : "Just now";
-        html += `<div style="margin-bottom:6px;border-bottom:1px solid var(--border-color);padding-bottom:4px;"><strong style="color:var(--text-main);">[${d.actionType}]</strong> ${d.details} <span style="float:right;font-size:10px;">${time}</span></div>`;
+        html += `<div class="audit-log-row"><strong class="audit-action-title">[${d.actionType}]</strong> ${d.details} <span class="audit-timestamp">${time}</span></div>`;
       });
       listEl.innerHTML = html;
     } catch (err) {
-      listEl.innerHTML = "<span style='color:red;'>Failed to load audit logs. Ensure Firestore index exists.</span>";
+      listEl.innerHTML = "<span class='text-error'>Failed to load audit logs. Ensure Firestore index exists.</span>";
     }
   });
 }
@@ -496,9 +506,9 @@ function initAuditLogsViewer() {
 function initBackupGenerator() {
   const container = document.getElementById("featureBackup") || createFeatureSection("Global Backup & Snapshot Generator", "featureBackup");
   container.innerHTML = `
-    <h3 style="margin-bottom:12px;color:var(--text-main);">💾 Global Backup & Snapshot</h3>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">Export entire multi-tenant database collections into a downloadable JSON backup file.</p>
-    <button id="generateBackupBtn" style="background:#10b981;color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;">Download Full JSON Backup</button>
+    <h3 class="feature-title">💾 Global Backup & Snapshot</h3>
+    <p class="feature-description">Export entire multi-tenant database collections into a downloadable JSON backup file.</p>
+    <button id="generateBackupBtn" class="btn-success">Download Full JSON Backup</button>
   `;
 
   document.getElementById("generateBackupBtn").addEventListener("click", async () => {
@@ -532,10 +542,10 @@ function initBackupGenerator() {
 function initGlobalEResources() {
   const container = document.getElementById("featureEResources") || createFeatureSection("Centralized E-Resource Repository Manager", "featureEResources");
   container.innerHTML = `
-    <h3 style="margin-bottom:12px;color:var(--text-main);">📚 Centralized E-Resource Publisher</h3>
-    <input type="text" id="globalResTitle" placeholder="Resource Title..." style="width:100%;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-main);padding:6px 10px;border-radius:6px;margin-bottom:6px;" />
-    <input type="text" id="globalResUrl" placeholder="Download Link / URL..." style="width:100%;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-main);padding:6px 10px;border-radius:6px;margin-bottom:6px;" />
-    <button id="publishGlobalResBtn" style="background:var(--primary-color);color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:600;">Publish to All Schools</button>
+    <h3 class="feature-title">📚 Centralized E-Resource Publisher</h3>
+    <input type="text" id="globalResTitle" placeholder="Resource Title..." class="feature-input-block" />
+    <input type="text" id="globalResUrl" placeholder="Download Link / URL..." class="feature-input-block" />
+    <button id="publishGlobalResBtn" class="btn-primary">Publish to All Schools</button>
   `;
 
   document.getElementById("publishGlobalResBtn").addEventListener("click", async () => {
@@ -567,9 +577,9 @@ function initGlobalEResources() {
 function initTelemetryDashboard() {
   const container = document.getElementById("featureTelemetry") || createFeatureSection("Global Analytics & Telemetry Dashboard", "featureTelemetry");
   container.innerHTML = `
-    <h3 style="margin-bottom:12px;color:var(--text-main);">📈 Telemetry & Analytics</h3>
-    <button id="loadTelemetryBtn" style="background:var(--bg-card);color:var(--text-main);border:1px solid var(--border-color);padding:6px 12px;border-radius:6px;cursor:pointer;margin-bottom:8px;font-size:12px;">Fetch Live Telemetry Stats</button>
-    <div id="telemetryStatsContent" style="font-size:13px;color:var(--text-muted);">Click button to aggregate system stats.</div>
+    <h3 class="feature-title">📈 Telemetry & Analytics</h3>
+    <button id="loadTelemetryBtn" class="btn-secondary-small">Fetch Live Telemetry Stats</button>
+    <div id="telemetryStatsContent" class="feature-description">Click button to aggregate system stats.</div>
   `;
 
   document.getElementById("loadTelemetryBtn").addEventListener("click", async () => {
@@ -590,14 +600,14 @@ function initTelemetryDashboard() {
       totalSubmissions = subSnap.size;
 
       contentEl.innerHTML = `
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center;">
-          <div style="background:var(--bg-card);padding:8px;border-radius:6px;"><strong style="font-size:16px;color:var(--text-main);">${totalUsers}</strong><br>Users</div>
-          <div style="background:var(--bg-card);padding:8px;border-radius:6px;"><strong style="font-size:16px;color:var(--text-main);">${totalQuizzes}</strong><br>Quizzes</div>
-          <div style="background:var(--bg-card);padding:8px;border-radius:6px;"><strong style="font-size:16px;color:var(--text-main);">${totalSubmissions}</strong><br>Submissions</div>
+        <div class="telemetry-grid">
+          <div class="telemetry-card"><strong class="telemetry-number">${totalUsers}</strong><br>Users</div>
+          <div class="telemetry-card"><strong class="telemetry-number">${totalQuizzes}</strong><br>Quizzes</div>
+          <div class="telemetry-card"><strong class="telemetry-number">${totalSubmissions}</strong><br>Submissions</div>
         </div>
       `;
     } catch (err) {
-      contentEl.innerHTML = "<span style='color:red;'>Failed to load analytics telemetry.</span>";
+      contentEl.innerHTML = "<span class='text-error'>Failed to load analytics telemetry.</span>";
     }
   });
 }
@@ -606,9 +616,9 @@ function initTelemetryDashboard() {
 function initMaintenanceModeToggle(configDocRef) {
   const container = document.getElementById("featureMaintenance") || createFeatureSection("System Maintenance Mode", "featureMaintenance");
   container.innerHTML = `
-    <h3 style="margin-bottom:12px;color:var(--text-main);">🛡️ System Maintenance Mode</h3>
-    <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">Toggle global read-only mode to lock standard user writes during updates.</p>
-    <button id="toggleMaintenanceBtn" style="background:#ef4444;color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;">Toggle Maintenance Lock</button>
+    <h3 class="feature-title">🛡️ System Maintenance Mode</h3>
+    <p class="feature-description">Toggle global read-only mode to lock standard user writes during updates.</p>
+    <button id="toggleMaintenanceBtn" class="btn-danger">Toggle Maintenance Lock</button>
   `;
 
   document.getElementById("toggleMaintenanceBtn").addEventListener("click", async () => {
@@ -630,16 +640,16 @@ function initMaintenanceModeToggle(configDocRef) {
 function initFeatureFlagTogglers() {
   const container = document.getElementById("featureFlags") || createFeatureSection("Custom Feature Flag & Module Toggler", "featureFlags");
   container.innerHTML = `
-    <h3 style="margin-bottom:12px;color:var(--text-main);">⚡ Feature Flags & Modules</h3>
-    <div style="display:flex;gap:10px;margin-bottom:8px;">
-      <input type="text" id="flagSchoolId" placeholder="School ID..." style="flex:1;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-main);padding:6px;border-radius:6px;" />
-      <select id="flagModule" style="background:var(--bg-card);color:var(--text-main);border:1px solid var(--border-color);padding:6px;border-radius:6px;">
+    <h3 class="feature-title">⚡ Feature Flags & Modules</h3>
+    <div class="feature-controls-row">
+      <input type="text" id="flagSchoolId" placeholder="School ID..." class="feature-input-flex" />
+      <select id="flagModule" class="feature-select">
         <option value="live_classes">Live Classes Portal</option>
         <option value="ai_formulas">AI Formula Submissions</option>
         <option value="discussions">Forum Discussions</option>
       </select>
     </div>
-    <button id="toggleModuleBtn" style="background:var(--primary-color);color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-weight:600;">Toggle Module Access</button>
+    <button id="toggleModuleBtn" class="btn-primary">Toggle Module Access</button>
   `;
 
   document.getElementById("toggleModuleBtn").addEventListener("click", async () => {
@@ -675,49 +685,6 @@ function initFeatureFlagTogglers() {
 function initKeyRotator(configDocRef) {
   const container = document.getElementById("featureKeyRotator") || createFeatureSection("Master Admin Key Rotator", "featureKeyRotator");
   container.innerHTML = `
-    <h3 style="margin-bottom:12px;color:var(--text-main);">🔑 Master Key Rotator</h3>
-    <button id="rotateMasterKeyBtn" style="background:#8b5cf6;color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;">Change Master Admin Key</button>
+    <h3 class="feature-title">🔑 Master Key Rotator</h3>
+    <button id="rotateMasterKeyBtn" class="btn-purple">Change Master Admin Key</button>
   `;
-
-  document.getElementById("rotateMasterKeyBtn").addEventListener("click", async () => {
-    const newKey = await showCustomModal(
-      "Rotate Master Key",
-      "Enter a new secure master key (at least 6 characters):",
-      "prompt",
-      "Enter new master key..."
-    );
-
-    if (!newKey || newKey.trim().length < 6) {
-      if (newKey !== null) await showCustomModal("Invalid Key", "Key must be at least 6 characters long.");
-      return;
-    }
-
-    try {
-      await configDocRef.set({ masterKey: newKey.trim() }, { merge: true });
-      sessionStorage.setItem("samcam_super_auth", newKey.trim());
-      await logAuditAction("ROTATE_MASTER_KEY", "Successfully rotated master super admin key.");
-      await showCustomModal("Success", "Master key rotated successfully and session updated!");
-    } catch (err) {
-      await showCustomModal("Error", "Failed to rotate master key.");
-    }
-  });
-}
-
-// Helper injector to append dynamic feature sections gracefully into the dashboard if containers don't exist in HTML
-function createFeatureSection(title, id) {
-  let parent = document.getElementById("extendedFeaturesContainer");
-  if (!parent) {
-    parent = document.createElement("div");
-    parent.id = "extendedFeaturesContainer";
-    parent.style.cssText = "display:grid;grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));gap:20px;margin-top:30px;";
-    const mainContent = document.querySelector("main") || document.body;
-    mainContent.appendChild(parent);
-  }
-
-  const section = document.createElement("div");
-  section.id = id;
-  section.className = "panel-card";
-  section.style.cssText = "margin-bottom:0;";
-  parent.appendChild(section);
-  return section;
-}
