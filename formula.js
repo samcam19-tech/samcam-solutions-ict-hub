@@ -199,9 +199,14 @@ function normalizeAlgebraicExpression(expr) {
 }
 
 function validateStudentAnswer(question, inputStr) {
+    function validateStudentAnswer(question, inputStr) {
     let cleanInput = inputStr ? inputStr.trim() : "";
     
-    //cleanInput = cleanInput.replace(/([A-Z][A-Z0-9_]*)\s+(\()/g, '$1$2');
+    // Permanently auto-fix any space between a function name and its opening parenthesis (e.g. "IF (" -> "IF(")
+    cleanInput = cleanInput.replace(/\b([A-Z][A-Z0-9_]*)\s+(\()/gi, '$1$2');
+    
+    // Also auto-fix it if it happens inside the formula text without word boundaries being strict
+    cleanInput = cleanInput.replace(/([A-Z]+)\s+\(/gi, '$1(');
 
     const rule = question.ruleType; 
     const expected = question.expectedValue ? question.expectedValue.trim() : ""; 
