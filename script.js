@@ -692,7 +692,10 @@ document.addEventListener("DOMContentLoaded", () => {
   // Bind Staff Management Modal openers and closers
   const openManageStaffBtn = document.getElementById("openManageStaffBtn");
   if (openManageStaffBtn) {
-    openManageStaffBtn.addEventListener("click", openManageStaffModal);
+    openManageStaffBtn.addEventListener("click", () => {
+      openManageStaffModal();
+      populateRegisteredSchoolsDropdown();
+    });
   }
 
   const closeManageStaffModalBtn = document.getElementById("closeManageStaffModalBtn");
@@ -707,7 +710,67 @@ document.addEventListener("DOMContentLoaded", () => {
   if (staffSearchInput) {
     staffSearchInput.addEventListener("input", filterStaffTable);
   }
+
+  // Populate school select options on initial load if dropdown exists
+  populateRegisteredSchoolsDropdown();
 });
+
+// Helper: Fetch and Populate Registered Schools Dropdown
+async function populateRegisteredSchoolsDropdown() {
+  const schoolSelectEl = document.getElementById("staffSchoolSelect");
+  if (!schoolSelectEl) return;
+
+  let schoolsSet = new Set();
+
+  // Try fetching unique school IDs/names from Firestore users or existing submissions/classes collections
+  if (window.db) {
+    try {
+      const usersSnap = await window.db.collection("users").get();
+      usersSnap.forEach(doc => {
+        const data = doc.data();
+        if (data.schoolId) schoolsSet.add(data.schoolId.toUpperCase());
+        if (data.schoolName) schoolsSet.add(data.schoolName);
+      });
+
+      const subsSnap = await window.db.collection("submissions").get();
+      subsSnap.forEach(doc => {
+        const data = doc.data();
+        if (data.schoolId) schoolsSet.add(data.schoolId.toUpperCase());
+      });
+    } catch (err) {
+      console.warn("Firestore schools fetch warning:", err);
+    }
+  }
+
+  // Fallback to local storage caches if empty
+  if (schoolsSet.size === 0) {
+    const localUsers = JSON.parse(localStorage.getItem("portal_users")) || [];
+    localUsers.forEach(u => {
+      if (u.schoolId) schoolsSet.add(u.schoolId.toUpperCase());
+    });
+    const localSubs = JSON.parse(localStorage.getItem("portal_submissions")) || [];
+    localSubs.forEach(s => {
+      if (s.schoolId) schoolsSet.add(s.schoolId.toUpperCase());
+    });
+  }
+
+  // Render options into select element
+  const sortedSchools = Array.from(schoolsSet).sort();
+  schoolSelectEl.innerHTML = `
+    <option value="">-- Select Existing School or Type New Below --</option>
+    ${sortedSchools.map(sch => `<option value="${sch}">${sch}</option>`).join('')}
+  `;
+
+  // Auto-fill school ID input when a dropdown option is selected
+  schoolSelectEl.onchange = function() {
+    if (this.value) {
+      const schoolIdInput = document.getElementById("staffUsername");
+      if (schoolIdInput) {
+        schoolIdInput.value = this.value;
+      }
+    }
+  };
+}
 
 // 1. Handle Registration of New Teachers / Admins
 async function handleRegisterStaff(e) {
@@ -751,11 +814,12 @@ async function handleRegisterStaff(e) {
 
     showCustomModal({
       title: "Success",
-      message: `Successfully registered ${role.toUpperCase()} account for ${fullName}!`,
+      message: `Successfully registered ${role.toUpperCase()} account for ${fullName} under school [${schoolId}]!`,
       type: "success"
     });
 
     document.getElementById("registerStaffForm").reset();
+    populateRegisteredSchoolsDropdown();
 
     // Refresh staff table if modal is open
     if (document.getElementById("manageStaffModal").style.display === "flex") {
@@ -770,7 +834,6 @@ async function handleRegisterStaff(e) {
     });
   }
 }
-
 // 2. Open Staff Management Modal & Load Data
 let allStaffRecords = [];
 let currentStaffPage = 1;
