@@ -27,7 +27,7 @@ function showCustomModal(title, message, type = "alert", inputPlaceholder = "") 
       cancelBtn.style.display = "inline-block";
       inputContainer.style.display = "block";
       inputField.placeholder = inputPlaceholder;
-      inputField.type = "text";
+      inputField.type = inputPlaceholder.toLowerCase().includes("key") ? "password" : "text";
     } else {
       cancelBtn.style.display = "none";
       inputContainer.style.display = "none";
@@ -72,9 +72,6 @@ const collectionsToMigrate = [
   'users'
 ];
 
-// Your exact Master Super Admin Firebase UID
-const MASTER_ADMIN_UID = "KBaidbZeq7bluAP4FydqChMRV9F2";
-
 document.addEventListener("DOMContentLoaded", () => {
   // Update collections targeted count display on load
   const collectionsCountEl = document.getElementById("collectionsCount");
@@ -82,32 +79,94 @@ document.addEventListener("DOMContentLoaded", () => {
     collectionsCountEl.innerText = collectionsToMigrate.length;
   }
 
-  // Enforce Firebase Auth UID Security Gate on load
-  const checkAuthInterval = setInterval(() => {
-    if (window.db && typeof firebase.auth !== 'undefined') {
-      clearInterval(checkAuthInterval);
-      
-      firebase.auth().onAuthStateChanged(async (user) => {
-        if (user && user.uid === MASTER_ADMIN_UID) {
-          // Authorized Super Admin: Load Portal Interface
-          loadRegisteredSchools();
-          setupAdminActions();
-        } else {
-          // Unauthorized or Not Logged In
-          document.body.innerHTML = `
-            <div style="display:flex;height:100vh;justify-content:center;align-items:center;background:#030712;color:white;font-family:system-ui;text-align:center;padding:20px;">
-              <div>
-                <h2 style="color:#ef4444;margin-bottom:8px;">Access Denied</h2>
-                <p style="color:#94a3b8;margin-bottom:16px;">You must be signed in with the authorized master administrator account to view the Samcam Super Admin portal.</p>
-                <a href="index.html" style="color:#3b82f6;text-decoration:none;font-weight:600;">Return to Portal Home</a>
-              </div>
-            </div>
-          `;
-        }
-      });
+  // Wait for Firestore to initialize, then check/enforce the secure Firestore-backed Master Key
+  const checkDbInterval = setInterval(async () => {
+    if (window.db) {
+      clearInterval(checkDbInterval);
+      await enforceFirestoreMasterKeyGate();
     }
   }, 50);
 });
+
+// Handles Firestore-backed Super Admin Key setup and verification gate
+async function enforceFirestoreMasterKeyGate() {
+  const configDocRef = window.db.collection("system_config").doc("super_admin_settings");
+
+  try {
+    const docSnap = await configDocRef.get();
+    let currentMasterKey = "";
+
+    if (!docSnap.exists) {
+      // First-time setup: Prompt user to create their persistent master admin key
+      let createdKey = "";
+      while (!createdKey || createdKey.trim().length < 6) {
+        createdKey = await showCustomModal(
+          "Initialize Super Admin Key",
+          "This is your first time setting up the portal. Create a secure master secret key (at least 6 characters):",
+          "prompt",
+          "Enter new master key..."
+        );
+
+        if (createdKey === null) {
+          document.body.innerHTML = `<div style="display:flex;height:100vh;justify-content:center;align-items:center;background:#030712;color:white;font-family:system-ui;text-align:center;padding:20px;"><div><h2 style="color:#ef4444;margin-bottom:8px;">Access Cancelled</h2><p style="color:#94a3b8;">Master key setup is required to initialize the control panel.</p></div></div>`;
+          return;
+        }
+        if (createdKey.trim().length < 6) {
+          await showCustomModal("Invalid Key", "The master key must be at least 6 characters long.");
+        }
+      }
+
+      // Save the master key directly to Firestore so it persists across devices/browsers
+      await configDocRef.set({
+        masterKey: createdKey.trim(),
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      currentMasterKey = createdKey.trim();
+      await showCustomModal("Setup Complete", "Master key successfully saved to Firestore!");
+    } else {
+      // Key already exists in Firestore
+      currentMasterKey = docSnap.data().masterKey;
+    }
+
+    // Check if session storage already holds the valid key authorization
+    const authenticatedKey = sessionStorage.getItem("samcam_super_auth");
+    if (authenticatedKey === currentMasterKey) {
+      loadRegisteredSchools();
+      setupAdminActions();
+      return;
+    }
+
+    // Prompt user for the key gate
+    let authorized = false;
+    while (!authorized) {
+      const enteredKey = await showCustomModal(
+        "Restricted Master Access",
+        "Enter your secure Super Admin master key to access the global control panel:",
+        "prompt",
+        "Enter master key..."
+      );
+
+      if (enteredKey === currentMasterKey) {
+        sessionStorage.setItem("samcam_super_auth", currentMasterKey);
+        authorized = true;
+      } else if (enteredKey === null) {
+        document.body.innerHTML = `<div style="display:flex;height:100vh;justify-content:center;align-items:center;background:#030712;color:white;font-family:system-ui;text-align:center;padding:20px;"><div><h2 style="color:#ef4444;margin-bottom:8px;">Access Denied</h2><p style="color:#94a3b8;">Authentication required to view the Samcam Super Admin portal.</p></div></div>`;
+        return;
+      } else {
+        await showCustomModal("Access Denied", "Incorrect master admin key provided. Please try again.");
+      }
+    }
+
+    // Authorization passed, load dashboard
+    loadRegisteredSchools();
+    setupAdminActions();
+
+  } catch (error) {
+    console.error("Error verifying master key from Firestore:", error);
+    document.body.innerHTML = `<div style="display:flex;height:100vh;justify-content:center;align-items:center;background:#030712;color:white;font-family:system-ui;text-align:center;padding:20px;"><div><h2 style="color:#ef4444;margin-bottom:8px;">Connection Error</h2><p style="color:#94a3b8;">Failed to verify configuration against Firestore. Check your database connection and security rules.</p></div></div>`;
+  }
+}
 
 // 1. Fetch & Display Schools List + Populate Select Options
 async function loadRegisteredSchools() {
