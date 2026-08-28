@@ -5,6 +5,7 @@
 // --- APPLICATION STATE ---
 let announcementsList = [];
 let showOnlyUnread = false; // Toggle state for clicking the badge counter
+let currentSchoolId = ''; // Global schoolId tracking context for announcements
 
 // Helper to safely retrieve the Firestore database instance at runtime
 function getDb() {
@@ -18,6 +19,17 @@ function getDb() {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Extract schoolId from URL parameters or session if present
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('schoolId')) {
+    currentSchoolId = params.get('schoolId').toLowerCase().trim();
+  } else {
+    const session = getCurrentUserSession();
+    if (session && session.schoolId) {
+      currentSchoolId = session.schoolId.toLowerCase().trim();
+    }
+  }
+
   checkUserRolePermissions();
   
   const database = getDb();
@@ -33,45 +45,50 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 });
 
-// 1. Fetch & Listen to Firestore in Real-Time
+// 1. Fetch & Listen to Firestore in Real-Time (Scoped by schoolId if active)
 function loadAnnouncementsRealtime() {
   const database = getDb();
   if (!database) return;
   
-  database.collection('announcements')
-    .orderBy('createdAt', 'desc')
-    .onSnapshot((snapshot) => {
-      announcementsList = [];
+  let queryRef = database.collection('announcements').orderBy('createdAt', 'desc');
 
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        let formattedDate = 'Just now';
-        if (data.createdAt) {
-          formattedDate = data.createdAt.toDate().toLocaleString([], {  
-            dateStyle: 'medium',  
-            timeStyle: 'short'  
-          });
-        }
+  if (currentSchoolId) {
+    queryRef = queryRef.where('schoolId', '==', currentSchoolId);
+  }
 
-        announcementsList.push({
-          id: doc.id,
-          title: data.title,
-          priority: data.priority,
-          body: data.body,
-          author: data.author,
-          date: formattedDate
+  queryRef.onSnapshot((snapshot) => {
+    announcementsList = [];
+
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      let formattedDate = 'Just now';
+      if (data.createdAt) {
+        formattedDate = data.createdAt.toDate().toLocaleString([], {  
+          dateStyle: 'medium',  
+          timeStyle: 'short'  
         });
-      });
-
-      updateUnreadBadgeCounter();
-      filterAnnouncements();  
-    }, (error) => {
-      console.error("Error loading announcements: ", error);
-      const feed = document.getElementById('announcementsFeed');
-      if (feed) {
-        feed.innerHTML = '<div class="empty-state" style="color:#ef4444;">Failed to load announcements from server.</div>';
       }
+
+      announcementsList.push({
+        id: doc.id,
+        title: data.title,
+        priority: data.priority,
+        body: data.body,
+        author: data.author,
+        schoolId: data.schoolId || 'global',
+        date: formattedDate
+      });
     });
+
+    updateUnreadBadgeCounter();
+    filterAnnouncements();  
+  }, (error) => {
+    console.error("Error loading announcements: ", error);
+    const feed = document.getElementById('announcementsFeed');
+    if (feed) {
+      feed.innerHTML = '<div class="empty-state" style="color:#ef4444;">Failed to load announcements from server.</div>';
+    }
+  });
 }
 
 // 2. Render List to DOM & Track Read Status
@@ -95,6 +112,7 @@ function renderAnnouncements(items) {
     const isRead = readList.includes(item.id);
     let badgeClass = 'badge-general';
     let cardClass = '';
+    const itemSchoolId = item.schoolId || 'global';
 
     if (item.priority === 'Urgent') {
       badgeClass = 'badge-urgent';
@@ -117,6 +135,7 @@ function renderAnnouncements(items) {
       <div class="announcement-card ${cardClass}" onclick="openReadAnnouncementModal('${item.id}', '${escapedTitle}', '${item.priority}', '${escapedBody}', '${escapedAuthor}', '${item.date}')">
         <div class="announcement-meta">
           <div>
+            <span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; margin-right: 0.5rem;"><i class="fa-solid fa-school"></i> ${itemSchoolId.toUpperCase()}</span>
             <span class="badge ${badgeClass}">${item.priority}</span>
             <span style="margin-left: 0.5rem;">Posted by <strong>${escapeHtml(item.author)}</strong></span>
             ${!isRead ? '<span style="color:var(--primary); font-weight:700; margin-left:0.5rem; font-size:0.7rem;">• UNREAD</span>' : ''}
@@ -154,7 +173,8 @@ function filterAnnouncements() {
     const matchesQuery = item.title.toLowerCase().includes(query) || item.body.toLowerCase().includes(query);
     const matchesPriority = !priority || item.priority === priority;
     const matchesUnread = !showOnlyUnread || !readList.includes(item.id);
-    return matchesQuery && matchesPriority && matchesUnread;
+    const matchesSchool = !currentSchoolId || (item.schoolId && item.schoolId.toLowerCase() === currentSchoolId) || item.schoolId === 'global';
+    return matchesQuery && matchesPriority && matchesUnread && matchesSchool;
   });
 
   renderAnnouncements(filtered);
@@ -282,6 +302,7 @@ async function handlePostAnnouncement(e) {
 
   const session = getCurrentUserSession();
   const authorName = session.name || session.fullName || 'Staff Member';
+  const noticeSchoolId = currentSchoolId || session.schoolId || 'global';
 
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Publishing...';
@@ -292,6 +313,7 @@ async function handlePostAnnouncement(e) {
       priority: priority,
       body: body,
       author: authorName,
+      schoolId: noticeSchoolId.toLowerCase(),
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
