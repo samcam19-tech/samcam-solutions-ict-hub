@@ -633,3 +633,26 @@ main {
 .admin-feedback-msg.info { color: #2563eb; }
 .admin-feedback-msg.success { color: #16a34a; }
 .admin-feedback-msg.error { color: #dc2626; }
+
+.formula-editor-wrapper {
+    position: relative;
+}
+
+#studentAnswer {
+    position: relative;
+    background: transparent;
+    color: transparent; /* Makes raw text invisible so the highlighted backdrop shows through */
+    caret-color: #1e293b; /* Keeps the typing cursor visible */
+    z-index: 2;
+}
+
+#formulaBackdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    /* match padding and font styles of the textarea exactly */
+}
