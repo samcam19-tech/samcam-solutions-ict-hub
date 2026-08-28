@@ -28,6 +28,22 @@ let currentFilterClass = 'ALL';
 let currentTab = 'upcoming'; // 'upcoming' or 'past'
 let editingClassId = null; // Track if we are editing an existing class
 
+// Offline Sync & Queue Constants
+const OFFLINE_QUEUE_KEY = 'samcam_offline_mutation_queue';
+let isOnlineStatus = navigator.onLine;
+
+// Listen for network connectivity changes to flush queued offline actions
+window.addEventListener('online', () => {
+  isOnlineStatus = true;
+  console.info("Network re-established. Flushing pending offline Firestore operations...");
+  flushOfflineQueue();
+});
+
+window.addEventListener('offline', () => {
+  isOnlineStatus = false;
+  console.warn("Network connection lost. Operating in offline/fallback mode.");
+});
+
 window.addEventListener('portalSessionChanged', (e) => {
   syncLiveClassSession(e.detail);
 });
@@ -136,9 +152,6 @@ function injectExtraStyles() {
 /* ==========================================================================
    SESSION MANAGEMENT & ROLE DETECTION
    ========================================================================== */
-/* ==========================================================================
-   SESSION MANAGEMENT & ROLE DETECTION
-   ========================================================================== */
 function getCurrentUserSession(userParam) {
   // If a user object is passed directly (e.g., from an event), normalize it and return
   if (userParam) {
@@ -217,6 +230,88 @@ function updateClassFilterInterface(session, isTeacherOrAdmin) {
   const filterGroup = document.getElementById('classFilterGroup');
   if (!filterGroup) return;
   filterGroup.style.display = isTeacherOrAdmin ? 'flex' : 'none';
+}
+
+/* ==========================================================================
+   OFFLINE STORAGE QUEUE & SYNC HELPERS
+   ========================================================================== */
+function queueOfflineOperation(operationType, collectionName, docId, payload) {
+  try {
+    const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY)) || [];
+    queue.push({
+      id: 'op_' + Date.now() + Math.random().toString(36).substring(2, 7),
+      type: operationType, // 'SET', 'UPDATE', 'DELETE'
+      collection: collectionName,
+      docId: docId,
+      data: payload,
+      timestamp: new Date().toISOString()
+    });
+    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
+    console.info(`Operation queued successfully for offline sync [${operationType}] -> ${collectionName}/${docId}`);
+  } catch (err) {
+    console.error("Failed to persist offline operation queue to localStorage:", err);
+  }
+}
+
+async function flushOfflineQueue() {
+  if (!db || !navigator.onLine) return;
+  
+  let queue;
+  try {
+    queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY)) || [];
+  } catch (e) {
+    return;
+  }
+
+  if (queue.length === 0) return;
+
+  const remainingQueue = [];
+  for (const op of queue) {
+    try {
+      const ref = op.docId ? db.collection(op.collection).doc(op.docId) : db.collection(op.collection);
+      if (op.type === 'SET') {
+        await ref.set(op.data, { merge: true });
+      } else if (op.type === 'UPDATE') {
+        await ref.update(op.data);
+      } else if (op.type === 'DELETE') {
+        await ref.delete();
+      }
+      console.info(`Synced queued offline operation: ${op.id}`);
+    } catch (err) {
+      console.error(`Failed to sync queued operation ${op.id}. Retrying later.`, err);
+      remainingQueue.push(op);
+    }
+  }
+
+  localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(remainingQueue));
+}
+
+function generateIcsDataUrl(item) {
+  if (!item || !item.startTime || !item.endTime) return '#';
+
+  const formatDate = (dateStr) => {
+    return new Date(dateStr).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  };
+
+  const icsLines = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Samcam Solutions//Live Classes Engine//EN',
+    'BEGIN:VEVENT',
+    `UID:samcam_live_${item.id || Date.now()}@samcamsolutions.org`,
+    `DTSTAMP:${formatDate(new Date())}`,
+    `DTSTART:${formatDate(item.startTime)}`,
+    `DTEND:${formatDate(item.endTime)}`,
+    `SUMMARY:${item.title || 'Virtual ICT Lesson'}`,
+    `DESCRIPTION:${(item.description || '').replace(/\n/g, '\\n')}\\n\\nJoin Meet: ${item.meetUrl || ''}`,
+    `LOCATION:${item.meetUrl || 'Google Meet'}`,
+    'END:VEVENT',
+    'END:VCALENDAR'
+  ];
+
+  const icsFileContent = icsLines.join('\r\n');
+  const blob = new Blob([icsFileContent], { type: 'text/calendar;charset=utf-8' });
+  return URL.createObjectURL(blob);
 }
 
 /* ==========================================================================
@@ -481,7 +576,10 @@ async function logStudentAttendance(classId, classTitle, classLevel) {
       console.log("Attendance successfully synced to Firestore.");
     } catch (err) {
       console.error("Failed to log attendance to Firestore:", err);
+      queueOfflineOperation('SET', 'attendance', attendanceDocId, attendanceRecord);
     }
+  } else {
+    queueOfflineOperation('SET', 'attendance', attendanceDocId, attendanceRecord);
   }
 
   // Local storage fallback backup
@@ -524,6 +622,7 @@ async function handleJoinAndLogAttendance(classId, safeTitle, classLevel, meetUr
     console.log("User cancelled attendance logging.");
   }
 }
+
 
 /* ==========================================================================
    CALENDAR .ICS GENERATOR
@@ -669,11 +768,14 @@ function closeScheduleModalDirect() {
 }
 
 /* ==========================================================================
-   FIRESTORE SUBMIT / UPDATE / DELETE WORKFLOW
+   FIRESTORE SUBMIT / UPDATE / DELETE WORKFLOW (SCHOOLID MULTI-TENANT INTEGRATION)
    ========================================================================== */
 function handleScheduleSubmit(e) {
   e.preventDefault();
   
+  const session = getCurrentUserSession();
+  const schoolId = session?.schoolId || session?.institutionId || 'standard_college_ntungamo';
+
   const title = document.getElementById('classTitle').value;
   const classLevel = document.getElementById('classLevel').value;
   const instructorName = document.getElementById('instructorName').value;
@@ -709,11 +811,12 @@ function handleScheduleSubmit(e) {
   const submitBtn = document.getElementById('submitClassBtn');
   
   if (editingClassId) {
-    // Updating existing class in Firestore without regenerating Meet link unless desired
+    // Updating existing class in Firestore scoped by schoolId
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Updating...`;
 
     db.collection("live_classes").doc(editingClassId).update({
+      schoolId,
       title,
       classLevel,
       instructorName,
@@ -765,6 +868,7 @@ function handleScheduleSubmit(e) {
       });
 
       await db.collection("live_classes").add({
+        schoolId,
         title,
         classLevel,
         instructorName,
@@ -869,7 +973,7 @@ function initTheme() {
 }
 
 /* ==========================================================================
-   USER PROFILE & ATTENDANCE LOG FEATURES
+   USER PROFILE & ATTENDANCE LOG FEATURES (SCHOOLID SCOPED)
    ========================================================================== */
 
 function updateNavProfile(session) {
@@ -934,18 +1038,29 @@ function closeAttendanceModalDirect() {
   if (modal) modal.style.display = 'none';
 }
 
-// 3. Fetch and Render Attendance Logs
+// 3. Fetch and Render Attendance Logs (Scoped by schoolId)
 function fetchAttendanceLogs() {
   const tbody = document.getElementById('attendanceTableBody');
   if (!tbody) return;
   
   tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px;">Loading logs...</td></tr>';
 
-  db.collection("attendance_logs")
-    .orderBy("timestamp", "desc")
+  const session = getCurrentUserSession();
+  const schoolId = session?.schoolId || session?.institutionId;
+
+  let query = db.collection("attendance_logs");
+  if (schoolId) {
+    query = query.where("schoolId", "==", schoolId);
+  }
+
+  query.orderBy("timestamp", "desc")
     .limit(50)
     .onSnapshot((snapshot) => {
       tbody.innerHTML = '';
+      if (snapshot.empty) {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px; color: var(--text-muted);">No attendance logs found for this school institution.</td></tr>';
+        return;
+      }
       snapshot.forEach((doc) => {
         const log = doc.data();
         const date = log.timestamp?.toDate().toLocaleString() || 'N/A';
@@ -957,12 +1072,23 @@ function fetchAttendanceLogs() {
         </tr>`;
         tbody.innerHTML += row;
       });
+    }, (error) => {
+      console.error("Error fetching attendance logs: ", error);
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px; color: #dc2626;">Failed to load attendance logs. Indexing or permissions error.</td></tr>';
     });
 }
 
-// 4. Export Attendance to CSV
+// 4. Export Attendance to CSV (Scoped by schoolId)
 function exportAttendanceCSV() {
-  db.collection("attendance_logs").get().then((snapshot) => {
+  const session = getCurrentUserSession();
+  const schoolId = session?.schoolId || session?.institutionId;
+
+  let query = db.collection("attendance_logs");
+  if (schoolId) {
+    query = query.where("schoolId", "==", schoolId);
+  }
+
+  query.get().then((snapshot) => {
     let csv = "Timestamp,User Name,Class,Action\n";
     snapshot.forEach((doc) => {
       const log = doc.data();
@@ -973,8 +1099,11 @@ function exportAttendanceCSV() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.setAttribute('href', url);
-    a.setAttribute('download', 'meeting_attendance_log.csv');
+    a.setAttribute('download', `meeting_attendance_log_${schoolId || 'general'}.csv`);
     a.click();
+  }).catch(err => {
+    console.error("Failed to export CSV:", err);
+    alert("Export failed: " + err.message);
   });
 }
 
@@ -993,4 +1122,3 @@ function toggleMobileMenu() {
     icon.className = 'fa-solid fa-bars';
   }
 }
-
