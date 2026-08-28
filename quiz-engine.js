@@ -12,6 +12,7 @@ const db = window.db || (typeof firebase !== "undefined" ? firebase.firestore() 
 const MOCK_QUIZZES = [
   {
     id: "sample_01",
+    schoolId: typeof currentSchoolId !== 'undefined' ? currentSchoolId : '',
     title: "S.4 ICT Sample Assessment",
     targetClass: "S4",
     durationMinutes: 15,
@@ -165,9 +166,14 @@ async function fetchLearnerAttempts() {
   if (!currentUser || !db) return;
 
   try {
-    const snapshot = await db.collection('quiz_results')
-      .where('studentUsername', '==', currentUser.username)
-      .get();
+    let query = db.collection('quiz_results')
+      .where('studentUsername', '==', currentUser.username);
+
+    if (typeof currentSchoolId !== 'undefined' && currentSchoolId) {
+      query = query.where('schoolId', '==', currentSchoolId);
+    }
+
+    const snapshot = await query.get();
 
     snapshot.forEach(doc => {
       const res = doc.data();
@@ -219,7 +225,12 @@ function fetchActiveQuizzes() {
     return;
   }
 
-  db.collection('quizzes').onSnapshot((snapshot) => {
+  let query = db.collection('quizzes');
+  if (typeof currentSchoolId !== 'undefined' && currentSchoolId) {
+    query = query.where('schoolId', '==', currentSchoolId);
+  }
+
+  query.onSnapshot((snapshot) => {
     const freshQuizzes = [];
     snapshot.forEach((doc) => {
       freshQuizzes.push({ id: doc.id, ...doc.data() });
@@ -721,10 +732,10 @@ function addQuestionToBuilder(existingData = {}) {
       <div style="display:flex; align-items:center; gap:0.5rem; background:#f8fafc; padding:0.5rem; border-radius:6px; border:1px solid #f1f5f9; margin-bottom:0.75rem;">
         <label style="font-size:0.85rem; font-weight:600; color:#475569;">Correct Option:</label>
         <select class="q-correct" style="padding:0.3rem 0.5rem; border-radius:4px; border:1px solid #cbd5e1; font-size:0.85rem;">
-          <option value="0" ${existingData.correctAnswer === 0 ? 'selected' : ''}>Option 1</option>
-          <option value="1" ${existingData.correctAnswer === 1 ? 'selected' : ''}>Option 2</option>
-          <option value="2" ${existingData.correctAnswer === 2 ? 'selected' : ''}>Option 3</option>
-          <option value="3" ${existingData.correctAnswer === 3 ? 'selected' : ''}>Option 4</option>
+          <option value="0" ${existingData.correctAnswer === 0 || existingData.correctAnswer === (existingData.options && existingData.options[0]) ? 'selected' : ''}>Option 1</option>
+          <option value="1" ${existingData.correctAnswer === 1 || existingData.correctAnswer === (existingData.options && existingData.options[1]) ? 'selected' : ''}>Option 2</option>
+          <option value="2" ${existingData.correctAnswer === 2 || existingData.correctAnswer === (existingData.options && existingData.options[2]) ? 'selected' : ''}>Option 3</option>
+          <option value="3" ${existingData.correctAnswer === 3 || existingData.correctAnswer === (existingData.options && existingData.options[3]) ? 'selected' : ''}>Option 4</option>
         </select>
       </div>
     </div>
@@ -910,6 +921,7 @@ async function handleSaveQuiz(event) {
     });
   }
 }
+
 // ==========================================================================
 // EDUCATOR RESULTS, OVERSIGHT & ANALYTICS DASHBOARD (Maintained & Enhanced)
 // ==========================================================================
@@ -1138,33 +1150,6 @@ function closeTeacherAnalyticsModal() {
   if (modal) modal.style.display = 'none';
 }
 
-// Delete a student's submission from the oversight table
-async function deleteQuizSubmission(docId) {
-  if (!confirm("Are you sure you want to delete this student submission? This action cannot be undone.")) {
-    return;
-  }
-
-  try {
-    if (db) {
-      await db.collection('quiz_results').doc(docId).delete();
-    }
-
-    // Remove from the global tracking array
-    globalTeacherResults = globalTeacherResults.filter(s => s.id !== docId);
-
-    // Re-render the current page to safely adjust total pages and row elements
-    renderSubmissionsTablePage();
-
-} catch (err) {
-    console.error("Error deleting quiz submission:", err);
-    showCustomModal({
-      title: "Deletion Failed",
-      message: "Failed to delete submission: " + err.message,
-      type: "error"
-    });
-  }
-}
-
 // Teacher Response Inspection Modal
 function inspectLearnerSubmission(docId) {
   const sub = globalTeacherResults.find(s => s.id === docId);
@@ -1205,10 +1190,12 @@ function inspectLearnerSubmission(docId) {
   body.innerHTML = html;
   modal.style.display = 'flex';
 }
+
 function closeInspectorModal() {
   const modal = document.getElementById('inspectorModal');
   if (modal) modal.style.display = 'none';
 }
+
 // ==========================================================================
 // MULTI-SHEET EXCEL EXPORT (ROBUST GLOBAL CHECK)
 // ==========================================================================
@@ -1339,6 +1326,9 @@ async function deleteQuizSubmission(docId) {
       resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:1rem;">No submissions registered yet.</td></tr>`;
     }
 
+    // Re-render current page to keep pagination synced
+    renderSubmissionsTablePage();
+
   } catch (err) {
     console.error("Error deleting quiz submission:", err);
     showCustomModal({
@@ -1348,6 +1338,8 @@ async function deleteQuizSubmission(docId) {
     });
   }
 }
+
+
 // ==========================================================================
 // EDIT QUIZ BUILDER POPULATION (Maintained & Fully Integrated)
 // ==========================================================================
@@ -1578,10 +1570,10 @@ function startTimer(durationMinutes) {
     if (secondsRemaining <= 0) {
       clearInterval(quizTimerInterval);
       showCustomModal({
-  title: "Time Expired",
-  message: "Time has elapsed. Your answers are automatically submitting...",
-  type: "warning"
-});
+        title: "Time Expired",
+        message: "Time has elapsed. Your answers are automatically submitting...",
+        type: "warning"
+      });
       submitQuizToFirestore();
     }
   }, 1000);
@@ -1740,10 +1732,10 @@ async function submitQuizToFirestore() {
 
     const reviewNote = requiresTeacherReview ? "\n*(Note: Some text answers are pending educator moderation)*" : "";
     showCustomModal({
-  title: "Quiz Submitted Successfully",
-  message: `Score: ${score}/${total} (${percentage}%)\nTime Taken: ${formatSeconds(timeSpentSeconds)}${reviewNote}`,
-  type: "success"
-});
+      title: "Quiz Submitted Successfully",
+      message: `Score: ${score}/${total} (${percentage}%)\nTime Taken: ${formatSeconds(timeSpentSeconds)}${reviewNote}`,
+      type: "success"
+    });
 
     // Reset view to dashboard
     const runner = document.getElementById('quizRunner');
@@ -1767,10 +1759,10 @@ async function submitQuizToFirestore() {
   } catch (err) {
     console.error("Error submitting quiz:", err);
     showCustomModal({
-  title: "Cloud Backup Warning",
-  message: "Submission completed locally, but cloud backup failed. Check connection.",
-  type: "warning"
-});
+      title: "Cloud Backup Warning",
+      message: "Submission completed locally, but cloud backup failed. Check connection.",
+      type: "warning"
+    });
   }
 }
 
@@ -1848,44 +1840,45 @@ async function moderateAnswer(resultId, questionIndex, approve) {
       status: stillPending ? "Pending Review" : "Graded"
     });
 
-   showCustomModal({
-  title: "Success",
-  message: "Moderation updated successfully!",
-  type: "success"
-});
+    showCustomModal({
+      title: "Success",
+      message: "Moderation updated successfully!",
+      type: "success"
+    });
     if (typeof fetchQuizResults === 'function') {
       fetchQuizResults();
     }
   } catch (err) {
     console.error("Error updating moderation status:", err);
     showCustomModal({
-  title: "Action Failed",
-  message: "Failed to save moderation action.",
-  type: "error"
-});
+      title: "Action Failed",
+      message: "Failed to save moderation action.",
+      type: "error"
+    });
   }
 }
+
 // ==========================================================================
 // 9. LEARNER PDF REPORT GENERATOR (jsPDF)
 // ==========================================================================
 function generateLearnerPDF(quizId) {
   const attempt = learnerSubmissionsMap[quizId];
   if (!attempt) {
-  showCustomModal({
-    title: "Record Not Found",
-    message: "No attempt record found for this assessment.",
-    type: "warning"
-  });
-  return;
-}
+    showCustomModal({
+      title: "Record Not Found",
+      message: "No attempt record found for this assessment.",
+      type: "warning"
+    });
+    return;
+  }
 
   if (typeof window.jspdf === 'undefined') {
-   showCustomModal({
-  title: "Library Missing",
-  message: "jsPDF library not loaded. Ensure jsPDF scripts are included in html.",
-  type: "warning"
-});
-return;
+    showCustomModal({
+      title: "Library Missing",
+      message: "jsPDF library not loaded. Ensure jsPDF scripts are included in html.",
+      type: "warning"
+    });
+    return;
   }
 
   const { jsPDF } = window.jspdf;
@@ -1950,6 +1943,7 @@ return;
 
   doc.save(`${attempt.studentName.replace(/\s+/g, '_')}_Result_Slip.pdf`);
 }
+
 // ==========================================================================
 // 10. TIME FORMATTING HELPERS
 // ==========================================================================
@@ -1975,18 +1969,18 @@ function handleCheatingViolation(reason) {
         tabSwitchCount++;
 
         if (tabSwitchCount < MAX_TAB_SWITCHES) {
-    showCustomModal({
-        title: `Security Warning (${tabSwitchCount}/${MAX_TAB_SWITCHES})`,
-        message: `${reason}\n\nDoing this again will result in automatic quiz submission!`,
-        type: "warning"
-    });
-} else {
+            showCustomModal({
+                title: `Security Warning (${tabSwitchCount}/${MAX_TAB_SWITCHES})`,
+                message: `${reason}\n\nDoing this again will result in automatic quiz submission!`,
+                type: "warning"
+            });
+        } else {
             hasQuizSubmittedDueToCheating = true;
-           showCustomModal({
-    title: "Maximum Violations Reached",
-    message: `🚨 Maximum limit reached (${MAX_TAB_SWITCHES} violations). Your assessment is being submitted automatically.`,
-    type: "error"
-});
+            showCustomModal({
+                title: "Maximum Violations Reached",
+                message: `🚨 Maximum limit reached (${MAX_TAB_SWITCHES} violations). Your assessment is being submitted automatically.`,
+                type: "error"
+            });
             
             if (typeof submitQuizToFirestore === 'function') {
                 submitQuizToFirestore();
@@ -2004,10 +1998,10 @@ function handleCheatingViolation(reason) {
         if (quizRunner && quizRunner.style.display !== "none") {
             e.preventDefault();
             showCustomModal({
-    title: "Action Blocked",
-    message: "Copying or pasting is strictly prohibited during assessments.",
-    type: "warning"
-});
+                title: "Action Blocked",
+                message: "Copying or pasting is strictly prohibited during assessments.",
+                type: "warning"
+            });
         }
     });
 });
@@ -2046,63 +2040,71 @@ window.addEventListener("blur", () => {
     handleCheatingViolation("You clicked outside the assessment window into a separate browser window or split screen.");
 });
 
-// Global Custom Modal Dialog Function
-    let customModalCallback = null;
+// ==========================================================================
+// GLOBAL CUSTOM MODAL DIALOG CONTROLLER (Cleaned & Consolidated)
+// ==========================================================================
+let customModalCallback = null;
 
-    function showCustomModal({ title = "Notification", message = "", type = "success", showCancel = false, onConfirm = null }) {
-      const overlay = document.getElementById('globalCustomModal');
-      const titleEl = document.getElementById('customModalTitle');
-      const msgEl = document.getElementById('customModalMessage');
-      const iconContainer = document.getElementById('customModalIconContainer');
-      const iconEl = document.getElementById('customModalIcon');
-      const confirmBtn = document.getElementById('customModalConfirmBtn');
-      const cancelBtn = document.getElementById('customModalCancelBtn');
+function showCustomModal({ title = "Notification", message = "", type = "success", showCancel = false, onConfirm = null }) {
+  const overlay = document.getElementById('globalCustomModal');
+  const titleEl = document.getElementById('customModalTitle');
+  const msgEl = document.getElementById('customModalMessage');
+  const iconContainer = document.getElementById('customModalIconContainer');
+  const iconEl = document.getElementById('customModalIcon');
+  const confirmBtn = document.getElementById('customModalConfirmBtn');
+  const cancelBtn = document.getElementById('customModalCancelBtn');
 
-      if (!overlay) return;
+  if (!overlay) return;
 
-      titleEl.textContent = title;
-      msgEl.textContent = message;
-      customModalCallback = onConfirm;
+  if (titleEl) titleEl.textContent = title;
+  if (msgEl) msgEl.textContent = message;
+  customModalCallback = onConfirm;
 
-      // Icon & Type Mapping
-      iconContainer.className = `custom-modal-icon ${type}`;
-      if (type === 'success') {
-        iconEl.className = "fa-solid fa-circle-check";
-        confirmBtn.className = "custom-modal-btn-primary";
-      } else if (type === 'error') {
-        iconEl.className = "fa-solid fa-circle-xmark";
-        confirmBtn.className = "custom-modal-btn-primary";
-        confirmBtn.style.background = "#ef4444";
-      } else if (type === 'warning') {
-        iconEl.className = "fa-solid fa-triangle-exclamation";
-        confirmBtn.className = "custom-modal-btn-primary";
-        confirmBtn.style.background = "#f59e0b";
-      } else {
-        iconEl.className = "fa-solid fa-circle-info";
-        confirmBtn.className = "custom-modal-btn-primary";
-        confirmBtn.style.background = "#0284c7";
-      }
+  // Icon & Type Mapping
+  if (iconContainer) iconContainer.className = `custom-modal-icon ${type}`;
+  
+  if (confirmBtn) {
+    confirmBtn.className = "custom-modal-btn-primary";
+    confirmBtn.style.background = ""; // Reset inline style override
+  }
 
-      if (showCancel) {
-        cancelBtn.style.display = "block";
-        confirmBtn.textContent = "Confirm";
-      } else {
-        cancelBtn.style.display = "none";
-        confirmBtn.textContent = "OK";
-      }
-
-      overlay.classList.add('active');
+  if (iconEl) {
+    if (type === 'success') {
+      iconEl.className = "fa-solid fa-circle-check";
+    } else if (type === 'error') {
+      iconEl.className = "fa-solid fa-circle-xmark";
+      if (confirmBtn) confirmBtn.style.background = "#ef4444";
+    } else if (type === 'warning') {
+      iconEl.className = "fa-solid fa-triangle-exclamation";
+      if (confirmBtn) confirmBtn.style.background = "#f59e0b";
+    } else {
+      iconEl.className = "fa-solid fa-circle-info";
+      if (confirmBtn) confirmBtn.style.background = "#0284c7";
     }
+  }
 
-    function closeCustomModal(isConfirmed) {
-      const overlay = document.getElementById('globalCustomModal');
-      if (overlay) overlay.classList.remove('active');
-
-      if (isConfirmed && typeof customModalCallback === 'function') {
-        customModalCallback();
-      }
-      customModalCallback = null;
+  if (cancelBtn && confirmBtn) {
+    if (showCancel) {
+      cancelBtn.style.display = "block";
+      confirmBtn.textContent = "Confirm";
+    } else {
+      cancelBtn.style.display = "none";
+      confirmBtn.textContent = "OK";
     }
+  }
+
+  overlay.classList.add('active');
+}
+
+function closeCustomModal(isConfirmed) {
+  const overlay = document.getElementById('globalCustomModal');
+  if (overlay) overlay.classList.remove('active');
+
+  if (isConfirmed && typeof customModalCallback === 'function') {
+    customModalCallback();
+  }
+  customModalCallback = null;
+}
 
 
 
