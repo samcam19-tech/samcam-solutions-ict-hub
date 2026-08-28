@@ -200,7 +200,12 @@ function normalizeAlgebraicExpression(expr) {
 }
 
 function validateStudentAnswer(question, inputStr) {
-    let cleanInput = inputStr.trim();
+    let cleanInput = inputStr ? inputStr.trim() : "";
+    
+    // Automatically normalize and remove any accidental spaces between function names and opening brackets 
+    // e.g. "IF (" becomes "IF(" globally across the entire expression
+    cleanInput = cleanInput.replace(/([A-Z][A-Z0-9_]*)\s+(\()/g, '$1$2');
+
     const rule = question.ruleType; 
     const expected = question.expectedValue ? question.expectedValue.trim() : ""; 
 
@@ -314,12 +319,7 @@ function validateStudentAnswer(question, inputStr) {
                 };
             }
             
-            // Excel allows a single IF to take up to 255 total arguments in newer versions, 
-            // but standard nested logic typically uses 3 primary slots. If someone passes 
-            // more than 3 top-level comma splits without nesting, or exceeds reasonable bounds:
             if (args.length > 3) {
-                // If you want to allow multi-argument syntax like modern IFS or cascading blocks, 
-                // handle or limit them here. If enforcing standard strict 3-argument base IF:
                 return { 
                     correct: false, 
                     message: `#VALUE! Error: Too many top-level arguments provided for a single IF block. Check your comma separators.` 
@@ -359,10 +359,6 @@ function validateStudentAnswer(question, inputStr) {
                     message: `#VALUE! Error in logical condition. Expected core criteria component missing: ${expected}.` 
                 };
             }
-
-            // Note: If valueIfTrue or valueIfFalse contains a nested IF, they won't trigger 
-            // isValidExcelValueToken directly unless expanded, so ensure your token validator 
-            // handles nested function expressions gracefully.
 
             return {
                 correct: true,
@@ -416,7 +412,6 @@ function validateStudentAnswer(question, inputStr) {
 
             const args = splitExcelArguments(match[1]);
             
-            // Define strict argument boundaries per function standard
             let minArgs = 2;
             let maxArgs = 3;
             if (func === 'COUNTIF') {
@@ -465,7 +460,6 @@ function validateStudentAnswer(question, inputStr) {
 
         // --- 6. ACCESS QUERY CRITERIA & WILDCARDS (WITH ROBUST NORMALIZATION) ---
         case "ACCESS_CRITERIA": {
-            // Normalize wildcards: convert SQL-style % to Access-style * for helpful cross-checking
             const cleanedStudentInput = upperInput.trim();
             const normalizedStudent = cleanedStudentInput.replace(/\s+/g, '').replace(/^LIKE/i, '').replace(/["']/g, '').replace(/%/g, '*');
             const normalizedExpected = expected.toUpperCase().replace(/\s+/g, '').replace(/^LIKE/i, '').replace(/["']/g, '').replace(/%/g, '*');
@@ -481,7 +475,6 @@ function validateStudentAnswer(question, inputStr) {
 
         // --- 7. FLEXIBLE ACCESS QUERY CALCULATED FIELDS ---
         case "ACCESS_CALCULATED": {
-            // Verify structural alias pattern: AliasName: Expression
             const colonIndex = cleanInput.indexOf(':');
             const hasValidAlias = colonIndex > 0 && colonIndex < cleanInput.length - 1;
 
@@ -493,42 +486,40 @@ function validateStudentAnswer(question, inputStr) {
             return {
                 correct,
                 message: correct 
-                    ? `Correct! "${cleanInput}" successfully defined the calculated query expression.` 
+                    ? `Correct! "${cleanInfo = cleanInput}" successfully defined the calculated query expression.` // Kept cleanInput intact logically
                     : `Syntax Error: Ensure you use a proper field alias followed by a colon and square bracket expressions (e.g., Total: [Price]*[Qty]).`
             };
         }
 
        default: {
-        // Safe check for normalization function availability
-        let normalizedStudent = cleanInput;
-        let normalizedExpected = expected;
+            let normalizedStudent = cleanInput;
+            let normalizedExpected = expected;
 
-        if (typeof normalizeAlgebraicExpression === 'function') {
-            try {
-                normalizedStudent = normalizeAlgebraicExpression(cleanInput);
-                normalizedExpected = normalizeAlgebraicExpression(expected);
-            } catch (e) {
-                console.warn("Algebraic normalization fallback error:", e);
+            if (typeof normalizeAlgebraicExpression === 'function') {
+                try {
+                    normalizedStudent = normalizeAlgebraicExpression(cleanInput);
+                    normalizedExpected = normalizeAlgebraicExpression(expected);
+                } catch (e) {
+                    console.warn("Algebraic normalization fallback error:", e);
+                }
             }
+
+            const studentComp = normalizedStudent.replace(/\s+/g, '').toUpperCase();
+            const expectedComp = normalizedExpected.replace(/\s+/g, '').toUpperCase();
+            const upperCleanInput = cleanInput.replace(/\s+/g, '').toUpperCase();
+            const upperExpected = expected.toUpperCase().replace(/\s+/g, '');
+
+            const correct = (studentComp === expectedComp) || (upperCleanInput === upperExpected) || upperInput.includes(expected.toUpperCase());
+            
+            return { 
+                correct, 
+                message: correct 
+                    ? `Correct! "${cleanInput}" verified successfully.` 
+                    : `Incorrect ("${cleanInput}"). Please check your entry and formatting.` 
+            };
         }
-
-        const studentComp = normalizedStudent.replace(/\s+/g, '').toUpperCase();
-        const expectedComp = normalizedExpected.replace(/\s+/g, '').toUpperCase();
-        const upperCleanInput = cleanInput.replace(/\s+/g, '').toUpperCase();
-        const upperExpected = expected.toUpperCase().replace(/\s+/g, '');
-
-        const correct = (studentComp === expectedComp) || (upperCleanInput === upperExpected) || upperInput.includes(expected.toUpperCase());
-        
-        return { 
-            correct, 
-            message: correct 
-                ? `Correct! "${cleanInput}" verified successfully.` 
-                : `Incorrect ("${cleanInput}"). Please check your entry and formatting.` 
-        };
-    }
     }
 }
-
 // ==========================================
 // 4. DYNAMIC QUESTION FETCHING FROM FIRESTORE
 // ==========================================
