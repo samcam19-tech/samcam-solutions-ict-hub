@@ -194,7 +194,6 @@ function isValidExcelValueToken(token) {
     return false;
 }
 
-// Gap 5 Helper: Normalizes algebraic expressions to check structural/mathematical equivalence safely
 function normalizeAlgebraicExpression(expr) {
     return expr.replace(/\s+/g, '').toUpperCase();
 }
@@ -202,8 +201,6 @@ function normalizeAlgebraicExpression(expr) {
 function validateStudentAnswer(question, inputStr) {
     let cleanInput = inputStr ? inputStr.trim() : "";
     
-    // Automatically normalize and remove any accidental spaces between function names and opening brackets 
-    // e.g. "IF (" becomes "IF(" globally across the entire expression
     cleanInput = cleanInput.replace(/([A-Z][A-Z0-9_]*)\s+(\()/g, '$1$2');
 
     const rule = question.ruleType; 
@@ -213,7 +210,6 @@ function validateStudentAnswer(question, inputStr) {
         return { correct: false, message: "Please enter an expression before verifying." };
     }
 
-    // Proactive Regional & Syntax Check for Missing Equals Sign or Semicolons
     if (!cleanInput.startsWith("=") && rule.startsWith("EXCEL_")) {
         return { 
             correct: false, 
@@ -228,7 +224,6 @@ function validateStudentAnswer(question, inputStr) {
         };
     }
 
-    // Global Parenthesis Balance Check for Excel Formulas
     if (rule.startsWith("EXCEL_") && !areParenthesesBalanced(cleanInput)) {
         return { 
             correct: false, 
@@ -239,7 +234,6 @@ function validateStudentAnswer(question, inputStr) {
     const upperInput = cleanInput.toUpperCase();
 
     switch (rule) {
-       // --- 1. BASIC AGGREGATIONS (SUM, AVERAGE) WITH AST ARGUMENT COUNT & BOUNDS CHECKING ---
         case "EXCEL_SUM":
         case "EXCEL_AVERAGE": {
             const func = rule === "EXCEL_SUM" ? "SUM" : "AVERAGE";
@@ -255,7 +249,6 @@ function validateStudentAnswer(question, inputStr) {
                 return { correct: false, message: `#VALUE! Error: The ${func} function requires at least one argument or range.` };
             }
 
-            // Validate all arguments safely using the secure args array instead of raw string splitting
             const allSubRangesValid = args.every(sub => {
                 const cleanSub = sub.trim().replace(/\s+/g, '');
                 if (cleanSub.includes(':')) {
@@ -286,7 +279,6 @@ function validateStudentAnswer(question, inputStr) {
             };
         }
 
-       // --- 2. CONDITIONAL CHECK (IF) WITH DEEP AST ARGUMENT & ERROR DIAGNOSTICS ---
         case "EXCEL_IF": {
             const ifPattern = /^=\s*IF\s*\(\s*(.+)\s*\)$/i;
             const match = cleanInput.match(ifPattern);
@@ -300,9 +292,10 @@ function validateStudentAnswer(question, inputStr) {
 
             const innerContent = match[1];
 
-            // Gap 4 Upgrade: Dynamic regex to catch any function identifier missing an immediate open parenthesis
+            // Temporarily replace quoted text so regex ignores spaces and words inside strings
+            const sanitizedInner = innerContent.replace(/(".*?"|'.*?')/g, '""');
             const malformedNestedPattern = /\b([A-Z]+)[A-Z0-9]/i;
-            if (malformedNestedPattern.test(innerContent)) {
+            if (malformedNestedPattern.test(sanitizedInner)) {
                 return {
                     correct: false,
                     message: `#NAME? Error: It looks like you missed an opening bracket after a function name. Every function name must be followed immediately by an open parenthesis.`
@@ -311,7 +304,6 @@ function validateStudentAnswer(question, inputStr) {
 
             const args = splitExcelArguments(innerContent);
             
-            // Base IF requires at least 3 arguments (logical_test, value_if_true, value_if_false)
             if (args.length < 3) {
                 return { 
                     correct: false, 
@@ -326,7 +318,6 @@ function validateStudentAnswer(question, inputStr) {
                 };
             }
 
-            // Check max nesting depth of parentheses to ensure it doesn't exceed Excel's 64 limit
             let maxDepth = 0;
             let currentDepth = 0;
             for (let i = 0; i < cleanInput.length; i++) {
@@ -365,7 +356,7 @@ function validateStudentAnswer(question, inputStr) {
                 message: `Correct! "${cleanInput}" properly satisfies Excel's IF function argument structure and data typing rules.`
             };
         }
-       // --- 3. LOOKUP FUNCTIONS (VLOOKUP, HLOOKUP, LOOKUP) WITH AST ARGUMENT VALIDATION ---
+
         case "EXCEL_VLOOKUP":
         case "EXCEL_HLOOKUP":
         case "EXCEL_LOOKUP": {
@@ -398,7 +389,6 @@ function validateStudentAnswer(question, inputStr) {
             };
         }
             
-       // --- 4. CONDITIONAL AGGREGATIONS (SUMIF, COUNTIF, AVERAGEIF) WITH AST ARGUMENT VALIDATION ---
         case "EXCEL_SUMIF":
         case "EXCEL_COUNTIF":
         case "EXCEL_AVERAGEIF": {
@@ -435,7 +425,6 @@ function validateStudentAnswer(question, inputStr) {
             };
         }
 
-        // --- 5. RANK FUNCTION WITH EXACT 3-ARGUMENT AST VALIDATION ---
         case "EXCEL_RANK": {
             const pattern = /^=\s*(?:RANK|RANK\.EQ)\s*\(\s*(.+)\s*\)$/i;
             const match = cleanInput.match(pattern);
@@ -458,7 +447,6 @@ function validateStudentAnswer(question, inputStr) {
             };
         }
 
-        // --- 6. ACCESS QUERY CRITERIA & WILDCARDS (WITH ROBUST NORMALIZATION) ---
         case "ACCESS_CRITERIA": {
             const cleanedStudentInput = upperInput.trim();
             const normalizedStudent = cleanedStudentInput.replace(/\s+/g, '').replace(/^LIKE/i, '').replace(/["']/g, '').replace(/%/g, '*');
@@ -473,7 +461,6 @@ function validateStudentAnswer(question, inputStr) {
             };
         }
 
-        // --- 7. FLEXIBLE ACCESS QUERY CALCULATED FIELDS ---
         case "ACCESS_CALCULATED": {
             const colonIndex = cleanInput.indexOf(':');
             const hasValidAlias = colonIndex > 0 && colonIndex < cleanInput.length - 1;
@@ -486,12 +473,12 @@ function validateStudentAnswer(question, inputStr) {
             return {
                 correct,
                 message: correct 
-                    ? `Correct! "${cleanInfo = cleanInput}" successfully defined the calculated query expression.` // Kept cleanInput intact logically
+                    ? `Correct! "${cleanInput}" successfully defined the calculated query expression.` 
                     : `Syntax Error: Ensure you use a proper field alias followed by a colon and square bracket expressions (e.g., Total: [Price]*[Qty]).`
             };
         }
 
-       default: {
+        default: {
             let normalizedStudent = cleanInput;
             let normalizedExpected = expected;
 
@@ -520,6 +507,7 @@ function validateStudentAnswer(question, inputStr) {
         }
     }
 }
+
 // ==========================================
 // 4. DYNAMIC QUESTION FETCHING FROM FIRESTORE
 // ==========================================
