@@ -758,10 +758,10 @@ async function populateRegisteredSchoolsDropdown() {
     if (c.schoolId) schoolsSet.add(c.schoolId.toUpperCase());
   });
 
-  // Render options into select element
+  // Render options into select element cleanly without counter text
   const sortedSchools = Array.from(schoolsSet).sort();
   schoolSelectEl.innerHTML = `
-    <option value="">-- Select Existing School (${sortedSchools.length} Found) --</option>
+    <option value="">-- Select Existing School --</option>
     ${sortedSchools.map(sch => `<option value="${sch}">${sch}</option>`).join('')}
   `;
 
