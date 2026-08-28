@@ -283,7 +283,7 @@ function validateStudentAnswer(question, inputStr) {
             };
         }
 
-       case "EXCEL_IF": {
+      case "EXCEL_IF": {
             const ifPattern = /^=\s*IF\s*\(\s*(.+)\s*\)$/i;
             const match = cleanInput.match(ifPattern);
 
@@ -333,19 +333,35 @@ function validateStudentAnswer(question, inputStr) {
             const valueIfTrue = args[1].trim();
             const valueIfFalse = args[2].trim();
 
-            // Handle whether expectedValue was stored as just the condition (e.g. "D4<=0") or the whole formula
-            let targetCondition = expected.trim();
+            let targetCondition = expected ? expected.trim() : "";
+            
+            // If expected is empty, default to checking that the logical test isn't empty
+            if (!targetCondition) {
+                if (!logicalTest) {
+                    return {
+                        correct: false,
+                        message: `#VALUE! Error: Logical test condition cannot be blank.`
+                    };
+                }
+                return {
+                    correct: true,
+                    message: `Correct! "${cleanInput}" properly satisfies Excel's IF function argument structure.`
+                };
+            }
+
             if (targetCondition.toUpperCase().startsWith("=IF(")) {
                 const expectedMatch = targetCondition.match(/^=\s*IF\s*\(\s*(.+)\s*\)$/i);
                 if (expectedMatch) {
                     const expectedArgs = splitExcelArguments(expectedMatch[1]);
-                    targetCondition = expectedArgs[0].trim();
+                    if (expectedArgs.length > 0) {
+                        targetCondition = expectedArgs[0].trim();
+                    }
                 }
             }
 
             const expectedNormalized = targetCondition.replace(/\s+/g, '').toUpperCase();
             const logicalNormalized = logicalTest.replace(/\s+/g, '').toUpperCase();
-            const isLogicalValid = logicalNormalized === expectedNormalized || logicalNormalized.includes(expectedNormalized);
+            const isLogicalValid = expectedNormalized === "" || logicalNormalized === expectedNormalized || logicalNormalized.includes(expectedNormalized);
 
             if (!isLogicalValid) {
                 return { 
