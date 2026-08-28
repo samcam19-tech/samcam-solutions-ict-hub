@@ -91,7 +91,24 @@ function setupAdminActions() {
       return;
     }
 
-    const collectionsToMigrate = ['portal_resources', 'quizzes', 'challenges', 'blog_posts'];
+    // Complete list of all system collections to ensure full migration
+    const collectionsToMigrate = [
+      'announcements',
+      'audit_logs',
+      'blog_posts',
+      'challenges',
+      'e_library_resources',
+      'formulaSubmissions',
+      'forum_threads',
+      'live_classes',
+      'notifications',
+      'pending_payments',
+      'portal_resources',
+      'quiz_results',
+      'quizzes',
+      'submissions',
+      'users'
+    ];
 
     try {
       let totalUpdated = 0;
