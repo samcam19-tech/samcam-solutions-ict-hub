@@ -94,7 +94,7 @@ function renderDownloadsChart() {
       maintainAspectRatio: false,
       plugins: {
         legend: {
-          display: true, // Enabled legend to display dataset label
+          display: true,
           position: 'top',
           labels: {
             font: { family: 'Inter', size: 12 },
@@ -341,6 +341,7 @@ async function handleLibraryFormSubmit(e) {
         fileUrl,
         fileName,
         fileType,
+        downloads: 0, // Initialized new resource download counter safely to 0
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
       showCustomModal("Success", "Resource uploaded successfully!", "success");
@@ -495,7 +496,6 @@ function closeCustomModal(result) {
   }
 }
 
-// Render Resource-Specific Download Statistics Table
 // Render Resource-Specific Download Statistics Table
 function renderResourceStatsTable() {
   const tbody = document.getElementById("resourceStatsTableBody");
