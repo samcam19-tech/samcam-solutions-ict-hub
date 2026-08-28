@@ -63,11 +63,29 @@ async function loadAuditLogs() {
   if (!tableBody) return;
 
   let logs = [];
+  let currentSchoolId = '';
 
-  // 1. Try fetching from Firestore 'audit_logs' collection
+  // Extract schoolId from URL parameters or session if present
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('schoolId')) {
+    currentSchoolId = params.get('schoolId').toLowerCase().trim();
+  } else {
+    try {
+      const session = JSON.parse(localStorage.getItem('portal_session'));
+      if (session && session.schoolId) {
+        currentSchoolId = session.schoolId.toLowerCase().trim();
+      }
+    } catch (e) {}
+  }
+
+  // 1. Try fetching from Firestore 'audit_logs' collection (Scoped by schoolId if active)
   if (window.db) {
     try {
-      const snapshot = await window.db.collection('audit_logs').orderBy('timestamp', 'desc').get();
+      let queryRef = window.db.collection('audit_logs').orderBy('timestamp', 'desc');
+      if (currentSchoolId) {
+        queryRef = queryRef.where('schoolId', '==', currentSchoolId);
+      }
+      const snapshot = await queryRef.get();
       snapshot.forEach(doc => {
         logs.push(doc.data());
       });
@@ -79,7 +97,8 @@ async function loadAuditLogs() {
   // 2. Fallback to LocalStorage if Firestore returned nothing or failed
   if (logs.length === 0) {
     try {
-      logs = JSON.parse(localStorage.getItem('portal_audit_logs')) || [];
+      const localLogs = JSON.parse(localStorage.getItem('portal_audit_logs')) || [];
+      logs = localLogs.filter(log => !currentSchoolId || (log.schoolId && log.schoolId.toLowerCase() === currentSchoolId) || log.schoolId === 'global');
     } catch (e) {
       console.error("Error reading local audit logs:", e);
     }
@@ -93,6 +112,7 @@ async function loadAuditLogs() {
       const isSuccess = log.status === 'SUCCESS';
       const badgeClass = isSuccess ? 'badge-success' : 'badge-failed';
       const iconClass = isSuccess ? 'fa-circle-check' : 'fa-circle-xmark';
+      const logSchoolId = log.schoolId || 'global';
       
       // Format timestamp nicely
       let formattedDate = log.timestamp;
@@ -117,6 +137,9 @@ async function loadAuditLogs() {
             <i class="fa-solid ${iconClass}"></i> ${log.status}
           </span>
         </td>
+        <td>
+          <span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600; margin-right: 0.5rem;"><i class="fa-solid fa-school"></i> ${logSchoolId.toUpperCase()}</span>
+        </td>
         <td class="nowrap">${formattedDate}</td>
         <td class="font-weight-500 text-dark">${log.username}</td>
         <td>${log.failureReason && log.failureReason !== '—' ? `<span class="reason-tag">${log.failureReason}</span>` : '<span class="text-muted">—</span>'}</td>
@@ -132,6 +155,12 @@ async function loadAuditLogs() {
 
     // Update counter text & apply any active filters
     filterAuditLogs();
+  } else {
+    tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding: 2rem;">No audit logs found for this school context.</td></tr>`;
+    const counterText = document.getElementById('auditCounterText');
+    if (counterText) {
+      counterText.innerHTML = `Showing <strong>0</strong> of <strong>0</strong> total audit events`;
+    }
   }
 }
 
@@ -152,6 +181,9 @@ function filterAuditLogs() {
   const today = new Date(); // Current date anchor
 
   rows.forEach(row => {
+    // Skip empty state rows
+    if (row.cells.length < 7) return;
+
     const textContent = row.innerText.toLowerCase();
     const rowStatus = row.getAttribute('data-status');
     const rowDateStr = row.getAttribute('data-date'); // expected format: YYYY-MM-DD
@@ -187,7 +219,7 @@ function filterAuditLogs() {
   // Update counter text dynamically
   const counterText = document.getElementById('auditCounterText');
   if (counterText) {
-    const totalRows = rows.length;
+    const totalRows = document.querySelectorAll('#auditLogsTableBody tr[data-status]').length;
     counterText.innerHTML = `Showing <strong>${visibleCount}</strong> of <strong>${totalRows}</strong> total audit events`;
   }
 }
@@ -225,26 +257,25 @@ function exportAuditLogs() {
   
   const rows = document.querySelectorAll('#auditLogsTableBody tr');
   let csvContent = "\uFEFF"; // Adds UTF-8 BOM so Excel reads special characters & dashes correctly
-  csvContent += "Status,Timestamp,Username,Failure Reason,IP Address & Location,Device\n";
+  csvContent += "Status,School,Timestamp,Username,Failure Reason,IP Address & Location,Device\n";
 
   rows.forEach(row => {
-    if (row.style.display !== 'none') {
+    if (row.style.display !== 'none' && row.cells.length >= 7) {
       const cols = row.querySelectorAll('td');
-      if (cols.length >= 6) {
-        const status = cols[0].innerText.trim();
-        const timestamp = cols[1].innerText.trim();
-        const username = cols[2].innerText.trim();
-        
-        let reason = cols[3].innerText.trim();
-        if (reason === '—' || reason.includes('â') || !reason) {
-          reason = '-';
-        }
-
-        const ipLocation = cols[4].innerText.trim().replace(/\n/g, ' - ');
-        const device = cols[5].innerText.trim();
-        
-        csvContent += `"${status}","${timestamp}","${username}","${reason}","${ipLocation}","${device}"\n`;
+      const status = cols[0].innerText.trim();
+      const school = cols[1].innerText.trim();
+      const timestamp = cols[2].innerText.trim();
+      const username = cols[3].innerText.trim();
+      
+      let reason = cols[4].innerText.trim();
+      if (reason === '—' || reason.includes('â') || !reason) {
+        reason = '-';
       }
+
+      const ipLocation = cols[5].innerText.trim().replace(/\n/g, ' - ');
+      const device = cols[6].innerText.trim();
+      
+      csvContent += `"${status}","${school}","${timestamp}","${username}","${reason}","${ipLocation}","${device}"\n`;
     }
   });
 
