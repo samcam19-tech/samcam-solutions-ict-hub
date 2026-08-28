@@ -754,6 +754,60 @@ function setupAdminImportModule() {
 }
 
 // ==========================================
+// SYNTAX HIGHLIGHTER ENGINE FOR FORMULAS
+// ==========================================
+function highlightFormula(text) {
+    if (!text) return '';
+    
+    // Escape HTML characters safely
+    const safeText = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+    let bracketDepth = 0;
+
+    // Tokenize and wrap elements with syntax classes
+    return safeText.replace(/(=)|([A-Z][A-Z0-9_]*\b(?=\s*\()|(?:\b[A-Z]+\b(?!\s*\())))|([()])/g, (match, eq, func, bracket) => {
+        if (eq) return `<span class="token-equals">${eq}</span>`;
+        if (func) return `<span class="token-function">${func}</span>`;
+        if (bracket) {
+            if (bracket === '(') {
+                bracketDepth++;
+            }
+            const bracketClass = `token-bracket-${((bracketDepth - 1) % 3) + 1}`;
+            if (bracket === ')') {
+                bracketDepth = Math.max(0, bracketDepth - 1);
+            }
+            return `<span class="${bracketClass}">${bracket}</span>`;
+        }
+        return match;
+    }).replace(/([A-Z]+\d+:[A-Z]+\d+|[A-Z]+\d+|\$[A-Z]+\$\d+)/g, '<span class="token-cell">$1</span>')
+      .replace(/(&quot;[^&]*&quot;|'[^']*'|"[^"]*")/g, '<span class="token-string">$1</span>')
+      .replace(/([+\-*/^=<>]=?)/g, '<span class="token-operator">$1</span>');
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const textarea = document.getElementById('studentAnswer');
+    const backdrop = document.getElementById('formulaBackdrop');
+
+    if (textarea && backdrop) {
+        function updateEditor() {
+            backdrop.innerHTML = highlightFormula(textarea.value) + '<br>';
+        }
+
+        textarea.addEventListener('input', updateEditor);
+        textarea.addEventListener('scroll', () => {
+            backdrop.scrollTop = textarea.scrollTop;
+            backdrop.scrollLeft = textarea.scrollLeft;
+        });
+
+        // Initial paint
+        updateEditor();
+    }
+});
+
+// ==========================================
 // 7. INITIALIZATION ON PAGE LOAD
 // ==========================================
 loadChallengesFromFirestore();
