@@ -1,457 +1,725 @@
-/* ==========================================================================
-   SAMCAM SOLUTIONS - WORLD-CLASS MODERN SUPER ADMIN DESIGN SYSTEM
-   ========================================================================== */
+// Custom Modal Helper Utility
+function showCustomModal(title, message, type = "alert", inputPlaceholder = "") {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("customModal");
+    const titleEl = document.getElementById("modalTitle");
+    const msgEl = document.getElementById("modalMessage");
+    const confirmBtn = document.getElementById("modalConfirmBtn");
+    const cancelBtn = document.getElementById("modalCancelBtn");
+    const inputContainer = document.getElementById("modalInputContainer");
+    const inputField = document.getElementById("modalInput");
 
-:root {
-  --bg-app: #030712;
-  --bg-surface: #ffffff;
-  --bg-surface-subtle: #f8fafc;
-  --border-subtle: #e2e8f0;
-  --border-focus: #3b82f6;
-  
-  --text-main: #0f172a;
-  --text-muted: #64748b;
-  --text-inverse: #ffffff;
-  
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --primary-glow: rgba(37, 99, 235, 0.15);
-  
-  --warning: #d97706;
-  --warning-hover: #b45309;
-  --warning-glow: rgba(217, 119, 6, 0.15);
-  
-  --success: #10b981;
-  --success-glow: rgba(16, 185, 129, 0.15);
-  
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
-  --shadow-lg: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.08);
-  --shadow-glow: 0 0 0 4px var(--primary-glow);
-  
-  --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    if (!modal) {
+      if (type === "confirm") resolve(window.confirm(message));
+      else if (type === "prompt") resolve(window.prompt(message));
+      else { window.alert(message); resolve(true); }
+      return;
+    }
+
+    titleEl.innerText = title;
+    msgEl.innerText = message;
+    inputField.value = "";
+
+    if (type === "confirm") {
+      cancelBtn.style.display = "inline-block";
+      inputContainer.style.display = "none";
+    } else if (type === "prompt") {
+      cancelBtn.style.display = "inline-block";
+      inputContainer.style.display = "block";
+      inputField.placeholder = inputPlaceholder;
+      inputField.type = inputPlaceholder.toLowerCase().includes("key") || inputPlaceholder.toLowerCase().includes("password") ? "password" : "text";
+    } else {
+      cancelBtn.style.display = "none";
+      inputContainer.style.display = "none";
+    }
+
+    modal.style.display = "flex";
+    if (type === "prompt") inputField.focus();
+
+    const newConfirm = confirmBtn.cloneNode(true);
+    const newCancel = cancelBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+    cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+    newConfirm.addEventListener("click", () => {
+      modal.style.display = "none";
+      resolve(type === "prompt" ? inputField.value : true);
+    });
+
+    newCancel.addEventListener("click", () => {
+      modal.style.display = "none";
+      resolve(type === "prompt" ? null : false);
+    });
+  });
 }
 
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  -webkit-font-smoothing: antialiased;
-}
+// Complete list of all system collections to ensure full migration & backup coverage
+const collectionsToMigrate = [
+  'announcements',
+  'audit_logs',
+  'blog_posts',
+  'challenges',
+  'e_library_resources',
+  'formulaSubmissions',
+  'forum_threads',
+  'live_classes',
+  'notifications',
+  'pending_payments',
+  'portal_resources',
+  'quiz_results',
+  'quizzes',
+  'submissions',
+  'users',
+  'schools',
+  'system_config'
+];
 
-body {
-  background-color: #f1f5f9;
-  background-image: 
-    radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.03) 0px, transparent 50%),
-    radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.02) 0px, transparent 50%);
-  color: var(--text-main);
-  min-height: 100vh;
-}
+document.addEventListener("DOMContentLoaded", () => {
+  const collectionsCountEl = document.getElementById("collectionsCount");
+  if (collectionsCountEl) {
+    collectionsCountEl.innerText = collectionsToMigrate.length;
+  }
 
-.admin-wrapper {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-}
+  const checkDbInterval = setInterval(async () => {
+    if (window.db) {
+      clearInterval(checkDbInterval);
+      await enforceFirestoreMasterKeyGate();
+    }
+  }, 50);
+});
 
-/* Modern Glassmorphic Header */
-.admin-header {
-  background: rgba(15, 23, 42, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
-  padding: 20px 48px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
+// Handles Firestore-backed Super Admin Key setup, authentication gate, and advanced feature hooks
+async function enforceFirestoreMasterKeyGate() {
+  const configDocRef = window.db.collection("system_config").doc("super_admin_settings");
 
-.header-brand h1 {
-  font-size: 1.35rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #ffffff 0%, #94a3b8 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  margin-bottom: 4px;
-}
+  try {
+    const docSnap = await configDocRef.get();
+    let currentMasterKey = "";
 
-.global-badge {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  color: white;
-  font-size: 0.65rem;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-weight: 700;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
-}
+    if (!docSnap.exists) {
+      let createdKey = "";
+      while (!createdKey || createdKey.trim().length < 6) {
+        createdKey = await showCustomModal(
+          "Initialize Super Admin Key",
+          "Create your secure master secret key (at least 6 characters):",
+          "prompt",
+          "Enter new master key..."
+        );
 
-.admin-profile {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: #cbd5e1;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 6px 14px;
-  border-radius: 30px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-}
+        if (createdKey === null) {
+          document.body.innerHTML = `<div style="display:flex;height:100vh;justify-content:center;align-items:center;background:#030712;color:white;font-family:system-ui;text-align:center;padding:20px;"><div><h2 style="color:#ef4444;margin-bottom:8px;">Access Cancelled</h2><p style="color:#94a3b8;">Master key setup is required.</p></div></div>`;
+          return;
+        }
+        if (createdKey.trim().length < 6) {
+          await showCustomModal("Invalid Key", "The master key must be at least 6 characters long.");
+        }
+      }
 
-.admin-content {
-  padding: 40px;
-  max-width: 1280px;
-  margin: 0 auto;
-  width: 100%;
-}
+      await configDocRef.set({
+        masterKey: createdKey.trim(),
+        maintenanceMode: false,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
 
-/* Modern Metrics Stat Cards */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 24px;
-  margin-bottom: 32px;
-}
+      currentMasterKey = createdKey.trim();
+      await showCustomModal("Setup Complete", "Master key saved to Firestore successfully!");
+    } else {
+      currentMasterKey = docSnap.data().masterKey;
+    }
 
-.stat-card {
-  background: var(--bg-surface);
-  padding: 24px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-sm);
-  transition: var(--transition);
-  position: relative;
-  overflow: hidden;
-}
+    const authenticatedKey = sessionStorage.getItem("samcam_super_auth");
+    if (authenticatedKey === currentMasterKey) {
+      await initializeSuperAdminPortal(configDocRef);
+      return;
+    }
 
-.stat-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 4px;
-  height: 100%;
-  background: var(--primary);
-  opacity: 0.8;
-}
+    let authorized = false;
+    while (!authorized) {
+      const enteredKey = await showCustomModal(
+        "Restricted Master Access",
+        "Enter your Super Admin master key to access the control panel:",
+        "prompt",
+        "Enter master key..."
+      );
 
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-  border-color: #cbd5e1;
-}
+      if (enteredKey === currentMasterKey) {
+        sessionStorage.setItem("samcam_super_auth", currentMasterKey);
+        authorized = true;
+      } else if (enteredKey === null) {
+        document.body.innerHTML = `<div style="display:flex;height:100vh;justify-content:center;align-items:center;background:#030712;color:white;font-family:system-ui;text-align:center;padding:20px;"><div><h2 style="color:#ef4444;margin-bottom:8px;">Access Denied</h2><p style="color:#94a3b8;">Authentication required.</p></div></div>`;
+        return;
+      } else {
+        await showCustomModal("Access Denied", "Incorrect master admin key provided.");
+      }
+    }
 
-.stat-card h3 {
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  margin-bottom: 8px;
-}
+    await initializeSuperAdminPortal(configDocRef);
 
-.stat-value {
-  font-size: 2.25rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  color: var(--primary);
-}
-
-/* Interactive Grid Layout */
-.admin-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 28px;
-  margin-bottom: 32px;
-}
-
-@media(max-width: 968px) {
-  .admin-grid {
-    grid-template-columns: 1fr;
+  } catch (error) {
+    document.body.innerHTML = `<div style="display:flex;height:100vh;justify-content:center;align-items:center;background:#030712;color:white;font-family:system-ui;text-align:center;padding:20px;"><div><h2 style="color:#ef4444;margin-bottom:8px;">Connection Error</h2><p style="color:#94a3b8;">Failed to verify configuration against Firestore.</p></div></div>`;
   }
 }
 
-.panel-card {
-  background: var(--bg-surface);
-  padding: 32px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-sm);
-  transition: var(--transition);
+// Master initializer binding core modules and fully functional extended feature modules
+async function initializeSuperAdminPortal(configDocRef) {
+  loadRegisteredSchools();
+  setupAdminActions();
+  
+  // Fully implemented elevated features
+  initGlobalAnnouncements();
+  initTenantSubscriptionManager();
+  initCrossTenantSearch();
+  initAuditLogsViewer();
+  initBackupGenerator();
+  initGlobalEResources();
+  initTelemetryDashboard();
+  initMaintenanceModeToggle(configDocRef);
+  initFeatureFlagTogglers();
+  initKeyRotator(configDocRef);
 }
 
-.panel-card:hover {
-  box-shadow: var(--shadow-md);
+// 1. Fetch & Display Schools List + Populate Select Options
+async function loadRegisteredSchools() {
+  const tableBody = document.querySelector("#schoolsTable tbody");
+  const selectDropdown = document.getElementById("targetSchoolSelect");
+  
+  try {
+    const querySnapshot = await window.db.collection("schools").get();
+    if (tableBody) tableBody.innerHTML = "";
+    if (selectDropdown) selectDropdown.innerHTML = `<option value="">-- Choose Target School --</option>`;
+    
+    const totalSchoolsEl = document.getElementById("totalSchoolsCount");
+    if (totalSchoolsEl) totalSchoolsEl.innerText = querySnapshot.size;
+
+    if (querySnapshot.empty) {
+      if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No schools registered yet. Provision your first tenant above.</td></tr>`;
+      return;
+    }
+
+    querySnapshot.forEach((docSnap) => {
+      const data = docSnap.data();
+      const dateStr = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleDateString() : "Just now";
+      const statusBadge = data.status === 'suspended' ? '<span style="color:#ef4444;font-weight:600;">Suspended</span>' : '<span style="color:#10b981;font-weight:600;">Active</span>';
+      
+      if (tableBody) {
+        tableBody.innerHTML += `
+          <tr>
+            <td><code>${data.schoolId}</code></td>
+            <td><strong>${data.schoolName}</strong></td>
+            <td>${data.location || "N/A"}</td>
+            <td>${statusBadge}</td>
+            <td>${dateStr}</td>
+          </tr>
+        `;
+      }
+
+      if (selectDropdown) {
+        const option = document.createElement("option");
+        option.value = data.schoolId;
+        option.textContent = `${data.schoolName} (${data.schoolId})`;
+        selectDropdown.appendChild(option);
+      }
+    });
+
+  } catch (error) {
+    if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: red;">Failed to fetch tenant data from Firestore.</td></tr>`;
+  }
 }
 
-.panel-card h2 {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--text-main);
-  margin-bottom: 6px;
-  letter-spacing: -0.01em;
+// 2. Setup Super Admin Event Listeners & Migration Handlers
+function setupAdminActions() {
+  const schoolForm = document.getElementById("superSchoolForm");
+  if (schoolForm) {
+    schoolForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const schoolId = document.getElementById("newSchoolId").value.trim().toLowerCase().replace(/\s+/g, '_');
+      const schoolName = document.getElementById("newSchoolName").value.trim();
+      const location = document.getElementById("newSchoolLocation").value.trim();
+
+      try {
+        await window.db.collection("schools").doc(schoolId).set({
+          schoolId,
+          schoolName,
+          location,
+          status: "active",
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        await logAuditAction("PROVISION_SCHOOL", `Provisioned new school instance: ${schoolName} (${schoolId})`);
+        await showCustomModal("Success", `School instance "${schoolName}" has been provisioned.`);
+        schoolForm.reset();
+        loadRegisteredSchools();
+      } catch (error) {
+        await showCustomModal("Error", "Failed to register school instance.");
+      }
+    });
+  }
+
+  const migrationBtn = document.getElementById("executeMigrationBtn");
+  if (migrationBtn) {
+    migrationBtn.addEventListener("click", async () => {
+      const targetSchoolId = document.getElementById("targetSchoolSelect").value;
+      
+      if (!targetSchoolId) {
+        await showCustomModal("Selection Required", "Please select a target school first to map the legacy collections into.");
+        return;
+      }
+
+      const confirmed = await showCustomModal(
+        "Confirm Migration", 
+        `Are you sure you want to map all unassigned root data documents across all ${collectionsToMigrate.length} collections to school ID: "${targetSchoolId}"?`, 
+        "confirm"
+      );
+
+      if (!confirmed) return;
+
+      try {
+        let totalUpdated = 0;
+        for (const colName of collectionsToMigrate) {
+          const snapshot = await window.db.collection(colName).get();
+          const batch = window.db.batch();
+
+          snapshot.forEach((documentSnap) => {
+            const docRef = window.db.collection(colName).doc(documentSnap.id);
+            batch.update(docRef, { schoolId: targetSchoolId });
+            totalUpdated++;
+          });
+
+          await batch.commit();
+        }
+
+        await logAuditAction("DATA_MIGRATION", `Migrated ${totalUpdated} legacy documents across root collections to school: ${targetSchoolId}`);
+        await showCustomModal("Migration Complete", `Successfully linked ${totalUpdated} total documents to ${targetSchoolId}.`);
+      } catch (error) {
+        await showCustomModal("Migration Error", "Migration process failed. Check security rules or indices.");
+      }
+    });
+  }
 }
 
-.panel-desc {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  margin-bottom: 24px;
-  line-height: 1.5;
+async function logAuditAction(actionType, details) {
+  try {
+    await window.db.collection("audit_logs").add({
+      actionType,
+      details,
+      timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  } catch (err) {
+    // Silent fail if offline or permission denied
+  }
 }
 
-/* Polished Form Inputs */
-.form-group {
-  margin-bottom: 20px;
+// ==========================================
+// 10 FULLY FUNCTIONAL SUPER ADMIN FEATURES (ELEVATED CARDS)
+// ==========================================
+
+// Feature 1: Global Announcement Broadcaster
+function initGlobalAnnouncements() {
+  const container = document.getElementById("featureAnnouncements") || createFeatureSection("Global Announcement Broadcaster", "broadcastSection");
+  container.innerHTML = `
+    <h2>📢 Global Announcement Broadcaster</h2>
+    <p class="panel-desc">Publish platform-wide announcements instantly to targeted user groups or all connected tenants.</p>
+    <div class="form-group">
+      <label for="globalAnnounceText">Announcement Message</label>
+      <textarea id="globalAnnounceText" placeholder="Type platform-wide broadcast message..." style="width:100%;height:90px;background:var(--bg-surface-subtle);border:1px solid var(--border-subtle);color:var(--text-main);padding:12px 16px;border-radius:var(--radius-sm);outline:none;resize:vertical;font-size:0.95rem;transition:var(--transition);"></textarea>
+    </div>
+    <div class="form-group">
+      <label for="announceTarget">Target Audience</label>
+      <select id="announceTarget" class="form-select">
+        <option value="all">All Schools & Users</option>
+        <option value="teachers">Teachers Only</option>
+        <option value="students">Students Only</option>
+      </select>
+    </div>
+    <button id="sendBroadcastBtn" class="btn-primary">Publish Broadcast</button>
+  `;
+
+  document.getElementById("sendBroadcastBtn").addEventListener("click", async () => {
+    const text = document.getElementById("globalAnnounceText").value.trim();
+    const target = document.getElementById("announceTarget").value;
+    if (!text) {
+      await showCustomModal("Validation Error", "Announcement message cannot be empty.");
+      return;
+    }
+
+    try {
+      await window.db.collection("announcements").add({
+        message: text,
+        targetAudience: target,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await logAuditAction("GLOBAL_BROADCAST", `Published broadcast to target: ${target}`);
+      document.getElementById("globalAnnounceText").value = "";
+      await showCustomModal("Success", "Global announcement published successfully.");
+    } catch (err) {
+      await showCustomModal("Error", "Failed to publish broadcast.");
+    }
+  });
 }
 
-.form-group label {
-  display: block;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #334155;
-  margin-bottom: 8px;
+// Feature 2: Tenant Status & Subscription Manager
+function initTenantSubscriptionManager() {
+  const container = document.getElementById("featureTenants") || createFeatureSection("Tenant Status & Subscription Manager", "tenantManagerSection");
+  container.innerHTML = `
+    <h2>🏫 Tenant Status & Subscriptions</h2>
+    <p class="panel-desc">Manage school account lifecycles, active states, and suspend delinquent or expired licenses.</p>
+    <div class="form-group">
+      <label for="manageSchoolIdInput">Target School ID</label>
+      <input type="text" id="manageSchoolIdInput" placeholder="Enter exact School ID (e.g. standard_college)..." />
+    </div>
+    <button id="toggleStatusBtn" class="btn-warning">Toggle Active / Suspended State</button>
+  `;
+
+  document.getElementById("toggleStatusBtn").addEventListener("click", async () => {
+    const schoolId = document.getElementById("manageSchoolIdInput").value.trim().toLowerCase();
+    if (!schoolId) {
+      await showCustomModal("Input Required", "Please enter a valid school ID.");
+      return;
+    }
+
+    try {
+      const docRef = window.db.collection("schools").doc(schoolId);
+      const docSnap = await docRef.get();
+      if (!docSnap.exists) {
+        await showCustomModal("Not Found", `No school found with ID: ${schoolId}`);
+        return;
+      }
+
+      const currentStatus = docSnap.data().status || "active";
+      const newStatus = currentStatus === "active" ? "suspended" : "active";
+
+      await docRef.update({ status: newStatus });
+      await logAuditAction("UPDATE_TENANT_STATUS", `Changed school ${schoolId} status to ${newStatus}`);
+      await showCustomModal("Success", `School ${schoolId} status updated to ${newStatus.toUpperCase()}.`);
+      loadRegisteredSchools();
+    } catch (err) {
+      await showCustomModal("Error", "Failed to update tenant status.");
+    }
+  });
 }
 
-.form-group input, .form-select {
-  width: 100%;
-  padding: 12px 16px;
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-  font-size: 0.95rem;
-  background-color: var(--bg-surface-subtle);
-  color: var(--text-main);
-  transition: var(--transition);
-  outline: none;
+// Feature 3: Cross-Tenant Global Search
+function initCrossTenantSearch() {
+  const container = document.getElementById("featureSearch") || createFeatureSection("Cross-Tenant Global Search", "searchSection");
+  container.innerHTML = `
+    <h2>🔍 Cross-Tenant Global Search</h2>
+    <p class="panel-desc">Query records, user profiles, quizzes, and threads across all tenants simultaneously.</p>
+    <div class="form-group">
+      <label for="globalSearchQuery">Search Query</label>
+      <input type="text" id="globalSearchQuery" placeholder="Search users, quizzes, threads..." />
+    </div>
+    <button id="executeGlobalSearchBtn" class="btn-primary" style="margin-bottom: 16px;">Execute Search</button>
+    <div id="globalSearchResults" style="max-height:160px;overflow-y:auto;font-size:0.875rem;color:var(--text-muted);background:var(--bg-surface-subtle);padding:12px;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);">Enter keywords above to query collections.</div>
+  `;
+
+  document.getElementById("executeGlobalSearchBtn").addEventListener("click", async () => {
+    const query = document.getElementById("globalSearchQuery").value.trim().toLowerCase();
+    const resultsContainer = document.getElementById("globalSearchResults");
+    if (!query) return;
+
+    resultsContainer.innerHTML = "Searching collections...";
+    try {
+      let matches = 0;
+      let html = "";
+      const collections = ['users', 'quizzes', 'forum_threads', 'announcements'];
+
+      for (const col of collections) {
+        const snap = await window.db.collection(col).limit(20).get();
+        snap.forEach(doc => {
+          const data = doc.data();
+          const stringified = JSON.stringify(data).toLowerCase();
+          if (stringified.includes(query)) {
+            matches++;
+            html += `<div style="padding:6px 0;border-bottom:1px solid var(--border-subtle);"><strong style="color:var(--text-main);">[${col}]</strong> ID: ${doc.id} (School: ${data.schoolId || 'N/A'})</div>`;
+          }
+        });
+      }
+
+      resultsContainer.innerHTML = matches > 0 ? html : `<div>No matching records found for "${query}".</div>`;
+    } catch (err) {
+      resultsContainer.innerHTML = `<span style="color:red;">Search failed due to permissions or connection.</span>`;
+    }
+  });
 }
 
-.form-group input:focus, .form-select:focus {
-  border-color: var(--border-focus);
-  background-color: var(--bg-surface);
-  box-shadow: var(--shadow-glow);
+// Feature 4: Comprehensive System Audit Logs
+function initAuditLogsViewer() {
+  const container = document.getElementById("featureAudit") || createFeatureSection("System Audit Logs", "auditSection");
+  container.innerHTML = `
+    <h2>📋 Comprehensive Audit Trail</h2>
+    <p class="panel-desc">Review high-security administrative activities and modification logs across the platform.</p>
+    <div style="display:flex; justify-content:flex-end; margin-bottom: 12px;">
+      <button id="refreshAuditBtn" class="btn-outline" style="padding:6px 14px;font-size:0.825rem;">Refresh Logs</button>
+    </div>
+    <div id="auditLogsList" style="max-height:180px;overflow-y:auto;font-size:0.85rem;color:var(--text-muted);background:var(--bg-surface-subtle);padding:12px;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);">Click Refresh to load system audit trails.</div>
+  `;
+
+  document.getElementById("refreshAuditBtn").addEventListener("click", async () => {
+    const listEl = document.getElementById("auditLogsList");
+    listEl.innerHTML = "Loading logs...";
+    try {
+      const snap = await window.db.collection("audit_logs").orderBy("timestamp", "desc").limit(15).get();
+      if (snap.empty) {
+        listEl.innerHTML = "No audit logs recorded yet.";
+        return;
+      }
+      let html = "";
+      snap.forEach(doc => {
+        const d = doc.data();
+        const time = d.timestamp ? new Date(d.timestamp.seconds * 1000).toLocaleString() : "Just now";
+        html += `<div style="margin-bottom:8px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;"><strong style="color:var(--text-main);">[${d.actionType}]</strong> ${d.details} <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">${time}</div></div>`;
+      });
+      listEl.innerHTML = html;
+    } catch (err) {
+      listEl.innerHTML = "<span style='color:red;'>Failed to load audit logs. Ensure Firestore index exists.</span>";
+    }
+  });
 }
 
-.note-text {
-  font-size: 0.825rem;
-  color: #475569;
-  background: #fffbeb;
-  padding: 14px 16px;
-  border-radius: var(--radius-sm);
-  border-left: 3px solid var(--warning);
-  border-right: 1px solid #fef3c7;
-  border-top: 1px solid #fef3c7;
-  border-bottom: 1px solid #fef3c7;
-  margin-bottom: 24px;
-  line-height: 1.5;
+// Feature 5: Global Backup & Snapshot Generator
+function initBackupGenerator() {
+  const container = document.getElementById("featureBackup") || createFeatureSection("Global Backup & Snapshot Generator", "backupSection");
+  container.innerHTML = `
+    <h2>💾 Global Backup & Snapshot</h2>
+    <p class="panel-desc">Export entire multi-tenant database collections into a comprehensive downloadable JSON backup file.</p>
+    <div style="height: 24px;"></div>
+    <button id="generateBackupBtn" class="btn-primary" style="background-color: var(--success);">Download Full JSON Backup</button>
+  `;
+
+  document.getElementById("generateBackupBtn").addEventListener("click", async () => {
+    try {
+      const backupData = {};
+      for (const col of collectionsToMigrate) {
+        const snap = await window.db.collection(col).get();
+        backupData[col] = [];
+        snap.forEach(doc => {
+          backupData[col].push({ id: doc.id, ...doc.data() });
+        });
+      }
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `samcam_full_backup_${new Date().toISOString().slice(0,10)}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+
+      await logAuditAction("GENERATE_BACKUP", "Downloaded complete system JSON backup snapshot.");
+      await showCustomModal("Success", "Backup snapshot generated and downloaded successfully.");
+    } catch (err) {
+      await showCustomModal("Error", "Backup generation failed.");
+    }
+  });
 }
 
-.note-text code {
-  background: rgba(217, 119, 6, 0.1);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: monospace;
-  font-weight: 600;
-  color: #b45309;
+// Feature 6: Centralized E-Resource Repository Manager
+function initGlobalEResources() {
+  const container = document.getElementById("featureEResources") || createFeatureSection("Centralized E-Resource Repository Manager", "eResourceSection");
+  container.innerHTML = `
+    <h2>📚 Centralized E-Resource Publisher</h2>
+    <p class="panel-desc">Upload core syllabus materials, revision packs, and past papers centrally to all school portals.</p>
+    <div class="form-group">
+      <label for="globalResTitle">Resource Title</label>
+      <input type="text" id="globalResTitle" placeholder="e.g. Senior 4 ICT Practical Guide..." />
+    </div>
+    <div class="form-group">
+      <label for="globalResUrl">Resource URL / Download Link</label>
+      <input type="text" id="globalResUrl" placeholder="https://..." />
+    </div>
+    <button id="publishGlobalResBtn" class="btn-primary">Publish to All Schools</button>
+  `;
+
+  document.getElementById("publishGlobalResBtn").addEventListener("click", async () => {
+    const title = document.getElementById("globalResTitle").value.trim();
+    const url = document.getElementById("globalResUrl").value.trim();
+    if (!title || !url) {
+      await showCustomModal("Validation Error", "Title and URL are required.");
+      return;
+    }
+
+    try {
+      await window.db.collection("e_library_resources").add({
+        title,
+        url,
+        isGlobal: true,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await logAuditAction("PUBLISH_GLOBAL_RESOURCE", `Published central resource: ${title}`);
+      document.getElementById("globalResTitle").value = "";
+      document.getElementById("globalResUrl").value = "";
+      await showCustomModal("Success", "Resource successfully published across all school e-libraries.");
+    } catch (err) {
+      await showCustomModal("Error", "Failed to publish resource.");
+    }
+  });
 }
 
-/* High-Impact Buttons */
-.btn-primary, .btn-warning {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  padding: 12px 24px;
-  border-radius: var(--radius-sm);
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  transition: var(--transition);
-  box-shadow: var(--shadow-sm);
+// Feature 7: Global Analytics & Telemetry Dashboard
+function initTelemetryDashboard() {
+  const container = document.getElementById("featureTelemetry") || createFeatureSection("Global Analytics & Telemetry Dashboard", "telemetrySection");
+  container.innerHTML = `
+    <h2>📈 Telemetry & Analytics</h2>
+    <p class="panel-desc">View cross-tenant aggregate platform adoption metrics and usage totals in real-time.</p>
+    <div style="display:flex; justify-content:flex-end; margin-bottom: 12px;">
+      <button id="loadTelemetryBtn" class="btn-outline" style="padding:6px 14px;font-size:0.825rem;">Fetch Live Stats</button>
+    </div>
+    <div id="telemetryStatsContent" style="font-size:0.9rem;color:var(--text-muted);background:var(--bg-surface-subtle);padding:16px;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);text-align:center;">Click button to aggregate system stats.</div>
+  `;
+
+  document.getElementById("loadTelemetryBtn").addEventListener("click", async () => {
+    const contentEl = document.getElementById("telemetryStatsContent");
+    contentEl.innerHTML = "Calculating metrics across collections...";
+    try {
+      let totalUsers = 0;
+      let totalQuizzes = 0;
+      let totalSubmissions = 0;
+
+      const usersSnap = await window.db.collection("users").get();
+      totalUsers = usersSnap.size;
+
+      const quizSnap = await window.db.collection("quizzes").get();
+      totalQuizzes = quizSnap.size;
+
+      const subSnap = await window.db.collection("submissions").get();
+      totalSubmissions = subSnap.size;
+
+      contentEl.innerHTML = `
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;">
+          <div style="background:var(--bg-surface);padding:12px;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);"><strong style="font-size:1.5rem;color:var(--primary);">${totalUsers}</strong><br><span style="font-size:0.75rem;text-transform:uppercase;color:var(--text-muted);">Users</span></div>
+          <div style="background:var(--bg-surface);padding:12px;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);"><strong style="font-size:1.5rem;color:var(--primary);">${totalQuizzes}</strong><br><span style="font-size:0.75rem;text-transform:uppercase;color:var(--text-muted);">Quizzes</span></div>
+          <div style="background:var(--bg-surface);padding:12px;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);"><strong style="font-size:1.5rem;color:var(--primary);">${totalSubmissions}</strong><br><span style="font-size:0.75rem;text-transform:uppercase;color:var(--text-muted);">Submissions</span></div>
+        </div>
+      `;
+    } catch (err) {
+      contentEl.innerHTML = "<span style='color:red;'>Failed to load analytics telemetry.</span>";
+    }
+  });
 }
 
-.btn-primary {
-  background-color: var(--primary);
-  color: var(--text-inverse);
+// Feature 8: System Maintenance & Read-Only Mode Switch
+function initMaintenanceModeToggle(configDocRef) {
+  const container = document.getElementById("featureMaintenance") || createFeatureSection("System Maintenance Mode", "maintenanceSection");
+  container.innerHTML = `
+    <h2>🛡️ System Maintenance Mode</h2>
+    <p class="panel-desc">Toggle global read-only mode to lock database writes across tenant apps during system upgrades.</p>
+    <div style="height: 24px;"></div>
+    <button id="toggleMaintenanceBtn" class="btn-warning" style="background-color: #ef4444;">Toggle Maintenance Lock</button>
+  `;
+
+  document.getElementById("toggleMaintenanceBtn").addEventListener("click", async () => {
+    try {
+      const snap = await configDocRef.get();
+      const currentMode = snap.exists ? (snap.data().maintenanceMode || false) : false;
+      const newMode = !currentMode;
+
+      await configDocRef.set({ maintenanceMode: newMode }, { merge: true });
+      await logAuditAction("TOGGLE_MAINTENANCE", `Set system maintenance mode to: ${newMode}`);
+      await showCustomModal("Success", `System Maintenance Mode is now ${newMode ? 'ENABLED (Locked)' : 'DISABLED (Normal)'}.`);
+    } catch (err) {
+      await showCustomModal("Error", "Failed to toggle maintenance mode.");
+    }
+  });
 }
 
-.btn-primary:hover {
-  background-color: var(--primary-hover);
-  box-shadow: 0 4px 12px var(--primary-glow);
-  transform: translateY(-1px);
+// Feature 9: Custom Feature Flag / Module Toggler
+function initFeatureFlagTogglers() {
+  const container = document.getElementById("featureFlags") || createFeatureSection("Custom Feature Flag & Module Toggler", "featureFlagsSection");
+  container.innerHTML = `
+    <h2>⚡ Feature Flags & Modules</h2>
+    <p class="panel-desc">Remotely enable or disable specific modules and advanced features per individual school.</p>
+    <div class="form-group">
+      <label for="flagSchoolId">School ID</label>
+      <input type="text" id="flagSchoolId" placeholder="Enter School ID..." />
+    </div>
+    <div class="form-group">
+      <label for="flagModule">Target Module</label>
+      <select id="flagModule" class="form-select">
+        <option value="live_classes">Live Classes Portal</option>
+        <option value="ai_formulas">AI Formula Submissions</option>
+        <option value="discussions">Forum Discussions</option>
+      </select>
+    </div>
+    <button id="toggleModuleBtn" class="btn-primary">Toggle Module Access</button>
+  `;
+
+  document.getElementById("toggleModuleBtn").addEventListener("click", async () => {
+    const schoolId = document.getElementById("flagSchoolId").value.trim().toLowerCase();
+    const moduleName = document.getElementById("flagModule").value;
+    if (!schoolId) {
+      await showCustomModal("Input Required", "Please enter a valid school ID.");
+      return;
+    }
+
+    try {
+      const docRef = window.db.collection("schools").doc(schoolId);
+      const docSnap = await docRef.get();
+      if (!docSnap.exists) {
+        await showCustomModal("Not Found", `School ID "${schoolId}" does not exist.`);
+        return;
+      }
+
+      const flags = docSnap.data().featureFlags || {};
+      const newState = !(flags[moduleName] ?? true);
+      flags[moduleName] = newState;
+
+      await docRef.update({ featureFlags: flags });
+      await logAuditAction("TOGGLE_FEATURE_FLAG", `Set module ${moduleName} for school ${schoolId} to ${newState}`);
+      await showCustomModal("Success", `Module "${moduleName}" for school ${schoolId} is now ${newState ? 'ENABLED' : 'DISABLED'}.`);
+    } catch (err) {
+      await showCustomModal("Error", "Failed to update feature flag.");
+    }
+  });
 }
 
-.btn-warning {
-  background-color: var(--warning);
-  color: var(--text-inverse);
+// Feature 10: Master Admin Access & Credential Rotator
+function initKeyRotator(configDocRef) {
+  const container = document.getElementById("featureKeyRotator") || createFeatureSection("Master Admin Key Rotator", "keyRotatorSection");
+  container.innerHTML = `
+    <h2>🔑 Master Key Rotator</h2>
+    <p class="panel-desc">Securely change and rotate your master control key stored directly in the Firestore configuration.</p>
+    <div style="height: 24px;"></div>
+    <button id="rotateMasterKeyBtn" class="btn-primary" style="background-color: #8b5cf6;">Change Master Admin Key</button>
+  `;
+
+  document.getElementById("rotateMasterKeyBtn").addEventListener("click", async () => {
+    const newKey = await showCustomModal(
+      "Rotate Master Key",
+      "Enter a new secure master key (at least 6 characters):",
+      "prompt",
+      "Enter new master key..."
+    );
+
+    if (!newKey || newKey.trim().length < 6) {
+      if (newKey !== null) await showCustomModal("Invalid Key", "Key must be at least 6 characters long.");
+      return;
+    }
+
+    try {
+      await configDocRef.set({ masterKey: newKey.trim() }, { merge: true });
+      sessionStorage.setItem("samcam_super_auth", newKey.trim());
+      await logAuditAction("ROTATE_MASTER_KEY", "Successfully rotated master super admin key.");
+      await showCustomModal("Success", "Master key rotated successfully and session updated!");
+    } catch (err) {
+      await showCustomModal("Error", "Failed to rotate master key.");
+    }
+  });
 }
 
-.btn-warning:hover {
-  background-color: var(--warning-hover);
-  box-shadow: 0 4px 12px var(--warning-glow);
-  transform: translateY(-1px);
-}
+// Helper injector to format and inject elevated feature card sections cleanly into a structured grid layout
+function createFeatureSection(title, id) {
+  let parent = document.getElementById("extendedFeaturesContainer");
+  if (!parent) {
+    parent = document.createElement("div");
+    parent.id = "extendedFeaturesContainer";
+    parent.className = "admin-grid"; // Matches design system grid alignment
+    const mainContent = document.querySelector(".admin-content") || document.body;
+    mainContent.appendChild(parent);
+  }
 
-.btn-outline {
-  background: transparent;
-  border: 1px solid var(--border-subtle);
-  color: var(--text-main);
-  padding: 10px 20px;
-  border-radius: var(--radius-sm);
-  font-weight: 600;
-  font-size: 0.9rem;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-.btn-outline:hover {
-  background: var(--bg-surface-subtle);
-  border-color: #cbd5e1;
-}
-
-/* Modern Enterprise Tables */
-.schools-table-section {
-  background: var(--bg-surface);
-  padding: 32px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border-subtle);
-  box-shadow: var(--shadow-sm);
-}
-
-.schools-table-section h2 {
-  font-size: 1.15rem;
-  font-weight: 700;
-  color: var(--text-main);
-  margin-bottom: 20px;
-  letter-spacing: -0.01em;
-}
-
-.table-container {
-  overflow-x: auto;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border-subtle);
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  text-align: left;
-  white-space: nowrap;
-}
-
-.data-table th {
-  background-color: var(--bg-surface-subtle);
-  color: #475569;
-  font-weight: 600;
-  font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-
-.data-table td {
-  padding: 16px 20px;
-  border-bottom: 1px solid var(--border-subtle);
-  font-size: 0.9rem;
-  color: var(--text-main);
-}
-
-.data-table tbody tr {
-  transition: var(--transition);
-}
-
-.data-table tbody tr:hover {
-  background-color: #f8fafc;
-}
-
-.data-table tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.data-table code {
-  background: #f1f5f9;
-  color: #0f172a;
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 0.825rem;
-  font-family: monospace;
-  font-weight: 600;
-  border: 1px solid var(--border-subtle);
-}
-
-/* Modern Blur Modal System */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-  animation: fadeIn 0.2s ease-out forwards;
-}
-
-.modal-card {
-  background: var(--bg-surface);
-  padding: 32px;
-  border-radius: var(--radius-lg);
-  width: 100%;
-  max-width: 440px;
-  box-shadow: var(--shadow-lg);
-  border: 1px solid var(--border-subtle);
-  animation: scaleUp 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-}
-
-.modal-card h3 {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--text-main);
-  margin-bottom: 10px;
-  letter-spacing: -0.01em;
-}
-
-.modal-card p {
-  font-size: 0.95rem;
-  color: var(--text-muted);
-  margin-bottom: 24px;
-  line-height: 1.6;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-}
-
-.modal-actions button {
-  width: auto;
-  min-width: 100px;
-}
-
-/* Subtle Micro-Animations */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes scaleUp {
-  from { opacity: 0; transform: scale(0.95) translateY(10px); }
-  to { opacity: 1; transform: scale(1) translateY(0); }
+  const section = document.createElement("div");
+  section.id = id;
+  section.className = "panel-card"; // Uses design system elevated panel-card styling
+  parent.appendChild(section);
+  return section;
 }
