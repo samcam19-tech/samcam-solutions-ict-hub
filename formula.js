@@ -859,13 +859,14 @@ function setupAdminImportModule() {
         adminContainer.style.display = "none";
     }
 }
+
 // ==========================================
 // SYNTAX HIGHLIGHTER ENGINE FOR FORMULAS
 // ==========================================
 function highlightFormula(text) {
     if (!text) return '';
     
-    // Escape HTML characters safely
+    // Safely escape HTML characters
     const safeText = text
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -873,44 +874,45 @@ function highlightFormula(text) {
 
     let bracketDepth = 0;
 
-    // Tokenize and wrap elements with syntax classes (Fixed regex capture group syntax)
-    return safeText.replace(/(=)|([A-Z][A-Z0-9_]*\b(?=\s*\())|([()])/g, (match, eq, func, bracket) => {
-        if (eq) return `<span class="token-equals">${eq}</span>`;
-        if (func) return `<span class="token-function">${func}</span>`;
-        if (bracket) {
-            if (bracket === '(') {
-                bracketDepth++;
+    return safeText
+        .replace(/(=)|([A-Z][A-Z0-9_]*\b(?=\s*\())|([()])/g, (match, eq, func, bracket) => {
+            if (eq) return `<span class="token-equals">${eq}</span>`;
+            if (func) return `<span class="token-function">${func}</span>`;
+            if (bracket) {
+                if (bracket === '(') bracketDepth++;
+                const currentLevel = Math.min(64, Math.max(1, bracketDepth));
+                const bracketClass = `token-bracket-${currentLevel}`;
+                if (bracket === ')') bracketDepth = Math.max(0, bracketDepth - 1);
+                return `<span class="${bracketClass}">${bracket}</span>`;
             }
-            // Cap at 64 to securely handle up to the maximum Excel nested limit
-            const currentLevel = Math.min(64, Math.max(1, bracketDepth));
-            const bracketClass = `token-bracket-${currentLevel}`;
-            
-            if (bracket === ')') {
-                bracketDepth = Math.max(0, bracketDepth - 1);
-            }
-            return `<span class="${bracketClass}">${bracket}</span>`;
-        }
-        return match;
-    }).replace(/([A-Z]+\d+:[A-Z]+\d+|[A-Z]+\d+|\$[A-Z]+\$\d+)/g, '<span class="token-cell">$1</span>')
-      .replace(/(&quot;[^&]*&quot;|'[^']*'|"[^"]*")/g, '<span class="token-string">$1</span>')
-      .replace(/([+\-*/^=<>]=?)/g, '<span class="token-operator">$1</span>');
+            return match;
+        })
+        .replace(/([A-Z]+\d+:[A-Z]+\d+|[A-Z]+\d+|\$[A-Z]+\$\d+)/g, '<span class="token-cell">$1</span>')
+        .replace(/(&quot;[^&]*&quot;|'[^']*'|"[^"]*")/g, '<span class="token-string">$1</span>')
+        .replace(/([+\-*/^=<>]=?)/g, '<span class="token-operator">$1</span>');
 }
 
 document.addEventListener("DOMContentLoaded", () => {
     const textarea = document.getElementById('studentAnswer');
-    const backdrop = document.getElementById('formulaBackdrop');
+    const backdropCode = document.getElementById('formulaBackdrop');
+    const container = textarea ? textarea.closest('.editor-container') : null;
 
-    if (textarea && backdrop) {
+    if (textarea && backdropCode) {
         function updateEditor() {
-            // CRITICAL: Always pass raw textarea.value, never innerHTML or backdrop content
-            backdrop.innerHTML = highlightFormula(textarea.value) + '<br>';
+            // CRITICAL: Always read raw text from textarea.value
+            // Append a trailing space or newline to match textarea sizing behavior in <pre> elements
+            backdropCode.innerHTML = highlightFormula(textarea.value) + ' ';
         }
 
         textarea.addEventListener('input', updateEditor);
-        textarea.addEventListener('scroll', () => {
-            backdrop.scrollTop = textarea.scrollTop;
-            backdrop.scrollLeft = textarea.scrollLeft;
-        });
+        
+        // Sync scrolling if container or textarea scrolls
+        if (container) {
+            textarea.addEventListener('scroll', () => {
+                container.scrollTop = textarea.scrollTop;
+                container.scrollLeft = textarea.scrollLeft;
+            });
+        }
 
         // Initial paint
         updateEditor();
