@@ -73,7 +73,7 @@ const collectionsToMigrate = [
 ];
 
 // Set your authorized Master Super Admin Firebase UID here
-const MASTER_ADMIN_UID = "xaQVWdmhd7ST9m6yUHRq7...", // Replace with your exact UID from Firebase Auth
+const MASTER_ADMIN_UID = "KBaidbZeq7bluAP4FydqChMRV9F2", // Replace with your exact UID from Firebase Auth
 
 document.addEventListener("DOMContentLoaded", () => {
   // Update collections targeted count display on load
