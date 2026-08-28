@@ -377,8 +377,7 @@ function validateStudentAnswer(question, inputStr) {
         }
             
         case "EXCEL_VLOOKUP":
-        case "EXCEL_HLOOKUP":
-        case "EXCEL_LOOKUP": {
+        case "EXCEL_HLOOKUP": {
             const func = rule.replace('EXCEL_', '');
             const pattern = new RegExp(`^=\\s*${func}\\s*\\(\\s*(.+)\\s*\\)$`, 'i');
             const match = cleanInput.match(pattern);
@@ -389,14 +388,18 @@ function validateStudentAnswer(question, inputStr) {
 
             const args = splitExcelArguments(match[1]);
             
-            if (func === 'VLOOKUP' || func === 'HLOOKUP') {
-                if (args.length < 3 || args.length > 4) {
-                    return { correct: false, message: `#VALUE! Error: =${func} requires 3 or 4 arguments (lookup_value, table_array, col_index_num, [range_lookup]). Found ${args.length}.` };
-                }
-            } else if (func === 'LOOKUP') {
-                if (args.length < 2 || args.length > 3) {
-                    return { correct: false, message: `#VALUE! Error: =LOOKUP requires 2 or 3 arguments. Found ${args.length}.` };
-                }
+            if (args.length < 3 || args.length > 4) {
+                return { correct: false, message: `#VALUE! Error: =${func} requires 3 or 4 arguments (lookup_value, table_array, col_index_num, [range_lookup]). Found ${args.length}.` };
+            }
+
+            const tableArrayArg = args[1].trim();
+            const hasAbsoluteRef = /\$[A-Z]+\$\d+/.test(tableArrayArg) || /\$[A-Z]+[A-Z]*\d+/.test(tableArrayArg) || /[A-Z]+\$\d+/.test(tableArrayArg);
+
+            if (!hasAbsoluteRef) {
+                return {
+                    correct: false,
+                    message: `#REF! Error: The table array (${tableArrayArg}) must use absolute cell referencing (e.g., $A$1:$D$10) to prevent shifting when copied.`
+                };
             }
 
             const correct = upperInput.includes(expected.toUpperCase());
@@ -405,6 +408,29 @@ function validateStudentAnswer(question, inputStr) {
                 message: correct 
                     ? `Correct! "${cleanInput}" matches required ${func} layout criteria and parameters.` 
                     : `#N/A Error: Verify your lookup parameters, reference structure, and table array for =${func}().`
+            };
+        }
+
+        case "EXCEL_LOOKUP": {
+            const pattern = /^=\s*LOOKUP\s*\(\s*(.+)\s*\)$/i;
+            const match = cleanInput.match(pattern);
+            
+            if (!match) {
+                return { correct: false, message: `#NAME? Error: Verify your function syntax and parenthesis layout for =LOOKUP().` };
+            }
+
+            const args = splitExcelArguments(match[1]);
+            
+            if (args.length < 2 || args.length > 3) {
+                return { correct: false, message: `#VALUE! Error: =LOOKUP requires 2 or 3 arguments. Found ${args.length}.` };
+            }
+
+            const correct = upperInput.includes(expected.toUpperCase());
+            return {
+                correct,
+                message: correct 
+                    ? `Correct! "${cleanInput}" matches required LOOKUP layout criteria and parameters.` 
+                    : `#N/A Error: Verify your lookup parameters and reference structure for =LOOKUP().`
             };
         }
             
