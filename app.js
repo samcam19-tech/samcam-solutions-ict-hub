@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SAMCAM SOLUTIONS - ACADEMIC PORTAL HUB ENGINE (v2.6 - Download Counter Integrated)
+   SAMCAM SOLUTIONS - ACADEMIC PORTAL HUB ENGINE (v2.7 - Tenant Isolated & Hardened)
    ========================================================================== */
 
 let allResources = [];
@@ -35,7 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Load state from URL parameters first before fetching data
   loadStateFromURL();
 
-  // Fetch data live from Firebase Firestore filtered by schoolId
+  // Fetch data live from Firebase Firestore filtered securely by tenant context
   fetchResourcesFromFirestore();
 
   // Scroll listener for Back to Top Button
@@ -103,7 +103,7 @@ function syncUIControls() {
 }
 
 /* ==========================================================================
-   DATA FETCHING & INITIALIZATION (FIREBASE FIRESTORE)
+   DATA FETCHING & TENANT-ISOLATED INITIALIZATION (FIREBASE FIRESTORE)
    ========================================================================== */
 function fetchResourcesFromFirestore() {
   if (!db) {
@@ -112,9 +112,17 @@ function fetchResourcesFromFirestore() {
     return;
   }
 
-  // Build query scoped to schoolId if specified
+  // 1. Automatically detect schoolId from user session if not explicitly defined in global state
+  if (!currentSchoolId) {
+    const session = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser') || '{}');
+    if (session.schoolId || session.schoolID) {
+      currentSchoolId = (session.schoolId || session.schoolID).toLowerCase().trim();
+    }
+  }
+
+  // 2. Build strict query scoped to schoolId if specified
   let queryRef = db.collection('e_library_resources');
-  if (currentSchoolId) {
+  if (currentSchoolId && currentSchoolId !== 'global' && currentSchoolId !== 'all') {
     queryRef = queryRef.where('schoolId', '==', currentSchoolId);
   }
 
@@ -126,21 +134,20 @@ function fetchResourcesFromFirestore() {
         id: doc.id,
         title: data.title || 'Untitled Resource',
         description: data.description || '',
-        class: data.classLevel || 'S1',        // Mapped to your 'classLevel' field
+        class: data.classLevel || 'S1',        
         category: data.category || 'Notes',
-        accessType: data.accessType || 'free',  // Mapped to 'free' or 'paid'
-        price: Number(data.price) || 0,         // Mapped to numeric 'price' field
-        schoolId: data.schoolId || 'global',    // Mapped to multi-tenant schoolId field
+        accessType: data.accessType || 'free',  
+        price: Number(data.price) || 0,          
+        schoolId: (data.schoolId || 'global').toLowerCase(),    
         fileUrl: data.fileUrl || '#',
         fileName: data.fileName || '',
         fileType: data.fileType || '',
         date: data.date || '2026',
-        downloads: Number(data.downloads) || 0, // Download counter field
+        downloads: Number(data.downloads) || 0, 
         createdAt: data.createdAt
       });
     });
 
-    // Cache locally as an offline backup safeguard
     try {
       localStorage.setItem('portal_resources', JSON.stringify(allResources));
     } catch (e) {
@@ -248,7 +255,7 @@ function resetFilters() {
   });
   
   updateURL();
-  fetchResourcesFromFirestore(); // Re-fetch without schoolId filter
+  fetchResourcesFromFirestore(); // Re-fetch data refresh
 }
 
 // --- DOWNLOAD COUNTER INCREMENT HELPER ---
@@ -449,7 +456,12 @@ function renderCards() {
   const filtered = allResources.filter(item => {
     const matchesClass = currentClass === 'ALL' || item.class === currentClass;
     const matchesCat = currentCategory === 'ALL' || item.category === currentCategory;
-    const matchesSchool = !currentSchoolId || item.schoolId === currentSchoolId || item.schoolId === 'global';
+    
+    // Strict Tenant Isolation Rule: Item must belong to user's schoolId OR be marked global
+    const itemSchool = (item.schoolId || 'global').toLowerCase();
+    const activeSchool = (currentSchoolId || '').toLowerCase();
+    const matchesSchool = !activeSchool || activeSchool === 'all' || itemSchool === activeSchool || itemSchool === 'global';
+
     const matchesSearch = !searchQuery || 
       (item.title && item.title.toLowerCase().includes(searchQuery)) ||
       (item.description && item.description.toLowerCase().includes(searchQuery)) ||
