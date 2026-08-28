@@ -1,4 +1,84 @@
+// Custom Modal Helper Utility
+function showCustomModal(title, message, type = "alert", inputPlaceholder = "") {
+  return new Promise((resolve) => {
+    const modal = document.getElementById("customModal");
+    const titleEl = document.getElementById("modalTitle");
+    const msgEl = document.getElementById("modalMessage");
+    const confirmBtn = document.getElementById("modalConfirmBtn");
+    const cancelBtn = document.getElementById("modalCancelBtn");
+    const inputContainer = document.getElementById("modalInputContainer");
+    const inputField = document.getElementById("modalInput");
+
+    if (!modal) {
+      // Fallback if modal HTML isn't loaded yet
+      if (type === "confirm") resolve(window.confirm(message));
+      else if (type === "prompt") resolve(window.prompt(message));
+      else { window.alert(message); resolve(true); }
+      return;
+    }
+
+    titleEl.innerText = title;
+    msgEl.innerText = message;
+    inputField.value = "";
+
+    if (type === "confirm") {
+      cancelBtn.style.display = "inline-block";
+      inputContainer.style.display = "none";
+    } else if (type === "prompt") {
+      cancelBtn.style.display = "inline-block";
+      inputContainer.style.display = "block";
+      inputField.placeholder = inputPlaceholder;
+    } else {
+      cancelBtn.style.display = "none";
+      inputContainer.style.display = "none";
+    }
+
+    modal.style.display = "flex";
+    if (type === "prompt") inputField.focus();
+
+    const newConfirm = confirmBtn.cloneNode(true);
+    const newCancel = cancelBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+    cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+    newConfirm.addEventListener("click", () => {
+      modal.style.display = "none";
+      resolve(type === "prompt" ? inputField.value : true);
+    });
+
+    newCancel.addEventListener("click", () => {
+      modal.style.display = "none";
+      resolve(type === "prompt" ? null : false);
+    });
+  });
+}
+
+// Complete list of all system collections to ensure full migration
+const collectionsToMigrate = [
+  'announcements',
+  'audit_logs',
+  'blog_posts',
+  'challenges',
+  'e_library_resources',
+  'formulaSubmissions',
+  'forum_threads',
+  'live_classes',
+  'notifications',
+  'pending_payments',
+  'portal_resources',
+  'quiz_results',
+  'quizzes',
+  'submissions',
+  'users'
+];
+
 document.addEventListener("DOMContentLoaded", () => {
+  // Update collections targeted count display on load
+  const collectionsCountEl = document.getElementById("collectionsCount");
+  if (collectionsCountEl) {
+    collectionsCountEl.innerText = collectionsToMigrate.length;
+  }
+
   // Wait slightly to ensure initializeSamcamFirebase has bound window.db
   const checkDbInterval = setInterval(() => {
     if (window.db) {
@@ -69,12 +149,12 @@ function setupAdminActions() {
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
-      alert(`Success! School instance "${schoolName}" has been provisioned.`);
+      await showCustomModal("Success", `School instance "${schoolName}" has been provisioned.`);
       document.getElementById("superSchoolForm").reset();
       loadRegisteredSchools();
     } catch (error) {
       console.error("Error provisioning school:", error);
-      alert("Error: Failed to register school instance.");
+      await showCustomModal("Error", "Failed to register school instance.");
     }
   });
 
@@ -83,33 +163,19 @@ function setupAdminActions() {
     const targetSchoolId = document.getElementById("targetSchoolSelect").value;
     
     if (!targetSchoolId) {
-      alert("Please select a target school first to map the legacy collections into.");
+      await showCustomModal("Selection Required", "Please select a target school first to map the legacy collections into.");
       return;
     }
 
-    if (!confirm(`Are you sure you want to map all unassigned root data documents to school ID: "${targetSchoolId}"?`)) {
+    const confirmed = await showCustomModal(
+      "Confirm Migration", 
+      `Are you sure you want to map all unassigned root data documents across all ${collectionsToMigrate.length} collections to school ID: "${targetSchoolId}"?`, 
+      "confirm"
+    );
+
+    if (!confirmed) {
       return;
     }
-
-    // Complete list of all system collections to ensure full migration
-    const collectionsToMigrate = [
-      'announcements',
-      'audit_logs',
-      'blog_posts',
-      'challenges',
-      'e_library_resources',
-      'formulaSubmissions',
-      'forum_threads',
-      'live_classes',
-      'notifications',
-      'pending_payments',
-      'portal_resources',
-      'quiz_results',
-      'quizzes',
-      'submissions',
-      'users'
-    ];
-    document.getElementById("collectionsCount").innerText = collectionsToMigrate.length;
 
     try {
       let totalUpdated = 0;
@@ -127,10 +193,10 @@ function setupAdminActions() {
         await batch.commit();
       }
 
-      alert(`Migration completed successfully! ${totalUpdated} total documents across root collections were successfully linked to ${targetSchoolId}.`);
+      await showCustomModal("Migration Complete", `Migration completed successfully! ${totalUpdated} total documents across root collections were successfully linked to ${targetSchoolId}.`);
     } catch (error) {
       console.error("Migration process failed:", error);
-      alert("Migration failed. Check browser console for security or structural errors.");
+      await showCustomModal("Migration Error", "Migration failed. Check browser console for security or structural errors.");
     }
   });
 }
