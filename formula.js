@@ -861,12 +861,12 @@ function setupAdminImportModule() {
 }
 
 // ==========================================
-// SYNTAX HIGHLIGHTER ENGINE FOR FORMULAS
+// CLEAN SYNTAX HIGHLIGHTER ENGINE
 // ==========================================
 function highlightFormula(text) {
     if (!text) return '';
     
-    // 1. Escape HTML characters safely
+    // 1. Escape HTML entities
     const safeText = text
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -874,7 +874,7 @@ function highlightFormula(text) {
 
     let bracketDepth = 0;
 
-    // 2. Tokenize and wrap elements with syntax classes
+    // 2. Apply syntax tokens
     return safeText
         .replace(/(=)|([A-Z][A-Z0-9_]*\b(?=\s*\())|([()])/g, (match, eq, func, bracket) => {
             if (eq) return `<span class="token-equals">${eq}</span>`;
@@ -889,7 +889,7 @@ function highlightFormula(text) {
             return match;
         })
         .replace(/([A-Z]+\d+:[A-Z]+\d+|[A-Z]+\d+|\$[A-Z]+\$\d+)/g, '<span class="token-cell">$1</span>')
-        .replace(/(".*?"|'.*?')/g, '<span class="token-string">$1</span>') // Fixed string quote matching
+        .replace(/(".*?"|'.*?')/g, '<span class="token-string">$1</span>')
         .replace(/([+\-*/^=<>]=?)/g, '<span class="token-operator">$1</span>');
 }
 
@@ -898,18 +898,21 @@ document.addEventListener("DOMContentLoaded", () => {
     const backdropCode = document.getElementById('formulaBackdrop');
 
     if (textarea && backdropCode) {
-        function updateEditor() {
-            // CRITICAL: Pull raw, clean text exclusively from textarea.value
-            const rawText = textarea.value;
-            
-            // Render colored HTML into the background code element
-            backdropCode.innerHTML = highlightFormula(rawText) + ' ';
+        // SAFETY CLEANSE: If the textarea accidentally loaded with HTML code, wipe it clean
+        if (textarea.value.includes('<span')) {
+            textarea.value = '';
         }
 
-        // Listen for user typing
+        function updateEditor() {
+            // Read strictly from textarea.value (Plain text only)
+            const plainText = textarea.value;
+            backdropCode.innerHTML = highlightFormula(plainText) + ' ';
+        }
+
+        // Only listen to user typing input
         textarea.addEventListener('input', updateEditor);
 
-        // Sync scroll positions between input and background
+        // Sync scrolling
         textarea.addEventListener('scroll', () => {
             if (backdropCode.parentElement) {
                 backdropCode.parentElement.scrollTop = textarea.scrollTop;
@@ -917,10 +920,10 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
 
-        // Initial render paint on page load
         updateEditor();
     }
 });
+
 // ==========================================
 // 7. INITIALIZATION ON PAGE LOAD
 // ==========================================
