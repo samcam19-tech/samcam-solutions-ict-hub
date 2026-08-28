@@ -1,6 +1,6 @@
-/* ==========================================================================
-   SAMCAM SOLUTIONS - ASSESSMENT PORTAL ENGINE (script.js)
-   ========================================================================== */
+// ==========================================================================
+//    SAMCAM SOLUTIONS - ASSESSMENT PORTAL ENGINE (script.js)
+// ==========================================================================
 // Shared Portal State
 window.currentUser = null;
 let editingUsername = null;
@@ -64,7 +64,7 @@ function broadcastSessionUpdate(user) {
 }
 
 /* ==========================================================================
-   URL ROUTING (HISTORY API) & VIEW STATE MANAGEMENT
+    URL ROUTING (HISTORY API) & VIEW STATE MANAGEMENT
    ========================================================================== */
 window.navigateToView = function(viewName, pushState = true) {
   const loginSec = document.getElementById('loginSection');
@@ -114,7 +114,7 @@ window.addEventListener('popstate', (event) => {
 });
 
 /* ==========================================================================
-   UNIFIED INITIALIZATION & SESSION PERSISTENCE
+    UNIFIED INITIALIZATION & SESSION PERSISTENCE
    ========================================================================== */
 document.addEventListener("DOMContentLoaded", () => {
   // Navigation & Menu toggles
@@ -165,7 +165,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 /* ==========================================================================
-   1. AUTO-FILL REMEMBERED DETAILS ON PAGE LOAD
+    1. AUTO-FILL REMEMBERED DETAILS ON PAGE LOAD
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', () => {
   const savedUser = localStorage.getItem('portal_remembered_user');
@@ -188,7 +188,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 /* ==========================================================================
-   2. EXECUTE LOGIN (WITH SINGLE-DEVICE RESTRICTION & REMEMBER ME)
+    2. EXECUTE LOGIN (WITH SINGLE-DEVICE RESTRICTION & REMEMBER ME)
    ========================================================================== */
 /**
  * Helper function to fetch the user's actual public IP address and approximate location using ipwho.is
@@ -231,16 +231,16 @@ async function fetchClientIPAndLocation() {
 /**
  * Helper function to record login attempts with guaranteed Firestore write confirmation
  */
-async function logAuthenticationAttempt(status, username, failureReason = '—') {
+async function logAuthenticationAttempt(status, schoolId, failureReason = '—') {
   const clientData = await fetchClientIPAndLocation();
 
   const auditEntry = {
     status: status, // 'SUCCESS' or 'FAILED'
     timestamp: new Date().toISOString(),
-    username: username || 'unknown_user',
+    schoolId: schoolId || 'unknown_school_id',
     failureReason: failureReason,
     ipAddress: clientData.ip,
-    location: clientData.location, // <--- Stores the location field
+    location: clientData.location,
     userAgent: navigator.userAgent || 'Unknown Device',
     dateStr: new Date().toISOString().slice(0, 10)
   };
@@ -283,10 +283,10 @@ window.executeLogin = async function() {
 
   if (!userEl || !passEl) return;
 
-  const u = userEl.value.trim().toLowerCase();
+  const schoolIdInput = userEl.value.trim().toUpperCase();
   const p = passEl.value.trim();
 
-  if (!u || !p) {
+  if (!schoolIdInput || !p) {
     if (errEl) {
       errEl.textContent = 'Please fill in both fields.';
       errEl.style.display = 'block';
@@ -295,18 +295,21 @@ window.executeLogin = async function() {
   }
 
   let foundUser = null;
-  let failureReason = 'USER_NOT_FOUND';
+  let failureReason = 'SCHOOL_ID_NOT_FOUND';
 
-  // 1. Primary Auth: Firebase Firestore
+  // 1. Primary Auth: Firebase Firestore querying by schoolId field
   if (window.db) {
     try {
-      const snap = await window.db.collection('users').doc(u).get();
-      if (snap.exists) {
-        const userData = snap.data();
+      const snapQuery = await window.db.collection('users').where('schoolId', '==', schoolIdInput).limit(1).get();
+      if (!snapQuery.empty) {
+        const snapDoc = snapQuery.docs[0];
+        const userData = snapDoc.data();
         if (userData.password === p) {
           foundUser = {
-            username: snap.id,
-            name: userData.fullName || userData.name || snap.id,
+            id: snapDoc.id,
+            schoolId: userData.schoolId || schoolIdInput,
+            username: userData.schoolId || schoolIdInput,
+            name: userData.fullName || userData.name || schoolIdInput,
             role: userData.role || 'Student',
             userClass: userData.class || userData.userClass || '',
             profilePic: userData.profilePic || '',
@@ -315,25 +318,47 @@ window.executeLogin = async function() {
         } else {
           failureReason = 'INVALID_PASSWORD';
         }
+      } else {
+        // Fallback document lookup by direct ID if schoolId matches document ID
+        const docSnap = await window.db.collection('users').doc(schoolIdInput.toLowerCase()).get();
+        if (docSnap.exists) {
+          const userData = docSnap.data();
+          if (userData.password === p) {
+            foundUser = {
+              id: docSnap.id,
+              schoolId: userData.schoolId || schoolIdInput,
+              username: userData.schoolId || schoolIdInput,
+              name: userData.fullName || userData.name || schoolIdInput,
+              role: userData.role || 'Student',
+              userClass: userData.class || userData.userClass || '',
+              profilePic: userData.profilePic || '',
+              ...userData
+            };
+          } else {
+            failureReason = 'INVALID_PASSWORD';
+          }
+        }
       }
     } catch (err) {
       console.warn("Firestore lookup error:", err);
     }
   }
 
-  // 2. Offline Fallback: LocalStorage users
+  // 2. Offline Fallback: LocalStorage users matching schoolId
   if (!foundUser) {
     try {
       const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
       const match = localUsers.find(
-        acc => (acc.username || '').toLowerCase() === u
+        acc => (acc.schoolId || '').toUpperCase() === schoolIdInput || (acc.username || '').toUpperCase() === schoolIdInput
       );
       
       if (match) {
         if (match.password === p) {
           foundUser = {
-            username: match.username || u,
-            name: match.fullName || match.name || match.username || u,
+            id: match.id || match.username || schoolIdInput,
+            schoolId: match.schoolId || schoolIdInput,
+            username: match.schoolId || match.username || schoolIdInput,
+            name: match.fullName || match.name || match.username || schoolIdInput,
             role: match.role || 'Student',
             userClass: match.class || match.userClass || '',
             profilePic: match.profilePic || '',
@@ -350,7 +375,7 @@ window.executeLogin = async function() {
 
   // 3. Complete Login & Record Audit Trail (Awaited fully before moving views)
   if (foundUser) {
-    await logAuthenticationAttempt('SUCCESS', foundUser.username, '—');
+    await logAuthenticationAttempt('SUCCESS', foundUser.schoolId, '—');
 
     if (errEl) errEl.style.display = 'none';
 
@@ -359,7 +384,8 @@ window.executeLogin = async function() {
 
     if (window.db) {
       try {
-        await window.db.collection('users').doc(foundUser.username).set({
+        const userDocId = foundUser.id || foundUser.schoolId.toLowerCase();
+        await window.db.collection('users').doc(userDocId).set({
           activeSessionId: currentDeviceSessionId
         }, { merge: true });
       } catch (err) {
@@ -368,7 +394,7 @@ window.executeLogin = async function() {
     }
 
     if (rememberCheck && rememberCheck.checked) {
-      localStorage.setItem('portal_remembered_user', u);
+      localStorage.setItem('portal_remembered_user', schoolIdInput);
       localStorage.setItem('portal_remembered_pass', p);
     } else {
       localStorage.removeItem('portal_remembered_user');
@@ -395,10 +421,10 @@ window.executeLogin = async function() {
     navigateToView('dashboard', true);
   } else {
     // Await failed audit log to ensure it commits before UI updates/errors display
-    await logAuthenticationAttempt('FAILED', u, failureReason);
+    await logAuthenticationAttempt('FAILED', schoolIdInput, failureReason);
 
     if (errEl) {
-      errEl.textContent = 'Invalid username or password!';
+      errEl.textContent = 'Invalid School ID or password!';
       errEl.style.display = 'block';
     }
   }
@@ -408,17 +434,19 @@ window.handleLogin = function(e) {
   if (e && e.preventDefault) e.preventDefault();
   window.executeLogin();
 };
+
 /// Check every 10 seconds if another device has logged into this same account
 setInterval(async () => {
   const sessionStr = localStorage.getItem('portal_session');
   if (!sessionStr) return;
 
   const currentSession = JSON.parse(sessionStr);
-  if (!currentSession || !currentSession.username || !currentSession.activeSessionId) return;
+  if (!currentSession || !currentSession.schoolId || !currentSession.activeSessionId) return;
 
   if (window.db) {
     try {
-      const userDoc = await window.db.collection('users').doc(currentSession.username).get();
+      const userDocId = currentSession.id || currentSession.schoolId.toLowerCase();
+      const userDoc = await window.db.collection('users').doc(userDocId).get();
       if (userDoc.exists) {
         const remoteData = userDoc.data();
         // If the active session token in the database doesn't match local session, another device logged in!
@@ -434,7 +462,7 @@ setInterval(async () => {
             type: "warning"
           });
 
-          // Wait 4 seconds (4000 milliseconds) before refreshing back to the login screen
+          // Wait 5 seconds before refreshing back to the login screen
           setTimeout(() => {
             window.location.reload();
           }, 5000);
@@ -447,7 +475,7 @@ setInterval(async () => {
 }, 10000); // Checks every 10 seconds
 
 /* ==========================================================================
-   PASSWORD VISIBILITY TOGGLE HELPER
+    PASSWORD VISIBILITY TOGGLE HELPER
    ========================================================================== */
 window.togglePasswordVisibility = function(passwordFieldId, iconElementId) {
   const passField = document.getElementById(passwordFieldId);
@@ -503,6 +531,8 @@ window.handleLogout = function() {
   // 5. Force a hard redirect or reload to clear cached DOM memory
   window.location.href = 'assessments.html'; 
 };
+
+
 /* ==========================================================================
    PROFILE PICTURE UPLOAD & UI DISPLAY MODULE
    ========================================================================== */
@@ -526,9 +556,9 @@ window.updateProfileUIImages = function(user) {
   if (previewPic) previewPic.src = userAvatar;
   
   if (user) {
-    if (fullNameDisplay) fullNameDisplay.textContent = user.fullName || user.username || "User";
-    if (usernameDisplay) usernameDisplay.textContent = "@" + (user.username || "");
-    if (nameDisplay) nameDisplay.textContent = user.fullName || user.username || "User";
+    if (fullNameDisplay) fullNameDisplay.textContent = user.fullName || user.schoolId || user.username || "User";
+    if (usernameDisplay) usernameDisplay.textContent = "@" + (user.schoolId || user.username || "");
+    if (nameDisplay) nameDisplay.textContent = user.fullName || user.schoolId || user.username || "User";
     if (roleDisplay) roleDisplay.textContent = user.role || "User";
   }
 };
@@ -568,7 +598,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const currentUser = loadSessionFromStorage();
-    if (!currentUser || !currentUser.username) {
+    const userIdentifier = currentUser ? (currentUser.schoolId || currentUser.username) : null;
+    if (!currentUser || !userIdentifier) {
       console.warn("⚠️ No active user session found in storage.");
       showCustomModal({
         title: "Session Expired",
@@ -593,7 +624,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const fileExtension = file.name.split('.').pop();
-      const filePath = `profile_pictures/${currentUser.username}_${Date.now()}.${fileExtension}`;
+      const filePath = `profile_pictures/${userIdentifier}_${Date.now()}.${fileExtension}`;
       console.log("☁️ Uploading to Firebase path:", filePath);
 
       const fileRef = storageRef.child(filePath);
@@ -609,13 +640,13 @@ document.addEventListener('DOMContentLoaded', () => {
         broadcastSessionUpdate(currentUser);
       }
 
-      // Update Firestore database document using the user's username as the document ID
+      // Update Firestore database document using the user's document ID or schoolId as fallback
       if (window.db) {
-        const docId = currentUser.username;
+        const docId = currentUser.id || (currentUser.schoolId ? currentUser.schoolId.toLowerCase() : null) || currentUser.username;
         const userDocRef = window.db.collection('users').doc(docId);
         
         await userDocRef.set({ profilePic: downloadURL }, { merge: true });
-        console.log("💾 Firestore user profilePic updated for document (username):", docId);
+        console.log("💾 Firestore user profilePic updated for document:", docId);
       }
 
       // Refresh UI images instantly
@@ -684,10 +715,10 @@ async function handleRegisterStaff(e) {
 
   const fullName = document.getElementById("staffFullName").value.trim();
   const role = document.getElementById("staffRole").value; // 'teacher' or 'admin'
-  const username = document.getElementById("staffUsername").value.trim().toLowerCase();
+  const schoolId = document.getElementById("staffUsername").value.trim().toUpperCase();
   const password = document.getElementById("staffPassword").value.trim();
 
-  if (!fullName || !role || !username || !password) {
+  if (!fullName || !role || !schoolId || !password) {
     showCustomModal({
       title: "Missing Information",
       message: "Please fill in all required fields for staff registration.",
@@ -697,23 +728,24 @@ async function handleRegisterStaff(e) {
   }
 
   try {
-    // Check if username already exists in Firestore users collection
-    const existingUser = await db.collection("users").where("username", "==", username).get();
+    // Check if schoolId already exists in Firestore users collection
+    const existingUser = await db.collection("users").where("schoolId", "==", schoolId).get();
     if (!existingUser.empty) {
       showCustomModal({
-        title: "Username Taken",
-        message: "This username is already taken. Please choose another username.",
+        title: "School ID Taken",
+        message: "This School ID is already taken. Please choose another School ID.",
         type: "warning"
       });
       return;
     }
 
     // Save staff/admin profile to Firestore
-    await db.collection("users").add({
+    await db.collection("users").doc(schoolId.toLowerCase()).set({
       fullName: fullName,
       role: role, // 'teacher' or 'admin'
-      username: username,
-      password: password, // Note: In production, hash passwords securely. Matches plain text logic of student portal.
+      schoolId: schoolId,
+      username: schoolId,
+      password: password, // Note: In production, hash passwords securely. Matches plain text logic of portal.
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
@@ -792,19 +824,18 @@ function renderStaffTablePage(page, recordsToRender = allStaffRecords) {
   paginatedItems.forEach((staff, index) => {
     const tr = document.createElement("tr");
     const globalIndex = startIndex + index + 1;
-    const roleBadgeClass = staff.role === 'admin' ? 'role-admin' : 'role-teacher';
 
     tr.innerHTML = `
       <td>${globalIndex}</td>
-      <td><input type="text" id="staff-name-${staff.id}" value="${escapeHtml(staff.fullName)}"></td>
+      <td><input type="text" id="staff-name-${staff.id}" value="${escapeHtml(staff.fullName || '')}"></td>
       <td>
         <select id="staff-role-${staff.id}">
           <option value="teacher" ${staff.role === 'teacher' ? 'selected' : ''}>Teacher</option>
           <option value="admin" ${staff.role === 'admin' ? 'selected' : ''}>Admin</option>
         </select>
       </td>
-      <td><input type="text" id="staff-user-${staff.id}" value="${escapeHtml(staff.username)}"></td>
-      <td><input type="text" id="staff-pass-${staff.id}" value="${escapeHtml(staff.password)}"></td>
+      <td><input type="text" id="staff-user-${staff.id}" value="${escapeHtml(staff.schoolId || staff.username || '')}"></td>
+      <td><input type="text" id="staff-pass-${staff.id}" value="${escapeHtml(staff.password || '')}"></td>
       <td>
         <button type="button" class="page-btn" style="background:#0284c7; color:white; padding:0.25rem 0.5rem;" onclick="updateStaffAccount('${staff.id}')"><i class="fa-solid fa-floppy-disk"></i> Save</button>
         <button type="button" class="page-btn" style="background:#dc2626; color:white; padding:0.25rem 0.5rem;" onclick="deleteStaffAccount('${staff.id}')"><i class="fa-solid fa-trash"></i></button>
@@ -822,10 +853,10 @@ function renderStaffTablePage(page, recordsToRender = allStaffRecords) {
 async function updateStaffAccount(docId) {
   const newName = document.getElementById(`staff-name-${docId}`).value.trim();
   const newRole = document.getElementById(`staff-role-${docId}`).value;
-  const newUser = document.getElementById(`staff-user-${docId}`).value.trim().toLowerCase();
+  const newSchoolId = document.getElementById(`staff-user-${docId}`).value.trim().toUpperCase();
   const newPass = document.getElementById(`staff-pass-${docId}`).value.trim();
 
-  if (!newName || !newUser || !newPass) {
+  if (!newName || !newSchoolId || !newPass) {
     showCustomModal({
       title: "Missing Fields",
       message: "Fields cannot be left empty.",
@@ -838,7 +869,8 @@ async function updateStaffAccount(docId) {
     await db.collection("users").doc(docId).update({
       fullName: newName,
       role: newRole,
-      username: newUser,
+      schoolId: newSchoolId,
+      username: newSchoolId,
       password: newPass
     });
     
@@ -893,18 +925,22 @@ async function deleteStaffAccount(docId) {
 function filterStaffTable() {
   const query = document.getElementById("staffSearchInput").value.toLowerCase();
   const filtered = allStaffRecords.filter(staff => 
-    staff.fullName.toLowerCase().includes(query) ||
-    staff.username.toLowerCase().includes(query) ||
-    staff.role.toLowerCase().includes(query)
+    (staff.fullName || '').toLowerCase().includes(query) ||
+    (staff.schoolId || '').toLowerCase().includes(query) ||
+    (staff.username || '').toLowerCase().includes(query) ||
+    (staff.role || '').toLowerCase().includes(query)
   );
   renderStaffTablePage(1, filtered);
 }
+
 /* ==========================================================================
    2. STUDENT REGISTRATION & BULK IMPORT
    ========================================================================== */
 async function saveUserToCloud(userObj) {
   const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
-  const idx = localUsers.findIndex(u => u.username.toLowerCase() === userObj.username.toLowerCase());
+  const targetId = (userObj.schoolId || userObj.username || '').toLowerCase();
+  
+  const idx = localUsers.findIndex(u => (u.schoolId || u.username || '').toLowerCase() === targetId);
   if (idx >= 0) {
     localUsers[idx] = userObj;
   } else {
@@ -914,10 +950,11 @@ async function saveUserToCloud(userObj) {
 
   if (window.db) {
     try {
-      await window.db.collection('users').doc(userObj.username.toLowerCase()).set({
+      await window.db.collection('users').doc(targetId).set({
         fullName: userObj.fullName,
         class: userObj.class,
-        username: userObj.username,
+        schoolId: userObj.schoolId || userObj.username,
+        username: userObj.schoolId || userObj.username,
         password: userObj.password,
         role: userObj.role || 'Student',
         createdAt: new Date().toISOString()
@@ -928,26 +965,27 @@ async function saveUserToCloud(userObj) {
   }
 }
 
+
 window.handleRegisterStudent = async function(e) {
   e.preventDefault();
   if (!window.currentUser || window.currentUser.role !== 'Teacher') return;
 
   const fullName = document.getElementById('regFullName').value.trim();
   const studentClass = document.getElementById('regClass').value;
-  const username = document.getElementById('regUsername').value.trim();
+  const schoolId = document.getElementById('regUsername').value.trim().toUpperCase();
   const password = document.getElementById('regPassword').value.trim();
 
   const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
-  if (localUsers.some(u => u.username.toLowerCase() === username.toLowerCase())) {
+  if (localUsers.some(u => (u.schoolId || u.username || '').toLowerCase() === schoolId.toLowerCase())) {
     showCustomModal({
-      title: "Username Exists",
-      message: "Username already exists! Please assign a unique username.",
+      title: "School ID Exists",
+      message: "School ID already exists! Please assign a unique School ID.",
       type: "warning"
     });
     return;
   }
 
-  const newUser = { fullName, class: studentClass, username, password, role: "Student" };
+  const newUser = { fullName, class: studentClass, schoolId, username: schoolId, password, role: "Student" };
   await saveUserToCloud(newUser);
 
   showCustomModal({
@@ -1005,22 +1043,23 @@ window.handleBulkImport = function() {
 
         if (rawName && isNaN(rawName)) {
           const nameParts = rawName.split(/\s+/);
-          let lastName = nameParts[nameParts.length - 1].toLowerCase().replace(/[^a-z0-9]/g, '');
-          if (!lastName) lastName = "student";
+          let lastName = nameParts[nameParts.length - 1].toUpperCase().replace(/[^A-Z0-9]/g, '');
+          if (!lastName) lastName = "STUDENT";
 
-          let baseUsername = lastName;
-          let finalUsername = baseUsername;
+          let baseSchoolId = lastName;
+          let finalSchoolId = baseSchoolId;
           let counter = 1;
 
-          while (systemUsers.some(u => u.username.toLowerCase() === finalUsername.toLowerCase())) {
-            finalUsername = `${baseUsername}${counter}`;
+          while (systemUsers.some(u => (u.schoolId || u.username || '').toLowerCase() === finalSchoolId.toLowerCase())) {
+            finalSchoolId = `${baseSchoolId}${counter}`;
             counter++;
           }
 
           const newUser = {
             fullName: rawName,
             class: targetClass,
-            username: finalUsername,
+            schoolId: finalSchoolId,
+            username: finalSchoolId,
             password: generateStrongPassword(),
             role: "Student"
           };
@@ -1078,9 +1117,9 @@ window.downloadStudentCSV = async function() {
     return;
   }
 
-  let csvContent = "data:text/csv;charset=utf-8,Full Name,Class,Username,Password\n";
+  let csvContent = "data:text/csv;charset=utf-8,Full Name,Class,School ID,Password\n";
   students.forEach(s => {
-    csvContent += `"${s.fullName}","${s.class}","${s.username}","${s.password}"\n`;
+    csvContent += `"${s.fullName}","${s.class}","${s.schoolId || s.username || ''}","${s.password}"\n`;
   });
 
   const encodedUri = encodeURI(csvContent);
@@ -1135,7 +1174,7 @@ window.renderStudentModalTable = async function() {
   if (window.db) {
     try {
       const snap = await window.db.collection('users').where('role', '==', 'Student').get();
-      snap.forEach(doc => students.push(doc.data()));
+      snap.forEach(doc => students.push({ id: doc.id, ...doc.data() }));
     } catch (err) {
       console.warn('Fallback to local:', err);
     }
@@ -1149,6 +1188,7 @@ window.renderStudentModalTable = async function() {
   const filteredStudents = students.filter(u => (
     (u.fullName || '').toLowerCase().includes(searchFilter) ||
     (u.class || '').toLowerCase().includes(searchFilter) ||
+    (u.schoolId || '').toLowerCase().includes(searchFilter) ||
     (u.username || '').toLowerCase().includes(searchFilter)
   ));
 
@@ -1168,7 +1208,8 @@ window.renderStudentModalTable = async function() {
 
   tbody.innerHTML = paginatedStudents.map((s, index) => {
     const absoluteIndex = startIndex + index + 1;
-    const isEditing = editingUsername === s.username;
+    const identifier = s.schoolId || s.username || '';
+    const isEditing = editingUsername === identifier;
     
     // Fixed narrow width style for the # column to prevent stretching
     const indexColStyle = 'width: 50px; text-align: center; white-space: nowrap;';
@@ -1177,7 +1218,7 @@ window.renderStudentModalTable = async function() {
       return `
         <tr>
           <td style="${indexColStyle}">${absoluteIndex}</td>
-          <td><input type="text" id="editFullName" value="${s.fullName}"></td>
+          <td><input type="text" id="editFullName" value="${escapeHtml(s.fullName || '')}"></td>
           <td>
             <select id="editClass">
               <option value="S1" ${s.class === 'S1' ? 'selected' : ''}>S.1</option>
@@ -1188,10 +1229,10 @@ window.renderStudentModalTable = async function() {
               <option value="S6" ${s.class === 'S6' ? 'selected' : ''}>S.6</option>
             </select>
           </td>
-          <td><input type="text" id="editUsername" value="${s.username}"></td>
-          <td><input type="text" id="editPassword" value="${s.password}"></td>
+          <td><input type="text" id="editSchoolId" value="${escapeHtml(identifier)}"></td>
+          <td><input type="text" id="editPassword" value="${escapeHtml(s.password || '')}"></td>
           <td style="display:flex; gap:0.4rem;">
-            <button onclick="saveStudentEdit('${s.username}')" class="btn-action btn-upload"><i class="fa-solid fa-check"></i></button>
+            <button onclick="saveStudentEdit('${escapeHtml(identifier)}')" class="btn-action btn-upload"><i class="fa-solid fa-check"></i></button>
             <button onclick="cancelStudentEdit()" class="btn-action btn-secondary"><i class="fa-solid fa-xmark"></i></button>
           </td>
         </tr>
@@ -1201,13 +1242,13 @@ window.renderStudentModalTable = async function() {
     return `
       <tr>
         <td style="${indexColStyle}">${absoluteIndex}</td>
-        <td><strong>${s.fullName}</strong></td>
-        <td>${s.class}</td>
-        <td><code>${s.username}</code></td>
-        <td><code>${s.password}</code></td>
+        <td><strong>${escapeHtml(s.fullName || '')}</strong></td>
+        <td>${escapeHtml(s.class || '')}</td>
+        <td><code>${escapeHtml(identifier)}</code></td>
+        <td><code>${escapeHtml(s.password || '')}</code></td>
         <td style="display:flex; gap:0.4rem;">
-          <button onclick="enableStudentEdit('${s.username}')" class="btn-action btn-edit"><i class="fa-solid fa-pen-to-square"></i></button>
-          <button onclick="deleteStudent('${s.username}')" class="btn-action btn-danger"><i class="fa-solid fa-trash"></i></button>
+          <button onclick="enableStudentEdit('${escapeHtml(identifier)}')" class="btn-action btn-edit"><i class="fa-solid fa-pen-to-square"></i></button>
+          <button onclick="deleteStudent('${escapeHtml(identifier)}')" class="btn-action btn-danger"><i class="fa-solid fa-trash"></i></button>
         </td>
       </tr>
     `;
@@ -1250,8 +1291,8 @@ function renderStudentPaginationControls(totalPages, currentPage) {
   `;
 }
 
-window.enableStudentEdit = function(username) {
-  editingUsername = username;
+window.enableStudentEdit = function(identifier) {
+  editingUsername = identifier;
   renderStudentModalTable();
 };
 
@@ -1260,41 +1301,52 @@ window.cancelStudentEdit = function() {
   renderStudentModalTable();
 };
 
-window.saveStudentEdit = async function(oldUsername) {
+window.saveStudentEdit = async function(oldIdentifier) {
   const newFullName = document.getElementById('editFullName').value.trim();
   const newClass = document.getElementById('editClass').value;
-  const newUsername = document.getElementById('editUsername').value.trim();
+  const newSchoolId = document.getElementById('editSchoolId').value.trim().toUpperCase();
   const newPassword = document.getElementById('editPassword').value.trim();
 
-  if (!newFullName || !newUsername || !newPassword) return;
+  if (!newFullName || !newSchoolId || !newPassword) return;
 
-  const updatedData = { fullName: newFullName, class: newClass, username: newUsername, password: newPassword, role: 'Student' };
+  const updatedData = { 
+    fullName: newFullName, 
+    class: newClass, 
+    schoolId: newSchoolId, 
+    username: newSchoolId, 
+    password: newPassword, 
+    role: 'Student' 
+  };
 
   if (window.db) {
-    if (oldUsername.toLowerCase() !== newUsername.toLowerCase()) {
-      await window.db.collection('users').doc(oldUsername.toLowerCase()).delete();
+    if (oldIdentifier.toLowerCase() !== newSchoolId.toLowerCase()) {
+      await window.db.collection('users').doc(oldIdentifier.toLowerCase()).delete();
     }
-    await window.db.collection('users').doc(newUsername.toLowerCase()).set(updatedData, { merge: true });
+    await window.db.collection('users').doc(newSchoolId.toLowerCase()).set(updatedData, { merge: true });
   }
 
   let localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
-  const idx = localUsers.findIndex(u => u.username.toLowerCase() === oldUsername.toLowerCase());
-  if (idx !== -1) localUsers[idx] = updatedData;
+  const idx = localUsers.findIndex(u => (u.schoolId || u.username || '').toLowerCase() === oldIdentifier.toLowerCase());
+  if (idx !== -1) {
+    localUsers[idx] = updatedData;
+  } else {
+    localUsers.push(updatedData);
+  }
   localStorage.setItem('portal_users', JSON.stringify(localUsers));
 
   editingUsername = null;
   renderStudentModalTable();
 };
 
-window.deleteStudent = async function(username) {
-  if (!confirm(`Delete student "${username}"?`)) return;
+window.deleteStudent = async function(identifier) {
+  if (!confirm(`Delete student with School ID "${identifier}"?`)) return;
 
   if (window.db) {
-    await window.db.collection('users').doc(username.toLowerCase()).delete();
+    await window.db.collection('users').doc(identifier.toLowerCase()).delete();
   }
 
   let localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
-  localUsers = localUsers.filter(u => u.username.toLowerCase() !== username.toLowerCase());
+  localUsers = localUsers.filter(u => (u.schoolId || u.username || '').toLowerCase() !== identifier.toLowerCase());
   localStorage.setItem('portal_users', JSON.stringify(localUsers));
 
   renderStudentModalTable();
@@ -1316,6 +1368,7 @@ window.deleteAllStudents = async function() {
     renderStudentModalTable();
   }
 };
+
 
 window.handleCreateAssessment = async function(e) {
   e.preventDefault();
@@ -1505,8 +1558,9 @@ async function renderAssessments() {
     const deadlineDate = new Date(a.deadline);
     const isExpired = now > deadlineDate;
     
+    const currentStudentId = currentUser ? (currentUser.schoolId || currentUser.username) : null;
     const studentSub = (currentUser && currentUser.role === 'Student') 
-      ? submissions.find(s => String(s.testId) === String(a.id) && s.studentName === currentUser.fullName) 
+      ? submissions.find(s => String(s.testId) === String(a.id) && (String(s.schoolId || s.studentId || s.username || '').toLowerCase() === String(currentStudentId || '').toLowerCase() || s.studentName === currentUser.fullName)) 
       : null;
     
     const safeTitle = encodeURIComponent(a.title);
@@ -1544,12 +1598,12 @@ async function renderAssessments() {
     return `
       <div class="test-card" data-assessment-id="${a.id}">
         <div class="test-header">
-          <span class="test-title">${a.title} <small style="color:#64748b;">(${a.class})</small></span>
+          <span class="test-title">${escapeHtml(a.title)} <small style="color:#64748b;">(${escapeHtml(a.class)})</small></span>
           <span class="deadline-badge ${isExpired ? 'deadline-expired' : 'deadline-active'}" data-deadline="${a.deadline}">
             ${isExpired ? 'Expired' : 'Active until: ' + deadlineDate.toLocaleString()}
           </span>
         </div>
-        <p style="font-size:0.85rem; color:#475569; margin:0.5rem 0;">${a.description || 'No instructions provided.'}</p>
+        <p style="font-size:0.85rem; color:#475569; margin:0.5rem 0;">${escapeHtml(a.description || 'No instructions provided.')}</p>
         <div class="test-actions">
           <a href="${a.fileUrl}" download class="btn-action btn-download"><i class="fa-solid fa-file-arrow-down"></i> Download Paper</a>
           ${actionHTML}
@@ -1826,7 +1880,8 @@ window.handleFormSubmission = async function(event) {
   }
 
   const studentNameVal = nameEl ? nameEl.value.trim() : (currentUser ? currentUser.fullName : '');
-  const submissionId = `sub_${testIdVal}_${studentNameVal.toLowerCase().replace(/[^a-z0-9]/g, '')}_${Date.now()}`;
+  const studentSchoolId = currentUser ? (currentUser.schoolId || currentUser.username || '') : '';
+  const submissionId = `sub_${testIdVal}_${(studentSchoolId || studentNameVal).toLowerCase().replace(/[^a-z0-9]/g, '')}_${Date.now()}`;
   
   let fileDownloadUrl = '';
 
@@ -1860,7 +1915,8 @@ window.handleFormSubmission = async function(event) {
     id: submissionId,
     testId: String(testIdVal),
     studentName: studentNameVal,
-    studentUsername: currentUser ? currentUser.username : '',
+    schoolId: studentSchoolId,
+    studentUsername: studentSchoolId,
     studentClass: classEl ? classEl.value.trim() : '',
     testTitle: titleEl ? titleEl.value.trim() : '',
     fileName: file.name,
@@ -1909,10 +1965,14 @@ window.cancelSubmission = async function(testId) {
     showCancel: true,
     onConfirm: async () => {
       const studentName = currentUser.fullName;
+      const studentSchoolId = currentUser.schoolId || currentUser.username || '';
 
       if (window.db) {
         try {
-          const snap = await window.db.collection('submissions').where('testId', '==', String(testId)).where('studentName', '==', studentName).get();
+          let snap = await window.db.collection('submissions').where('testId', '==', String(testId)).where('schoolId', '==', studentSchoolId).get();
+          if (snap.empty) {
+            snap = await window.db.collection('submissions').where('testId', '==', String(testId)).where('studentName', '==', studentName).get();
+          }
           const batch = window.db.batch();
           snap.forEach(doc => batch.delete(doc.ref));
           await batch.commit();
@@ -1922,7 +1982,12 @@ window.cancelSubmission = async function(testId) {
       }
 
       let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
-      submissions = submissions.filter(s => !(String(s.testId) === String(testId) && s.studentName.toLowerCase() === studentName.toLowerCase()));
+      submissions = submissions.filter(s => {
+        const matchesTest = String(s.testId) === String(testId);
+        const matchesSchoolId = studentSchoolId && (s.schoolId || s.studentUsername || '').toLowerCase() === studentSchoolId.toLowerCase();
+        const matchesName = s.studentName && s.studentName.toLowerCase() === studentName.toLowerCase();
+        return !(matchesTest && (matchesSchoolId || matchesName));
+      });
       localStorage.setItem('portal_submissions', JSON.stringify(submissions));
 
       showCustomModal({
@@ -2042,6 +2107,7 @@ document.addEventListener('DOMContentLoaded', () => {
     checkUserSession();
   }
 });
+
 // --- CORE UTILS & FUNCTIONS ---
 
 function toggleMobileMenu() {
@@ -2104,10 +2170,11 @@ function handleProfilePicUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
 
-  const currentUser = JSON.parse(localStorage.getItem('currentLoggedInUser'));
+  const currentUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser'));
   if (!currentUser) return;
 
-  const filePath = `profile_pictures/${currentUser.username}_${Date.now()}_${file.name}`;
+  const identifier = currentUser.schoolId || currentUser.username;
+  const filePath = `profile_pictures/${identifier}_${Date.now()}_${file.name}`;
   const fileRef = storageRef.child(filePath);
 
   showCustomModal({
@@ -2120,13 +2187,17 @@ function handleProfilePicUpload(event) {
     return snapshot.ref.getDownloadURL();
   }).then((downloadURL) => {
     currentUser.profilePic = downloadURL;
+    localStorage.setItem('portal_session', JSON.stringify(currentUser));
     localStorage.setItem('currentLoggedInUser', JSON.stringify(currentUser));
 
-    return db.collection("students").where("username", "==", currentUser.username).get();
+    const sessionKey = currentUser.schoolId ? "schoolId" : "username";
+    const sessionVal = currentUser.schoolId || currentUser.username;
+    return db.collection("students").where(sessionKey, "==", sessionVal).get();
   }).then((querySnapshot) => {
     if (!querySnapshot.empty) {
       querySnapshot.forEach((doc) => {
-        doc.ref.update({ profilePic: JSON.parse(localStorage.getItem('currentLoggedInUser')).profilePic });
+        const activeUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser'));
+        doc.ref.update({ profilePic: activeUser.profilePic });
       });
     }
     
@@ -2148,7 +2219,7 @@ function handleProfilePicUpload(event) {
   });
 }
 function loadUserProfileUI() {
-  const currentUser = JSON.parse(localStorage.getItem('currentLoggedInUser'));
+  const currentUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser'));
   if (!currentUser) return;
 
   // Set default fallback if profilePic is missing or empty
@@ -2157,12 +2228,23 @@ function loadUserProfileUI() {
     : "images/default-avatar.png";
 
   // Update UI elements safely
-  document.getElementById('bannerProfilePic').src = userAvatar;
-  document.getElementById('profilePicPreview').src = userAvatar;
-  document.getElementById('userNameDisplay').textContent = currentUser.fullName || currentUser.username;
-  document.getElementById('profileFullName').textContent = currentUser.fullName || currentUser.username;
-  document.getElementById('profileUsernameDisplay').textContent = "@" + currentUser.username;
-  document.getElementById('updateUsername').value = currentUser.username;
+  const bannerPic = document.getElementById('bannerProfilePic');
+  if (bannerPic) bannerPic.src = userAvatar;
+
+  const previewPic = document.getElementById('profilePicPreview');
+  if (previewPic) previewPic.src = userAvatar;
+
+  const nameDisplay = document.getElementById('userNameDisplay');
+  if (nameDisplay) nameDisplay.textContent = currentUser.fullName || currentUser.username;
+
+  const fullNameEl = document.getElementById('profileFullName');
+  if (fullNameEl) fullNameEl.textContent = currentUser.fullName || currentUser.username;
+
+  const usernameDisplay = document.getElementById('profileUsernameDisplay');
+  if (usernameDisplay) usernameDisplay.textContent = "@" + (currentUser.schoolId || currentUser.username);
+
+  const updateUsernameEl = document.getElementById('updateUsername');
+  if (updateUsernameEl) updateUsernameEl.value = currentUser.schoolId || currentUser.username;
   
   if(document.getElementById('userRoleDisplay')) {
     document.getElementById('userRoleDisplay').textContent = currentUser.role || "User";
@@ -2214,37 +2296,52 @@ function handleLogin(e) {
 
   // Basic authentication setup mock
   if (user === "admin" && pass === "admin123") {
-    const adminUser = { username: "admin", fullName: "Administrator", role: "teacher" };
+    const adminUser = { username: "admin", schoolId: "admin", fullName: "Administrator", role: "teacher" };
+    localStorage.setItem('portal_session', JSON.stringify(adminUser));
     localStorage.setItem('currentLoggedInUser', JSON.stringify(adminUser));
     checkUserSession();
   } else {
-    db.collection("students").where("username", "==", user).where("password", "==", pass).get().then((snapshot) => {
+    db.collection("students").where("schoolId", "==", user).where("password", "==", pass).get().then((snapshot) => {
       if (!snapshot.empty) {
         const studentData = snapshot.docs[0].data();
-        localStorage.setItem('currentLoggedInUser', JSON.stringify({ ...studentData, role: 'student' }));
+        const sessionUser = { ...studentData, role: 'student' };
+        localStorage.setItem('portal_session', JSON.stringify(sessionUser));
+        localStorage.setItem('currentLoggedInUser', JSON.stringify(sessionUser));
         checkUserSession();
       } else {
-        document.getElementById('loginError').style.display = 'block';
+        db.collection("students").where("username", "==", user).where("password", "==", pass).get().then((usernameSnapshot) => {
+          if (!usernameSnapshot.empty) {
+            const studentData = usernameSnapshot.docs[0].data();
+            const sessionUser = { ...studentData, role: 'student' };
+            localStorage.setItem('portal_session', JSON.stringify(sessionUser));
+            localStorage.setItem('currentLoggedInUser', JSON.stringify(sessionUser));
+            checkUserSession();
+          } else {
+            const errEl = document.getElementById('loginError');
+            if (errEl) errEl.style.display = 'block';
+          }
+        });
       }
     });
   }
 }
 
 function handleLogout() {
+  localStorage.removeItem('portal_session');
   localStorage.removeItem('currentLoggedInUser');
   checkUserSession();
 }
 
 window.handleUpdateAccountDetails = function(event) {
   event.preventDefault();
-  const newUsername = document.getElementById('updateUsername').value.trim().toLowerCase();
+  const newUsernameInput = document.getElementById('updateUsername').value.trim().toLowerCase();
   const currentPasswordInput = document.getElementById('currentPassword').value.trim();
   const newPassword = document.getElementById('updatePassword').value.trim();
   const confirmPassword = document.getElementById('confirmPassword').value.trim();
   
   const currentUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser'));
 
-  if (!currentUser || !currentUser.username) {
+  if (!currentUser || (!currentUser.username && !currentUser.schoolId)) {
     showCustomModal({
       title: "Session Expired",
       message: "No active session found. Please sign in again.",
@@ -2263,11 +2360,25 @@ window.handleUpdateAccountDetails = function(event) {
     return;
   }
 
-  const oldUsernameId = currentUser.username;
-  const userRef = db.collection("users").doc(oldUsernameId);
+  const oldKey = currentUser.schoolId || currentUser.username;
+  const userRef = db.collection("users").doc(oldKey);
 
   userRef.get().then((docSnapshot) => {
-    if (!docSnapshot.exists) {
+    let targetDoc = docSnapshot;
+    
+    // Fallback search if doc by oldKey doesn't exist
+    if (!targetDoc.exists) {
+      return db.collection("users").where("schoolId", "==", oldKey).get().then((snap) => {
+        if (!snap.empty) return snap.docs[0];
+        return db.collection("users").where("username", "==", oldKey).get().then((snap2) => {
+          if (!snap2.empty) return snap2.docs[0];
+          return null;
+        });
+      });
+    }
+    return targetDoc;
+  }).then((resolvedDoc) => {
+    if (!resolvedDoc || !resolvedDoc.exists) {
       showCustomModal({
         title: "User Not Found",
         message: "User record not found in database.",
@@ -2276,7 +2387,8 @@ window.handleUpdateAccountDetails = function(event) {
       return;
     }
 
-    const userData = docSnapshot.data();
+    const userData = resolvedDoc.data();
+    const actualDocRef = resolvedDoc.ref;
 
     // Verify current password matches database record
     if (userData.password !== currentPasswordInput) {
@@ -2288,10 +2400,10 @@ window.handleUpdateAccountDetails = function(event) {
       return;
     }
 
-    const updatingUsername = newUsername && newUsername !== oldUsernameId;
+    const updatingIdentifier = newUsernameInput && newUsernameInput !== (userData.schoolId || userData.username).toLowerCase();
     const updatingPassword = Boolean(newPassword);
 
-    if (!updatingUsername && !updatingPassword) {
+    if (!updatingIdentifier && !updatingPassword) {
       showCustomModal({
         title: "No Changes",
         message: "No changes detected.",
@@ -2300,29 +2412,34 @@ window.handleUpdateAccountDetails = function(event) {
       return;
     }
 
-    // SCENARIO A: Username is changing (Migrating Firestore Document ID)
-    if (updatingUsername) {
-      db.collection("users").doc(newUsername).get().then((newDocSnap) => {
+    // SCENARIO A: Identifier (SchoolID/Username) is changing (Migrating Firestore Document ID)
+    if (updatingIdentifier) {
+      db.collection("users").doc(newUsernameInput).get().then((newDocSnap) => {
         if (newDocSnap.exists) {
           showCustomModal({
-            title: "Username Taken",
-            message: "Username is already taken. Choose another one.",
+            title: "Identifier Taken",
+            message: "School ID or username is already taken. Choose another one.",
             type: "warning"
           });
           return;
         }
 
         const migratedData = { ...userData };
-        migratedData.username = newUsername;
+        if (migratedData.schoolId) {
+          migratedData.schoolId = newUsernameInput;
+        } else {
+          migratedData.username = newUsernameInput;
+        }
+        
         if (updatingPassword) {
           migratedData.password = newPassword;
         }
 
-        // 1. Create the new document with the new username
-        db.collection("users").doc(newUsername).set(migratedData)
+        // 1. Create the new document with the new identifier
+        db.collection("users").doc(newUsernameInput).set(migratedData)
           .then(() => {
             // 2. Forcefully delete the old document
-            return userRef.delete();
+            return actualDocRef.delete();
           })
           .then(() => {
             // 3. Clear local session & remembered details so they are forced to log in fresh
@@ -2331,8 +2448,8 @@ window.handleUpdateAccountDetails = function(event) {
             localStorage.removeItem('portal_remembered_pass');
 
             showCustomModal({
-              title: "Username Updated Successfully",
-              message: "Your username has been changed. Please sign in again with your new username.",
+              title: "Details Updated Successfully",
+              message: "Your School ID/Username has been changed. Please sign in again with your new credentials.",
               type: "success"
             });
 
@@ -2342,10 +2459,10 @@ window.handleUpdateAccountDetails = function(event) {
             }, 2000);
           })
           .catch((err) => {
-            console.error("Error migrating username and cleaning old record:", err);
+            console.error("Error migrating identifier and cleaning old record:", err);
             showCustomModal({
               title: "Update Failed",
-              message: "Failed to complete username migration. Check console.",
+              message: "Failed to complete record migration. Check console.",
               type: "error"
             });
           });
@@ -2358,7 +2475,7 @@ window.handleUpdateAccountDetails = function(event) {
         updatePayload.password = newPassword;
       }
 
-      userRef.update(updatePayload).then(() => {
+      actualDocRef.update(updatePayload).then(() => {
         showCustomModal({
           title: "Success",
           message: "Password updated successfully!",
@@ -2548,6 +2665,8 @@ window.saveSubmissionGrade = async function(e) {
   renderSubmissions();
 };
 
+
+
 window.renderSubmissions = async function() {
   const container = document.getElementById('submissionsContainer');
   if (!container) return;
@@ -2574,10 +2693,12 @@ window.renderSubmissions = async function() {
 
   submissions.sort((a, b) => new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0));
 
-  container.innerHTML = submissions.map(sub => `
+  container.innerHTML = submissions.map(sub => {
+    const studentIdentifier = sub.schoolId || sub.studentUsername || sub.studentName;
+    return `
     <div class="sub-item" style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem; border-bottom:1px solid #e2e8f0; gap: 1rem;">
       <div style="flex: 1; min-width: 0;">
-        <strong>${sub.studentName}</strong> <small style="color:#2563eb;">(${sub.studentClass})</small><br>
+        <strong>${sub.studentName}</strong> <small style="color:#64748b;">(${studentIdentifier})</small> <small style="color:#2563eb;">(${sub.studentClass})</small><br>
         <span style="color:#64748b; font-size:0.85rem; word-break: break-word;">${sub.testTitle} - <em>${sub.fileName}</em></span>
         ${sub.grade ? `<br><span style="color:#16a34a; font-size:0.80rem; font-weight:600;"><i class="fa-solid fa-award"></i> Grade: ${sub.grade}</span>` : ''}
       </div>
@@ -2590,7 +2711,8 @@ window.renderSubmissions = async function() {
         </button>
       </div>
     </div>
-  `).join('');
+  `;
+  }).join('');
 };
 
 /* ==========================================================================
@@ -2653,7 +2775,7 @@ window.getStudentSubmissionCardHTML = function(sub, assessmentId) {
 /* ==========================================================================
    STUDENT PORTAL: VIEW OWN GRADES & FEEDBACK MODULE
    ========================================================================== */
-window.renderStudentGrades = async function(currentStudentId) {
+window.renderStudentGrades = async function(currentStudentIdentifier) {
   const container = document.getElementById('studentGradesContainer');
   if (!container) return;
 
@@ -2661,7 +2783,13 @@ window.renderStudentGrades = async function(currentStudentId) {
   
   if (window.db) {
     try {
-      const snap = await window.db.collection('submissions').where('studentId', '==', currentStudentId).get();
+      let snap = await window.db.collection('submissions').where('schoolId', '==', currentStudentIdentifier).get();
+      if (snap.empty) {
+        snap = await window.db.collection('submissions').where('studentUsername', '==', currentStudentIdentifier).get();
+      }
+      if (snap.empty) {
+        snap = await window.db.collection('submissions').where('studentId', '==', currentStudentIdentifier).get();
+      }
       snap.forEach(doc => submissions.push({ id: doc.id, ...doc.data() }));
     } catch (err) {
       console.warn('Firestore student grades fetch warning:', err);
@@ -2670,7 +2798,12 @@ window.renderStudentGrades = async function(currentStudentId) {
 
   if (submissions.length === 0) {
     submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
-    submissions = submissions.filter(s => s.studentId === currentStudentId);
+    submissions = submissions.filter(s => {
+      const matchSchoolId = s.schoolId && s.schoolId.toLowerCase() === currentStudentIdentifier.toLowerCase();
+      const matchUsername = s.studentUsername && s.studentUsername.toLowerCase() === currentStudentIdentifier.toLowerCase();
+      const matchId = s.studentId && s.studentId.toLowerCase() === currentStudentIdentifier.toLowerCase();
+      return matchSchoolId || matchUsername || matchId;
+    });
   }
 
   if (submissions.length === 0) {
