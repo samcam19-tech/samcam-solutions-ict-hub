@@ -177,15 +177,25 @@ function getCurrentUserSession(userParam) {
   return null;
 }
 
+/* ==========================================================================
+   LIVE CLASS SESSION & OFFLINE ENGINE (Tenant-Isolated with schoolId)
+   ========================================================================== */
+
 function syncLiveClassSession(user) {
   // 1. Get the session using the corrected helper
   const session = user || getCurrentUserSession();
   console.log("Synced Live Class Session:", session);
 
-  // If no session exists, we should probably stop here or redirect to login
+  // If no session exists, stop here or redirect to login
   if (!session) {
     console.warn("No active session found.");
     return;
+  }
+
+  // Extract and normalize schoolId for tenant isolation
+  const currentSchoolId = (session.schoolId || session.schoolID || '').toLowerCase().trim();
+  if (!currentSchoolId) {
+    console.warn("Tenant Warning: Active session lacks a valid schoolId.");
   }
 
   // 2. Robust check for teacher permissions
@@ -224,8 +234,13 @@ function syncLiveClassSession(user) {
   }
   
   updateClassFilterInterface(session, isTeacherOrAdmin);
-  renderClassesGrid();
+  
+  // Pass currentSchoolId downstream to data fetching/rendering layers
+  if (typeof renderClassesGrid === 'function') {
+    renderClassesGrid(currentSchoolId);
+  }
 }
+
 function updateClassFilterInterface(session, isTeacherOrAdmin) {
   const filterGroup = document.getElementById('classFilterGroup');
   if (!filterGroup) return;
@@ -233,17 +248,27 @@ function updateClassFilterInterface(session, isTeacherOrAdmin) {
 }
 
 /* ==========================================================================
-   OFFLINE STORAGE QUEUE & SYNC HELPERS
+   OFFLINE STORAGE QUEUE & SYNC HELPERS (Enforcing Tenant schoolId Injection)
    ========================================================================== */
 function queueOfflineOperation(operationType, collectionName, docId, payload) {
   try {
+    const session = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser') || '{}');
+    const currentSchoolId = (session.schoolId || session.schoolID || '').toLowerCase().trim();
+
+    // Enforce schoolId attachment onto the payload for complete multi-tenant separation
+    const isolatedPayload = {
+      ...payload,
+      ...(currentSchoolId ? { schoolId: currentSchoolId } : {})
+    };
+
     const queue = JSON.parse(localStorage.getItem(OFFLINE_QUEUE_KEY)) || [];
     queue.push({
       id: 'op_' + Date.now() + Math.random().toString(36).substring(2, 7),
       type: operationType, // 'SET', 'UPDATE', 'DELETE'
       collection: collectionName,
       docId: docId,
-      data: payload,
+      data: isolatedPayload,
+      schoolId: currentSchoolId,
       timestamp: new Date().toISOString()
     });
     localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(queue));
@@ -265,15 +290,41 @@ async function flushOfflineQueue() {
 
   if (queue.length === 0) return;
 
+  const session = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser') || '{}');
+  const currentSchoolId = (session.schoolId || session.schoolID || '').toLowerCase().trim();
+
   const remainingQueue = [];
   for (const op of queue) {
     try {
+      // Security Guardrail: Skip or flag queued operations belonging to a different tenant context
+      if (currentSchoolId && op.schoolId && op.schoolId !== currentSchoolId) {
+        console.warn(`Skipping queued operation ${op.id} due to tenant schoolId mismatch.`);
+        continue;
+      }
+
       const ref = op.docId ? db.collection(op.collection).doc(op.docId) : db.collection(op.collection);
+      
+      // Ensure payload contains correct tenant schoolId before pushing to Firestore
+      const finalData = {
+        ...op.data,
+        ...(currentSchoolId ? { schoolId: currentSchoolId } : {})
+      };
+
       if (op.type === 'SET') {
-        await ref.set(op.data, { merge: true });
+        await ref.set(finalData, { merge: true });
       } else if (op.type === 'UPDATE') {
-        await ref.update(op.data);
+        await ref.update(finalData);
       } else if (op.type === 'DELETE') {
+        // Verify ownership/tenant before deleting document
+        if (op.docId) {
+          const docSnap = await ref.get();
+          if (docSnap.exists) {
+            const docData = docSnap.data();
+            if (currentSchoolId && docData.schoolId && docData.schoolId !== currentSchoolId) {
+              throw new Error("Unauthorized: Cannot delete document belonging to another school tenant.");
+            }
+          }
+        }
         await ref.delete();
       }
       console.info(`Synced queued offline operation: ${op.id}`);
@@ -315,11 +366,26 @@ function generateIcsDataUrl(item) {
 }
 
 /* ==========================================================================
-   FIRESTORE DATA RETRIEVAL & RENDERING
+   FIRESTORE DATA RETRIEVAL & RENDERING (Tenant-Isolated with schoolId)
    ========================================================================== */
-function fetchClassesFromFirestore() {
+function fetchClassesFromFirestore(schoolId) {
   if (!db) return;
-  db.collection("live_classes").orderBy("startTime", "asc").onSnapshot((snapshot) => {
+  
+  // Fallback to active session schoolId if not passed explicitly
+  const session = getCurrentUserSession();
+  const currentSchoolId = schoolId || (session && (session.schoolId || session.schoolID)) || '';
+  const normalizedSchoolId = String(currentSchoolId).toLowerCase().trim();
+
+  let query = db.collection("live_classes");
+  
+  // Apply tenant filter if schoolId exists
+  if (normalizedSchoolId) {
+    query = query.where("schoolId", "==", normalizedSchoolId);
+  } else {
+    console.warn("Tenant Warning: fetchClassesFromFirestore running without a schoolId filter.");
+  }
+
+  query.orderBy("startTime", "asc").onSnapshot((snapshot) => {
     allClasses = [];
     snapshot.forEach((doc) => {
       allClasses.push({ id: doc.id, ...doc.data() });
@@ -332,7 +398,7 @@ function fetchClassesFromFirestore() {
 
 function filterClass(cls, event) {
   const session = getCurrentUserSession();
-  const combinedCheck = `${session.role} ${session.name} ${session.userClass}`.toLowerCase();
+  const combinedCheck = `${session.role || ''} ${session.name || ''} ${session.userClass || ''}`.toLowerCase();
   const isTeacherOrAdmin = combinedCheck.includes('teacher') || combinedCheck.includes('admin') || combinedCheck.includes('instructor') || combinedCheck.includes('staff') || session.role === 'teacher';
 
   if (!isTeacherOrAdmin) return;
@@ -427,20 +493,30 @@ function renderClassesGrid() {
   container.innerHTML = '';
 
   const session = getCurrentUserSession();
-  const combinedCheck = `${session.role} ${session.name} ${session.userClass}`.toLowerCase();
+  const currentSchoolId = (session && (session.schoolId || session.schoolID) || '').toLowerCase().trim();
+  const combinedCheck = `${session.role || ''} ${session.name || ''} ${session.userClass || ''}`.toLowerCase();
   const isTeacherOrAdmin = combinedCheck.includes('teacher') || combinedCheck.includes('admin') || combinedCheck.includes('instructor') || combinedCheck.includes('staff') || session.role === 'teacher';
 
   let filtered = allClasses;
 
+  // Strict Client-Side Tenant School Isolation Guardrail
+  if (currentSchoolId) {
+    filtered = filtered.filter(item => {
+      const itemSchoolId = (item.schoolId || '').toLowerCase().trim();
+      // If item has a schoolId, enforce match; if legacy/unscoped, handle cautiously or isolate
+      return !itemSchoolId || itemSchoolId === currentSchoolId;
+    });
+  }
+
   // Filter by user class level role
   if (!isTeacherOrAdmin) {
-    const studentClass = session.userClass;
-    filtered = allClasses.filter(item => {
+    const studentClass = session.userClass || '';
+    filtered = filtered.filter(item => {
       const itemCls = (item.classLevel || '').trim().toLowerCase();
       return itemCls === 'general' || itemCls === studentClass.toLowerCase();
     });
   } else {
-    filtered = allClasses.filter(item => currentFilterClass === 'ALL' || item.classLevel === currentFilterClass);
+    filtered = filtered.filter(item => currentFilterClass === 'ALL' || item.classLevel === currentFilterClass);
   }
 
   const now = new Date();
@@ -533,7 +609,7 @@ function renderClassesGrid() {
         ${resourcesHtml}
       </div>
       <div class="class-footer" style="display: flex; gap: 8px; align-items: center; justify-content: space-between; margin-top: 15px;">
-        <a href="${icsDataUrl}" download="${item.title.replace(/[^a-zA-Z0-9]/g, '_')}.ics" class="resource-chip" title="Add to Google Calendar / Outlook"><i class="fa-solid fa-calendar-plus"></i> Add to Calendar</a>
+        <a href="${icsDataUrl}" download="${(item.title || 'lesson').replace(/[^a-zA-Z0-9]/g, '_')}.ics" class="resource-chip" title="Add to Google Calendar / Outlook"><i class="fa-solid fa-calendar-plus"></i> Add to Calendar</a>
         <button onclick="handleJoinAndLogAttendance('${item.id}', '${safeTitle}', '${item.classLevel}', '${item.meetUrl}')" class="meet-btn" style="border: none; cursor: pointer;">
           <i class="fa-solid fa-video"></i> ${isLive ? 'Join Active Meet' : 'Join Meet'}
         </button>
@@ -542,6 +618,10 @@ function renderClassesGrid() {
     container.appendChild(card);
   });
 }
+
+/* ==========================================================================
+   STUDENT ATTENDANCE LOGGING & MEET LAUNCH (Tenant-Isolated with schoolId)
+   ========================================================================== */
 async function logStudentAttendance(classId, classTitle, classLevel) {
   const session = getCurrentUserSession();
   if (!session) {
@@ -549,13 +629,15 @@ async function logStudentAttendance(classId, classTitle, classLevel) {
     return;
   }
 
+  const currentSchoolId = (session.schoolId || session.schoolID || session.institutionId || '').toLowerCase().trim();
   const userId = session.username || session.email || 'guest';
   const cleanClassId = classId || 'instant-meeting';
   
-  // Create a unique composite document ID to prevent duplicate spam for the same class
-  const attendanceDocId = `${cleanClassId}_${userId.replace(/[^a-zA-Z0-9]/g, '_')}`;
+  // Create a unique composite document ID including schoolId to prevent duplicate spam and keep tenant isolation
+  const attendanceDocId = `${currentSchoolId ? currentSchoolId + '_' : ''}${cleanClassId}_${userId.replace(/[^a-zA-Z0-9]/g, '_')}`;
 
   const attendanceRecord = {
+    schoolId: currentSchoolId,
     userId: userId,
     userName: session.name || session.fullName || 'Learner',
     userRole: session.role || 'Student',
@@ -571,21 +653,24 @@ async function logStudentAttendance(classId, classTitle, classLevel) {
   const database = typeof getDb === 'function' ? getDb() : (window.db || null);
   if (database) {
     try {
-      // Use .set() with merge: true instead of .add() to update existing log if they click twice
+      // Use .set() with merge: true to avoid duplicates if learner clicks join multiple times
       await database.collection('attendance').doc(attendanceDocId).set(attendanceRecord, { merge: true });
       console.log("Attendance successfully synced to Firestore.");
     } catch (err) {
       console.error("Failed to log attendance to Firestore:", err);
-      queueOfflineOperation('SET', 'attendance', attendanceDocId, attendanceRecord);
+      if (typeof queueOfflineOperation === 'function') {
+        queueOfflineOperation('SET', 'attendance', attendanceDocId, attendanceRecord);
+      }
     }
   } else {
-    queueOfflineOperation('SET', 'attendance', attendanceDocId, attendanceRecord);
+    if (typeof queueOfflineOperation === 'function') {
+      queueOfflineOperation('SET', 'attendance', attendanceDocId, attendanceRecord);
+    }
   }
 
   // Local storage fallback backup
   try {
     const localLogs = JSON.parse(localStorage.getItem('samcam_attendance_logs')) || [];
-    // Filter out previous entry for this same class if updating, then push fresh
     const filteredLogs = localLogs.filter(log => !(log.classId === cleanClassId && log.userId === userId));
     filteredLogs.push({ ...attendanceRecord, joinedAt: new Date().toISOString() });
     localStorage.setItem('samcam_attendance_logs', JSON.stringify(filteredLogs));
@@ -615,7 +700,7 @@ async function handleJoinAndLogAttendance(classId, safeTitle, classLevel, meetUr
   );
 
   if (confirmed) {
-    // 4. Log attendance using your robust function only after confirmation
+    // 4. Log attendance using robust function only after confirmation
     await logStudentAttendance(classId, safeTitle, classLevel);
     console.log("Attendance verified and recorded.");
   } else {
@@ -628,22 +713,30 @@ async function handleJoinAndLogAttendance(classId, safeTitle, classLevel, meetUr
    CALENDAR .ICS GENERATOR
    ========================================================================== */
 function generateIcsDataUrl(item) {
+  if (!item || !item.startTime) return '#';
+
   const formatDateIcs = (isoStr) => {
-    return new Date(isoStr).toISOString().replace(/-|:|\.\d+/g, '');
+    try {
+      return new Date(isoStr).toISOString().replace(/-|:|\.\d+/g, '');
+    } catch (e) {
+      return new Date().toISOString().replace(/-|:|\.\d+/g, '');
+    }
   };
+
+  const endFallback = item.endTime || new Date(new Date(item.startTime).getTime() + 3600000).toISOString();
 
   const icsContent = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
     'PRODID:-//Samcam Solutions//ICT Hub Live Classes//EN',
     'BEGIN:VEVENT',
-    `UID:samcam-class-${item.id}@samcam.com`,
+    `UID:samcam-class-${item.id || Date.now()}@samcamsolutions.org`,
     `DTSTAMP:${formatDateIcs(new Date().toISOString())}`,
     `DTSTART:${formatDateIcs(item.startTime)}`,
-    `DTEND:${formatDateIcs(item.endTime || new Date(new Date(item.startTime).getTime() + 3600000).toISOString())}`,
-    `SUMMARY:[${item.classLevel}] ${item.title} - Samcam ICT Hub`,
-    `DESCRIPTION:${(item.description || '').replace(/\n/g, '\\n')}\\n\\nInstructor: ${item.instructorName}\\nJoin Link: ${item.meetUrl}`,
-    `URL:${item.meetUrl}`,
+    `DTEND:${formatDateIcs(endFallback)}`,
+    `SUMMARY:[${item.classLevel || 'General'}] ${item.title || 'Live Session'} - Samcam ICT Hub`,
+    `DESCRIPTION:${(item.description || '').replace(/\n/g, '\\n')}\\n\\nInstructor: ${item.instructorName || 'Teacher'}\\nJoin Link: ${item.meetUrl || ''}`,
+    `URL:${item.meetUrl || ''}`,
     'END:VEVENT',
     'END:VCALENDAR'
   ].join('\r\n');
@@ -692,7 +785,11 @@ function ensureRecordingFieldsInModal() {
   `;
   // Insert before modal footer
   const footer = form.querySelector('.modal-footer');
-  form.insertBefore(div, footer);
+  if (footer) {
+    form.insertBefore(div, footer);
+  } else {
+    form.appendChild(div);
+  }
 }
 
 function openEditModal(classId) {
@@ -716,10 +813,10 @@ function openEditModal(classId) {
     toggleMeetingMode();
   }
 
-  if (item.startTime) {
+  if (item.startTime && document.getElementById('startTime')) {
     document.getElementById('startTime').value = item.startTime.substring(0, 16);
   }
-  if (item.endTime) {
+  if (item.endTime && document.getElementById('endTime')) {
     document.getElementById('endTime').value = item.endTime.substring(0, 16);
   }
 
@@ -758,7 +855,7 @@ function toggleMeetingMode() {
 }
 
 function closeScheduleModal(e) {
-  if (e.target.id === 'scheduleModal') closeScheduleModalDirect();
+  if (e.target && e.target.id === 'scheduleModal') closeScheduleModalDirect();
 }
 
 function closeScheduleModalDirect() {
@@ -774,7 +871,11 @@ function handleScheduleSubmit(e) {
   e.preventDefault();
   
   const session = getCurrentUserSession();
-  const schoolId = session?.schoolId || session?.institutionId || 'standard_college_ntungamo';
+  const schoolId = (session?.schoolId || session?.schoolID || session?.institutionId || '').toLowerCase().trim();
+
+  if (!schoolId) {
+    console.warn("Tenant Warning: Creating/editing class session without a specific schoolId attached.");
+  }
 
   const title = document.getElementById('classTitle').value;
   const classLevel = document.getElementById('classLevel').value;
@@ -815,8 +916,8 @@ function handleScheduleSubmit(e) {
     submitBtn.disabled = true;
     submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Updating...`;
 
-    db.collection("live_classes").doc(editingClassId).update({
-      schoolId,
+    const payload = {
+      ...(schoolId ? { schoolId } : {}),
       title,
       classLevel,
       instructorName,
@@ -827,8 +928,12 @@ function handleScheduleSubmit(e) {
       meetingMode,
       recordingUrl,
       handoutUrl,
-      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-    }).then(() => {
+      updatedAt: (typeof firebase !== 'undefined' && firebase.firestore) 
+                 ? firebase.firestore.FieldValue.serverTimestamp() 
+                 : new Date().toISOString()
+    };
+
+    db.collection("live_classes").doc(editingClassId).update(payload).then(() => {
       alert("Class updated successfully!");
       closeScheduleModalDirect();
       document.getElementById('scheduleForm').reset();
@@ -842,7 +947,7 @@ function handleScheduleSubmit(e) {
   }
 
   // Creating new class with Google Calendar API Meet Link generation
-  if (!tokenClient) {
+  if (typeof tokenClient === 'undefined' || !tokenClient) {
     alert("Google Identity Services is still loading or blocked. Please wait a moment and try again.");
     return;
   }
@@ -867,8 +972,8 @@ function handleScheduleSubmit(e) {
         admissionType
       });
 
-      await db.collection("live_classes").add({
-        schoolId,
+      const newClassPayload = {
+        ...(schoolId ? { schoolId } : {}),
         title,
         classLevel,
         instructorName,
@@ -880,8 +985,12 @@ function handleScheduleSubmit(e) {
         meetingMode,
         recordingUrl,
         handoutUrl,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
+        createdAt: (typeof firebase !== 'undefined' && firebase.firestore) 
+                   ? firebase.firestore.FieldValue.serverTimestamp() 
+                   : new Date().toISOString()
+      };
+
+      await db.collection("live_classes").add(newClassPayload);
 
       closeScheduleModalDirect();
       document.getElementById('scheduleForm').reset();
@@ -947,7 +1056,8 @@ async function createGoogleCalendarEvent(accessToken, classData) {
 function deleteClassSession(classId) {
   if (confirm("Are you sure you want to delete this class session? This action cannot be undone.")) {
     db.collection("live_classes").doc(classId).delete().then(() => {
-      // Real-time listener will automatically refresh the grid
+      console.log(`Class session ${classId} deleted successfully.`);
+      // Real-time listener automatically updates grid
     }).catch(err => {
       console.error("Error deleting session:", err);
       alert("Failed to delete session: " + err.message);
@@ -971,6 +1081,8 @@ function initTheme() {
     });
   }
 }
+
+
 
 /* ==========================================================================
    USER PROFILE & ATTENDANCE LOG FEATURES (SCHOOLID SCOPED)
@@ -1030,7 +1142,7 @@ function openAttendanceModal() {
 }
 
 function closeAttendanceModal(e) {
-  if (e.target.id === 'attendanceModal') closeAttendanceModalDirect();
+  if (e.target && e.target.id === 'attendanceModal') closeAttendanceModalDirect();
 }
 
 function closeAttendanceModalDirect() {
@@ -1038,7 +1150,7 @@ function closeAttendanceModalDirect() {
   if (modal) modal.style.display = 'none';
 }
 
-// 3. Fetch and Render Attendance Logs (Scoped by schoolId)
+// 3. Fetch and Render Attendance Logs (Scoped by schoolId and matched to 'attendance' collection)
 function fetchAttendanceLogs() {
   const tbody = document.getElementById('attendanceTableBody');
   if (!tbody) return;
@@ -1046,14 +1158,14 @@ function fetchAttendanceLogs() {
   tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px;">Loading logs...</td></tr>';
 
   const session = getCurrentUserSession();
-  const schoolId = session?.schoolId || session?.institutionId;
+  const schoolId = (session?.schoolId || session?.schoolID || session?.institutionId || '').toLowerCase().trim();
 
-  let query = db.collection("attendance_logs");
+  let query = db.collection("attendance");
   if (schoolId) {
     query = query.where("schoolId", "==", schoolId);
   }
 
-  query.orderBy("timestamp", "desc")
+  query.orderBy("joinedAt", "desc")
     .limit(50)
     .onSnapshot((snapshot) => {
       tbody.innerHTML = '';
@@ -1063,12 +1175,22 @@ function fetchAttendanceLogs() {
       }
       snapshot.forEach((doc) => {
         const log = doc.data();
-        const date = log.timestamp?.toDate().toLocaleString() || 'N/A';
+        
+        // Handle both Firestore serverTimestamp and fallback ISO strings safely
+        let formattedDate = 'N/A';
+        if (log.joinedAt) {
+          if (typeof log.joinedAt.toDate === 'function') {
+            formattedDate = log.joinedAt.toDate().toLocaleString();
+          } else {
+            formattedDate = new Date(log.joinedAt).toLocaleString();
+          }
+        }
+
         const row = `<tr>
-          <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">${date}</td>
+          <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">${formattedDate}</td>
           <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">${log.userName || 'Unknown'}</td>
           <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">${log.userClass || 'N/A'}</td>
-          <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">${log.action || 'Joined Session'}</td>
+          <td style="padding: 10px; border-bottom: 1px solid var(--border-color);">${log.classTitle || log.action || 'Joined Session'}</td>
         </tr>`;
         tbody.innerHTML += row;
       });
@@ -1078,21 +1200,29 @@ function fetchAttendanceLogs() {
     });
 }
 
-// 4. Export Attendance to CSV (Scoped by schoolId)
+// 4. Export Attendance to CSV (Scoped by schoolId and matched to 'attendance' collection)
 function exportAttendanceCSV() {
   const session = getCurrentUserSession();
-  const schoolId = session?.schoolId || session?.institutionId;
+  const schoolId = (session?.schoolId || session?.schoolID || session?.institutionId || '').toLowerCase().trim();
 
-  let query = db.collection("attendance_logs");
+  let query = db.collection("attendance");
   if (schoolId) {
     query = query.where("schoolId", "==", schoolId);
   }
 
   query.get().then((snapshot) => {
-    let csv = "Timestamp,User Name,Class,Action\n";
+    let csv = "Timestamp,User Name,Class Level,Class Title\n";
     snapshot.forEach((doc) => {
       const log = doc.data();
-      csv += `"${log.timestamp?.toDate().toLocaleString()}","${log.userName}","${log.userClass}","${log.action}"\n`;
+      let formattedDate = 'N/A';
+      if (log.joinedAt) {
+        if (typeof log.joinedAt.toDate === 'function') {
+          formattedDate = log.joinedAt.toDate().toLocaleString();
+        } else {
+          formattedDate = new Date(log.joinedAt).toLocaleString();
+        }
+      }
+      csv += `"${formattedDate}","${log.userName || 'Unknown'}","${log.userClass || 'N/A'}","${log.classTitle || 'Virtual Class'}"\n`;
     });
     
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -1114,11 +1244,14 @@ function toggleMobileMenu() {
 
   wrapper.classList.toggle('show');
   
-  // Switch hamburger icon to an 'X' (close) icon and back
-  const icon = toggleBtn.querySelector('i');
-  if (wrapper.classList.contains('show')) {
-    icon.className = 'fa-solid fa-xmark';
-  } else {
-    icon.className = 'fa-solid fa-bars';
+  if (toggleBtn) {
+    const icon = toggleBtn.querySelector('i');
+    if (icon) {
+      if (wrapper.classList.contains('show')) {
+        icon.className = 'fa-solid fa-xmark';
+      } else {
+        icon.className = 'fa-solid fa-bars';
+      }
+    }
   }
 }
