@@ -506,3 +506,130 @@ main {
 .token-bracket-62 { color: #15803d; font-weight: bold; }
 .token-bracket-63 { color: #7e22ce; font-weight: bold; }
 .token-bracket-64 { color: #b45309; font-weight: bold; }
+
+/* --- Modern Admin Panel Styles --- */
+.admin-import-card {
+    background: var(--surface-white, #ffffff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-left: 4px solid var(--primary-accent, #2563eb);
+    border-radius: var(--radius-md, 8px);
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+}
+
+.admin-card-header {
+    margin-bottom: 1.25rem;
+}
+
+.admin-title-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.35rem;
+}
+
+.admin-title-group h3 {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--text-main, #1e293b);
+    margin: 0;
+}
+
+.admin-badge {
+    background: rgba(37, 99, 235, 0.1);
+    color: var(--primary-accent, #2563eb);
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.admin-subtitle {
+    font-size: 0.9rem;
+    color: #64748b;
+    margin: 0;
+}
+
+.admin-form-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.admin-input-group label {
+    display: block;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.4rem;
+}
+
+.admin-text-input,
+.admin-textarea {
+    width: 100%;
+    padding: 0.65rem 0.85rem;
+    font-family: inherit;
+    font-size: 0.95rem;
+    border: 1px solid var(--border-color, #cbd5e1);
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #1e293b;
+    outline: none;
+    transition: all 0.2s ease;
+}
+
+.admin-textarea {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.9rem;
+    resize: vertical;
+}
+
+.admin-text-input:focus,
+.admin-textarea:focus {
+    border-color: var(--primary-accent, #2563eb);
+    background: #ffffff;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.admin-card-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+}
+
+.admin-action-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #0f172a;
+    color: #ffffff;
+    font-weight: 600;
+    padding: 0.65rem 1.25rem;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.admin-action-btn:hover {
+    background: #1e293b;
+}
+
+.admin-action-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.admin-feedback-msg {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.admin-feedback-msg.info { color: #2563eb; }
+.admin-feedback-msg.success { color: #16a34a; }
+.admin-feedback-msg.error { color: #dc2626; }
