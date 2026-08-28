@@ -1,13 +1,22 @@
+/* ==========================================================================
+   SAMCAM SOLUTIONS - ADMIN LIBRARY ENGINE (v2.8 - Multi-Tenant Isolated)
+   ========================================================================== */
+
 let allResources = [];
 let downloadsChartInstance = null;
 let selectedResourceIds = new Set();
 
-// Assume current school ID is defined globally or retrieved from an environment/session variable
-// e.g., const currentSchoolId = "SCH001"; 
-
 document.addEventListener("DOMContentLoaded", () => {
+  initTenantContext();
   fetchLibraryResources();
 });
+
+function initTenantContext() {
+  if (typeof currentSchoolId === 'undefined' || !currentSchoolId) {
+    const session = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser') || '{}');
+    window.currentSchoolId = (session.schoolId || session.schoolID || '').toLowerCase().trim();
+  }
+}
 
 // Lightweight small ID generator (7 characters alphanumeric)
 function generateSmallId(length = 7) {
@@ -34,32 +43,40 @@ function togglePriceField() {
   }
 }
 
-// Fetch resources from Firestore collection 'e_library_resources' filtered by schoolId
+// Fetch resources from Firestore collection 'e_library_resources' filtered strictly by schoolId
 async function fetchLibraryResources() {
   const tbody = document.getElementById("libraryTableBody");
   if (!db) return;
 
+  initTenantContext();
+
   try {
-    // Filter documents by the current school ID using .where()
     let query = db.collection("e_library_resources");
+    
+    // Strict Tenant Filtering: If schoolId is defined, limit query to this tenant only
     if (typeof currentSchoolId !== 'undefined' && currentSchoolId) {
       query = query.where("schoolId", "==", currentSchoolId);
+    } else {
+      console.warn("Warning: currentSchoolId is not set. Fetching global/unfiltered data.");
     }
-    
+     
     const snapshot = await query.orderBy("createdAt", "desc").get();
     allResources = [];
     snapshot.forEach(doc => {
-      allResources.push({ id: doc.id, ...doc.data() });
+      const data = doc.data();
+      // Double check tenant match client-side as a security guardrail
+      if (!currentSchoolId || (data.schoolId || '').toLowerCase() === currentSchoolId.toLowerCase()) {
+        allResources.push({ id: doc.id, ...data });
+      }
     });
-    
-    // Update KPI metrics, download stats, chart, and apply table filters
+     
     updateKpiMetrics();
     renderResourceStatsTable();
     renderDownloadsChart();
     applyAdvancedFilters();
   } catch (error) {
     console.error("Error fetching library data:", error);
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--danger);">Error loading resources.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--danger);">Error loading resources for your school.</td></tr>`;
   }
 }
 
@@ -78,24 +95,20 @@ function updateKpiMetrics() {
 function renderDownloadsChart() {
   const ctx = document.getElementById("downloadsChart").getContext("2d");
 
-  // Define class levels to track
   const classes = ["S1", "S2", "S3", "S4", "S5", "S6", "General"];
   
-  // Aggregate downloads per class level
   const downloadCountsByClass = classes.map(cls => {
     return allResources
       .filter(r => r.classLevel === cls)
       .reduce((sum, r) => sum + (Number(r.downloads) || 0), 0);
   });
 
-  // If chart already exists, update its data instead of recreating
   if (downloadsChartInstance) {
     downloadsChartInstance.data.datasets[0].data = downloadCountsByClass;
     downloadsChartInstance.update();
     return;
   }
 
-  // Create new Chart instance
   downloadsChartInstance = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -115,11 +128,7 @@ function renderDownloadsChart() {
         legend: {
           display: true,
           position: 'top',
-          labels: {
-            font: { family: 'Inter', size: 12 },
-            boxWidth: 14,
-            usePointStyle: true
-          }
+          labels: { font: { family: 'Inter', size: 12 }, boxWidth: 14, usePointStyle: true }
         },
         tooltip: {
           backgroundColor: '#0f172a',
@@ -134,22 +143,12 @@ function renderDownloadsChart() {
           beginAtZero: true,
           grid: { color: '#f1f5f9' },
           ticks: { font: { family: 'Inter' }, precision: 0 },
-          title: {
-            display: true,
-            text: 'Number of Downloads',
-            font: { family: 'Inter', size: 12, weight: '600' },
-            color: '#475569'
-          }
+          title: { display: true, text: 'Number of Downloads', font: { family: 'Inter', size: 12, weight: '600' }, color: '#475569' }
         },
         x: {
           grid: { display: false },
           ticks: { font: { family: 'Inter' } },
-          title: {
-            display: true,
-            text: 'Class Level',
-            font: { family: 'Inter', size: 12, weight: '600' },
-            color: '#475569'
-          }
+          title: { display: true, text: 'Class Level', font: { family: 'Inter', size: 12, weight: '600' }, color: '#475569' }
         }
       }
     }
@@ -181,7 +180,7 @@ function renderLibraryTable(resources) {
   if (!tbody) return;
 
   if (resources.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding: 2rem;">No matching resources found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding: 2rem;">No matching resources found for your school.</td></tr>`;
     return;
   }
 
@@ -253,7 +252,7 @@ function updateBulkActionBar() {
   }
 }
 
-// Bulk Delete Action (Using Custom Modal)
+// Bulk Delete Action with Tenant Ownership Verification
 async function bulkDeleteResources() {
   showCustomModal(
     "Confirm Bulk Deletion", 
@@ -266,12 +265,16 @@ async function bulkDeleteResources() {
       try {
         const batchPromises = Array.from(selectedResourceIds).map(async id => {
           const res = allResources.find(r => r.id === id);
-          await db.collection("e_library_resources").doc(id).delete();
-          if (res && res.fileUrl) {
-            try {
-              await firebase.storage().refFromURL(res.fileUrl).delete();
-            } catch (e) {
-              console.warn("Storage delete warning:", e);
+          
+          // Security Guardrail: Confirm document matches tenant schoolId before deleting
+          if (res && (!currentSchoolId || res.schoolId === currentSchoolId)) {
+            await db.collection("e_library_resources").doc(id).delete();
+            if (res.fileUrl) {
+              try {
+                await firebase.storage().refFromURL(res.fileUrl).delete();
+              } catch (e) {
+                console.warn("Storage delete warning:", e);
+              }
             }
           }
         });
@@ -290,9 +293,15 @@ async function bulkDeleteResources() {
   );
 }
 
-// Handle Form Submission for Create & Update (Using Custom Modal & Small ID)
+// Handle Form Submission with Enforced Tenant schoolId Injection
 async function handleLibraryFormSubmit(e) {
   e.preventDefault();
+  initTenantContext();
+
+  if (!currentSchoolId) {
+    showCustomModal("Configuration Error", "No school context (schoolId) detected. Action aborted.", "error");
+    return;
+  }
 
   const editingId = document.getElementById("editingResourceId").value;
   const title = document.getElementById("resTitle").value.trim();
@@ -316,7 +325,8 @@ async function handleLibraryFormSubmit(e) {
     if (file) {
       const storageRef = firebase.storage().ref();
       const safeName = `${Date.now()}_${file.name.replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
-      const fileRef = storageRef.child(`e_library_resources/${classLevel}/${safeName}`);
+      // Namespace file path by schoolId for complete storage tenant isolation
+      const fileRef = storageRef.child(`e_library_resources/${currentSchoolId}/${classLevel}/${safeName}`);
       
       const snapshot = await fileRef.put(file);
       fileUrl = await snapshot.ref.getDownloadURL();
@@ -325,6 +335,12 @@ async function handleLibraryFormSubmit(e) {
     }
 
     if (editingId) {
+      // Verify ownership before updating
+      const existingRes = allResources.find(r => r.id === editingId);
+      if (existingRes && existingRes.schoolId !== currentSchoolId) {
+        throw new Error("Unauthorized: Cannot modify resources belonging to another school.");
+      }
+
       const updateData = {
         title,
         description,
@@ -350,12 +366,12 @@ async function handleLibraryFormSubmit(e) {
         return;
       }
 
-      // Generate a clean custom small ID for the new document
       const customSmallId = generateSmallId(7);
 
+      // Force inject currentSchoolId into the document payload
       await db.collection("e_library_resources").doc(customSmallId).set({
         id: customSmallId,
-        schoolId: typeof currentSchoolId !== 'undefined' ? currentSchoolId : '',
+        schoolId: currentSchoolId, 
         title,
         description,
         classLevel,
@@ -368,7 +384,7 @@ async function handleLibraryFormSubmit(e) {
         downloads: 0,
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
-      showCustomModal("Success", "Resource uploaded successfully!", "success");
+      showCustomModal("Success", "Resource uploaded successfully for your school!", "success");
     }
 
     resetLibraryForm();
@@ -376,17 +392,22 @@ async function handleLibraryFormSubmit(e) {
 
   } catch (error) {
     console.error("Error saving resource:", error);
-    showCustomModal("Error", "Operation failed. Check console for details.", "error");
+    showCustomModal("Error", error.message || "Operation failed. Check console for details.", "error");
   } finally {
     saveBtn.disabled = false;
     saveBtn.innerHTML = `<i class="fa-solid fa-upload"></i> Save Resource`;
   }
 }
 
-// Load data into form for editing
+// Load data into form for editing with security verification
 function editResource(id) {
   const res = allResources.find(r => r.id === id);
   if (!res) return;
+
+  if (currentSchoolId && res.schoolId && res.schoolId !== currentSchoolId) {
+    showCustomModal("Access Denied", "You do not have permission to edit resources from another school.", "error");
+    return;
+  }
 
   document.getElementById("editingResourceId").value = res.id;
   document.getElementById("resTitle").value = res.title || '';
@@ -413,8 +434,14 @@ function resetLibraryForm() {
   document.getElementById("cancelEditBtn").style.display = "none";
 }
 
-// Delete Single Resource (Using Custom Modal)
+// Delete Single Resource with Tenant Validation
 async function deleteResource(id, fileUrl) {
+  const res = allResources.find(r => r.id === id);
+  if (res && currentSchoolId && res.schoolId && res.schoolId !== currentSchoolId) {
+    showCustomModal("Access Denied", "Cannot delete resources belonging to another tenant.", "error");
+    return;
+  }
+
   showCustomModal(
     "Confirm Deletion", 
     "Are you sure you want to delete this resource?", 
@@ -466,10 +493,8 @@ function toggleMobileMenu() {
   }
 }
 
-// Global callback reference for confirmation dialogs
 let modalCallback = null;
 
-// Display custom alert or confirmation dialog
 function showCustomModal(title, message, type = 'info', isConfirm = false, callback = null) {
   const modal = document.getElementById("customModal");
   const modalTitle = document.getElementById("modalTitle");
@@ -482,7 +507,6 @@ function showCustomModal(title, message, type = 'info', isConfirm = false, callb
   modalMessage.textContent = message;
   modalCallback = callback;
 
-  // Set icon and colors based on type
   if (type === 'success') {
     modalIcon.className = "fa-solid fa-circle-check";
     modalIcon.style.color = "#059669";
@@ -497,7 +521,6 @@ function showCustomModal(title, message, type = 'info', isConfirm = false, callb
     modalIcon.style.color = "#4f46e5";
   }
 
-  // Show/Hide cancel button for confirm dialogs
   if (isConfirm) {
     cancelBtn.style.display = "block";
     confirmBtn.textContent = "Yes, Proceed";
@@ -509,7 +532,6 @@ function showCustomModal(title, message, type = 'info', isConfirm = false, callb
   modal.style.display = "flex";
 }
 
-// Close modal and trigger callback if it was a confirmation
 function closeCustomModal(result) {
   const modal = document.getElementById("customModal");
   modal.style.display = "none";
@@ -520,17 +542,15 @@ function closeCustomModal(result) {
   }
 }
 
-// Render Resource-Specific Download Statistics Table
 function renderResourceStatsTable() {
   const tbody = document.getElementById("resourceStatsTableBody");
   if (!tbody) return;
 
   if (allResources.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding: 1.5rem;">No resources available.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding: 1.5rem;">No resources available for your school.</td></tr>`;
     return;
   }
 
-  // Sort resources by downloads descending (highest first)
   const sortedResources = [...allResources].sort((a, b) => (Number(b.downloads) || 0) - (Number(a.downloads) || 0));
 
   tbody.innerHTML = sortedResources.map(res => `
