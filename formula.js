@@ -866,7 +866,7 @@ function setupAdminImportModule() {
 function highlightFormula(text) {
     if (!text) return '';
     
-    // Safely escape HTML characters
+    // 1. Escape HTML characters safely
     const safeText = text
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -874,6 +874,7 @@ function highlightFormula(text) {
 
     let bracketDepth = 0;
 
+    // 2. Tokenize and wrap elements with syntax classes
     return safeText
         .replace(/(=)|([A-Z][A-Z0-9_]*\b(?=\s*\())|([()])/g, (match, eq, func, bracket) => {
             if (eq) return `<span class="token-equals">${eq}</span>`;
@@ -888,37 +889,38 @@ function highlightFormula(text) {
             return match;
         })
         .replace(/([A-Z]+\d+:[A-Z]+\d+|[A-Z]+\d+|\$[A-Z]+\$\d+)/g, '<span class="token-cell">$1</span>')
-        .replace(/(&quot;[^&]*&quot;|'[^']*'|"[^"]*")/g, '<span class="token-string">$1</span>')
+        .replace(/(".*?"|'.*?')/g, '<span class="token-string">$1</span>') // Fixed string quote matching
         .replace(/([+\-*/^=<>]=?)/g, '<span class="token-operator">$1</span>');
 }
 
 document.addEventListener("DOMContentLoaded", () => {
     const textarea = document.getElementById('studentAnswer');
     const backdropCode = document.getElementById('formulaBackdrop');
-    const container = textarea ? textarea.closest('.editor-container') : null;
 
     if (textarea && backdropCode) {
         function updateEditor() {
-            // CRITICAL: Always read raw text from textarea.value
-            // Append a trailing space or newline to match textarea sizing behavior in <pre> elements
-            backdropCode.innerHTML = highlightFormula(textarea.value) + ' ';
+            // CRITICAL: Pull raw, clean text exclusively from textarea.value
+            const rawText = textarea.value;
+            
+            // Render colored HTML into the background code element
+            backdropCode.innerHTML = highlightFormula(rawText) + ' ';
         }
 
+        // Listen for user typing
         textarea.addEventListener('input', updateEditor);
-        
-        // Sync scrolling if container or textarea scrolls
-        if (container) {
-            textarea.addEventListener('scroll', () => {
-                container.scrollTop = textarea.scrollTop;
-                container.scrollLeft = textarea.scrollLeft;
-            });
-        }
 
-        // Initial paint
+        // Sync scroll positions between input and background
+        textarea.addEventListener('scroll', () => {
+            if (backdropCode.parentElement) {
+                backdropCode.parentElement.scrollTop = textarea.scrollTop;
+                backdropCode.parentElement.scrollLeft = textarea.scrollLeft;
+            }
+        });
+
+        // Initial render paint on page load
         updateEditor();
     }
 });
-
 // ==========================================
 // 7. INITIALIZATION ON PAGE LOAD
 // ==========================================
