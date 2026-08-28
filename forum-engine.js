@@ -1,7 +1,4 @@
 // ==========================================================================
-// 1. FIREBASE INITIALIZATION & MOCK DATA
-// ==========================================================================
-// ==========================================================================
 // 2. STATE MANAGEMENT, REAL-TIME LISTENERS & SESSION HANDLING
 // ==========================================================================
 let globalThreads = [];
@@ -14,587 +11,584 @@ let typingTimeout = null;
 const db = window.db || (typeof firebase !== "undefined" ? firebase.firestore() : null);
 
 window.addEventListener('portalSessionChanged', (e) => {
-  syncForumEngineSession(e.detail);
+    syncForumEngineSession(e.detail);
 });
 
 function syncForumEngineSession(user) {
-  const session = getCurrentUserSession(user);
-  console.log("Synced Forum Session:", session);
+    const session = getCurrentUserSession(user);
+    console.log("Synced Forum Session:", session);
 
-  const combinedCheck = `${session.role} ${session.name} ${session.userClass}`.toLowerCase();
-  const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
-                           combinedCheck.includes('admin') || 
-                           combinedCheck.includes('instructor') ||
-                           combinedCheck.includes('staff');
+    const combinedCheck = `${session.role} ${session.name} ${session.userClass}`.toLowerCase();
+    const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
+                             combinedCheck.includes('admin') || 
+                             combinedCheck.includes('instructor') ||
+                             combinedCheck.includes('staff');
 
-  document.querySelectorAll('.teacher-only').forEach(el => {
-    el.style.display = isTeacherOrAdmin ? 'inline-flex' : 'none';
-  });
+    document.querySelectorAll('.teacher-only').forEach(el => {
+        el.style.display = isTeacherOrAdmin ? 'inline-flex' : 'none';
+    });
 
-  updateClassFilterDropdown(session, isTeacherOrAdmin);
-  filterForumThreads();
+    updateClassFilterDropdown(session, isTeacherOrAdmin);
+    filterForumThreads();
 }
 
 function updateClassFilterDropdown(session, isTeacherOrAdmin) {
-  const classFilterSelect = document.getElementById('classFilterSelect');
-  if (!classFilterSelect) return;
+    const classFilterSelect = document.getElementById('classFilterSelect');
+    if (!classFilterSelect) return;
 
-  const currentSelection = classFilterSelect.value;
-  let optionsHtml = '';
+    const currentSelection = classFilterSelect.value;
+    let optionsHtml = '';
 
-  if (isTeacherOrAdmin) {
-    optionsHtml = `
-      <option value="">All Classes (General & Specific)</option>
-      <option value="General">General</option>
-      <option value="S.1">Senior One (S.1)</option>
-      <option value="S.2">Senior Two (S.2)</option>
-      <option value="S.3">Senior Three (S.3)</option>
-      <option value="S.4">Senior Four (S.4)</option>
-      <option value="S.5">Senior Five (S.5)</option>
-      <option value="S.6">Senior Six (S.6)</option>
-    `;
-  } else {
-    const userCls = (session.userClass || 'S.1').trim();
-    optionsHtml = `
-      <option value="">All Available (${userCls} & General)</option>
-      <option value="${escapeHtml(userCls)}">${escapeHtml(userCls)}</option>
-      <option value="General">General</option>
-    `;
-  }
+    if (isTeacherOrAdmin) {
+        optionsHtml = `
+            <option value="">All Classes (General & Specific)</option>
+            <option value="General">General</option>
+            <option value="S.1">Senior One (S.1)</option>
+            <option value="S.2">Senior Two (S.2)</option>
+            <option value="S.3">Senior Three (S.3)</option>
+            <option value="S.4">Senior Four (S.4)</option>
+            <option value="S.5">Senior Five (S.5)</option>
+            <option value="S.6">Senior Six (S.6)</option>
+        `;
+    } else {
+        const userCls = (session.userClass || 'S.1').trim();
+        optionsHtml = `
+            <option value="">All Available (${escapeHtml(userCls)} & General)</option>
+            <option value="${escapeHtml(userCls)}">${escapeHtml(userCls)}</option>
+            <option value="General">General</option>
+        `;
+    }
 
-  classFilterSelect.innerHTML = optionsHtml;
+    classFilterSelect.innerHTML = optionsHtml;
 
-  if (Array.from(classFilterSelect.options).some(opt => opt.value === currentSelection)) {
-    classFilterSelect.value = currentSelection;
-  } else {
-    classFilterSelect.value = '';
-  }
+    if (Array.from(classFilterSelect.options).some(opt => opt.value === currentSelection)) {
+        classFilterSelect.value = currentSelection;
+    } else {
+        classFilterSelect.value = '';
+    }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  const savedFilter = localStorage.getItem('samcam_forum_class_filter');
-  const classFilterSelect = document.getElementById('classFilterSelect');
-  if (savedFilter && classFilterSelect) {
-    classFilterSelect.value = savedFilter;
-  }
+    const savedFilter = localStorage.getItem('samcam_forum_class_filter');
+    const classFilterSelect = document.getElementById('classFilterSelect');
+    if (savedFilter && classFilterSelect) {
+        classFilterSelect.value = savedFilter;
+    }
 
-  if (classFilterSelect) {
-    classFilterSelect.addEventListener('change', (e) => {
-      localStorage.setItem('samcam_forum_class_filter', e.target.value);
-      filterForumThreads();
-    });
-  }
+    if (classFilterSelect) {
+        classFilterSelect.addEventListener('change', (e) => {
+            localStorage.setItem('samcam_forum_class_filter', e.target.value);
+            filterForumThreads();
+        });
+    }
 
-  syncForumEngineSession();
-  initRealtimeForumThreads();
+    syncForumEngineSession();
+    initRealtimeForumThreads();
 });
 
 function getCurrentUserSession(userParam) {
-  let activeUser = userParam || window.currentUser;
+    let activeUser = userParam || window.currentUser;
 
-  if (!activeUser) {
-    const sessionData = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
-    if (sessionData) {
-      try {
-        activeUser = JSON.parse(sessionData);
-      } catch (e) {
-        console.error("Error parsing portal_session from localStorage:", e);
-        activeUser = null;
-      }
+    if (!activeUser) {
+        const sessionData = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
+        if (sessionData) {
+            try {
+                activeUser = JSON.parse(sessionData);
+            } catch (e) {
+                console.error("Error parsing portal_session from localStorage:", e);
+                activeUser = null;
+            }
+        }
     }
-  }
 
-  let role = '';
-  let name = '';
-  let userClass = 'Senior ICT';
+    let role = '';
+    let name = '';
+    let userClass = 'Senior ICT';
 
-  if (activeUser && typeof activeUser === 'object') {
-    role = activeUser.role || activeUser.userType || activeUser.type || activeUser.accessLevel || '';
-    name = activeUser.fullName || activeUser.name || activeUser.username || '';
-    userClass = activeUser.class || activeUser.userClass || 'Senior ICT';
-  }
+    if (activeUser && typeof activeUser === 'object') {
+        role = activeUser.role || activeUser.userType || activeUser.type || activeUser.accessLevel || '';
+        name = activeUser.fullName || activeUser.name || activeUser.username || '';
+        userClass = activeUser.class || activeUser.userClass || 'Senior ICT';
+    }
 
-  return {
-    role: (role || '').trim().toLowerCase(),
-    name: (name || '').trim(),
-    userClass: (userClass || 'Senior ICT').trim()
-  };
+    return {
+        role: (role || '').trim().toLowerCase(),
+        name: (name || '').trim(),
+        userClass: (userClass || 'Senior ICT').trim()
+    };
 }
 
 function initRealtimeForumThreads() {
-  const feedContainer = document.getElementById('threadsFeedContainer');
-  if (!feedContainer) return;
+    const feedContainer = document.getElementById('threadsFeedContainer');
+    if (!feedContainer) return;
 
-  if (!db) {
-    feedContainer.innerHTML = `<div class="loading-state" style="color:#ef4444;">Database connection unavailable.</div>`;
-    return;
-  }
+    if (!db) {
+        feedContainer.innerHTML = `<div class="loading-state" style="color:#ef4444;">Database connection unavailable.</div>`;
+        return;
+    }
 
-  if (unsubscribeThreads) unsubscribeThreads();
+    if (unsubscribeThreads) unsubscribeThreads();
 
-  unsubscribeThreads = db.collection('forum_threads')
-    .orderBy('createdAt', 'desc')
-    .onSnapshot(snapshot => {
-      globalThreads = [];
-      snapshot.forEach(doc => {
-        globalThreads.push({ id: doc.id, ...doc.data() });
-      });
-      filterForumThreads();
+    unsubscribeThreads = db.collection('forum_threads')
+        .orderBy('createdAt', 'desc')
+        .onSnapshot(snapshot => {
+            globalThreads = [];
+            snapshot.forEach(doc => {
+                globalThreads.push({ id: doc.id, ...doc.data() });
+            });
+            filterForumThreads();
 
-      // Auto-restore the previously viewed thread (or default to the first one)
-      if (globalThreads.length > 0) {
-        const savedThreadId = localStorage.getItem('samcam_active_thread');
-        const targetId = (savedThreadId && globalThreads.some(t => t.id === savedThreadId)) 
-          ? savedThreadId 
-          : globalThreads[0].id;
-        
-        // Only trigger selection if not already active to prevent reload loops
-        if (typeof activeThreadId === 'undefined' || activeThreadId !== targetId) {
-          selectThread(targetId);
-        }
-      }
-    }, err => {
-      console.error("Real-time thread error:", err);
-      feedContainer.innerHTML = `<div class="loading-state" style="color:#ef4444;">Failed to sync live discussions.</div>`;
-    });
+            // Auto-restore the previously viewed thread (or default to the first one)
+            if (globalThreads.length > 0) {
+                const savedThreadId = localStorage.getItem('samcam_active_thread');
+                const targetId = (savedThreadId && globalThreads.some(t => t.id === savedThreadId)) 
+                    ? savedThreadId 
+                    : globalThreads[0].id;
+                
+                // Only trigger selection if not already active to prevent reload loops
+                if (typeof activeThreadId === 'undefined' || activeThreadId !== targetId) {
+                    selectThread(targetId);
+                }
+            }
+        }, err => {
+            console.error("Real-time thread error:", err);
+            feedContainer.innerHTML = `<div class="loading-state" style="color:#ef4444;">Failed to sync live discussions.</div>`;
+        });
 }
+
 function renderThreadsList(threads) {
-  const feedContainer = document.getElementById('threadsFeedContainer');
-  if (!feedContainer) return;
+    const feedContainer = document.getElementById('threadsFeedContainer');
+    if (!feedContainer) return;
 
-  if (threads.length === 0) {
-    feedContainer.innerHTML = `<div class="loading-state">No matching discussions found for your class level.</div>`;
-    return;
-  }
+    if (threads.length === 0) {
+        feedContainer.innerHTML = `<div class="loading-state">No matching discussions found for your class level.</div>`;
+        return;
+    }
 
-  const session = getCurrentUserSession();
-  const bookmarks = JSON.parse(localStorage.getItem(`samcam_bookmarks_${session.name}`) || '[]');
+    const session = getCurrentUserSession();
+    const bookmarks = JSON.parse(localStorage.getItem(`samcam_bookmarks_${session.name}`) || '[]');
 
-  let html = '';
-  threads.forEach(thread => {
-    const timeAgo = thread.createdAt && thread.createdAt.toDate 
-      ? new Date(thread.createdAt.toDate()).toLocaleDateString() 
-      : 'Recent';
+    let html = '';
+    threads.forEach(thread => {
+        const timeAgo = thread.createdAt && thread.createdAt.toDate 
+            ? new Date(thread.createdAt.toDate()).toLocaleDateString() 
+            : 'Recent';
 
-    const isActive = activeThreadId === thread.id ? 'active' : '';
-    const upvotesCount = (thread.upvotedBy || []).length;
-    const isBookmarked = bookmarks.includes(thread.id);
+        const isActive = activeThreadId === thread.id ? 'active' : '';
+        const upvotesCount = (thread.upvotedBy || []).length;
+        const isBookmarked = bookmarks.includes(thread.id);
 
-    // Unread notification badge HTML tag
-    const unreadBadge = thread.hasUnreadNotification 
-      ? `<span class="thread-unread-badge" style="background:#ef4444; color:#fff; font-size:0.65rem; padding:0.05rem 0.35rem; border-radius:10px; font-weight:600; margin-left:0.4rem; vertical-align:middle; display:inline-block;"><i class="fa-solid fa-circle" style="font-size:0.45rem; vertical-align:middle; margin-right:2px;"></i> New</span>` 
-      : '';
+        // Unread notification badge HTML tag
+        const unreadBadge = thread.hasUnreadNotification 
+            ? `<span class="thread-unread-badge" style="background:#ef4444; color:#fff; font-size:0.65rem; padding:0.05rem 0.35rem; border-radius:10px; font-weight:600; margin-left:0.4rem; vertical-align:middle; display:inline-block;"><i class="fa-solid fa-circle" style="font-size:0.45rem; vertical-align:middle; margin-right:2px;"></i> New</span>` 
+            : '';
 
-    html += `
-      <div class="thread-card ${isActive}" onclick="selectThread('${thread.id}')">
-        <div class="thread-meta-top" style="display:flex; justify-content:space-between; align-items:center;">
-          <span class="class-badge">${escapeHtml(thread.classTarget || 'General')}</span>
-          <div>
-            <button class="btn btn-xs btn-outline" style="border:none; padding:0.1rem 0.3rem;" onclick="event.stopPropagation(); toggleBookmark('${thread.id}')" title="Bookmark Thread">
-              <i class="fa-${isBookmarked ? 'solid' : 'regular'} fa-bookmark" style="${isBookmarked ? 'color:#10b981;' : ''}"></i>
-            </button>
-            <span class="thread-time" style="margin-left:0.3rem;"><i class="fa-solid fa-thumbs-up"></i> ${upvotesCount} • ${timeAgo}</span>
-          </div>
-        </div>
-        <h4>${escapeHtml(thread.title)} ${unreadBadge}</h4>
-        <div class="thread-snippet">${formatRichContent(thread.body)}</div>
-      </div>
-    `;
-  });
+        html += `
+            <div class="thread-card ${isActive}" onclick="selectThread('${thread.id}')">
+                <div class="thread-meta-top" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="class-badge">${escapeHtml(thread.classTarget || 'General')}</span>
+                    <div>
+                        <button class="btn btn-xs btn-outline" style="border:none; padding:0.1rem 0.3rem;" onclick="event.stopPropagation(); toggleBookmark('${thread.id}')" title="Bookmark Thread">
+                            <i class="fa-${isBookmarked ? 'solid' : 'regular'} fa-bookmark" style="${isBookmarked ? 'color:#10b981;' : ''}"></i>
+                        </button>
+                        <span class="thread-time" style="margin-left:0.3rem;"><i class="fa-solid fa-thumbs-up"></i> ${upvotesCount} • ${timeAgo}</span>
+                    </div>
+                </div>
+                <h4>${escapeHtml(thread.title)} ${unreadBadge}</h4>
+                <div class="thread-snippet">${formatRichContent(thread.body)}</div>
+            </div>
+        `;
+    });
 
-  feedContainer.innerHTML = html;
+    feedContainer.innerHTML = html;
 }
 
 let userReadReceiptsCache = {};
 
 function filterForumThreads() {
-  const query = document.getElementById('forumSearchInput')?.value.toLowerCase() || '';
-  const selectedClass = document.getElementById('classFilterSelect')?.value || '';
-  const session = getCurrentUserSession();
+    const query = document.getElementById('forumSearchInput')?.value.toLowerCase() || '';
+    const selectedClass = document.getElementById('classFilterSelect')?.value || '';
+    const session = getCurrentUserSession();
 
-  const combinedCheck = `${session.role} ${session.name}`.toLowerCase();
-  const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
-                           combinedCheck.includes('admin') || 
-                           combinedCheck.includes('instructor') ||
-                           combinedCheck.includes('staff');
+    const combinedCheck = `${session.role} ${session.name}`.toLowerCase();
+    const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
+                             combinedCheck.includes('admin') || 
+                             combinedCheck.includes('instructor') ||
+                             combinedCheck.includes('staff');
 
-  const filtered = globalThreads.filter(t => {
-    const target = (t.classTarget || 'General').trim().toLowerCase();
+    const filtered = globalThreads.filter(t => {
+        const target = (t.classTarget || 'General').trim().toLowerCase();
 
-    if (!isTeacherOrAdmin) {
-      const studentCls = (session.userClass || '').trim().toLowerCase();
-      const matchesStudentClass = target === 'general' || target === studentCls;
-      if (!matchesStudentClass) return false;
+        if (!isTeacherOrAdmin) {
+            const studentCls = (session.userClass || '').trim().toLowerCase();
+            const matchesStudentClass = target === 'general' || target === studentCls;
+            if (!matchesStudentClass) return false;
+        }
+
+        const matchesQuery = t.title.toLowerCase().includes(query) || t.body.toLowerCase().includes(query);
+        const matchesClassDropdown = !selectedClass || target === selectedClass.trim().toLowerCase();
+
+        return matchesQuery && matchesClassDropdown;
+    });
+
+    let unreadTotalCount = 0;
+
+    // Attach unread notification flag and compute global count
+    const enhancedFiltered = filtered.map(t => {
+        const localRead = parseInt(localStorage.getItem(`samcam_thread_last_read_${t.id}`) || '0', 10);
+        const cloudRead = userReadReceiptsCache[t.id] || 0;
+        const lastReadTime = Math.max(localRead, cloudRead);
+
+        const lastCommentTime = t.lastCommentAt && t.lastCommentAt.toDate ? t.lastCommentAt.toDate().getTime() : (t.updatedAt || 0);
+        const hasNewComment = lastCommentTime > lastReadTime;
+
+        if (hasNewComment) {
+            unreadTotalCount++;
+        }
+
+        return {
+            ...t,
+            hasUnreadNotification: hasNewComment
+        };
+    });
+
+    // Update global counter UI element if present
+    const counterEl = document.getElementById('globalForumCounter');
+    if (counterEl) {
+        counterEl.innerHTML = unreadTotalCount > 0 
+            ? `<span class="nav-notification-badge" style="background:#ef4444; color:#fff; font-size:0.65rem; padding:0.1rem 0.35rem; border-radius:10px; font-weight:700; margin-left:0.3rem; animation:pulse-badge 2s infinite ease-in-out; display:inline-block;">${unreadTotalCount}</span>` 
+            : '';
     }
 
-    const matchesQuery = t.title.toLowerCase().includes(query) || t.body.toLowerCase().includes(query);
-    const matchesClassDropdown = !selectedClass || target === selectedClass.trim().toLowerCase();
-
-    return matchesQuery && matchesClassDropdown;
-  });
-
-  let unreadTotalCount = 0;
-
-  // Attach unread notification flag and compute global count
-  const enhancedFiltered = filtered.map(t => {
-    const localRead = parseInt(localStorage.getItem(`samcam_thread_last_read_${t.id}`) || '0', 10);
-    const cloudRead = userReadReceiptsCache[t.id] || 0;
-    const lastReadTime = Math.max(localRead, cloudRead);
-
-    const lastCommentTime = t.lastCommentAt && t.lastCommentAt.toDate ? t.lastCommentAt.toDate().getTime() : (t.updatedAt || 0);
-    const hasNewComment = lastCommentTime > lastReadTime;
-
-    if (hasNewComment) {
-      unreadTotalCount++;
-    }
-
-    return {
-      ...t,
-      hasUnreadNotification: hasNewComment
-    };
-  });
-
-  // Update global counter UI element if present
-  const counterEl = document.getElementById('globalForumCounter');
-  if (counterEl) {
-    counterEl.innerHTML = unreadTotalCount > 0 
-      ? `<span class="nav-notification-badge" style="background:#ef4444; color:#fff; font-size:0.65rem; padding:0.1rem 0.35rem; border-radius:10px; font-weight:700; margin-left:0.3rem; animation:pulse-badge 2s infinite ease-in-out; display:inline-block;">${unreadTotalCount}</span>` 
-      : '';
-  }
-
-  renderThreadsList(enhancedFiltered);
+    renderThreadsList(enhancedFiltered);
 }
 
 window.selectThread = async function(threadId) {
-  activeThreadId = threadId;
-  const now = Date.now();
-  
-  // Persist active thread selection & read timestamps locally and in cache
-  localStorage.setItem('samcam_active_thread', threadId);
-  localStorage.setItem(`samcam_thread_last_read_${threadId}`, now);
-  userReadReceiptsCache[threadId] = now;
+    activeThreadId = threadId;
+    const now = Date.now();
+    
+    // Persist active thread selection & read timestamps locally and in cache
+    localStorage.setItem('samcam_active_thread', threadId);
+    localStorage.setItem(`samcam_thread_last_read_${threadId}`, now);
+    userReadReceiptsCache[threadId] = now;
 
-  // Sync read receipt to Firestore profile for multi-device support
-  const session = getCurrentUserSession();
-  if (session && session.name && typeof db !== 'undefined') {
-    try {
-      await db.collection('users').doc(session.name).set({
-        readThreads: { [threadId]: firebase.firestore.FieldValue.serverTimestamp() }
-      }, { merge: true });
-    } catch (e) {
-      console.warn("Could not sync read state to cloud:", e);
-    }
-  }
-
-  filterForumThreads();
-
-  const thread = globalThreads.find(t => t.id === threadId);
-  const detailPane = document.getElementById('threadDetailPane');
-  if (!thread || !detailPane) return;
-
-  const userId = session.name || 'Anonymous';
-  const role = (session.role || session.userType || session.type || '').toLowerCase();
-  const isTeacherOrAdmin = role.includes('teacher') || role.includes('admin') || role.includes('instructor') || role.includes('staff');
-  const isAuthor = thread.authorName === session.name;
-
-  const hasUpvoted = (thread.upvotedBy || []).includes(userId);
-  const upvotesCount = (thread.upvotedBy || []).length;
-  const bookmarks = JSON.parse(localStorage.getItem(`samcam_bookmarks_${session.name}`) || '[]');
-  const isBookmarked = bookmarks.includes(thread.id);
-
-  // Extract author stream or class info if available
-  const authorSubtext = thread.authorStream ? `${escapeHtml(thread.authorName)} (${escapeHtml(thread.authorStream)})` : escapeHtml(thread.authorName || 'Instructor');
-
-  detailPane.innerHTML = 
-    '<div class="active-thread-header">' +
-      '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">' +
-        '<span class="class-badge">' + escapeHtml(thread.classTarget || 'General') + '</span>' +
-        '<div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">' +
-          '<button class="btn btn-sm btn-outline" onclick="toggleBookmark(\'' + thread.id + '\')" title="Save for later" style="background:transparent;">' +
-            '<i class="fa-' + (isBookmarked ? 'solid' : 'regular') + ' fa-bookmark" aria-hidden="true" style="' + (isBookmarked ? 'color:#2563eb;' : '') + '"></i> ' + (isBookmarked ? 'Saved' : 'Save') +
-          '</button>' +
-          '<button class="btn btn-sm btn-outline" onclick="generateAiSummary(\'' + thread.id + '\')" title="AI Summary & Hint" style="background:transparent;">' +
-            '<i class="fa-solid fa-wand-magic-sparkles" style="color:#8b5cf6;" aria-hidden="true"></i> AI Assistant' +
-          '</button>' +
-          '<button class="btn btn-sm btn-outline" onclick="toggleThreadUpvote(\'' + thread.id + '\')" title="Upvote discussion" style="background:transparent;">' +
-            '<i class="fa-solid fa-thumbs-up" aria-hidden="true" style="' + (hasUpvoted ? 'color:#2563eb;' : '') + '"></i> <span id="threadUpvoteCount">' + upvotesCount + '</span>' +
-          '</button>' +
-          (isAuthor || isTeacherOrAdmin ? '<button class="btn btn-sm btn-outline" onclick="openEditThreadModal(\'' + thread.id + '\')" title="Edit Thread" style="background:transparent;"><i class="fa-solid fa-pen-to-square"></i></button>' : '') +
-          (isAuthor || isTeacherOrAdmin ? '<button class="btn btn-sm btn-outline" onclick="confirmDeleteThread(\'' + thread.id + '\')" title="Delete Thread" style="background:transparent; color:#ef4444; border-color:#fca5a5;"><i class="fa-solid fa-trash"></i></button>' : '') +
-          '<span style="font-size:0.75rem; color:#64748b; margin-left:0.25rem;">Posted by <strong>' + authorSubtext + '</strong></span>' +
-        '</div>' +
-      '</div>' +
-      '<h3>' + escapeHtml(thread.title) + '</h3>' +
-      '<div class="active-thread-body">' + formatRichContent(thread.body) + '</div>' +
-      (thread.mediaUrl ? '<div style="margin-top:0.5rem;"><a href="' + thread.mediaUrl + '" target="_blank" class="btn btn-xs btn-outline"><i class="fa-solid fa-paperclip"></i> View Attached File / Screenshot</a></div>' : '') +
-    '</div>' +
-
-    '<div id="aiSummaryBox" style="display:none; background:#f5f3ff; border:1px solid #c4b5fd; padding:0.75rem; border-radius:6px; margin-bottom:1rem; font-size:0.85rem; color:#4c1d95;">' +
-      '<div style="font-weight:bold; margin-bottom:0.25rem;"><i class="fa-solid fa-robot"></i> AI Summary & Hints</div>' +
-      '<div id="aiSummaryContent">Analyzing discussion...</div>' +
-    '</div>' +
-
-    '<div class="replies-list-container" id="repliesListContainer">' +
-      '<div class="skeleton-loader" style="width: 100%;"></div>' +
-      '<div class="skeleton-loader" style="width: 80%;"></div>' +
-      '<div class="skeleton-loader" style="width: 60%;"></div>' +
-    '</div>' +
-
-    '<div id="typingIndicator" style="font-size:0.75rem; color:#64748b; font-style:italic; padding:0 0.5rem 0.25rem 0.5rem; min-height:1.2rem;"></div>' +
-
-    '<div style="display:flex; justify-content:space-between; align-items:center; padding:0 0.25rem; margin-bottom:0.25rem;">' +
-      '<div class="comment-toolbar" style="display:flex; gap:0.4rem;">' +
-        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'**\', \'**\')" title="Bold"><i class="fa-solid fa-bold"></i></button>' +
-        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'*\', \'*\')" title="Italic"><i class="fa-solid fa-italic"></i></button>' +
-        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'`\', \'`\')" title="Code"><i class="fa-solid fa-code"></i></button>' +
-        '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'\\n```\\n\', \'\\n```\\n\')" title="Code Block"><i class="fa-solid fa-file-code"></i></button>' +
-      '</div>' +
-      '<div class="input-tabs">' +
-        '<button type="button" class="input-tab-btn active" id="writeTabBtn" onclick="switchInputTab(\'write\')">Write</button>' +
-        '<button type="button" class="input-tab-btn" id="previewTabBtn" onclick="switchInputTab(\'preview\')">Preview</button>' +
-      '</div>' +
-    '</div>' +
-
-    '<div class="reply-input-box" style="display:flex; flex-direction:column; gap:0.5rem;">' +
-      '<textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use ```code``` for blocks)..." oninput="handleTypingInput(\'' + thread.id + '\')"></textarea>' +
-      '<div id="markdownPreviewPane" style="display:none; padding:0.75rem; border:1px solid #cbd5e1; border-radius:6px; background:#f8fafc; min-height:80px; max-height:200px; overflow-y:auto;"></div>' +
-      '<div style="display:flex; justify-content:flex-end; align-items:center;">' +
-        '<button class="btn btn-primary" onclick="submitReplyOptimistic(\'' + thread.id + '\')"><i class="fa-solid fa-paper-plane"></i> Send</button>' +
-      '</div>' +
-    '</div>';
-
-  // --- MENTION TEXTAREA TYPING HOOK ---
-  const replyTextarea = document.getElementById('replyMessageInput');
-  if (replyTextarea) {
-    replyTextarea.addEventListener('input', function(e) {
-      const val = this.value;
-      const cursorCoord = this.selectionStart;
-      const textBeforeCursor = val.substring(0, cursorCoord);
-      
-      // Check if user just typed '@'
-      const lastAtIndex = textBeforeCursor.lastIndexOf('@');
-      if (lastAtIndex !== -1) {
-        const query = textBeforeCursor.substring(lastAtIndex + 1);
-        // If there's no space after '@', trigger mention suggestions lookup
-        if (!query.includes(' ')) {
-          if (typeof showMentionDropdown === 'function') showMentionDropdown(query);
-        } else {
-          if (typeof hideMentionDropdown === 'function') hideMentionDropdown();
+    // Sync read receipt to Firestore profile for multi-device support
+    const session = getCurrentUserSession();
+    if (session && session.name && typeof db !== 'undefined') {
+        try {
+            await db.collection('users').doc(session.name).set({
+                readThreads: { [threadId]: firebase.firestore.FieldValue.serverTimestamp() }
+            }, { merge: true });
+        } catch (e) {
+            console.warn("Could not sync read state to cloud:", e);
         }
-      } else {
-        if (typeof hideMentionDropdown === 'function') hideMentionDropdown();
-      }
-    });
-  }
-  // ------------------------------------
+    }
 
-  loadThreadRepliesRealtime(thread.id);
-  listenToTypingIndicator(thread.id);
+    filterForumThreads();
+
+    const thread = globalThreads.find(t => t.id === threadId);
+    const detailPane = document.getElementById('threadDetailPane');
+    if (!thread || !detailPane) return;
+
+    const userId = session.name || 'Anonymous';
+    const role = (session.role || session.userType || session.type || '').toLowerCase();
+    const isTeacherOrAdmin = role.includes('teacher') || role.includes('admin') || role.includes('instructor') || role.includes('staff');
+    const isAuthor = thread.authorName === session.name;
+
+    const hasUpvoted = (thread.upvotedBy || []).includes(userId);
+    const upvotesCount = (thread.upvotedBy || []).length;
+    const bookmarks = JSON.parse(localStorage.getItem(`samcam_bookmarks_${session.name}`) || '[]');
+    const isBookmarked = bookmarks.includes(thread.id);
+
+    // Extract author stream or class info if available
+    const authorSubtext = thread.authorStream ? `${escapeHtml(thread.authorName)} (${escapeHtml(thread.authorStream)})` : escapeHtml(thread.authorName || 'Instructor');
+
+    detailPane.innerHTML = 
+        '<div class="active-thread-header">' +
+            '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">' +
+                '<span class="class-badge">' + escapeHtml(thread.classTarget || 'General') + '</span>' +
+                '<div style="display:flex; align-items:center; gap:0.4rem; flex-wrap:wrap;">' +
+                    '<button class="btn btn-sm btn-outline" onclick="toggleBookmark(\'' + thread.id + '\')" title="Save for later" style="background:transparent;">' +
+                        '<i class="fa-' + (isBookmarked ? 'solid' : 'regular') + ' fa-bookmark" aria-hidden="true" style="' + (isBookmarked ? 'color:#2563eb;' : '') + '"></i> ' + (isBookmarked ? 'Saved' : 'Save') +
+                    '</button>' +
+                    '<button class="btn btn-sm btn-outline" onclick="generateAiSummary(\'' + thread.id + '\')" title="AI Summary & Hint" style="background:transparent;">' +
+                        '<i class="fa-solid fa-wand-magic-sparkles" style="color:#8b5cf6;" aria-hidden="true"></i> AI Assistant' +
+                    '</button>' +
+                    '<button class="btn btn-sm btn-outline" onclick="toggleThreadUpvote(\'' + thread.id + '\')" title="Upvote discussion" style="background:transparent;">' +
+                        '<i class="fa-solid fa-thumbs-up" aria-hidden="true" style="' + (hasUpvoted ? 'color:#2563eb;' : '') + '"></i> <span id="threadUpvoteCount">' + upvotesCount + '</span>' +
+                    '</button>' +
+                    (isAuthor || isTeacherOrAdmin ? '<button class="btn btn-sm btn-outline" onclick="openEditThreadModal(\'' + thread.id + '\')" title="Edit Thread" style="background:transparent;"><i class="fa-solid fa-pen-to-square"></i></button>' : '') +
+                    (isAuthor || isTeacherOrAdmin ? '<button class="btn btn-sm btn-outline" onclick="confirmDeleteThread(\'' + thread.id + '\')" title="Delete Thread" style="background:transparent; color:#ef4444; border-color:#fca5a5;"><i class="fa-solid fa-trash"></i></button>' : '') +
+                    '<span style="font-size:0.75rem; color:#64748b; margin-left:0.25rem;">Posted by <strong>' + authorSubtext + '</strong></span>' +
+                '</div>' +
+            '</div>' +
+            '<h3>' + escapeHtml(thread.title) + '</h3>' +
+            '<div class="active-thread-body">' + formatRichContent(thread.body) + '</div>' +
+            (thread.mediaUrl ? '<div style="margin-top:0.5rem;"><a href="' + thread.mediaUrl + '" target="_blank" class="btn btn-xs btn-outline"><i class="fa-solid fa-paperclip"></i> View Attached File / Screenshot</a></div>' : '') +
+        '</div>' +
+
+        '<div id="aiSummaryBox" style="display:none; background:#f5f3ff; border:1px solid #c4b5fd; padding:0.75rem; border-radius:6px; margin-bottom:1rem; font-size:0.85rem; color:#4c1d95;">' +
+            '<div style="font-weight:bold; margin-bottom:0.25rem;"><i class="fa-solid fa-robot"></i> AI Summary & Hints</div>' +
+            '<div id="aiSummaryContent">Analyzing discussion...</div>' +
+        '</div>' +
+
+        '<div class="replies-list-container" id="repliesListContainer">' +
+            '<div class="skeleton-loader" style="width: 100%;"></div>' +
+            '<div class="skeleton-loader" style="width: 80%;"></div>' +
+            '<div class="skeleton-loader" style="width: 60%;"></div>' +
+        '</div>' +
+
+        '<div id="typingIndicator" style="font-size:0.75rem; color:#64748b; font-style:italic; padding:0 0.5rem 0.25rem 0.5rem; min-height:1.2rem;"></div>' +
+
+        '<div style="display:flex; justify-content:space-between; align-items:center; padding:0 0.25rem; margin-bottom:0.25rem;">' +
+            '<div class="comment-toolbar" style="display:flex; gap:0.4rem;">' +
+                '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'**\', \'**\')" title="Bold"><i class="fa-solid fa-bold"></i></button>' +
+                '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'*\', \'*\')" title="Italic"><i class="fa-solid fa-italic"></i></button>' +
+                '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'`\', \'`\')" title="Code"><i class="fa-solid fa-code"></i></button>' +
+                '<button type="button" class="btn btn-xs btn-outline" onclick="insertMarkdown(\'\\n```\\n\', \'\\n```\\n\')" title="Code Block"><i class="fa-solid fa-file-code"></i></button>' +
+            '</div>' +
+            '<div class="input-tabs">' +
+                '<button type="button" class="input-tab-btn active" id="writeTabBtn" onclick="switchInputTab(\'write\')">Write</button>' +
+                '<button type="button" class="input-tab-btn" id="previewTabBtn" onclick="switchInputTab(\'preview\')">Preview</button>' +
+            '</div>' +
+        '</div>' +
+
+        '<div class="reply-input-box" style="display:flex; flex-direction:column; gap:0.5rem;">' +
+            '<textarea id="replyMessageInput" placeholder="Write your reply, code snippet or formula here (Use ```code``` for blocks)..." oninput="handleTypingInput(\'' + thread.id + '\')"></textarea>' +
+            '<div id="markdownPreviewPane" style="display:none; padding:0.75rem; border:1px solid #cbd5e1; border-radius:6px; background:#f8fafc; min-height:80px; max-height:200px; overflow-y:auto;"></div>' +
+            '<div style="display:flex; justify-content:flex-end; align-items:center;">' +
+                '<button class="btn btn-primary" onclick="submitReplyOptimistic(\'' + thread.id + '\')"><i class="fa-solid fa-paper-plane"></i> Send</button>' +
+            '</div>' +
+        '</div>';
+
+    // --- MENTION TEXTAREA TYPING HOOK ---
+    const replyTextarea = document.getElementById('replyMessageInput');
+    if (replyTextarea) {
+        replyTextarea.addEventListener('input', function(e) {
+            const val = this.value;
+            const cursorCoord = this.selectionStart;
+            const textBeforeCursor = val.substring(0, cursorCoord);
+            
+            // Check if user just typed '@'
+            const lastAtIndex = textBeforeCursor.lastIndexOf('@');
+            if (lastAtIndex !== -1) {
+                const query = textBeforeCursor.substring(lastAtIndex + 1);
+                // If there's no space after '@', trigger mention suggestions lookup
+                if (!query.includes(' ')) {
+                    if (typeof showMentionDropdown === 'function') showMentionDropdown(query);
+                } else {
+                    if (typeof hideMentionDropdown === 'function') hideMentionDropdown();
+                }
+            } else {
+                if (typeof hideMentionDropdown === 'function') hideMentionDropdown();
+            }
+        });
+    }
+    // ------------------------------------
+
+    loadThreadRepliesRealtime(thread.id);
+    listenToTypingIndicator(thread.id);
 };
 
 function markAllThreadsAsRead() {
-  const now = Date.now();
-  globalThreads.forEach(t => {
-    localStorage.setItem(`samcam_thread_last_read_${t.id}`, now);
-    userReadReceiptsCache[t.id] = now;
-  });
-  filterForumThreads();
+    const now = Date.now();
+    globalThreads.forEach(t => {
+        localStorage.setItem(`samcam_thread_last_read_${t.id}`, now);
+        userReadReceiptsCache[t.id] = now;
+    });
+    filterForumThreads();
 }
 
 
 // Scan comment text for @username mentions and trigger notifications
 async function checkAndSendMentions(threadId, threadTitle, commentBody, authorName) {
-  // Regex to find words starting with @ (e.g., @JaneDoe)
-  const mentionRegex = /@([a-zA-Z0-9_.-]+)/g;
-  const matches = commentBody.match(mentionRegex);
-  
-  if (!matches) return;
+    // Regex to find words starting with @ (e.g., @JaneDoe)
+    const mentionRegex = /@([a-zA-Z0-9_.-]+)/g;
+    const matches = commentBody.match(mentionRegex);
+    
+    if (!matches) return;
 
-  // Extract unique usernames without the @ symbol
-  const mentionedUsers = [...new Set(matches.map(m => m.substring(1).toLowerCase()))];
+    // Extract unique usernames without the @ symbol
+    const mentionedUsers = [...new Set(matches.map(m => m.substring(1).toLowerCase()))];
 
-  if (typeof db === 'undefined') return;
+    if (typeof db === 'undefined') return;
 
-  // Loop through mentioned users and write notifications to Firestore
-  for (const username of mentionedUsers) {
-    // Avoid notifying yourself if you mention yourself
-    if (username === authorName.toLowerCase()) continue;
+    // Loop through mentioned users and write notifications to Firestore
+    for (const username of mentionedUsers) {
+        // Avoid notifying yourself if you mention yourself
+        if (username === authorName.toLowerCase()) continue;
 
-    try {
-      await db.collection('notifications').add({
-        recipientUsername: username,
-        senderName: authorName,
-        threadId: threadId,
-        threadTitle: threadTitle,
-        message: `${authorName} mentioned you in a discussion: "${threadTitle.substring(0, 30)}..."`,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        read: false
-      });
-    } catch (e) {
-      console.warn("Failed to send mention notification:", e);
+        try {
+            await db.collection('notifications').add({
+                recipientUsername: username,
+                senderName: authorName,
+                threadId: threadId,
+                threadTitle: threadTitle,
+                message: `${authorName} mentioned you in a discussion: "${threadTitle.substring(0, 30)}..."`,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                read: false
+            });
+        } catch (e) {
+            console.warn("Failed to send mention notification:", e);
+        }
     }
-  }
 }
 
 function showForumToast(title, message, threadId) {
-  let container = document.getElementById('forumToastContainer');
-  if (!container) {
-    container = document.createElement('div');
-    container.id = 'forumToastContainer';
-    document.body.appendChild(container);
-  }
+    let container = document.getElementById('forumToastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'forumToastContainer';
+        document.body.appendChild(container);
+    }
 
-  const toast = document.createElement('div');
-  toast.className = 'forum-toast';
-  toast.innerHTML = `<div style="font-weight:600; margin-bottom:0.15rem;"><i class="fa-solid fa-comment-dots" style="color:#60a5fa;"></i> ${escapeHtml(title)}</div><div>${escapeHtml(message)}</div>`;
-  
-  toast.onclick = () => {
-    selectThread(threadId);
-    toast.remove();
-  };
+    const toast = document.createElement('div');
+    toast.className = 'forum-toast';
+    toast.innerHTML = `<div style="font-weight:600; margin-bottom:0.15rem;"><i class="fa-solid fa-comment-dots" style="color:#60a5fa;"></i> ${escapeHtml(title)}</div><div>${escapeHtml(message)}</div>`;
+    
+    toast.onclick = () => {
+        selectThread(threadId);
+        toast.remove();
+    };
 
-  container.appendChild(toast);
+    container.appendChild(toast);
 
-  // Auto dismiss after 5 seconds
-  setTimeout(() => {
-    if (toast.parentElement) toast.remove();
-  }, 5000);
+    // Auto dismiss after 5 seconds
+    setTimeout(() => {
+        if (toast.parentElement) toast.remove();
+    }, 5000);
 }
 
 
 function insertMarkdown(wrapperStart, wrapperEnd) {
-  const textarea = document.getElementById('replyMessageInput');
-  if (!textarea) return;
-  
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const text = textarea.value;
-  const selectedText = text.substring(start, end) || 'text';
-  
-  textarea.value = text.substring(0, start) + wrapperStart + selectedText + wrapperEnd + text.substring(end);
-  textarea.focus();
-  textarea.setSelectionRange(start + wrapperStart.length, start + wrapperStart.length + selectedText.length);
+    const textarea = document.getElementById('replyMessageInput');
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const selectedText = text.substring(start, end) || 'text';
+    
+    textarea.value = text.substring(0, start) + wrapperStart + selectedText + wrapperEnd + text.substring(end);
+    textarea.focus();
+    textarea.setSelectionRange(start + wrapperStart.length, start + wrapperStart.length + selectedText.length);
 }
 
 function switchInputTab(mode) {
-  const textarea = document.getElementById('replyMessageInput');
-  const previewPane = document.getElementById('markdownPreviewPane');
-  const writeBtn = document.getElementById('writeTabBtn');
-  const previewBtn = document.getElementById('previewTabBtn');
+    const textarea = document.getElementById('replyMessageInput');
+    const previewPane = document.getElementById('markdownPreviewPane');
+    const writeBtn = document.getElementById('writeTabBtn');
+    const previewBtn = document.getElementById('previewTabBtn');
 
-  if (mode === 'preview') {
-    if (previewPane) {
-      previewPane.innerHTML = (typeof formatRichContent === 'function') 
-        ? formatRichContent(textarea ? textarea.value : '') || '*Nothing to preview yet.*'
-        : (textarea ? textarea.value : '*Nothing to preview yet.*');
-      previewPane.style.display = 'block';
+    if (mode === 'preview') {
+        if (previewPane) {
+            previewPane.innerHTML = (typeof formatRichContent === 'function') 
+                ? formatRichContent(textarea ? textarea.value : '') || '*Nothing to preview yet.*'
+                : (textarea ? textarea.value : '*Nothing to preview yet.*');
+            previewPane.style.display = 'block';
+        }
+        if (textarea) textarea.style.display = 'none';
+        if (writeBtn) writeBtn.classList.remove('active');
+        if (previewBtn) previewBtn.classList.add('active');
+    } else {
+        if (previewPane) previewPane.style.display = 'none';
+        if (textarea) {
+            textarea.style.display = 'block';
+            textarea.focus();
+        }
+        if (writeBtn) writeBtn.classList.add('active');
+        if (previewBtn) previewBtn.classList.remove('active');
     }
-    if (textarea) textarea.style.display = 'none';
-    if (writeBtn) writeBtn.classList.remove('active');
-    if (previewBtn) previewBtn.classList.add('active');
-  } else {
-    if (previewPane) previewPane.style.display = 'none';
-    if (textarea) {
-      textarea.style.display = 'block';
-      textarea.focus();
-    }
-    if (writeBtn) writeBtn.classList.add('active');
-    if (previewBtn) previewBtn.classList.remove('active');
-  }
 }
 function autoResizeTextarea(el) {
-  el.style.height = 'auto';
-  el.style.height = (el.scrollHeight) + 'px';
+    el.style.height = 'auto';
+    el.style.height = (el.scrollHeight) + 'px';
 }
 
 window.generateAiSummary = async function(threadId) {
-  const box = document.getElementById('aiSummaryBox');
-  const content = document.getElementById('aiSummaryContent');
-  if (!box || !content) return;
+    const box = document.getElementById('aiSummaryBox');
+    const content = document.getElementById('aiSummaryContent');
+    if (!box || !content) return;
 
-  if (box.style.display === 'block') {
-    box.style.display = 'none';
-    return;
-  }
-
-  box.style.display = 'block';
-  content.innerHTML = `<i class="fa-solid fa-spinner fa-spin fa-bounce"></i> Analyzing student contributions against curriculum standards...`;
-
-  try {
-    const thread = globalThreads.find(t => t.id === threadId);
-    if (!thread) {
-      content.innerHTML = `<span style="color:#ef4444;">Discussion topic not found.</span>`;
-      return;
+    if (box.style.display === 'block') {
+        box.style.display = 'none';
+        return;
     }
 
-    const repliesSnapshot = await db.collection('forum_threads').doc(threadId).collection('replies').get();
-    let repliesText = "";
-    let count = 0;
-    
-    repliesSnapshot.forEach(doc => {
-      const data = doc.data();
-      count++;
-      const author = data.authorName || 'Student';
-      const body = data.replyBody || data.message || '';
-      const isBest = data.isBestAnswer || data.isCorrect || data.markedAsBest ? " [VERIFIED BEST ANSWER]" : "";
-      repliesText += `${count}. ${author}: ${body}${isBest}\n`;
-    });
+    box.style.display = 'block';
+    content.innerHTML = `<i class="fa-solid fa-spinner fa-spin fa-bounce"></i> Analyzing student contributions against curriculum standards...`;
 
-    if (count === 0) {
-      repliesText = "No student responses submitted yet.";
+    try {
+        const thread = globalThreads.find(t => t.id === threadId);
+        if (!thread) {
+            content.innerHTML = `<span style="color:#ef4444;">Discussion topic not found.</span>`;
+            return;
+        }
+
+        const repliesSnapshot = await db.collection('forum_threads').doc(threadId).collection('replies').get();
+        let repliesText = "";
+        let count = 0;
+        
+        repliesSnapshot.forEach(doc => {
+            const data = doc.data();
+            count++;
+            const author = data.authorName || 'Student';
+            const body = data.replyBody || data.message || '';
+            const isBest = data.isBestAnswer || data.isCorrect || data.markedAsBest ? " [VERIFIED BEST ANSWER]" : "";
+            repliesText += `${count}. ${author}: ${body}${isBest}\n`;
+        });
+
+        if (count === 0) {
+            repliesText = "No student responses submitted yet.";
+        }
+
+        const { GoogleGenAI } = await import("https://esm.run/@google/genai");
+        const ai = new GoogleGenAI();
+
+        const prompt = `
+            You are an expert ICT educator specializing in the Ugandan Lower Secondary Curriculum and UNEB standards.
+            Analyze the following secondary ICT classroom discussion topic and student responses.
+            Provide a concise, structured pedagogical summary covering:
+            1. **Core Concept & Objective:** What specific ICT competency or practical task is being addressed?
+            2. **Student Progress & Insights:** Summary of how learners approached the problem based on their responses.
+            3. **Verified Solution / Best Practice:** Highlight the correct approach or any marked best answers.
+            4. **Pedagogical Takeaway:** A brief recommendation for the teacher.
+
+            Class Level: ${thread.classTarget || 'Secondary ICT'}
+            Discussion Title: ${thread.title}
+            Scenario / Question: ${thread.body || ''}
+            
+            Student Responses:
+            ${repliesText}
+        `;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: prompt,
+        });
+
+        content.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:0.4rem;">
+                <div><strong>🤖 Gemini AI Curriculum Synthesis:</strong></div>
+                <div style="color:#334155; line-height:1.4; font-size:0.85rem;">${formatRichContent(response.text)}</div>
+            </div>
+        `;
+
+    } catch (err) {
+        console.warn("Client-side direct token restricted, using intelligent curriculum parser fallback.");
+        
+        content.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.85rem; color:#334155;">
+                <div style="font-weight:bold; color:#0f172a;">🤖 Pedagogical Discussion Synthesis (Offline Mode):</div>
+                <div>1. <strong>Core Concept & Objective:</strong> Focuses on practical problem-solving aligned with Lower Secondary ICT competencies.</div>
+                <div>2. <strong>Student Progress & Insights:</strong> Learners have actively contributed peer responses, evaluating technical workflows and sharing task solutions.</div>
+                <div>3. <strong>Verified Solution / Best Practice:</strong> Refer to instructor-marked best answers within the thread for precise formatting and rubric criteria.</div>
+                <div>4. <strong>Pedagogical Takeaway:</strong> Encourage peer review on syntax and structural accuracy before final practical assessments.</div>
+            </div>
+        `;
     }
-
-    // Attempting live generation through Google Gen AI SDK
-    const { GoogleGenAI } = await import("https://esm.run/@google/genai");
-    const ai = new GoogleGenAI({ 
-      apiKey: "AQ.Ab8RN6JPbMg_NiacjSgAuv44bqdnR6cG5Raho4WkLCO3nNteNQ", 
-      dangerouslyAllowBrowser: true 
-    });
-
-    const prompt = `
-      You are an expert ICT educator specializing in the Ugandan Lower Secondary Curriculum and UNEB standards.
-      Analyze the following secondary ICT classroom discussion topic and student responses.
-      Provide a concise, structured pedagogical summary covering:
-      1. **Core Concept & Objective:** What specific ICT competency or practical task is being addressed?
-      2. **Student Progress & Insights:** Summary of how learners approached the problem based on their responses.
-      3. **Verified Solution / Best Practice:** Highlight the correct approach or any marked best answers.
-      4. **Pedagogical Takeaway:** A brief recommendation for the teacher.
-
-      Class Level: ${thread.classTarget || 'Secondary ICT'}
-      Discussion Title: ${thread.title}
-      Scenario / Question: ${thread.body || ''}
-      
-      Student Responses:
-      ${repliesText}
-    `;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: prompt,
-    });
-
-    content.innerHTML = `
-      <div style="display:flex; flex-direction:column; gap:0.4rem;">
-        <div><strong>🤖 Gemini AI Curriculum Synthesis:</strong></div>
-        <div style="color:#334155; line-height:1.4; font-size:0.85rem;">${formatRichContent(response.text)}</div>
-      </div>
-    `;
-
-  } catch (err) {
-    console.warn("Client-side direct token restricted, using intelligent curriculum parser fallback.");
-    
-    // Intelligent Curriculum Fallback so the UI always provides immediate value to the teacher
-    content.innerHTML = `
-      <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.85rem; color:#334155;">
-        <div style="font-weight:bold; color:#0f172a;">🤖 Pedagogical Discussion Synthesis (Offline Mode):</div>
-        <div>1. <strong>Core Concept & Objective:</strong> Focuses on practical problem-solving aligned with Lower Secondary ICT competencies.</div>
-        <div>2. <strong>Student Progress & Insights:</strong> Learners have actively contributed peer responses, evaluating technical workflows and sharing task solutions.</div>
-        <div>3. <strong>Verified Solution / Best Practice:</strong> Refer to instructor-marked best answers within the thread for precise formatting and rubric criteria.</div>
-        <div>4. <strong>Pedagogical Takeaway:</strong> Encourage peer review on syntax and structural accuracy before final practical assessments.</div>
-      </div>
-    `;
-  }
 };
+
 
 function toggleBookmark(threadId) {
   const session = getCurrentUserSession();
@@ -765,7 +759,7 @@ function loadThreadRepliesRealtime(threadId) {
   const repliesContainer = document.getElementById('repliesListContainer');
   if (!repliesContainer) return;
 
-  if (unsubscribeReplies) unsubscribeReplies();
+  if (typeof unsubscribeReplies === 'function') unsubscribeReplies();
 
   const session = getCurrentUserSession();
   const combinedCheck = `${session.role} ${session.name}`.toLowerCase();
@@ -1138,7 +1132,7 @@ async function submitReplyOptimistic(threadId) {
     const threadTitle = targetThread ? targetThread.title : 'Discussion Thread';
     
     // Scan body for @mentions and trigger notification records
-    if (replyBody) {
+    if (replyBody && typeof checkAndSendMentions === 'function') {
       await checkAndSendMentions(threadId, threadTitle, replyBody, studentName);
     }
     // ---------------------------------
@@ -1161,6 +1155,9 @@ async function submitReplyOptimistic(threadId) {
     showCustomAlert("Submission Error", "Failed to post reply: " + err.message);
   }
 }
+
+let typingTimeout = null;
+
 function handleTypingInput(threadId) {
   const session = getCurrentUserSession();
   const name = session.name || 'Someone';
@@ -1212,8 +1209,6 @@ function updateNotificationBellBadge(count) {
     badge.style.display = 'none';
   }
 }
-
-
 
 function clearTypingIndicator(threadId) {
   db.collection('forum_threads').doc(threadId).collection('presence').doc('typing').delete().catch(() => {});
