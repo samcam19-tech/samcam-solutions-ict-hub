@@ -40,7 +40,7 @@ let currentIndex = 0;
 let isAnswerCorrect = false;
 
 // ==========================================
-// 3. WORLD-CLASS EXCEL & ACCESS PARSER & VERIFIER ENGINE
+// 3. FULLY UPGRADED WORLD-CLASS EXCEL & ACCESS ENGINE
 // ==========================================
 function excelColToNum(colStr) {
     let num = 0;
@@ -65,7 +65,6 @@ function isValidCellCoordinate(cellStr) {
     return colNum >= 1 && colNum <= MAX_COL && rowNum >= 1 && rowNum <= MAX_ROW;
 }
 
-// [Upgrade 1 & 2]: Lightweight Tokenizer and Safe Comma-Splitter respecting quotes & nested parentheses
 function tokenizeFormula(formulaStr) {
     let tokens = [];
     let current = '';
@@ -153,7 +152,7 @@ function validateStudentAnswer(question, inputStr) {
         return { correct: false, message: "Please enter an expression before verifying." };
     }
 
-    // [Upgrade 3]: Proactive Regional & Syntax Check for Missing Equals Sign or Semicolons
+    // Proactive Regional & Syntax Check for Missing Equals Sign or Semicolons
     if (!cleanInput.startsWith("=") && rule.startsWith("EXCEL_")) {
         return { 
             correct: false, 
@@ -171,7 +170,7 @@ function validateStudentAnswer(question, inputStr) {
     const upperInput = cleanInput.toUpperCase();
 
     switch (rule) {
-        // --- 1. BASIC AGGREGATIONS (SUM, AVERAGE) ---
+        // --- 1. BASIC AGGREGATIONS (SUM, AVERAGE) WITH AST ARGUMENT COUNT & BOUNDS CHECKING ---
         case "EXCEL_SUM":
         case "EXCEL_AVERAGE": {
             const func = rule === "EXCEL_SUM" ? "SUM" : "AVERAGE";
@@ -180,6 +179,11 @@ function validateStudentAnswer(question, inputStr) {
 
             if (!match) {
                 return { correct: false, message: `#NAME? Error: Excel expects proper function syntax like =${func}(range).` };
+            }
+
+            const args = splitExcelArguments(match[1]);
+            if (args.length === 0) {
+                return { correct: false, message: `#VALUE! Error: The ${func} function requires at least one argument or range.` };
             }
 
             const inner = match[1].replace(/\s+/g, '');
@@ -211,7 +215,7 @@ function validateStudentAnswer(question, inputStr) {
             };
         }
 
-        // --- 2 & 4. CONDITIONAL CHECK (IF) WITH DEEP AST ARGUMENT & ERROR DIAGNOSTICS ---
+        // --- 2. CONDITIONAL CHECK (IF) WITH DEEP AST ARGUMENT & ERROR DIAGNOSTICS ---
         case "EXCEL_IF": {
             const ifPattern = /^=\s*IF\s*\(\s*(.+)\s*\)$/i;
             const match = cleanInput.match(ifPattern);
@@ -225,7 +229,6 @@ function validateStudentAnswer(question, inputStr) {
 
             const args = splitExcelArguments(match[1]);
             
-            // Diagnostic Hinting for argument count mismatches
             if (args.length < 3) {
                 return { 
                     correct: false, 
@@ -267,78 +270,104 @@ function validateStudentAnswer(question, inputStr) {
             };
         }
 
-        // --- 3. LOOKUP FUNCTIONS (VLOOKUP, HLOOKUP, LOOKUP) ---
+        // --- 3. LOOKUP FUNCTIONS (VLOOKUP, HLOOKUP, LOOKUP) WITH AST ARGUMENT VALIDATION ---
         case "EXCEL_VLOOKUP":
         case "EXCEL_HLOOKUP":
         case "EXCEL_LOOKUP": {
             const func = rule.replace('EXCEL_', '');
-            const properSyntax = upperInput.startsWith(`=${func}(`) && upperInput.endsWith(')');
+            const pattern = new RegExp(`^=\\s*${func}\\s*\\(\\s*(.+)\\s*\\)$`, 'i');
+            const match = cleanInput.match(pattern);
             
-            if (!properSyntax) {
-                return { correct: false, message: `#NAME? Error: Verify your function prefix and closing parenthesis for =${func}().` };
+            if (!match) {
+                return { correct: false, message: `#NAME? Error: Verify your function syntax and parenthesis layout for =${func}().` };
             }
 
-            const innerMatch = cleanInput.match(new RegExp(`^=\\s*${func}\\s*\\(\\s*(.+)\\s*\\)$`, 'i'));
-            if (innerMatch) {
-                const args = splitExcelArguments(innerMatch[1]);
-                if (func === 'VLOOKUP' && args.length < 3) {
-                    return { correct: false, message: `#VALUE! Error: =VLOOKUP requires at least lookup_value, table_array, and col_index_num.` };
-                }
+            const args = splitExcelArguments(match[1]);
+            if (func === 'VLOOKUP' && args.length < 3) {
+                return { correct: false, message: `#VALUE! Error: =VLOOKUP requires at least 3 arguments (lookup_value, table_array, col_index_num). Found ${args.length}.` };
+            }
+            if (func === 'HLOOKUP' && args.length < 3) {
+                return { correct: false, message: `#VALUE! Error: =HLOOKUP requires at least 3 arguments. Found ${args.length}.` };
+            }
+            if (func === 'LOOKUP' && (args.length < 2 || args.length > 3)) {
+                return { correct: false, message: `#VALUE! Error: =LOOKUP requires 2 or 3 arguments. Found ${args.length}.` };
             }
 
             const correct = upperInput.includes(expected.toUpperCase());
             return {
                 correct,
                 message: correct 
-                    ? `Correct! "${cleanInput}" matches required ${func} layout criteria.` 
-                    : `#N/A Error: Verify your lookup parameters, table array, and reference syntax for =${func}().`
+                    ? `Correct! "${cleanInput}" matches required ${func} layout criteria and parameters.` 
+                    : `#N/A Error: Verify your lookup parameters, reference structure, and table array for =${func}().`
             };
         }
 
-        // --- 4. CONDITIONAL AGGREGATIONS (SUMIF, COUNTIF, AVERAGEIF) ---
+        // --- 4. CONDITIONAL AGGREGATIONS (SUMIF, COUNTIF, AVERAGEIF) WITH AST ARGUMENT VALIDATION ---
         case "EXCEL_SUMIF":
         case "EXCEL_COUNTIF":
         case "EXCEL_AVERAGEIF": {
             const func = rule.replace('EXCEL_', '');
-            const properSyntax = upperInput.startsWith(`=${func}(`) && upperInput.endsWith(')');
-            const correct = properSyntax && upperInput.includes(expected.toUpperCase());
+            const pattern = new RegExp(`^=\\s*${func}\\s*\\(\\s*(.+)\\s*\\)$`, 'i');
+            const match = cleanInput.match(pattern);
 
+            if (!match) {
+                return { correct: false, message: `#NAME? Error: Verify your function prefix and closing parenthesis for =${func}().` };
+            }
+
+            const args = splitExcelArguments(match[1]);
+            const minArgs = func === 'COUNTIF' ? 2 : 2; // COUNTIF(range, criteria), SUMIF/AVERAGEIF(range, criteria, [sum_range])
+            if (args.length < minArgs) {
+                return { correct: false, message: `#VALUE! Error: The ${func} function requires at least ${minArgs} arguments. Found ${args.length}.` };
+            }
+
+            const correct = upperInput.includes(expected.toUpperCase());
             return {
                 correct,
                 message: correct 
-                    ? `Correct! "${cleanInput}" accurately built the ${func} condition structure.` 
+                    ? `Correct! "${cleanInput}" accurately built the ${func} conditional structure.` 
                     : `#VALUE! Error: Check your range, criteria expression, and parameter types for =${func}().`
             };
         }
 
-        // --- 5. RANK FUNCTION ---
+        // --- 5. RANK FUNCTION WITH EXACT 3-ARGUMENT AST VALIDATION ---
         case "EXCEL_RANK": {
-            const properSyntax = upperInput.startsWith('=RANK(') && upperInput.endsWith(')');
-            const correct = properSyntax && upperInput.includes(expected.toUpperCase());
+            const pattern = /^=\s*RANK\s*\(\s*(.+)\s*\)$/i;
+            const match = cleanInput.match(pattern);
 
+            if (!match) {
+                return { correct: false, message: `#NAME? Error: Syntax format mismatch. Expected structure: =RANK(number, ref, [order]).` };
+            }
+
+            const args = splitExcelArguments(match[1]);
+            if (args.length < 2 || args.length > 3) {
+                return { correct: false, message: `#VALUE! Error: =RANK requires 2 or 3 arguments (number, ref, [order]). Found ${args.length}.` };
+            }
+
+            const correct = upperInput.includes(expected.toUpperCase());
             return {
                 correct,
                 message: correct 
                     ? `Correct! "${cleanInput}" successfully computed the rank configuration.` 
-                    : `#VALUE! Error: Syntax format mismatch. Expected structure: =RANK(number, ref, [order]).`
+                    : `#VALUE! Error: Check your number reference and comparison range parameters for =RANK().`
             };
         }
 
-        // --- 6. ACCESS QUERY CRITERIA & WILDCARDS ---
+        // --- 6. ACCESS QUERY CRITERIA & WILDCARDS (WITH ROBUST NORMALIZATION) ---
         case "ACCESS_CRITERIA": {
-            const normalized = upperInput.replace(/^LIKE\s+/i, '').replace(/["']/g, '');
-            const correct = normalized === expected.toUpperCase() || upperInput.includes(expected.toUpperCase());
+            const normalizedStudent = upperInput.replace(/\s+/g, '').replace(/^LIKE/i, '').replace(/["']/g, '');
+            const normalizedExpected = expected.toUpperCase().replace(/\s+/g, '').replace(/^LIKE/i, '').replace(/["']/g, '');
+
+            const correct = normalizedStudent === normalizedExpected || upperInput.includes(expected.toUpperCase());
             return {
                 correct,
                 message: correct 
                     ? `Correct! "${cleanInput}" matches Access design criteria formatting.` 
-                    : `Invalid Criteria Error: Review your field parameters, operators, or wildcard characters.`
+                    : `Invalid Criteria Error: Review your field parameters, comparison operators, or wildcard characters.`
             };
         }
 
-        // --- 5 [Upgrade 5]: FLEXIBLE ACCESS QUERY NORMALIZATION ---
+        // --- 7. FLEXIBLE ACCESS QUERY CALCULATED FIELDS ---
         case "ACCESS_CALCULATED": {
-            // Strip all spaces and normalize square brackets to prevent syntax pedantry penalizing students
             const normalizedStudent = upperInput.replace(/\s+/g, '').replace(/\[/g, '').replace(/\]/g, '');
             const normalizedExpected = expected.toUpperCase().replace(/\s+/g, '').replace(/\[/g, '').replace(/\]/g, '');
 
