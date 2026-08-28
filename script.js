@@ -1011,9 +1011,9 @@ function filterStaffTable() {
   renderStaffTablePage(1, filtered);
 }
 
-/* ==========================================================================
-   2. STUDENT REGISTRATION & BULK IMPORT
-   ========================================================================== */
+// ==========================================================================
+// 2. STUDENT REGISTRATION & BULK IMPORT (SCOPED WITH SCHOOL ID)
+// ==========================================================================
 async function saveUserToCloud(userObj) {
   const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
   const targetId = (userObj.schoolId || userObj.username || '').toLowerCase();
@@ -1028,10 +1028,11 @@ async function saveUserToCloud(userObj) {
 
   if (window.db) {
     try {
+      const activeSchoolId = userObj.schoolId || userObj.schoolID || window.currentSchoolId || 'default_school';
       await window.db.collection('users').doc(targetId).set({
         fullName: userObj.fullName,
         class: userObj.class,
-        schoolId: userObj.schoolId || userObj.username,
+        schoolId: activeSchoolId,
         username: userObj.schoolId || userObj.username,
         password: userObj.password,
         role: userObj.role || 'Student',
@@ -1042,7 +1043,6 @@ async function saveUserToCloud(userObj) {
     }
   }
 }
-
 
 window.handleRegisterStudent = async function(e) {
   e.preventDefault();
@@ -1063,7 +1063,8 @@ window.handleRegisterStudent = async function(e) {
     return;
   }
 
-  const newUser = { fullName, class: studentClass, schoolId, username: schoolId, password, role: "Student" };
+  const activeSchoolId = window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId || schoolId;
+  const newUser = { fullName, class: studentClass, schoolId: activeSchoolId, username: schoolId, password, role: "Student" };
   await saveUserToCloud(newUser);
 
   showCustomModal({
@@ -1113,6 +1114,8 @@ window.handleBulkImport = function() {
       let addedCount = 0;
       const savePromises = [];
 
+      const activeSchoolId = window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId || 'default_school';
+
       jsonRows.forEach((row, index) => {
         if (!row || row.length === 0) return;
         let rawName = String(row[0] || '').trim();
@@ -1136,7 +1139,7 @@ window.handleBulkImport = function() {
           const newUser = {
             fullName: rawName,
             class: targetClass,
-            schoolId: finalSchoolId,
+            schoolId: activeSchoolId,
             username: finalSchoolId,
             password: generateStrongPassword(),
             role: "Student"
@@ -1174,7 +1177,12 @@ window.downloadStudentCSV = async function() {
   let students = [];
   if (window.db) {
     try {
-      const snap = await window.db.collection('users').where('role', '==', 'Student').get();
+      const activeSchoolId = window.currentUser ? (window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId) : null;
+      let query = window.db.collection('users').where('role', '==', 'Student');
+      if (activeSchoolId) {
+        query = query.where('schoolId', '==', activeSchoolId);
+      }
+      const snap = await query.get();
       snap.forEach(doc => students.push(doc.data()));
     } catch (err) {
       console.warn('Fallback to local storage:', err);
@@ -1195,9 +1203,9 @@ window.downloadStudentCSV = async function() {
     return;
   }
 
-  let csvContent = "data:text/csv;charset=utf-8,Full Name,Class,School ID,Password\n";
+  let csvContent = "data:text/csv;charset=utf-8,Full Name,Class,School ID,Username,Password\n";
   students.forEach(s => {
-    csvContent += `"${s.fullName}","${s.class}","${s.schoolId || s.username || ''}","${s.password}"\n`;
+    csvContent += `"${s.fullName}","${s.class}","${s.schoolId || ''}","${s.username || ''}","${s.password}"\n`;
   });
 
   const encodedUri = encodeURI(csvContent);
@@ -1209,10 +1217,9 @@ window.downloadStudentCSV = async function() {
   document.body.removeChild(link);
 };
 
-
-/* ==========================================================================
-   3. STUDENT MANAGEMENT MODAL & PAGINATION WITH ELLIPSIS
-   ========================================================================== */
+// ==========================================================================
+// 3. STUDENT MANAGEMENT MODAL & PAGINATION WITH ELLIPSIS (SCOPED WITH SCHOOL ID)
+// ==========================================================================
 window.openManageStudentsModal = function() {
   const modal = document.getElementById('manageStudentsModal');
   if (modal) {
@@ -1248,10 +1255,16 @@ window.renderStudentModalTable = async function() {
 
   if (!tbody) return;
 
+  const activeSchoolId = window.currentUser ? (window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId) : null;
+
   let students = [];
   if (window.db) {
     try {
-      const snap = await window.db.collection('users').where('role', '==', 'Student').get();
+      let query = window.db.collection('users').where('role', '==', 'Student');
+      if (activeSchoolId) {
+        query = query.where('schoolId', '==', activeSchoolId);
+      }
+      const snap = await query.get();
       snap.forEach(doc => students.push({ id: doc.id, ...doc.data() }));
     } catch (err) {
       console.warn('Fallback to local:', err);
@@ -1260,7 +1273,7 @@ window.renderStudentModalTable = async function() {
 
   if (students.length === 0) {
     const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
-    students = localUsers.filter(u => u.role === 'Student');
+    students = localUsers.filter(u => u.role === 'Student' && (!activeSchoolId || (u.schoolId || '').toLowerCase() === activeSchoolId.toLowerCase()));
   }
 
   const filteredStudents = students.filter(u => (
@@ -1387,10 +1400,12 @@ window.saveStudentEdit = async function(oldIdentifier) {
 
   if (!newFullName || !newSchoolId || !newPassword) return;
 
+  const activeSchoolId = window.currentUser ? (window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId) : newSchoolId;
+
   const updatedData = { 
     fullName: newFullName, 
     class: newClass, 
-    schoolId: newSchoolId, 
+    schoolId: activeSchoolId, 
     username: newSchoolId, 
     password: newPassword, 
     role: 'Student' 
@@ -1431,23 +1446,38 @@ window.deleteStudent = async function(identifier) {
 };
 
 window.deleteAllStudents = async function() {
-  if (confirm('Delete ALL registered students?')) {
+  if (confirm('Delete ALL registered students for this school?')) {
+    const activeSchoolId = window.currentUser ? (window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId) : null;
+
     if (window.db) {
-      const snap = await window.db.collection('users').where('role', '==', 'Student').get();
+      let query = window.db.collection('users').where('role', '==', 'Student');
+      if (activeSchoolId) {
+        query = query.where('schoolId', '==', activeSchoolId);
+      }
+      const snap = await query.get();
       const batch = window.db.batch();
       snap.forEach(doc => batch.delete(doc.ref));
       await batch.commit();
     }
 
     let localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
-    localUsers = localUsers.filter(u => u.role !== 'Student');
+    localUsers = localUsers.filter(u => {
+      const isTargetStudent = u.role === 'Student';
+      if (!isTargetStudent) return true;
+      if (activeSchoolId) {
+        return (u.schoolId || '').toLowerCase() !== activeSchoolId.toLowerCase();
+      }
+      return false;
+    });
     localStorage.setItem('portal_users', JSON.stringify(localUsers));
 
     renderStudentModalTable();
   }
 };
 
-
+// ==========================================================================
+// ASSESSMENT CREATION & UPLOAD (SCOPED WITH SCHOOL ID)
+// ==========================================================================
 window.handleCreateAssessment = async function(e) {
   e.preventDefault();
   if (!currentUser || currentUser.role !== 'Teacher') return;
@@ -1468,13 +1498,14 @@ window.handleCreateAssessment = async function(e) {
   }
 
   const file = fileInput.files[0];
+  const activeSchoolId = currentUser.schoolId || currentUser.schoolID || window.currentSchoolId || 'default_school';
   
   try {
     console.log("Uploading file to Firebase Storage...");
 
-    // 1. Create a Storage reference using firebase.storage()
+    // 1. Create a Storage reference using firebase.storage() (scoped folder path for tenant isolation)
     const storageRef = firebase.storage().ref();
-    const fileRef = storageRef.child(`assessments/${Date.now()}_${file.name}`);
+    const fileRef = storageRef.child(`assessments/${activeSchoolId}/${Date.now()}_${file.name}`);
 
     // 2. Upload file bytes
     const snapshot = await fileRef.put(file);
@@ -1482,7 +1513,7 @@ window.handleCreateAssessment = async function(e) {
     // 3. Get the public download URL
     const downloadUrl = await snapshot.ref.getDownloadURL();
 
-    // 4. Construct the assessment object
+    // 4. Construct the assessment object with schoolId
     const newAssessment = {
       "id": Date.now(),
       "class": targetClass,
@@ -1490,6 +1521,7 @@ window.handleCreateAssessment = async function(e) {
       "title": title,
       "description": description,
       "fileUrl": downloadUrl,
+      "schoolId": activeSchoolId,
       "date": new Date().toISOString().split('T')[0],
       "deadline": deadline,
       "createdAt": new Date().toISOString()
@@ -1498,7 +1530,7 @@ window.handleCreateAssessment = async function(e) {
     // 5. Save to Firestore collection using firebase.firestore()
     await firebase.firestore().collection("portal_resources").add(newAssessment);
 
-    // 6. Keep localStorage in sync
+    // 6. Keep localStorage in sync (filtered or tagged with schoolId)
     const resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
     resources.push(newAssessment);
     localStorage.setItem('portal_resources', JSON.stringify(resources));
@@ -1510,7 +1542,7 @@ window.handleCreateAssessment = async function(e) {
     });
 
     document.getElementById('assessmentForm').reset();
-    renderAssessments();
+    if (typeof renderAssessments === 'function') renderAssessments();
 
   } catch (error) {
     console.error("Error uploading assessment:", error);
@@ -1522,9 +1554,9 @@ window.handleCreateAssessment = async function(e) {
   }
 };
 
-/* ==========================================================================
-   5. PORTAL UI RENDERERS & CLASS FILTER DROPDOWN
-   ========================================================================== */
+// ==========================================================================
+// 5. PORTAL UI RENDERERS & CLASS FILTER DROPDOWN (SCOPED WITH SCHOOL ID)
+// ==========================================================================
 function updatePortalUI() {
   const loginSec = document.getElementById('loginSection');
   const dashSec = document.getElementById('dashboardSection');
@@ -1569,7 +1601,7 @@ function updatePortalUI() {
     if (teacherControls) teacherControls.style.display = 'block';
     if (teacherReports) teacherReports.style.display = 'grid';
     if (navLibraryManager) navLibraryManager.style.display = 'inline-flex'; // Reveal for teachers and admins
-    renderSubmissions();
+    if (typeof renderSubmissions === 'function') renderSubmissions();
   } else {
     if (teacherControls) teacherControls.style.display = 'none';
     if (teacherReports) teacherReports.style.display = 'none';
@@ -1591,25 +1623,32 @@ window.filterAssessmentsByClass = function() {
   renderAssessments();
 };
 
-// 1. Render Assessments (Async fetch from Firestore with LocalStorage fallback)
+// 1. Render Assessments (Async fetch from Firestore filtered by active schoolId with LocalStorage fallback)
 async function renderAssessments() {
   const container = document.getElementById('assessmentsContainer');
   if (!container) return;
 
-  // Optional: Try fetching live data from Firestore first
+  const activeSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || window.currentSchoolId) : null;
+
   let resources = [];
   try {
-    const snapshot = await firebase.firestore().collection("portal_resources").get();
+    let query = firebase.firestore().collection("portal_resources");
+    if (activeSchoolId) {
+      query = query.where("schoolId", "==", activeSchoolId);
+    }
+    const snapshot = await query.get();
     if (!snapshot.empty) {
       resources = snapshot.docs.map(doc => ({ firebaseDocId: doc.id, ...doc.data() }));
-      // Keep localStorage synced with the latest fetched data
+      // Keep localStorage synced with fetched resources for this school
       localStorage.setItem('portal_resources', JSON.stringify(resources));
     } else {
-      resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
+      const localResources = JSON.parse(localStorage.getItem('portal_resources')) || [];
+      resources = activeSchoolId ? localResources.filter(r => (r.schoolId || '').toLowerCase() === activeSchoolId.toLowerCase()) : localResources;
     }
   } catch (error) {
     console.warn("Offline or failed to fetch from Firestore, falling back to LocalStorage:", error);
-    resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
+    const localResources = JSON.parse(localStorage.getItem('portal_resources')) || [];
+    resources = activeSchoolId ? localResources.filter(r => (r.schoolId || '').toLowerCase() === activeSchoolId.toLowerCase()) : localResources;
   }
 
   const submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
@@ -1666,7 +1705,7 @@ async function renderAssessments() {
         }
     } 
     // Teacher / Admin Actions (Uses assessment id)
-    else if (currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin')) {
+    else if (currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin' || currentUser.role === 'Administrator')) {
         actionHTML = `
             <button type="button" onclick="openEditAssessmentModal('${a.id}')" class="btn-action btn-edit"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
             <button type="button" onclick="handleDeleteAssessment('${a.id}')" class="btn-action btn-danger"><i class="fa-solid fa-trash-can"></i> Delete</button>
@@ -1731,9 +1770,14 @@ async function handleDeleteAssessment(assessmentId) {
     onConfirm: async () => {
       try {
         const db = firebase.firestore();
+        const activeSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || window.currentSchoolId) : null;
         
-        // 1. Find and delete the matching document from Firestore
-        const querySnapshot = await db.collection("portal_resources").where("id", "==", assessmentId).get();
+        // 1. Find and delete the matching document from Firestore scoped by schoolId
+        let query = db.collection("portal_resources").where("id", "==", assessmentId);
+        if (activeSchoolId) {
+          query = query.where("schoolId", "==", activeSchoolId);
+        }
+        const querySnapshot = await query.get();
         
         if (!querySnapshot.empty) {
           const deletePromises = querySnapshot.docs.map(docSnap => docSnap.ref.delete());
@@ -1791,6 +1835,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const description = document.getElementById('editTestDesc').value;
       const deadline = document.getElementById('editTestDeadline').value;
       const fileInput = document.getElementById('editTestFile');
+      const activeSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || window.currentSchoolId) : 'default_school';
 
       let resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
       let index = resources.findIndex(r => String(r.id) === String(id));
@@ -1799,11 +1844,11 @@ document.addEventListener('DOMContentLoaded', () => {
         let fileUrl = resources[index].fileUrl;
 
         try {
-          // If a new replacement file is attached, upload it to Firebase Storage
+          // If a new replacement file is attached, upload it to Firebase Storage with tenant isolation path
           if (fileInput && fileInput.files.length > 0) {
             const file = fileInput.files[0];
             const storageRef = firebase.storage().ref();
-            const fileRef = storageRef.child(`assessments/${Date.now()}_${file.name}`);
+            const fileRef = storageRef.child(`assessments/${activeSchoolId}/${Date.now()}_${file.name}`);
             const snapshot = await fileRef.put(file);
             fileUrl = await snapshot.ref.getDownloadURL();
             resources[index].fileName = file.name;
@@ -1815,10 +1860,11 @@ document.addEventListener('DOMContentLoaded', () => {
           resources[index].description = description;
           resources[index].deadline = deadline;
           resources[index].fileUrl = fileUrl;
+          resources[index].schoolId = activeSchoolId;
 
           localStorage.setItem('portal_resources', JSON.stringify(resources));
 
-          // Sync update to Firestore
+          // Sync update to Firestore scoped by schoolId
           const querySnapshot = await firebase.firestore().collection("portal_resources").get();
           querySnapshot.forEach(async (docSnap) => {
             const data = docSnap.data();
@@ -1828,7 +1874,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 class: targetClass,
                 description: description,
                 deadline: deadline,
-                fileUrl: fileUrl
+                fileUrl: fileUrl,
+                schoolId: activeSchoolId
               });
             }
           });
@@ -1905,9 +1952,9 @@ function updateCountdowns() {
   });
 }
 
-/* ==========================================================================
-   STUDENT SUBMISSION HANDLERS & SUBMISSION HISTORY
-   ========================================================================== */
+// ==========================================================================
+// STUDENT SUBMISSION HANDLERS & SUBMISSION HISTORY (SCOPED WITH SCHOOL ID)
+// ==========================================================================
 window.handleFormSubmission = async function(event) {
   event.preventDefault();
 
@@ -1927,6 +1974,7 @@ window.handleFormSubmission = async function(event) {
   }
 
   const testIdVal = testIdEl ? testIdEl.value : null;
+  const activeSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || window.currentSchoolId || 'default_school') : 'default_school';
 
   // 1. Deadline Validation Check
   const cachedQuizzes = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || [];
@@ -1958,16 +2006,16 @@ window.handleFormSubmission = async function(event) {
   }
 
   const studentNameVal = nameEl ? nameEl.value.trim() : (currentUser ? currentUser.fullName : '');
-  const studentSchoolId = currentUser ? (currentUser.schoolId || currentUser.username || '') : '';
+  const studentSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || currentUser.username || '') : '';
   const submissionId = `sub_${testIdVal}_${(studentSchoolId || studentNameVal).toLowerCase().replace(/[^a-z0-9]/g, '')}_${Date.now()}`;
   
   let fileDownloadUrl = '';
 
-  // 3. Upload file to Firebase Storage if available, otherwise fallback to Data URL
+  // 3. Upload file to Firebase Storage with tenant isolation folder path
   try {
     if (window.firebase && window.firebase.storage) {
       const storageRef = window.firebase.storage().ref();
-      const fileRef = storageRef.child(`submissions/${submissionId}_${file.name}`);
+      const fileRef = storageRef.child(`submissions/${activeSchoolId}/${submissionId}_${file.name}`);
       const snapshot = await fileRef.put(file);
       fileDownloadUrl = await snapshot.ref.getDownloadURL();
     }
@@ -1993,7 +2041,7 @@ window.handleFormSubmission = async function(event) {
     id: submissionId,
     testId: String(testIdVal),
     studentName: studentNameVal,
-    schoolId: studentSchoolId,
+    schoolId: activeSchoolId,
     studentUsername: studentSchoolId,
     studentClass: classEl ? classEl.value.trim() : '',
     testTitle: titleEl ? titleEl.value.trim() : '',
@@ -2013,7 +2061,7 @@ window.handleFormSubmission = async function(event) {
     }
   }
 
-  // 5. Cache locally
+  // 5. Cache locally (filtered/synced)
   let localSubmissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
   localSubmissions.unshift(newSubmission);
   localStorage.setItem('portal_submissions', JSON.stringify(localSubmissions));
@@ -2021,7 +2069,7 @@ window.handleFormSubmission = async function(event) {
   // 6. Cleanup & UI Feedback
   const form = document.getElementById('assignmentForm');
   if (form) form.reset();
-  closeSubmissionModal();
+  if (typeof closeSubmissionModal === 'function') closeSubmissionModal();
 
   showCustomModal({
     title: "Success",
@@ -2029,8 +2077,8 @@ window.handleFormSubmission = async function(event) {
     type: "success"
   });
 
-  renderAssessments();
-  if (currentUser && currentUser.role === 'Teacher') renderSubmissions();
+  if (typeof renderAssessments === 'function') renderAssessments();
+  if (currentUser && currentUser.role === 'Teacher' && typeof renderSubmissions === 'function') renderSubmissions();
 };
 
 window.cancelSubmission = async function(testId) {
@@ -2043,7 +2091,7 @@ window.cancelSubmission = async function(testId) {
     showCancel: true,
     onConfirm: async () => {
       const studentName = currentUser.fullName;
-      const studentSchoolId = currentUser.schoolId || currentUser.username || '';
+      const studentSchoolId = currentUser.schoolId || currentUser.schoolID || currentUser.username || '';
 
       if (window.db) {
         try {
@@ -2074,7 +2122,7 @@ window.cancelSubmission = async function(testId) {
         type: "success"
       });
 
-      renderAssessments();
+      if (typeof renderAssessments === 'function') renderAssessments();
     }
   });
 };
@@ -2149,8 +2197,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const studentSearchInput = document.getElementById('studentSearchInput');
   if (studentSearchInput) {
     studentSearchInput.addEventListener('keyup', () => {
-      studentCurrentPage = 1;
-      renderStudentModalTable();
+      if (typeof studentCurrentPage !== 'undefined') studentCurrentPage = 1;
+      if (typeof renderStudentModalTable === 'function') renderStudentModalTable();
     });
   }
 
@@ -2166,19 +2214,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Modal Close Listeners
   const closeSubmissionModalBtn = document.getElementById('closeSubmissionModalBtn');
-  if (closeSubmissionModalBtn) closeSubmissionModalBtn.addEventListener('click', closeSubmissionModal);
+  if (closeSubmissionModalBtn && typeof closeSubmissionModal === 'function') closeSubmissionModalBtn.addEventListener('click', closeSubmissionModal);
 
   const cancelSubmissionBtn = document.getElementById('cancelSubmissionBtn');
-  if (cancelSubmissionBtn) cancelSubmissionBtn.addEventListener('click', closeSubmissionModal);
+  if (cancelSubmissionBtn && typeof closeSubmissionModal === 'function') cancelSubmissionBtn.addEventListener('click', closeSubmissionModal);
 
   const closeManageStudentsModalBtn = document.getElementById('closeManageStudentsModalBtn');
-  if (closeManageStudentsModalBtn) closeManageStudentsModalBtn.addEventListener('click', closeManageStudentsModal);
+  if (closeManageStudentsModalBtn && typeof closeManageStudentsModal === 'function') closeManageStudentsModalBtn.addEventListener('click', closeManageStudentsModal);
 
   const closeGradingModalBtn = document.getElementById('closeGradingModalBtn');
-  if (closeGradingModalBtn) closeGradingModalBtn.addEventListener('click', closeGradingModal);
+  if (closeGradingModalBtn && typeof closeGradingModal === 'function') closeGradingModalBtn.addEventListener('click', closeGradingModal);
 
   const cancelGradingBtn = document.getElementById('cancelGradingBtn');
-  if (cancelGradingBtn) cancelGradingBtn.addEventListener('click', closeGradingModal);
+  if (cancelGradingBtn && typeof closeGradingModal === 'function') cancelGradingBtn.addEventListener('click', closeGradingModal);
 
   // Initial check on load
   if (typeof checkUserSession === 'function') {
@@ -2242,7 +2290,9 @@ function generatePaginationHTML(currentPage, totalPages, callbackName) {
   return html;
 }
 
-// --- PROFILE & ACCOUNT SETTINGS LOGIC ---
+// ==========================================================================
+// PROFILE & ACCOUNT SETTINGS LOGIC (SCOPED WITH SCHOOL ID FOR TENANT ISOLATION)
+// ==========================================================================
 
 function handleProfilePicUpload(event) {
   const file = event.target.files[0];
@@ -2251,8 +2301,9 @@ function handleProfilePicUpload(event) {
   const currentUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser'));
   if (!currentUser) return;
 
+  const activeSchoolId = currentUser.schoolId || currentUser.schoolID || window.currentSchoolId || 'default_school';
   const identifier = currentUser.schoolId || currentUser.username;
-  const filePath = `profile_pictures/${identifier}_${Date.now()}_${file.name}`;
+  const filePath = `profile_pictures/${activeSchoolId}/${identifier}_${Date.now()}_${file.name}`;
   const fileRef = storageRef.child(filePath);
 
   showCustomModal({
@@ -2265,12 +2316,16 @@ function handleProfilePicUpload(event) {
     return snapshot.ref.getDownloadURL();
   }).then((downloadURL) => {
     currentUser.profilePic = downloadURL;
+    currentUser.schoolId = activeSchoolId;
     localStorage.setItem('portal_session', JSON.stringify(currentUser));
     localStorage.setItem('currentLoggedInUser', JSON.stringify(currentUser));
 
     const sessionKey = currentUser.schoolId ? "schoolId" : "username";
     const sessionVal = currentUser.schoolId || currentUser.username;
-    return db.collection("students").where(sessionKey, "==", sessionVal).get();
+    
+    // Query users/students collection matching schoolId and identifier for tenant isolation
+    let query = db.collection("students").where("schoolId", "==", activeSchoolId).where(sessionKey, "==", sessionVal);
+    return query.get();
   }).then((querySnapshot) => {
     if (!querySnapshot.empty) {
       querySnapshot.forEach((doc) => {
@@ -2296,6 +2351,7 @@ function handleProfilePicUpload(event) {
     });
   });
 }
+
 function loadUserProfileUI() {
   const currentUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser'));
   if (!currentUser) return;
@@ -2329,7 +2385,7 @@ function loadUserProfileUI() {
   }
 }
 
-// --- AUTHENTICATION MOCK & SESSION UTILS ---
+// --- AUTHENTICATION MOCK & SESSION UTILS (WITH TENANT ISOLATION) ---
 function checkUserSession() {
     // Read from 'portal_session' to match where executeLogin() saves the user
     const sessionData = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
@@ -2351,7 +2407,7 @@ function checkUserSession() {
 
         // Check user role securely
         const role = (currentUser.role || currentUser.userType || '').trim().toLowerCase();
-        if (role === 'teacher' || role === 'admin' || role === 'instructor') {
+        if (role === 'teacher' || role === 'admin' || role === 'administrator' || role === 'instructor') {
             if (teacherControls) teacherControls.style.display = 'block';
             if (teacherReports) teacherReports.style.display = 'grid';
         } else {
@@ -2371,35 +2427,67 @@ function handleLogin(e) {
   e.preventDefault();
   const user = document.getElementById('loginUsername').value.trim();
   const pass = document.getElementById('loginPassword').value.trim();
+  
+  // Optional active school scope input if available on login form, or fallback
+  const schoolIdInput = document.getElementById('loginSchoolId');
+  const specifiedSchoolId = schoolIdInput ? schoolIdInput.value.trim() : null;
 
-  // Basic authentication setup mock
+  // Basic authentication setup mock for admin
   if (user === "admin" && pass === "admin123") {
-    const adminUser = { username: "admin", schoolId: "admin", fullName: "Administrator", role: "teacher" };
+    const adminUser = { username: "admin", schoolId: specifiedSchoolId || "admin", fullName: "Administrator", role: "teacher" };
     localStorage.setItem('portal_session', JSON.stringify(adminUser));
     localStorage.setItem('currentLoggedInUser', JSON.stringify(adminUser));
     checkUserSession();
   } else {
-    db.collection("students").where("schoolId", "==", user).where("password", "==", pass).get().then((snapshot) => {
-      if (!snapshot.empty) {
-        const studentData = snapshot.docs[0].data();
-        const sessionUser = { ...studentData, role: 'student' };
+    // Query users or students collection supporting multi-tenant isolation by schoolId if provided
+    let query = db.collection("students").where("password", "==", pass);
+    if (specifiedSchoolId) {
+      query = query.where("schoolId", "==", specifiedSchoolId);
+    }
+
+    query.get().then((snapshot) => {
+      let matchedDoc = null;
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if ((data.schoolId || '').toLowerCase() === user.toLowerCase() || (data.username || '').toLowerCase() === user.toLowerCase()) {
+          matchedDoc = data;
+        }
+      });
+
+      if (matchedDoc) {
+        const sessionUser = { ...matchedDoc, role: matchedDoc.role || 'student' };
         localStorage.setItem('portal_session', JSON.stringify(sessionUser));
         localStorage.setItem('currentLoggedInUser', JSON.stringify(sessionUser));
         checkUserSession();
       } else {
-        db.collection("students").where("username", "==", user).where("password", "==", pass).get().then((usernameSnapshot) => {
-          if (!usernameSnapshot.empty) {
-            const studentData = usernameSnapshot.docs[0].data();
-            const sessionUser = { ...studentData, role: 'student' };
+        // Fallback query matching username or schoolId directly
+        db.collection("students").where("schoolId", "==", user).where("password", "==", pass).get().then((schoolSnap) => {
+          if (!schoolSnap.empty) {
+            const studentData = schoolSnap.docs[0].data();
+            const sessionUser = { ...studentData, role: studentData.role || 'student' };
             localStorage.setItem('portal_session', JSON.stringify(sessionUser));
             localStorage.setItem('currentLoggedInUser', JSON.stringify(sessionUser));
             checkUserSession();
           } else {
-            const errEl = document.getElementById('loginError');
-            if (errEl) errEl.style.display = 'block';
+            db.collection("students").where("username", "==", user).where("password", "==", pass).get().then((userSnap) => {
+              if (!userSnap.empty) {
+                const studentData = userSnap.docs[0].data();
+                const sessionUser = { ...studentData, role: studentData.role || 'student' };
+                localStorage.setItem('portal_session', JSON.stringify(sessionUser));
+                localStorage.setItem('currentLoggedInUser', JSON.stringify(sessionUser));
+                checkUserSession();
+              } else {
+                const errEl = document.getElementById('loginError');
+                if (errEl) errEl.style.display = 'block';
+              }
+            });
           }
         });
       }
+    }).catch(err => {
+      console.error("Login query error:", err);
+      const errEl = document.getElementById('loginError');
+      if (errEl) errEl.style.display = 'block';
     });
   }
 }
@@ -2410,6 +2498,9 @@ function handleLogout() {
   checkUserSession();
 }
 
+// ==========================================================================
+// ACCOUNT SETTINGS & UPDATE LOGIC (SCOPED WITH TENANT ISOLATION)
+// ==========================================================================
 window.handleUpdateAccountDetails = function(event) {
   event.preventDefault();
   const newUsernameInput = document.getElementById('updateUsername').value.trim().toLowerCase();
@@ -2438,17 +2529,18 @@ window.handleUpdateAccountDetails = function(event) {
     return;
   }
 
+  const activeSchoolId = currentUser.schoolId || currentUser.schoolID || window.currentSchoolId || 'default_school';
   const oldKey = currentUser.schoolId || currentUser.username;
-  const userRef = db.collection("users").doc(oldKey);
+  const userRef = db.collection("students").doc(oldKey);
 
   userRef.get().then((docSnapshot) => {
     let targetDoc = docSnapshot;
     
-    // Fallback search if doc by oldKey doesn't exist
+    // Fallback search if doc by oldKey doesn't exist, filtered by schoolId
     if (!targetDoc.exists) {
-      return db.collection("users").where("schoolId", "==", oldKey).get().then((snap) => {
+      return db.collection("students").where("schoolId", "==", activeSchoolId).where("schoolId", "==", oldKey).get().then((snap) => {
         if (!snap.empty) return snap.docs[0];
-        return db.collection("users").where("username", "==", oldKey).get().then((snap2) => {
+        return db.collection("students").where("schoolId", "==", activeSchoolId).where("username", "==", oldKey).get().then((snap2) => {
           if (!snap2.empty) return snap2.docs[0];
           return null;
         });
@@ -2490,10 +2582,10 @@ window.handleUpdateAccountDetails = function(event) {
       return;
     }
 
-    // SCENARIO A: Identifier (SchoolID/Username) is changing (Migrating Firestore Document ID)
+    // SCENARIO A: Identifier (SchoolID/Username) is changing (Migrating Firestore Document ID with Tenant Isolation)
     if (updatingIdentifier) {
-      db.collection("users").doc(newUsernameInput).get().then((newDocSnap) => {
-        if (newDocSnap.exists) {
+      db.collection("students").where("schoolId", "==", activeSchoolId).where("schoolId", "==", newUsernameInput).get().then((newDocSnap) => {
+        if (!newDocSnap.empty) {
           showCustomModal({
             title: "Identifier Taken",
             message: "School ID or username is already taken. Choose another one.",
@@ -2513,8 +2605,8 @@ window.handleUpdateAccountDetails = function(event) {
           migratedData.password = newPassword;
         }
 
-        // 1. Create the new document with the new identifier
-        db.collection("users").doc(newUsernameInput).set(migratedData)
+        // 1. Create the new document with the new identifier under students collection
+        db.collection("students").doc(newUsernameInput).set(migratedData)
           .then(() => {
             // 2. Forcefully delete the old document
             return actualDocRef.delete();
@@ -2743,17 +2835,22 @@ window.saveSubmissionGrade = async function(e) {
   renderSubmissions();
 };
 
-
-
 window.renderSubmissions = async function() {
   const container = document.getElementById('submissionsContainer');
   if (!container) return;
+
+  const currentUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser'));
+  const activeSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || window.currentSchoolId) : null;
 
   let submissions = [];
   
   if (window.db) {
     try {
-      const snap = await window.db.collection('submissions').get();
+      let query = window.db.collection('submissions');
+      if (activeSchoolId && currentUser.role !== 'admin') {
+        query = query.where('schoolId', '==', activeSchoolId);
+      }
+      const snap = await query.get();
       snap.forEach(doc => submissions.push({ id: doc.id, ...doc.data() }));
     } catch (err) {
       console.warn('Firestore submissions fetch warning:', err);
@@ -2762,6 +2859,9 @@ window.renderSubmissions = async function() {
 
   if (submissions.length === 0) {
     submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+    if (activeSchoolId && currentUser && currentUser.role !== 'admin') {
+      submissions = submissions.filter(s => (s.schoolId || '').toLowerCase() === activeSchoolId.toLowerCase());
+    }
   }
 
   if (submissions.length === 0) {
@@ -2857,16 +2957,22 @@ window.renderStudentGrades = async function(currentStudentIdentifier) {
   const container = document.getElementById('studentGradesContainer');
   if (!container) return;
 
+  const currentUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser'));
+  const activeSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || window.currentSchoolId) : null;
+
   let submissions = [];
   
   if (window.db) {
     try {
-      let snap = await window.db.collection('submissions').where('schoolId', '==', currentStudentIdentifier).get();
-      if (snap.empty) {
-        snap = await window.db.collection('submissions').where('studentUsername', '==', currentStudentIdentifier).get();
+      let queryRef = window.db.collection('submissions');
+      if (activeSchoolId) {
+        queryRef = queryRef.where('schoolId', '==', activeSchoolId);
       }
+      let snap = await queryRef.where('studentUsername', '==', currentStudentIdentifier).get();
       if (snap.empty) {
-        snap = await window.db.collection('submissions').where('studentId', '==', currentStudentIdentifier).get();
+        let queryRef2 = window.db.collection('submissions');
+        if (activeSchoolId) queryRef2 = queryRef2.where('schoolId', '==', activeSchoolId);
+        snap = await queryRef2.where('studentId', '==', currentStudentIdentifier).get();
       }
       snap.forEach(doc => submissions.push({ id: doc.id, ...doc.data() }));
     } catch (err) {
@@ -2877,10 +2983,11 @@ window.renderStudentGrades = async function(currentStudentIdentifier) {
   if (submissions.length === 0) {
     submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
     submissions = submissions.filter(s => {
-      const matchSchoolId = s.schoolId && s.schoolId.toLowerCase() === currentStudentIdentifier.toLowerCase();
-      const matchUsername = s.studentUsername && s.studentUsername.toLowerCase() === currentStudentIdentifier.toLowerCase();
-      const matchId = s.studentId && s.studentId.toLowerCase() === currentStudentIdentifier.toLowerCase();
-      return matchSchoolId || matchUsername || matchId;
+      const matchSchoolId = !activeSchoolId || (s.schoolId && s.schoolId.toLowerCase() === activeSchoolId.toLowerCase());
+      const matchUsername = (s.schoolId && s.schoolId.toLowerCase() === currentStudentIdentifier.toLowerCase()) || 
+                            (s.studentUsername && s.studentUsername.toLowerCase() === currentStudentIdentifier.toLowerCase()) || 
+                            (s.studentId && s.studentId.toLowerCase() === currentStudentIdentifier.toLowerCase());
+      return matchSchoolId && matchUsername;
     });
   }
 
@@ -2925,10 +3032,14 @@ window.closeSubmissionModal = function() {
   if (modal) modal.style.display = 'none';
 };
 
+// ==========================================================================
+// MODAL & PAGINATION UTILITIES (SCOPED WITH TENANT ISOLATION)
+// ==========================================================================
 window.openSubmissionModalWithDetails = function(testId, encodedTitle) {
   const decodedTitle = decodeURIComponent(encodedTitle);
   openSubmissionModal();
 
+  const currentUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser'));
   if (currentUser) {
     const nameEl = document.getElementById('studentName');
     const classEl = document.getElementById('studentClass');
