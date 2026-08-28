@@ -295,20 +295,6 @@ function validateStudentAnswer(question, inputStr) {
             }
 
             const innerContent = match[1];
-
-            // Sanitize the whole formula string first
-            const sanitizedInput = cleanInput.replace(/(".*?"|'.*?')/g, '""');
-
-            // Look for a function word followed by a letter/number instead of an opening parenthesis
-            const malformedNestedPattern = /\b([A-Z]+)\s*[A-Z0-9]/i;
-            
-            if (malformedNestedPattern.test(sanitizedInput)) {
-                return {
-                    correct: false,
-                    message: `#NAME? Error: It looks like you missed an opening bracket after a function name. Every function name must be followed immediately by an open parenthesis.`
-                };
-            }
-
             const args = splitExcelArguments(innerContent);
             
             if (args.length < 3) {
@@ -363,7 +349,6 @@ function validateStudentAnswer(question, inputStr) {
                 message: `Correct! "${cleanInput}" properly satisfies Excel's IF function argument structure and data typing rules.`
             };
         }
-
         case "EXCEL_VLOOKUP":
         case "EXCEL_HLOOKUP":
         case "EXCEL_LOOKUP": {
