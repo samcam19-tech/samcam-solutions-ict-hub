@@ -40,7 +40,7 @@ let currentIndex = 0;
 let isAnswerCorrect = false;
 
 // ==========================================
-// 3. EXCEL GRID-BOUNDED & ACCESS RULE-BASED VALIDATOR ENGINE
+// 3. WORLD-CLASS EXCEL & ACCESS PARSER & VERIFIER ENGINE
 // ==========================================
 function excelColToNum(colStr) {
     let num = 0;
@@ -65,15 +65,110 @@ function isValidCellCoordinate(cellStr) {
     return colNum >= 1 && colNum <= MAX_COL && rowNum >= 1 && rowNum <= MAX_ROW;
 }
 
+// [Upgrade 1 & 2]: Lightweight Tokenizer and Safe Comma-Splitter respecting quotes & nested parentheses
+function tokenizeFormula(formulaStr) {
+    let tokens = [];
+    let current = '';
+    let inString = false;
+    let stringChar = '';
+
+    for (let i = 0; i < formulaStr.length; i++) {
+        let char = formulaStr[i];
+        
+        if ((char === '"' || char === "'") && (i === 0 || formulaStr[i - 1] !== '\\')) {
+            if (!inString) {
+                inString = true;
+                stringChar = char;
+            } else if (stringChar === char) {
+                inString = false;
+            }
+        }
+
+        if (!inString && /\s/.test(char)) {
+            if (current) {
+                tokens.push(current);
+                current = '';
+            }
+            continue;
+        }
+
+        current += char;
+    }
+    if (current) tokens.push(current);
+    return tokens;
+}
+
+function splitExcelArguments(argStr) {
+    let args = [];
+    let current = '';
+    let depth = 0;
+    let inString = false;
+    let stringChar = '';
+
+    for (let i = 0; i < argStr.length; i++) {
+        let char = argStr[i];
+        
+        if ((char === '"' || char === "'") && (i === 0 || argStr[i - 1] !== '\\')) {
+            if (!inString) {
+                inString = true;
+                stringChar = char;
+            } else if (stringChar === char) {
+                inString = false;
+            }
+        }
+
+        if (!inString) {
+            if (char === '(') depth++;
+            if (char === ')') depth--;
+            if (char === ',' && depth === 0) {
+                args.push(current.trim());
+                current = '';
+                continue;
+            }
+        }
+        current += char;
+    }
+    if (current) args.push(current.trim());
+    return args;
+}
+
+function isValidExcelValueToken(token) {
+    const clean = token.trim();
+    if (!clean) return false;
+    if (!isNaN(Number(clean))) return true;
+    const rawCell = clean.replace(/\$/g, '').split('!').pop();
+    if (isValidCellCoordinate(rawCell)) return true;
+    if ((clean.startsWith('"') && clean.endsWith('"')) || (clean.startsWith("'") && clean.endsWith("'"))) return true;
+    if (/^(=?\s*[A-Z]+\s*\(.*\))$/i.test(clean)) return true;
+    if (['TRUE', 'FALSE'].includes(clean.toUpperCase())) return true;
+    return false;
+}
+
 function validateStudentAnswer(question, inputStr) {
-    const cleanInput = inputStr.trim();
-    const upperInput = cleanInput.toUpperCase();
+    let cleanInput = inputStr.trim();
     const rule = question.ruleType; 
     const expected = question.expectedValue ? question.expectedValue.trim() : ""; 
 
     if (!cleanInput) {
         return { correct: false, message: "Please enter an expression before verifying." };
     }
+
+    // [Upgrade 3]: Proactive Regional & Syntax Check for Missing Equals Sign or Semicolons
+    if (!cleanInput.startsWith("=") && rule.startsWith("EXCEL_")) {
+        return { 
+            correct: false, 
+            message: `#NAME? Error: Did you forget to start your formula with an equals sign (=)? Excel formulas must begin with =.` 
+        };
+    }
+
+    if (cleanInput.includes(";") && !cleanInput.includes(",")) {
+        return { 
+            correct: false, 
+            message: `#VALUE! Error: It looks like you used semicolons (;) instead of commas (,). Check your regional argument separator settings.` 
+        };
+    }
+
+    const upperInput = cleanInput.toUpperCase();
 
     switch (rule) {
         // --- 1. BASIC AGGREGATIONS (SUM, AVERAGE) ---
@@ -84,7 +179,7 @@ function validateStudentAnswer(question, inputStr) {
             const match = cleanInput.match(pattern);
 
             if (!match) {
-                return { correct: false, message: `Incorrect ("${cleanInput}"). Excel expects proper function syntax like =${func}(range).` };
+                return { correct: false, message: `#NAME? Error: Excel expects proper function syntax like =${func}(range).` };
             }
 
             const inner = match[1].replace(/\s+/g, '');
@@ -112,29 +207,63 @@ function validateStudentAnswer(question, inputStr) {
                 correct: isWithinBounds,
                 message: isWithinBounds 
                     ? `Correct! "${cleanInput}" successfully evaluates within Excel grid limits (Max: XFD1048576).` 
-                    : `Incorrect ("${cleanInput}"). Check your range boundaries or ensure coordinates do not exceed Excel limits.`
+                    : `#REF! Error: Check your range boundaries or ensure coordinates do not exceed Excel limits.`
             };
         }
 
-        // --- 2. CONDITIONAL CHECK (IF) ---
+        // --- 2 & 4. CONDITIONAL CHECK (IF) WITH DEEP AST ARGUMENT & ERROR DIAGNOSTICS ---
         case "EXCEL_IF": {
-            const ifPattern = /^=\s*IF\s*\(\s*(.+?)\s*,\s*(.+?)\s*,\s*(.+?)\s*\)$/i;
+            const ifPattern = /^=\s*IF\s*\(\s*(.+)\s*\)$/i;
             const match = cleanInput.match(ifPattern);
-            let correct = false;
 
-            if (match) {
-                const logicalTest = match[1].replace(/\s+/g, '').toUpperCase();
-                const expectedNormalized = expected.replace(/\s+/g, '').toUpperCase();
-                
-                // Ensures the logical test contains the expected core criteria condition
-                correct = logicalTest.includes(expectedNormalized) || upperInput.includes(expectedNormalized);
+            if (!match) {
+                return { 
+                    correct: false, 
+                    message: `#NAME? Error: Ensure your formula starts with =IF( and closes with matching parentheses.` 
+                };
+            }
+
+            const args = splitExcelArguments(match[1]);
+            
+            // Diagnostic Hinting for argument count mismatches
+            if (args.length < 3) {
+                return { 
+                    correct: false, 
+                    message: `#VALUE! Error: Your IF function has only ${args.length} argument(s). Excel requires 3 arguments: logical_test, value_if_true, and value_if_false.` 
+                };
+            }
+            if (args.length > 3) {
+                return { 
+                    correct: false, 
+                    message: `#VALUE! Error: Your IF function has too many arguments (${args.length}). Excel requires exactly 3 arguments separated by commas.` 
+                };
+            }
+
+            const logicalTest = args[0];
+            const valueIfTrue = args[1];
+            const valueIfFalse = args[2];
+
+            const expectedNormalized = expected.replace(/\s+/g, '').toUpperCase();
+            const logicalNormalized = logicalTest.replace(/\s+/g, '').toUpperCase();
+            const isLogicalValid = logicalNormalized.includes(expectedNormalized);
+
+            if (!isLogicalValid) {
+                return { 
+                    correct: false, 
+                    message: `#VALUE! Error in logical condition. Expected core criteria component missing: ${expected}.` 
+                };
+            }
+
+            if (!isValidExcelValueToken(valueIfTrue) || !isValidExcelValueToken(valueIfFalse)) {
+                return { 
+                    correct: false, 
+                    message: `#NAME? Error: Text arguments in Excel must be explicitly enclosed in double quotation marks (e.g., "Overtime").` 
+                };
             }
 
             return {
-                correct,
-                message: correct 
-                    ? `Correct! "${cleanInput}" properly satisfies Excel's IF function argument structure.` 
-                    : `Incorrect ("${cleanInput}"). Check your logical condition, comma separators, and 3-argument layout for =IF().`
+                correct: true,
+                message: `Correct! "${cleanInput}" properly satisfies Excel's IF function argument structure and data typing rules.`
             };
         }
 
@@ -144,13 +273,25 @@ function validateStudentAnswer(question, inputStr) {
         case "EXCEL_LOOKUP": {
             const func = rule.replace('EXCEL_', '');
             const properSyntax = upperInput.startsWith(`=${func}(`) && upperInput.endsWith(')');
-            const correct = properSyntax && upperInput.includes(expected.toUpperCase());
+            
+            if (!properSyntax) {
+                return { correct: false, message: `#NAME? Error: Verify your function prefix and closing parenthesis for =${func}().` };
+            }
 
+            const innerMatch = cleanInput.match(new RegExp(`^=\\s*${func}\\s*\\(\\s*(.+)\\s*\\)$`, 'i'));
+            if (innerMatch) {
+                const args = splitExcelArguments(innerMatch[1]);
+                if (func === 'VLOOKUP' && args.length < 3) {
+                    return { correct: false, message: `#VALUE! Error: =VLOOKUP requires at least lookup_value, table_array, and col_index_num.` };
+                }
+            }
+
+            const correct = upperInput.includes(expected.toUpperCase());
             return {
                 correct,
                 message: correct 
                     ? `Correct! "${cleanInput}" matches required ${func} layout criteria.` 
-                    : `Incorrect ("${cleanInput}"). Verify your lookup parameters, table array, and reference syntax for =${func}().`
+                    : `#N/A Error: Verify your lookup parameters, table array, and reference syntax for =${func}().`
             };
         }
 
@@ -166,7 +307,7 @@ function validateStudentAnswer(question, inputStr) {
                 correct,
                 message: correct 
                     ? `Correct! "${cleanInput}" accurately built the ${func} condition structure.` 
-                    : `Incorrect ("${cleanInput}"). Check your range, criteria expression, and optional sum parameters for =${func}().`
+                    : `#VALUE! Error: Check your range, criteria expression, and parameter types for =${func}().`
             };
         }
 
@@ -179,7 +320,7 @@ function validateStudentAnswer(question, inputStr) {
                 correct,
                 message: correct 
                     ? `Correct! "${cleanInput}" successfully computed the rank configuration.` 
-                    : `Incorrect ("${cleanInput}"). Syntax format: =RANK(number, ref, [order]).`
+                    : `#VALUE! Error: Syntax format mismatch. Expected structure: =RANK(number, ref, [order]).`
             };
         }
 
@@ -191,19 +332,24 @@ function validateStudentAnswer(question, inputStr) {
                 correct,
                 message: correct 
                     ? `Correct! "${cleanInput}" matches Access design criteria formatting.` 
-                    : `Incorrect ("${cleanInput}"). Review your field parameters, operators, or wildcard characters.`
+                    : `Invalid Criteria Error: Review your field parameters, operators, or wildcard characters.`
             };
         }
 
-        // --- 7. ACCESS CALCULATED FIELDS ---
+        // --- 5 [Upgrade 5]: FLEXIBLE ACCESS QUERY NORMALIZATION ---
         case "ACCESS_CALCULATED": {
+            // Strip all spaces and normalize square brackets to prevent syntax pedantry penalizing students
+            const normalizedStudent = upperInput.replace(/\s+/g, '').replace(/\[/g, '').replace(/\]/g, '');
+            const normalizedExpected = expected.toUpperCase().replace(/\s+/g, '').replace(/\[/g, '').replace(/\]/g, '');
+
             const hasColon = upperInput.includes(':');
-            const correct = hasColon && upperInput.includes(expected.toUpperCase());
+            const correct = hasColon && normalizedStudent.includes(normalizedExpected);
+
             return {
                 correct,
                 message: correct 
                     ? `Correct! "${cleanInput}" successfully defined the calculated query expression.` 
-                    : `Incorrect ("${cleanInput}"). Ensure you use a field alias followed by a colon and brackets (e.g., Total: [Price]*[Qty]).`
+                    : `Syntax Error: Ensure you use a field alias followed by a colon and square bracket expressions (e.g., Total: [Price]*[Qty]).`
             };
         }
 
