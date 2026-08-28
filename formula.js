@@ -66,7 +66,7 @@ async function loadChallengesFromFirestore() {
 
         if (snapshot.empty) {
             challengePrompt.textContent = "No challenges found for this category in the database yet.";
-            challengeHint.textContent = "Ask an administrator/teacher to import questions for this section.";
+            challengeHint.textContent = "Ask an administrator/teacher to add questions for this section.";
             studentAnswer.style.display = "none";
             verifyBtn.style.display = "none";
             return;
