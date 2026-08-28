@@ -119,60 +119,57 @@ function getCurrentUserSession(userParam) {
 }
 
 // ==========================================================================
-// REAL-TIME FORUM THREADS (WITH SCHOOL ID SCOPING)
+// FORUM ENGINE INITIALIZATION & THREAD LOGIC (FIXED CURRENTUSER SCOPE)
 // ==========================================================================
-function initRealtimeForumThreads() {
-    const feedContainer = document.getElementById('threadsFeedContainer');
-    if (!feedContainer) return;
+window.initRealtimeForumThreads = function() {
+  const container = document.getElementById('forumThreadsContainer');
+  if (!container) return;
 
-    if (!db) {
-        feedContainer.innerHTML = `<div class="loading-state" style="color:#ef4444;">Database connection unavailable.</div>`;
-        return;
+  // Retrieve current user safely to prevent ReferenceError
+  const currentUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser'));
+  const activeSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || window.currentSchoolId) : null;
+
+  let query = db.collection('forum_threads');
+  if (activeSchoolId && currentUser && currentUser.role !== 'admin') {
+    query = query.where('schoolId', '==', activeSchoolId);
+  }
+
+  query.onSnapshot((snapshot) => {
+    let threads = [];
+    snapshot.forEach((doc) => {
+      threads.push({ id: doc.id, ...doc.data() });
+    });
+
+    if (threads.length === 0) {
+      container.innerHTML = '<p style="color:#64748b; font-size:0.85rem;">No forum discussions started yet.</p>';
+      return;
     }
 
-    if (unsubscribeThreads) unsubscribeThreads();
+    threads.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
 
-    // Resolve active school ID cleanly from currentUser or window context
-    const activeSchoolId = (typeof currentSchoolId !== 'undefined' && currentSchoolId) ? currentSchoolId.toUpperCase() : (currentUser && currentUser.schoolId ? currentUser.schoolId.toUpperCase() : '');
+    container.innerHTML = threads.map(thread => `
+      <div class="forum-thread-card" style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:1rem; margin-bottom:0.75rem; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
+          <h4 style="margin:0; color:#1e293b; font-size:1rem;">${escapeHtml(thread.title)}</h4>
+          <span style="font-size:0.75rem; color:#64748b;">By ${escapeHtml(thread.authorName || 'Anonymous')}</span>
+        </div>
+        <p style="color:#334155; font-size:0.9rem; margin:0.5rem 0;">${escapeHtml(thread.content)}</p>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem; font-size:0.8rem; color:#64748b;">
+          <span><i class="fa-regular fa-comment"></i> ${thread.replyCount || 0} replies</span>
+          <button type="button" onclick="openThreadModal('${thread.id}')" class="btn-action" style="padding:0.3rem 0.6rem; font-size:0.75rem;">View Discussion</button>
+        </div>
+      </div>
+    `).join('');
+  }, (error) => {
+    console.error("Error listening to forum threads:", error);
+  });
+};
 
-    let queryRef = db.collection('forum_threads');
-    
-    // Apply schoolId filter if present to ensure strict multi-tenant isolation
-    if (activeSchoolId) {
-        queryRef = queryRef.where('schoolId', '==', activeSchoolId);
-    }
-
-    unsubscribeThreads = queryRef
-        .orderBy('createdAt', 'desc')
-        .onSnapshot(snapshot => {
-            globalThreads = [];
-            snapshot.forEach(doc => {
-                globalThreads.push({ id: doc.id, ...doc.data() });
-            });
-            filterForumThreads();
-
-            // Auto-restore the previously viewed thread (or default to the first one)
-            if (globalThreads.length > 0) {
-                const savedThreadId = localStorage.getItem('samcam_active_thread');
-                const targetId = (savedThreadId && globalThreads.some(t => t.id === savedThreadId)) 
-                    ? savedThreadId 
-                    : globalThreads[0].id;
-                
-                // Only trigger selection if not already active to prevent reload loops
-                if (typeof activeThreadId === 'undefined' || activeThreadId !== targetId) {
-                    selectThread(targetId);
-                }
-            } else {
-                const detailPane = document.getElementById('threadDetailPane');
-                if (detailPane) {
-                    detailPane.innerHTML = `<div class="loading-state" style="padding: 2rem; text-align: center; color: #64748b;">No discussions found for this institution.</div>`;
-                }
-            }
-        }, err => {
-            console.error("Real-time thread error:", err);
-            feedContainer.innerHTML = `<div class="loading-state" style="color:#ef4444;">Failed to sync live discussions.</div>`;
-        });
-}
+document.addEventListener('DOMContentLoaded', () => {
+  if (typeof initRealtimeForumThreads === 'function') {
+    initRealtimeForumThreads();
+  }
+});
 
 function renderThreadsList(threads) {
     const feedContainer = document.getElementById('threadsFeedContainer');
