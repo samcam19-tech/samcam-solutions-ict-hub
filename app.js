@@ -6,6 +6,7 @@ let allResources = [];
 let currentClass = 'ALL';
 let currentCategory = 'ALL';
 let searchQuery = '';
+let currentSchoolId = ''; // Global schoolId filter context
 
 // --- PAGINATION STATE ---
 let currentPage = 1;
@@ -34,7 +35,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Load state from URL parameters first before fetching data
   loadStateFromURL();
 
-  // Fetch data live from Firebase Firestore
+  // Fetch data live from Firebase Firestore filtered by schoolId
   fetchResourcesFromFirestore();
 
   // Scroll listener for Back to Top Button
@@ -56,6 +57,7 @@ function loadStateFromURL() {
   if (params.has('page')) currentPage = parseInt(params.get('page'), 10) || 1;
   if (params.has('class')) currentClass = params.get('class');
   if (params.has('category')) currentCategory = params.get('category');
+  if (params.has('schoolId')) currentSchoolId = params.get('schoolId').toLowerCase().trim();
   if (params.has('q')) {
     searchQuery = params.get('q').toLowerCase().trim();
     const searchInput = document.getElementById('searchInput');
@@ -70,6 +72,7 @@ function updateURL() {
   if (currentPage > 1) params.set('page', currentPage);
   if (currentClass !== 'ALL') params.set('class', currentClass);
   if (currentCategory !== 'ALL') params.set('category', currentCategory);
+  if (currentSchoolId) params.set('schoolId', currentSchoolId);
   if (searchQuery.trim() !== '') params.set('q', searchQuery);
 
   const newQueryString = params.toString();
@@ -109,40 +112,46 @@ function fetchResourcesFromFirestore() {
     return;
   }
 
-  db.collection('e_library_resources')
-    .onSnapshot((snapshot) => {
-      allResources = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        allResources.push({
-          id: doc.id,
-          title: data.title || 'Untitled Resource',
-          description: data.description || '',
-          class: data.classLevel || 'S1',        // Mapped to your 'classLevel' field
-          category: data.category || 'Notes',
-          accessType: data.accessType || 'free',  // Mapped to 'free' or 'paid'
-          price: Number(data.price) || 0,         // Mapped to your numeric 'price' field
-          fileUrl: data.fileUrl || '#',
-          fileName: data.fileName || '',
-          fileType: data.fileType || '',
-          date: data.date || '2026',
-          downloads: Number(data.downloads) || 0, // Download counter field
-          createdAt: data.createdAt
-        });
+  // Build query scoped to schoolId if specified
+  let queryRef = db.collection('e_library_resources');
+  if (currentSchoolId) {
+    queryRef = queryRef.where('schoolId', '==', currentSchoolId);
+  }
+
+  queryRef.onSnapshot((snapshot) => {
+    allResources = [];
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      allResources.push({
+        id: doc.id,
+        title: data.title || 'Untitled Resource',
+        description: data.description || '',
+        class: data.classLevel || 'S1',        // Mapped to your 'classLevel' field
+        category: data.category || 'Notes',
+        accessType: data.accessType || 'free',  // Mapped to 'free' or 'paid'
+        price: Number(data.price) || 0,         // Mapped to numeric 'price' field
+        schoolId: data.schoolId || 'global',    // Mapped to multi-tenant schoolId field
+        fileUrl: data.fileUrl || '#',
+        fileName: data.fileName || '',
+        fileType: data.fileType || '',
+        date: data.date || '2026',
+        downloads: Number(data.downloads) || 0, // Download counter field
+        createdAt: data.createdAt
       });
-
-      // Cache locally as an offline backup safeguard
-      try {
-        localStorage.setItem('portal_resources', JSON.stringify(allResources));
-      } catch (e) {
-        console.warn("Could not save resources to localStorage:", e);
-      }
-
-      initPortal();
-    }, (error) => {
-      console.error("Error fetching live resources from Firestore:", error);
-      fallbackToLocalData();
     });
+
+    // Cache locally as an offline backup safeguard
+    try {
+      localStorage.setItem('portal_resources', JSON.stringify(allResources));
+    } catch (e) {
+      console.warn("Could not save resources to localStorage:", e);
+    }
+
+    initPortal();
+  }, (error) => {
+    console.error("Error fetching live resources from Firestore:", error);
+    fallbackToLocalData();
+  });
 }
 
 function fallbackToLocalData() {
@@ -222,6 +231,7 @@ function resetFilters() {
   currentPage = 1; // Reset to page 1 on reset
   currentClass = 'ALL';
   currentCategory = 'ALL';
+  currentSchoolId = '';
   
   const searchInput = document.getElementById('searchInput');
   if (searchInput) searchInput.value = '';
@@ -238,7 +248,7 @@ function resetFilters() {
   });
   
   updateURL();
-  renderCards();
+  fetchResourcesFromFirestore(); // Re-fetch without schoolId filter
 }
 
 // --- DOWNLOAD COUNTER INCREMENT HELPER ---
@@ -370,12 +380,13 @@ async function verifyManualPayment(e, resourceId) {
       return; // Stop execution
     }
 
-    // 2. If unique, save the submission to Firestore for admin review
+    // 2. If unique, save the submission to Firestore for admin review, attaching current schoolId context if active
     await db.collection("pending_payments").add({
       resourceId,
       phone,
       network,
       transactionId,
+      schoolId: currentSchoolId || "global",
       status: "pending", // Will change to 'approved' once you match it on your phone line
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
@@ -438,13 +449,15 @@ function renderCards() {
   const filtered = allResources.filter(item => {
     const matchesClass = currentClass === 'ALL' || item.class === currentClass;
     const matchesCat = currentCategory === 'ALL' || item.category === currentCategory;
+    const matchesSchool = !currentSchoolId || item.schoolId === currentSchoolId || item.schoolId === 'global';
     const matchesSearch = !searchQuery || 
       (item.title && item.title.toLowerCase().includes(searchQuery)) ||
       (item.description && item.description.toLowerCase().includes(searchQuery)) ||
       (item.class && item.class.toLowerCase().includes(searchQuery)) ||
-      (item.category && item.category.toLowerCase().includes(searchQuery));
+      (item.category && item.category.toLowerCase().includes(searchQuery)) ||
+      (item.schoolId && item.schoolId.toLowerCase().includes(searchQuery));
 
-    return matchesClass && matchesCat && matchesSearch;
+    return matchesClass && matchesCat && matchesSchool && matchesSearch;
   });
 
   if (countBadge) {
@@ -484,6 +497,7 @@ function renderCards() {
     const accessType = item.accessType || 'free';
     const price = item.price || 0;
     const downloadCount = item.downloads || 0;
+    const itemSchoolId = item.schoolId || 'global';
 
     // Determine Action Button Markup based on Access Type & User Role
     let actionButtonHTML = '';
@@ -513,6 +527,7 @@ function renderCards() {
           <span class="tag ${classTagStyle}">${item.class}</span>
           <span class="tag tag-cat">${item.category}</span>
           <span class="tag tag-ext">${fileMeta.label}</span>
+          <span class="tag" style="background:#e0f2fe; color:#0369a1;"><i class="fa-solid fa-school"></i> ${itemSchoolId.toUpperCase()}</span>
           ${accessType === 'paid' ? '<span class="tag" style="background:#fef3c7; color:#92400e;"><i class="fa-solid fa-lock"></i> Paid</span>' : ''}
           <span class="tag" style="background:#f1f5f9; color:#475569; margin-left:auto;"><i class="fa-solid fa-download"></i> ${downloadCount} downloads</span>
         </div>
@@ -654,7 +669,7 @@ function openPreviewModal(encodedItem) {
   if (!modal || !content) return;
 
   content.innerHTML = `
-    <span class="tag tag-cat" style="margin-bottom:0.5rem; display:inline-block;">${item.class} • ${item.category}</span>
+    <span class="tag tag-cat" style="margin-bottom:0.5rem; display:inline-block;">${item.class} • ${item.category} • School: ${(item.schoolId || 'global').toUpperCase()}</span>
     <h2 style="font-size:1.25rem; margin-bottom:0.75rem;">${escapeHtml(item.title)}</h2>
     <p style="color:#475569; font-size:0.9rem; margin-bottom:1.25rem;">${escapeHtml(item.description || 'No detailed description available.')}</p>
     <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #e2e8f0; padding-top:1rem;">
