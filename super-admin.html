@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Platform Super Admin | Multi-Tenant Manager</title>
+  <link rel="stylesheet" href="super-admin.css">
+</head>
+<body>
+  <div class="admin-wrapper">
+    <header class="admin-header">
+      <div class="header-brand">
+        <h1>Samcam Hub - Super Admin</h1>
+        <span class="global-badge">Global Master Control</span>
+      </div>
+      <div class="admin-profile">
+        <span>Master Administrator</span>
+      </div>
+    </header>
+
+    <main class="admin-content">
+      
+      <section class="stats-grid">
+        <div class="stat-card">
+          <h3>Registered Schools</h3>
+          <p class="stat-value" id="totalSchoolsCount">0</p>
+        </div>
+        <div class="stat-card">
+          <h3>Collections Targeted</h3>
+          <p class="stat-value">4</p>
+        </div>
+      </section>
+
+      <div class="admin-grid">
+        
+        <div class="panel-card">
+          <h2>Register New School Instance</h2>
+          <p class="panel-desc">Create a brand new tenant record in the global database.</p>
+          <form id="superSchoolForm">
+            <div class="form-group">
+              <label for="newSchoolId">School Identifier (Slug):</label>
+              <input type="text" id="newSchoolId" placeholder="e.g. standard_college_ntungamo" required />
+            </div>
+            <div class="form-group">
+              <label for="newSchoolName">Full School Name:</label>
+              <input type="text" id="newSchoolName" placeholder="Standard College Ntungamo" required />
+            </div>
+            <div class="form-group">
+              <label for="newSchoolLocation">Location / District:</label>
+              <input type="text" id="newSchoolLocation" placeholder="Ntungamo" required />
+            </div>
+            <button type="submit" class="btn-primary">Provision School Instance</button>
+          </form>
+        </div>
+
+        <div class="panel-card">
+          <h2>Legacy Data Migration Utility</h2>
+          <p class="panel-desc">Map existing root-level collections to a designated school instance.</p>
+          <form id="migrationForm">
+            <div class="form-group">
+              <label for="targetSchoolSelect">Select Target School for Legacy Data:</label>
+              <select id="targetSchoolSelect" class="form-select" required>
+                <option value="">-- Load registered schools --</option>
+              </select>
+            </div>
+            <p class="note-text">This will inject the <code>schoolId</code> property into documents across <code>portal_resources</code>, <code>quizzes</code>, <code>challenges</code>, and <code>blog_posts</code>.</p>
+            <button type="button" id="executeMigrationBtn" class="btn-warning">Run Global Data Migration</button>
+          </form>
+        </div>
+
+      </div>
+
+      <section class="schools-table-section">
+        <h2>Active Platform Tenants</h2>
+        <div class="table-container">
+          <table class="data-table" id="schoolsTable">
+            <thead>
+              <tr>
+                <th>School ID</th>
+                <th>School Name</th>
+                <th>Location</th>
+                <th>Date Provisioned</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="4" style="text-align: center;">Loading registered schools...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script type="module" src="super-admin.js"></script>
+</body>
+</html>
