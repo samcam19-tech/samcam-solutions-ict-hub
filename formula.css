@@ -312,3 +312,75 @@ main {
 .next-action-btn:hover {
     background-color: #218838 !important;
 }
+
+/* Hide hamburger by default on desktop */
+.hamburger-btn {
+    display: none;
+    background: none;
+    border: none;
+    cursor: pointer;
+    flex-direction: column;
+    justify-content: space-between;
+    width: 28px;
+    height: 21px;
+    padding: 0;
+    z-index: 1001;
+}
+
+.hamburger-btn span {
+    display: block;
+    width: 100%;
+    height: 3px;
+    background-color: #333;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+/* Mobile Responsive Styles */
+@media (max-width: 768px) {
+    .hamburger-btn {
+        display: flex;
+    }
+
+    .app-navbar {
+        position: relative;
+        justify-content: space-between;
+    }
+
+    .nav-right {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        width: 100%;
+        background-color: #ffffff;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        flex-direction: column;
+        align-items: stretch;
+        padding: 1rem;
+        gap: 1rem;
+        z-index: 1000;
+    }
+
+    /* Active state toggled via JS */
+    .nav-right.mobile-active {
+        display: flex;
+    }
+
+    .user-menu-container {
+        width: 100%;
+    }
+
+    .user-dropdown-menu {
+        position: static;
+        box-shadow: none;
+        width: 100%;
+        border: 1px solid #eee;
+    }
+
+    .back-btn {
+        width: 100%;
+        text-align: center;
+        padding: 0.75rem;
+    }
+}
