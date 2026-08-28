@@ -877,7 +877,7 @@ function setupAdminImportModule() {
 function highlightFormula(text) {
     if (!text) return '';
     
-    // 1. Escape HTML entities
+    // 1. Escape HTML entities first to ensure safety
     const safeText = text
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -885,44 +885,71 @@ function highlightFormula(text) {
 
     let bracketDepth = 0;
 
-    // 2. Apply syntax tokens
-    return safeText
-        .replace(/(=)|([A-Z][A-Z0-9_]*\b(?=\s*\())|([()])/g, (match, eq, func, bracket) => {
-            if (eq) return `<span class="token-equals">${eq}</span>`;
-            if (func) return `<span class="token-function">${func}</span>`;
-            if (bracket) {
-                if (bracket === '(') bracketDepth++;
+    // 2. Use a single regex scanner that matches strings, cells, functions, operators, and brackets simultaneously,
+    // preventing any sequential replacement overlap or attribute corruption.
+    const tokenRegex = /(".*?"|'.*?')|([A-Z][A-Z0-9_]*\b(?=\s*\())|([A-Z]+\d+:[A-Z]+\d+|\$[A-Z]+\$\d+[A-Z]?|[A-Z]+\d+)|(=)|([()]+)|([+\-*/^=<>]=?)/g;
+
+    return safeText.replace(tokenRegex, (match, str, func, cell, eq, bracket, op) => {
+        if (str) {
+            return `<span class="token-string">${str}</span>`;
+        }
+        if (func) {
+            return `<span class="token-function">${func}</span>`;
+        }
+        if (cell) {
+            return `<span class="token-cell">${cell}</span>`;
+        }
+        if (eq) {
+            return `<span class="token-equals">${eq}</span>`;
+        }
+        if (bracket) {
+            // Handle multi-character or individual bracket sequences securely
+            let result = '';
+            for (let char of bracket) {
+                if (char === '(') bracketDepth++;
                 const currentLevel = Math.min(64, Math.max(1, bracketDepth));
-                const bracketClass = `token-bracket-${currentLevel}`;
-                if (bracket === ')') bracketDepth = Math.max(0, bracketDepth - 1);
-                return `<span class="${bracketClass}">${bracket}</span>`;
+                result += `<span class="token-bracket-${currentLevel}">${char}</span>`;
+                if (char === ')') bracketDepth = Math.max(0, bracketDepth - 1);
             }
-            return match;
-        })
-        .replace(/([A-Z]+\d+:[A-Z]+\d+|[A-Z]+\d+|\$[A-Z]+\$\d+)/g, '<span class="token-cell">$1</span>')
-        .replace(/(".*?"|'.*?')/g, '<span class="token-string">$1</span>')
-        .replace(/([+\-*/^=<>]=?)/g, '<span class="token-operator">$1</span>');
+            return result;
+        }
+        if (op) {
+            return `<span class="token-operator">${op}</span>`;
+        }
+        return match;
+    });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
     const textarea = document.getElementById('studentAnswer');
-    const backdrop = document.getElementById('formulaBackdrop');
+    const backdropCode = document.getElementById('formulaBackdrop');
 
-    if (textarea && backdrop) {
+    if (textarea && backdropCode) {
+        // FORCE WIPE: If corrupted HTML code is sitting in the textarea value, clear it immediately
+        if (textarea.value.includes('<span') || textarea.value.includes('token-')) {
+            textarea.value = '';
+        }
+
         function updateEditor() {
-            // Clear any accidental HTML pollution from prior runs
-            if (textarea.value.includes('<span')) {
+            const rawText = textarea.value;
+            
+            // Double-guard: never process text that contains HTML span tags
+            if (rawText.includes('<span')) {
                 textarea.value = '';
+                backdropCode.innerHTML = ' ';
+                return;
             }
-            // Render styled token markup directly into the backdrop div
-            backdrop.innerHTML = highlightFormula(textarea.value) + ' ';
+
+            backdropCode.innerHTML = highlightFormula(rawText) + ' ';
         }
 
         textarea.addEventListener('input', updateEditor);
         
         textarea.addEventListener('scroll', () => {
-            backdrop.scrollTop = textarea.scrollTop;
-            backdrop.scrollLeft = textarea.scrollLeft;
+            if (backdropCode.parentElement) {
+                backdropCode.parentElement.scrollTop = textarea.scrollTop;
+                backdropCode.parentElement.scrollLeft = textarea.scrollLeft;
+            }
         });
 
         updateEditor();
