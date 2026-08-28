@@ -460,11 +460,20 @@ color:#f87171;
 color:#94a3b8;
 font-size:0.95rem;
 }
-/*Extended Feature Card Grid Layout (2 Cards in a Row)*/
+/*Corrected Container Layout for Main Content Area*/
 .admin-content{
+display:block;
+padding:40px;
+max-width:1280px;
+margin:0 auto;
+width:100%;
+}
+/*Isolated Grid for 2 Feature Cards in a Row*/
+.feature-cards-grid{
 display:grid;
 grid-template-columns:repeat(2,1fr);
 gap:28px;
+margin-bottom:32px;
 }
 .admin-feature-card{
 background:var(--bg-surface);
@@ -760,7 +769,7 @@ display:block;
 display:none !important;
 }
 @media(max-width:968px){
-.admin-content{
+.feature-cards-grid{
 grid-template-columns:1fr;
 }
 }
