@@ -384,3 +384,125 @@ main {
         padding: 0.75rem;
     }
 }
+
+/* --- Code Editor Overlay Highlighting Styles --- */
+.editor-container {
+    position: relative;
+    width: 100%;
+    background-color: var(--surface-white);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.editor-container:focus-within {
+    border-color: var(--primary-accent);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+.editor-container textarea,
+.editor-container .editor-backdrop {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    padding: 0.85rem;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 1rem;
+    line-height: 1.5;
+    border: none;
+    background: transparent;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.editor-container textarea {
+    position: relative;
+    z-index: 2;
+    color: transparent; /* Makes raw text invisible while letting caret/selection work normally */
+    caret-color: var(--text-main);
+    resize: vertical;
+    outline: none;
+}
+
+.editor-container .editor-backdrop {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+    pointer-events: none;
+    color: var(--text-main);
+    overflow: hidden;
+}
+
+/* Syntax Highlighting Token Colors */
+.token-equals { color: #d97706; font-weight: bold; }
+.token-function { color: #2563eb; font-weight: bold; }
+.token-cell { color: #0891b2; font-weight: 600; }
+.token-string { color: #16a34a; }
+.token-operator { color: #db2777; font-weight: bold; }
+
+/* 64-Level Nested Bracket Colors (Level 1 is Black/Text Main) */
+.token-bracket-1  { color: var(--text-main); font-weight: bold; }
+.token-bracket-2  { color: #2563eb; font-weight: bold; }
+.token-bracket-3  { color: #dc2626; font-weight: bold; }
+.token-bracket-4  { color: #059669; font-weight: bold; }
+.token-bracket-5  { color: #7c3aed; font-weight: bold; }
+.token-bracket-6  { color: #d97706; font-weight: bold; }
+.token-bracket-7  { color: #0891b2; font-weight: bold; }
+.token-bracket-8  { color: #db2777; font-weight: bold; }
+.token-bracket-9  { color: #4f46e5; font-weight: bold; }
+.token-bracket-10 { color: #16a34a; font-weight: bold; }
+.token-bracket-11 { color: #9333ea; font-weight: bold; }
+.token-bracket-12 { color: #ea580c; font-weight: bold; }
+.token-bracket-13 { color: #0284c7; font-weight: bold; }
+.token-bracket-14 { color: #be185d; font-weight: bold; }
+.token-bracket-15 { color: #15803d; font-weight: bold; }
+.token-bracket-16 { color: #6d28d9; font-weight: bold; }
+.token-bracket-17 { color: #b45309; font-weight: bold; }
+.token-bracket-18 { color: #0369a1; font-weight: bold; }
+.token-bracket-19 { color: #9f1239; font-weight: bold; }
+.token-bracket-20 { color: #374151; font-weight: bold; }
+.token-bracket-21 { color: #1d4ed8; font-weight: bold; }
+.token-bracket-22 { color: #b91c1c; font-weight: bold; }
+.token-bracket-23 { color: #047857; font-weight: bold; }
+.token-bracket-24 { color: #6d28d9; font-weight: bold; }
+.token-bracket-25 { color: #c2410c; font-weight: bold; }
+.token-bracket-26 { color: #0e7490; font-weight: bold; }
+.token-bracket-27 { color: #9d174d; font-weight: bold; }
+.token-bracket-28 { color: #4338ca; font-weight: bold; }
+.token-bracket-29 { color: #15803d; font-weight: bold; }
+.token-bracket-30 { color: #7e22ce; font-weight: bold; }
+.token-bracket-31 { color: #b45309; font-weight: bold; }
+.token-bracket-32 { color: #0369a1; font-weight: bold; }
+.token-bracket-33 { color: #881337; font-weight: bold; }
+.token-bracket-34 { color: #334155; font-weight: bold; }
+.token-bracket-35 { color: #2563eb; font-weight: bold; }
+.token-bracket-36 { color: #dc2626; font-weight: bold; }
+.token-bracket-37 { color: #059669; font-weight: bold; }
+.token-bracket-38 { color: #7c3aed; font-weight: bold; }
+.token-bracket-39 { color: #d97706; font-weight: bold; }
+.token-bracket-40 { color: #0891b2; font-weight: bold; }
+.token-bracket-41 { color: #db2777; font-weight: bold; }
+.token-bracket-42 { color: #4f46e5; font-weight: bold; }
+.token-bracket-43 { color: #16a34a; font-weight: bold; }
+.token-bracket-44 { color: #9333ea; font-weight: bold; }
+.token-bracket-45 { color: #ea580c; font-weight: bold; }
+.token-bracket-46 { color: #0284c7; font-weight: bold; }
+.token-bracket-47 { color: #be185d; font-weight: bold; }
+.token-bracket-48 { color: #15803d; font-weight: bold; }
+.token-bracket-49 { color: #6d28d9; font-weight: bold; }
+.token-bracket-50 { color: #b45309; font-weight: bold; }
+.token-bracket-51 { color: #0369a1; font-weight: bold; }
+.token-bracket-52 { color: #9f1239; font-weight: bold; }
+.token-bracket-53 { color: #374151; font-weight: bold; }
+.token-bracket-54 { color: #1d4ed8; font-weight: bold; }
+.token-bracket-55 { color: #b91c1c; font-weight: bold; }
+.token-bracket-56 { color: #047857; font-weight: bold; }
+.token-bracket-57 { color: #6d28d9; font-weight: bold; }
+.token-bracket-58 { color: #c2410c; font-weight: bold; }
+.token-bracket-59 { color: #0e7490; font-weight: bold; }
+.token-bracket-60 { color: #9d174d; font-weight: bold; }
+.token-bracket-61 { color: #4338ca; font-weight: bold; }
+.token-bracket-62 { color: #15803d; font-weight: bold; }
+.token-bracket-63 { color: #7e22ce; font-weight: bold; }
+.token-bracket-64 { color: #b45309; font-weight: bold; }
