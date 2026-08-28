@@ -712,4 +712,20 @@ function initKeyRotator(configDocRef) {
       await showCustomModal("Error", "Failed to update master key.");
     }
   });
-} // <-- Ensure this closing brace is present at the end of the file
+} 
+
+// Helper function to create feature sections cleanly inside the 2-column grid container
+function createFeatureSection(titleText, elementId) {
+  let grid = document.querySelector(".feature-cards-grid");
+  if (!grid) {
+    const mainContent = document.querySelector("main") || document.body;
+    grid = document.createElement("div");
+    grid.className = "feature-cards-grid";
+    mainContent.appendChild(grid);
+  }
+  const wrapper = document.createElement("div");
+  wrapper.id = elementId;
+  wrapper.className = "admin-feature-card";
+  grid.appendChild(wrapper);
+  return wrapper;
+}
