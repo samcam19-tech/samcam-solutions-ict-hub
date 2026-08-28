@@ -201,7 +201,7 @@ function normalizeAlgebraicExpression(expr) {
 function validateStudentAnswer(question, inputStr) {
     let cleanInput = inputStr ? inputStr.trim() : "";
     
-    cleanInput = cleanInput.replace(/([A-Z][A-Z0-9_]*)\s+(\()/g, '$1$2');
+    //cleanInput = cleanInput.replace(/([A-Z][A-Z0-9_]*)\s+(\()/g, '$1$2');
 
     const rule = question.ruleType; 
     const expected = question.expectedValue ? question.expectedValue.trim() : ""; 
