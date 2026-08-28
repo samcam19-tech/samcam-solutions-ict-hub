@@ -498,32 +498,39 @@
             </div>
           </div>
 
-          <!-- NEW: REGISTER TEACHER / ADMIN MODULE -->
-          <div class="card-box" id="adminStaffRegistrationModule" style="display: none;">
-            <h3><i class="fa-solid fa-user-shield"></i> Register Teacher / Admin</h3>
-            <form id="registerStaffForm">
-              <div class="form-group">
-                <label for="staffFullName">Full Name</label>
-                <input type="text" id="staffFullName" placeholder="e.g. Jane Namubiru" required>
-              </div>
-              <div class="form-group">
-                <label for="staffRole">System Role</label>
-                <select id="staffRole" required>
-                  <option value="teacher">Teacher</option>
-                  <option value="admin">Administrator</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label for="staffUsername">Username</label>
-                <input type="text" id="staffUsername" placeholder="e.g. namubiru_ict" required>
-              </div>
-              <div class="form-group">
-                <label for="staffPassword">Password</label>
-                <input type="text" id="staffPassword" placeholder="Assign secure password..." required>
-              </div>
-              <button type="submit" class="btn-submit" style="background: #7c3aed;"><i class="fa-solid fa-user-tie"></i> Register Staff Account</button>
-            </form>
-          </div>
+         <!-- NEW: REGISTER TEACHER / ADMIN MODULE -->
+<div class="card-box" id="adminStaffRegistrationModule" style="display: none;">
+  <h3><i class="fa-solid fa-user-shield"></i> Register Teacher / Admin</h3>
+  <form id="registerStaffForm">
+    <div class="form-group">
+      <label for="staffFullName">Full Name</label>
+      <input type="text" id="staffFullName" placeholder="e.g. Jane Namubiru" required>
+    </div>
+    <div class="form-group">
+      <label for="staffRole">System Role</label>
+      <select id="staffRole" required>
+        <option value="teacher">Teacher</option>
+        <option value="admin">Administrator</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="staffSchoolSelect">Select Existing School (Optional)</label>
+      <select id="staffSchoolSelect" class="form-control" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; background:#fff; margin-bottom:0.4rem;">
+        <option value="">-- Choose Existing School --</option>
+      </select>
+      <small style="color:#64748b; font-size:0.75rem;">Selecting a school auto-fills the School ID/Username field below.</small>
+    </div>
+    <div class="form-group">
+      <label for="staffUsername">School ID / Username</label>
+      <input type="text" id="staffUsername" placeholder="e.g. STANDARD_NTUNGAMO" required>
+    </div>
+    <div class="form-group">
+      <label for="staffPassword">Password</label>
+      <input type="text" id="staffPassword" placeholder="Assign secure password..." required>
+    </div>
+    <button type="submit" class="btn-submit" style="background: #7c3aed;"><i class="fa-solid fa-user-tie"></i> Register Staff Account</button>
+  </form>
+</div>
 
           <div class="card-box">
             <h3><i class="fa-solid fa-upload"></i> Publish New Assessment</h3>
