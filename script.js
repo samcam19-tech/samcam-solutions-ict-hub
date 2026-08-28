@@ -722,14 +722,14 @@ async function populateRegisteredSchoolsDropdown() {
 
   let schoolsSet = new Set();
 
-  // Try fetching unique school IDs/names from Firestore users or existing submissions/classes collections
+  // 1. Fetch unique schools from Firestore collections (users, submissions, classes, etc.)
   if (window.db) {
     try {
       const usersSnap = await window.db.collection("users").get();
       usersSnap.forEach(doc => {
         const data = doc.data();
         if (data.schoolId) schoolsSet.add(data.schoolId.toUpperCase());
-        if (data.schoolName) schoolsSet.add(data.schoolName);
+        if (data.schoolName) schoolsSet.add(data.schoolName.toUpperCase());
       });
 
       const subsSnap = await window.db.collection("submissions").get();
@@ -742,26 +742,30 @@ async function populateRegisteredSchoolsDropdown() {
     }
   }
 
-  // Fallback to local storage caches if empty
-  if (schoolsSet.size === 0) {
-    const localUsers = JSON.parse(localStorage.getItem("portal_users")) || [];
-    localUsers.forEach(u => {
-      if (u.schoolId) schoolsSet.add(u.schoolId.toUpperCase());
-    });
-    const localSubs = JSON.parse(localStorage.getItem("portal_submissions")) || [];
-    localSubs.forEach(s => {
-      if (s.schoolId) schoolsSet.add(s.schoolId.toUpperCase());
-    });
-  }
+  // 2. Fallback or merge with local storage caches (portal_users, portal_submissions, portal_classes)
+  const localUsers = JSON.parse(localStorage.getItem("portal_users")) || [];
+  localUsers.forEach(u => {
+    if (u.schoolId) schoolsSet.add(u.schoolId.toUpperCase());
+  });
+
+  const localSubs = JSON.parse(localStorage.getItem("portal_submissions")) || [];
+  localSubs.forEach(s => {
+    if (s.schoolId) schoolsSet.add(s.schoolId.toUpperCase());
+  });
+
+  const localClasses = JSON.parse(localStorage.getItem("portal_classes")) || [];
+  localClasses.forEach(c => {
+    if (c.schoolId) schoolsSet.add(c.schoolId.toUpperCase());
+  });
 
   // Render options into select element
   const sortedSchools = Array.from(schoolsSet).sort();
   schoolSelectEl.innerHTML = `
-    <option value="">-- Select Existing School or Type New Below --</option>
+    <option value="">-- Select Existing School (${sortedSchools.length} Found) --</option>
     ${sortedSchools.map(sch => `<option value="${sch}">${sch}</option>`).join('')}
   `;
 
-  // Auto-fill school ID input when a dropdown option is selected
+  // Auto-fill the school ID text input when an option is selected from the dropdown
   schoolSelectEl.onchange = function() {
     if (this.value) {
       const schoolIdInput = document.getElementById("staffUsername");
@@ -771,6 +775,17 @@ async function populateRegisteredSchoolsDropdown() {
     }
   };
 }
+
+// Automatically trigger population when the admin registration module opens or DOM loads
+document.addEventListener("DOMContentLoaded", () => {
+  populateRegisteredSchoolsDropdown();
+
+  // Also trigger when the admin staff registration view or modal becomes visible
+  const openManageStaffBtn = document.getElementById("openManageStaffBtn");
+  if (openManageStaffBtn) {
+    openManageStaffBtn.addEventListener("click", populateRegisteredSchoolsDropdown);
+  }
+});
 
 // 1. Handle Registration of New Teachers / Admins
 async function handleRegisterStaff(e) {
