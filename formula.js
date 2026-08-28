@@ -714,6 +714,7 @@ if (hamburgerBtn && navRight) {
         }
     });
 }
+
 // ==========================================
 // 6. ADMIN / TEACHER BULK IMPORT MODULE
 // ==========================================
@@ -728,8 +729,18 @@ function setupAdminImportModule() {
         }
     }
     
-    const userRole = (activeUser.role || "").toLowerCase();
-    const isAdminOrTeacher = userRole.includes("admin") || userRole.includes("teacher") || userRole.includes("educator");
+    // Debug log to check what role your profile currently holds in the browser console
+    console.log("Current Active User Profile:", activeUser);
+
+    const userRole = (activeUser.role || "").toLowerCase().trim();
+    
+    // Expanded role matching to catch variations (Admin, Teacher, Educator, ICT Teacher, Head of Department, etc.)
+    const isAdminOrTeacher = 
+        userRole.includes("admin") || 
+        userRole.includes("teach") || 
+        userRole.includes("educat") || 
+        userRole.includes("staff") ||
+        userRole.includes("instructor");
 
     let adminContainer = document.getElementById("adminImportSection");
     if (!adminContainer) {
@@ -770,6 +781,8 @@ function setupAdminImportModule() {
         const workspace = document.querySelector(".workspace");
         if (workspace) {
             workspace.parentNode.insertBefore(adminContainer, workspace);
+        } else {
+            document.body.appendChild(adminContainer);
         }
     }
 
@@ -777,8 +790,7 @@ function setupAdminImportModule() {
         adminContainer.style.display = "block";
         
         const uploadBtn = document.getElementById("uploadBatchBtn");
-        // Prevent multiple listener bindings if function re-runs
-        if (!uploadBtn.dataset.bound) {
+        if (uploadBtn && !uploadBtn.dataset.bound) {
             uploadBtn.dataset.bound = "true";
             uploadBtn.addEventListener("click", async () => {
                 const targetCategoryInput = document.getElementById("importCategory");
@@ -847,7 +859,6 @@ function setupAdminImportModule() {
         adminContainer.style.display = "none";
     }
 }
-
 // ==========================================
 // SYNTAX HIGHLIGHTER ENGINE FOR FORMULAS
 // ==========================================
