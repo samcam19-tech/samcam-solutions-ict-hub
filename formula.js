@@ -902,6 +902,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (textarea && backdrop) {
         function updateEditor() {
+            // CRITICAL: Always pass raw textarea.value, never innerHTML or backdrop content
             backdrop.innerHTML = highlightFormula(textarea.value) + '<br>';
         }
 
