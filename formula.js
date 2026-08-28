@@ -40,7 +40,182 @@ let currentIndex = 0;
 let isAnswerCorrect = false;
 
 // ==========================================
-// 3. DYNAMIC QUESTION FETCHING FROM FIRESTORE
+// 3. EXCEL GRID-BOUNDED & ACCESS RULE-BASED VALIDATOR ENGINE
+// ==========================================
+function excelColToNum(colStr) {
+    let num = 0;
+    const upper = colStr.toUpperCase();
+    for (let i = 0; i < upper.length; i++) {
+        num = num * 26 + (upper.charCodeAt(i) - 64);
+    }
+    return num;
+}
+
+function isValidCellCoordinate(cellStr) {
+    const match = cellStr.match(/^([A-Z]+)(\d+)$/i);
+    if (!match) return false;
+
+    const colLetters = match[1];
+    const rowNum = parseInt(match[2], 10);
+    const colNum = excelColToNum(colLetters);
+    
+    const MAX_COL = 16384; // XFD
+    const MAX_ROW = 1048576;
+
+    return colNum >= 1 && colNum <= MAX_COL && rowNum >= 1 && rowNum <= MAX_ROW;
+}
+
+function validateStudentAnswer(question, inputStr) {
+    const cleanInput = inputStr.trim();
+    const upperInput = cleanInput.toUpperCase();
+    const rule = question.ruleType; 
+    const expected = question.expectedValue; 
+
+    if (!cleanInput) {
+        return { correct: false, message: "Please enter an expression before verifying." };
+    }
+
+    switch (rule) {
+        // --- 1. BASIC AGGREGATIONS (SUM, AVERAGE) ---
+        case "EXCEL_SUM":
+        case "EXCEL_AVERAGE": {
+            const func = rule === "EXCEL_SUM" ? "SUM" : "AVERAGE";
+            const pattern = new RegExp(`^=\\s*${func}\\s*\\(\\s*(.+?)\\s*\\)$`, 'i');
+            const match = cleanInput.match(pattern);
+
+            if (!match) {
+                return { correct: false, message: `Incorrect ("${cleanInput}"). Excel expects proper function syntax like =${func}(range).` };
+            }
+
+            const inner = match[1].replace(/\s+/g, '');
+            let isWithinBounds = false;
+
+            if (inner.includes(':')) {
+                const parts = inner.split(':');
+                if (parts.length === 2) {
+                    const startCell = parts[0].replace(/\$/g, '');
+                    const endCell = parts[1].replace(/\$/g, '');
+                    
+                    if (isValidCellCoordinate(startCell) && isValidCellCoordinate(endCell)) {
+                        isWithinBounds = (inner === expected.replace(/\s+/g, '').toUpperCase()) || 
+                                         (inner.includes(expected.replace(/\s+/g, '').toUpperCase()));
+                    }
+                }
+            } else {
+                const cells = inner.split(',');
+                if (cells.length > 0 && cells.every(c => isValidCellCoordinate(c.replace(/\$/g, '')))) {
+                    isWithinBounds = upperInput.includes(expected.toUpperCase());
+                }
+            }
+
+            return {
+                correct: isWithinBounds,
+                message: isWithinBounds 
+                    ? `Correct! "${cleanInput}" successfully evaluates within Excel grid limits (Max: XFD1048576).` 
+                    : `Incorrect ("${cleanInput}"). Check your range boundaries or ensure coordinates do not exceed Excel limits (Columns A-XFD, Rows 1-1048576).`
+            };
+        }
+
+        // --- 2. CONDITIONAL CHECK (IF) ---
+        case "EXCEL_IF": {
+            const ifPattern = /^=\s*IF\s*\(\s*(.+?)\s*,\s*(.+?)\s*,\s*(.+?)\s*\)$/i;
+            const match = cleanInput.match(ifPattern);
+            let correct = false;
+
+            if (match) {
+                const logicalTest = match[1];
+                correct = logicalTest.includes(expected.toUpperCase()) || upperInput.includes(expected.toUpperCase());
+            }
+
+            return {
+                correct,
+                message: correct 
+                    ? `Correct! "${cleanInput}" properly satisfies Excel's IF function argument structure.` 
+                    : `Incorrect ("${cleanInput}"). Check your logical condition, comma separators, and 3-argument layout for =IF().`
+            };
+        }
+
+        // --- 3. LOOKUP FUNCTIONS (VLOOKUP, HLOOKUP, LOOKUP) ---
+        case "EXCEL_VLOOKUP":
+        case "EXCEL_HLOOKUP":
+        case "EXCEL_LOOKUP": {
+            const func = rule.replace('EXCEL_', '');
+            const properSyntax = upperInput.startsWith(`=${func}(`) && upperInput.endsWith(')');
+            const correct = properSyntax && upperInput.includes(expected.toUpperCase());
+
+            return {
+                correct,
+                message: correct 
+                    ? `Correct! "${cleanInput}" matches required ${func} layout criteria.` 
+                    : `Incorrect ("${cleanInput}"). Verify your lookup parameters, table array, and reference syntax for =${func}().`
+            };
+        }
+
+        // --- 4. CONDITIONAL AGGREGATIONS (SUMIF, COUNTIF, AVERAGEIF) ---
+        case "EXCEL_SUMIF":
+        case "EXCEL_COUNTIF":
+        case "EXCEL_AVERAGEIF": {
+            const func = rule.replace('EXCEL_', '');
+            const properSyntax = upperInput.startsWith(`=${func}(`) && upperInput.endsWith(')');
+            const correct = properSyntax && upperInput.includes(expected.toUpperCase());
+
+            return {
+                correct,
+                message: correct 
+                    ? `Correct! "${cleanInput}" accurately built the ${func} condition structure.` 
+                    : `Incorrect ("${cleanInput}"). Check your range, criteria expression, and optional sum parameters for =${func}().`
+            };
+        }
+
+        // --- 5. RANK FUNCTION ---
+        case "EXCEL_RANK": {
+            const properSyntax = upperInput.startsWith('=RANK(') && upperInput.endsWith(')');
+            const correct = properSyntax && upperInput.includes(expected.toUpperCase());
+
+            return {
+                correct,
+                message: correct 
+                    ? `Correct! "${cleanInput}" successfully computed the rank configuration.` 
+                    : `Incorrect ("${cleanInput}"). Syntax format: =RANK(number, ref, [order]).`
+            };
+        }
+
+        // --- 6. ACCESS QUERY CRITERIA & WILDCARDS ---
+        case "ACCESS_CRITERIA": {
+            const normalized = upperInput.replace(/^LIKE\s+/i, '').replace(/["']/g, '');
+            const correct = normalized === expected.toUpperCase() || upperInput.includes(expected.toUpperCase());
+            return {
+                correct,
+                message: correct 
+                    ? `Correct! "${cleanInput}" matches Access design criteria formatting.` 
+                    : `Incorrect ("${cleanInput}"). Review your field parameters, operators, or wildcard characters.`
+            };
+        }
+
+        // --- 7. ACCESS CALCULATED FIELDS ---
+        case "ACCESS_CALCULATED": {
+            const hasColon = upperInput.includes(':');
+            const correct = hasColon && upperInput.includes(expected.toUpperCase());
+            return {
+                correct,
+                message: correct 
+                    ? `Correct! "${cleanInput}" successfully defined the calculated query expression.` 
+                    : `Incorrect ("${cleanInput}"). Ensure you use a field alias followed by a colon and brackets (e.g., Total: [Price]*[Qty]).`
+            };
+        }
+
+        default: {
+            const correct = upperInput.includes(expected.toUpperCase());
+            return { 
+                correct, 
+                message: correct ? `Correct! "${cleanInput}" verified successfully.` : `Incorrect ("${cleanInput}"). Please check your entry.` 
+            };
+        }
+    }
+}
+
+// ==========================================
+// 4. DYNAMIC QUESTION FETCHING FROM FIRESTORE
 // ==========================================
 async function loadChallengesFromFirestore() {
     const selectedCategory = challengeSelect.value; 
@@ -79,8 +254,8 @@ async function loadChallengesFromFirestore() {
                 type: data.type || "EXCEL",
                 prompt: data.prompt,
                 hint: data.hint || "",
-                // Reconstruct validation function safely from stored source string
-                validate: new Function('inputStr', data.validationLogic)
+                ruleType: data.ruleType || "DEFAULT",
+                expectedValue: data.expectedValue || ""
             });
         });
 
@@ -121,7 +296,7 @@ function displayCurrentQuestion() {
 }
 
 // ==========================================
-// 4. VERIFICATION & PROGRESSION EVENT HANDLER
+// 5. VERIFICATION & PROGRESSION EVENT HANDLER
 // ==========================================
 challengeSelect.addEventListener("change", loadChallengesFromFirestore);
 
@@ -144,7 +319,7 @@ verifyBtn.addEventListener("click", async () => {
 
     let result;
     try {
-        result = current.validate(val);
+        result = validateStudentAnswer(current, val);
     } catch (err) {
         console.error("Validation execution error:", err);
         result = { correct: false, message: "Syntax execution issue while validating formula." };
@@ -203,7 +378,7 @@ if (hamburgerBtn && navRight) {
 }
 
 // ==========================================
-// 5. ADMIN / TEACHER BULK IMPORT MODULE
+// 6. ADMIN / TEACHER BULK IMPORT MODULE
 // ==========================================
 function setupAdminImportModule() {
     const activeUser = getCurrentUserProfile();
@@ -226,11 +401,11 @@ function setupAdminImportModule() {
         
         adminContainer.innerHTML = `
             <h3>🔒 Admin / Teacher: Bulk Import Questions</h3>
-            <p style="font-size: 0.9em; color: #555;">Paste JSON data containing an array of questions to batch upload to Firestore.</p>
+            <p style="font-size: 0.9em; color: #555;">Paste JSON data containing an array of lightweight rules to batch upload to Firestore.</p>
             <label for="importCategory"><strong>Target Category Key:</strong></label><br>
             <input type="text" id="importCategory" value="excel_if" style="width: 100%; padding: 6px; margin-bottom: 10px;" /><br>
             <label for="jsonInput"><strong>Questions JSON Data:</strong></label><br>
-            <textarea id="jsonInput" rows="6" style="width: 100%; font-family: monospace;" placeholder='[{"type":"EXCEL", "prompt":"...", "hint":"...", "validationLogic":"return {correct: true, message: \\"Correct!\\"};"}]'></textarea><br>
+            <textarea id="jsonInput" rows="6" style="width: 100%; font-family: monospace;" placeholder='[{"type":"EXCEL", "prompt":"...", "hint":"...", "ruleType":"EXCEL_SUM", "expectedValue":"R$2:R$50"}]'></textarea><br>
             <button id="uploadBatchBtn" class="primary-btn" style="margin-top: 10px; background: #28a745;">Upload Questions to Firebase</button>
             <div id="uploadFeedback" style="margin-top: 8px; font-weight: bold;"></div>
         `;
@@ -276,7 +451,8 @@ function setupAdminImportModule() {
                         type: q.type || "EXCEL",
                         prompt: q.prompt,
                         hint: q.hint || "",
-                        validationLogic: q.validationLogic,
+                        ruleType: q.ruleType || "DEFAULT",
+                        expectedValue: q.expectedValue || "",
                         createdAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                 });
@@ -306,7 +482,7 @@ function setupAdminImportModule() {
 }
 
 // ==========================================
-// 6. INITIALIZATION ON PAGE LOAD
+// 7. INITIALIZATION ON PAGE LOAD
 // ==========================================
 loadChallengesFromFirestore();
 setupAdminImportModule();
