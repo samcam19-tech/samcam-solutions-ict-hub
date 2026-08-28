@@ -69,7 +69,7 @@ function validateStudentAnswer(question, inputStr) {
     const cleanInput = inputStr.trim();
     const upperInput = cleanInput.toUpperCase();
     const rule = question.ruleType; 
-    const expected = question.expectedValue; 
+    const expected = question.expectedValue ? question.expectedValue.trim() : ""; 
 
     if (!cleanInput) {
         return { correct: false, message: "Please enter an expression before verifying." };
@@ -112,7 +112,7 @@ function validateStudentAnswer(question, inputStr) {
                 correct: isWithinBounds,
                 message: isWithinBounds 
                     ? `Correct! "${cleanInput}" successfully evaluates within Excel grid limits (Max: XFD1048576).` 
-                    : `Incorrect ("${cleanInput}"). Check your range boundaries or ensure coordinates do not exceed Excel limits (Columns A-XFD, Rows 1-1048576).`
+                    : `Incorrect ("${cleanInput}"). Check your range boundaries or ensure coordinates do not exceed Excel limits.`
             };
         }
 
@@ -123,8 +123,11 @@ function validateStudentAnswer(question, inputStr) {
             let correct = false;
 
             if (match) {
-                const logicalTest = match[1];
-                correct = logicalTest.includes(expected.toUpperCase()) || upperInput.includes(expected.toUpperCase());
+                const logicalTest = match[1].replace(/\s+/g, '').toUpperCase();
+                const expectedNormalized = expected.replace(/\s+/g, '').toUpperCase();
+                
+                // Ensures the logical test contains the expected core criteria condition
+                correct = logicalTest.includes(expectedNormalized) || upperInput.includes(expectedNormalized);
             }
 
             return {
