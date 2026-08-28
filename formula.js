@@ -292,10 +292,13 @@ function validateStudentAnswer(question, inputStr) {
 
             const innerContent = match[1];
 
-            // Temporarily replace quoted text so regex ignores spaces and words inside strings
-            const sanitizedInner = innerContent.replace(/(".*?"|'.*?')/g, '""');
-            const malformedNestedPattern = /\b([A-Z]+)[A-Z0-9]/i;
-            if (malformedNestedPattern.test(sanitizedInner)) {
+            // Sanitize the whole formula string first
+            const sanitizedInput = cleanInput.replace(/(".*?"|'.*?')/g, '""');
+
+            // Look for a function word followed by a letter/number instead of an opening parenthesis
+            const malformedNestedPattern = /\b([A-Z]+)\s*[A-Z0-9]/i;
+            
+            if (malformedNestedPattern.test(sanitizedInput)) {
                 return {
                     correct: false,
                     message: `#NAME? Error: It looks like you missed an opening bracket after a function name. Every function name must be followed immediately by an open parenthesis.`
