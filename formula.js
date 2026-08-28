@@ -895,29 +895,23 @@ function highlightFormula(text) {
 
 document.addEventListener("DOMContentLoaded", () => {
     const textarea = document.getElementById('studentAnswer');
-    const backdropCode = document.getElementById('formulaBackdrop');
+    const backdrop = document.getElementById('formulaBackdrop');
 
-    if (textarea && backdropCode) {
-        // SAFETY CLEANSE: If the textarea accidentally loaded with HTML code, wipe it clean
-        if (textarea.value.includes('<span')) {
-            textarea.value = '';
-        }
-
+    if (textarea && backdrop) {
         function updateEditor() {
-            // Read strictly from textarea.value (Plain text only)
-            const plainText = textarea.value;
-            backdropCode.innerHTML = highlightFormula(plainText) + ' ';
+            // Clear any accidental HTML pollution from prior runs
+            if (textarea.value.includes('<span')) {
+                textarea.value = '';
+            }
+            // Render styled token markup directly into the backdrop div
+            backdrop.innerHTML = highlightFormula(textarea.value) + ' ';
         }
 
-        // Only listen to user typing input
         textarea.addEventListener('input', updateEditor);
-
-        // Sync scrolling
+        
         textarea.addEventListener('scroll', () => {
-            if (backdropCode.parentElement) {
-                backdropCode.parentElement.scrollTop = textarea.scrollTop;
-                backdropCode.parentElement.scrollLeft = textarea.scrollLeft;
-            }
+            backdrop.scrollTop = textarea.scrollTop;
+            backdrop.scrollLeft = textarea.scrollLeft;
         });
 
         updateEditor();
