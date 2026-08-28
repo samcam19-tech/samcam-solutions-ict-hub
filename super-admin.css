@@ -1,756 +1,314 @@
-// Custom Modal Helper Utility
-function showCustomModal(title, message, type = "alert", inputPlaceholder = "") {
-  return new Promise((resolve) => {
-    const modal = document.getElementById("customModal");
-    const titleEl = document.getElementById("modalTitle");
-    const msgEl = document.getElementById("modalMessage");
-    const confirmBtn = document.getElementById("modalConfirmBtn");
-    const cancelBtn = document.getElementById("modalCancelBtn");
-    const inputContainer = document.getElementById("modalInputContainer");
-    const inputField = document.getElementById("modalInput");
+/* ==========================================================================
+   SAMCAM SOLUTIONS - WORLD-CLASS MODERN SUPER ADMIN DESIGN SYSTEM (EXTENDED)
+   ========================================================================== */
 
-    if (!modal) {
-      if (type === "confirm") resolve(window.confirm(message));
-      else if (type === "prompt") resolve(window.prompt(message));
-      else { window.alert(message); resolve(true); }
-      return;
-    }
+/* Additional helper styles matching the modern design system */
 
-    titleEl.innerText = title;
-    msgEl.innerText = message;
-    inputField.value = "";
-
-    if (type === "confirm") {
-      cancelBtn.style.display = "inline-block";
-      inputContainer.style.display = "none";
-    } else if (type === "prompt") {
-      cancelBtn.style.display = "inline-block";
-      inputContainer.style.display = "block";
-      inputField.placeholder = inputPlaceholder;
-      inputField.type = inputPlaceholder.toLowerCase().includes("key") || inputPlaceholder.toLowerCase().includes("password") ? "password" : "text";
-    } else {
-      cancelBtn.style.display = "none";
-      inputContainer.style.display = "none";
-    }
-
-    modal.style.display = "flex";
-    if (type === "prompt") inputField.focus();
-
-    const newConfirm = confirmBtn.cloneNode(true);
-    const newCancel = cancelBtn.cloneNode(true);
-    confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
-    cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
-
-    newConfirm.addEventListener("click", () => {
-      modal.style.display = "none";
-      resolve(type === "prompt" ? inputField.value : true);
-    });
-
-    newCancel.addEventListener("click", () => {
-      modal.style.display = "none";
-      resolve(type === "prompt" ? null : false);
-    });
-  });
+.interactive-admin-profile {
+  cursor: pointer;
 }
 
-// Complete list of all system collections to ensure full migration & backup coverage
-const collectionsToMigrate = [
-  'announcements',
-  'audit_logs',
-  'blog_posts',
-  'challenges',
-  'e_library_resources',
-  'formulaSubmissions',
-  'forum_threads',
-  'live_classes',
-  'notifications',
-  'pending_payments',
-  'portal_resources',
-  'quiz_results',
-  'quizzes',
-  'submissions',
-  'users',
-  'schools',
-  'system_config'
-];
-
-document.addEventListener("DOMContentLoaded", () => {
-  const collectionsCountEl = document.getElementById("collectionsCount");
-  if (collectionsCountEl) {
-    collectionsCountEl.innerText = collectionsToMigrate.length;
-  }
-
-  const checkDbInterval = setInterval(async () => {
-    if (window.db) {
-      clearInterval(checkDbInterval);
-      await enforceFirestoreMasterKeyGate();
-    }
-  }, 50);
-});
-
-// Handles Firestore-backed Super Admin Key setup, authentication gate, and advanced feature hooks
-async function enforceFirestoreMasterKeyGate() {
-  const configDocRef = window.db.collection("system_config").doc("super_admin_settings");
-
-  try {
-    const docSnap = await configDocRef.get();
-    let currentMasterKey = "";
-
-    if (!docSnap.exists) {
-      let createdKey = "";
-      while (!createdKey || createdKey.trim().length < 6) {
-        createdKey = await showCustomModal(
-          "Initialize Super Admin Key",
-          "Create your secure master secret key (at least 6 characters):",
-          "prompt",
-          "Enter new master key..."
-        );
-
-        if (createdKey === null) {
-          document.body.innerHTML = `<div style="display:flex;height:100vh;justify-content:center;align-items:center;background:#030712;color:white;font-family:system-ui;text-align:center;padding:20px;"><div><h2 style="color:#ef4444;margin-bottom:8px;">Access Cancelled</h2><p style="color:#94a3b8;">Master key setup is required.</p></div></div>`;
-          return;
-        }
-        if (createdKey.trim().length < 6) {
-          await showCustomModal("Invalid Key", "The master key must be at least 6 characters long.");
-        }
-      }
-
-      await configDocRef.set({
-        masterKey: createdKey.trim(),
-        maintenanceMode: false,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-
-      currentMasterKey = createdKey.trim();
-      await showCustomModal("Setup Complete", "Master key saved to Firestore successfully!");
-    } else {
-      currentMasterKey = docSnap.data().masterKey;
-    }
-
-    const authenticatedKey = sessionStorage.getItem("samcam_super_auth");
-    if (authenticatedKey === currentMasterKey) {
-      await initializeSuperAdminPortal(configDocRef);
-      return;
-    }
-
-    let authorized = false;
-    while (!authorized) {
-      const enteredKey = await showCustomModal(
-        "Restricted Master Access",
-        "Enter your Super Admin master key to access the control panel:",
-        "prompt",
-        "Enter master key..."
-      );
-
-      if (enteredKey === currentMasterKey) {
-        sessionStorage.setItem("samcam_super_auth", currentMasterKey);
-        authorized = true;
-      } else if (enteredKey === null) {
-        document.body.innerHTML = `<div style="display:flex;height:100vh;justify-content:center;align-items:center;background:#030712;color:white;font-family:system-ui;text-align:center;padding:20px;"><div><h2 style="color:#ef4444;margin-bottom:8px;">Access Denied</h2><p style="color:#94a3b8;">Authentication required.</p></div></div>`;
-        return;
-      } else {
-        await showCustomModal("Access Denied", "Incorrect master admin key provided.");
-      }
-    }
-
-    await initializeSuperAdminPortal(configDocRef);
-
-  } catch (error) {
-    document.body.innerHTML = `<div style="display:flex;height:100vh;justify-content:center;align-items:center;background:#030712;color:white;font-family:system-ui;text-align:center;padding:20px;"><div><h2 style="color:#ef4444;margin-bottom:8px;">Connection Error</h2><p style="color:#94a3b8;">Failed to verify configuration against Firestore.</p></div></div>`;
-  }
+.logout-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  transition: var(--transition);
 }
 
-// Master initializer binding core modules and fully functional extended feature modules
-async function initializeSuperAdminPortal(configDocRef) {
-  loadRegisteredSchools();
-  setupAdminActions();
-  
-  // Fully implemented elevated features
-  initGlobalAnnouncements();
-  initTenantSubscriptionManager();
-  initCrossTenantSearch();
-  initAuditLogsViewer();
-  initBackupGenerator();
-  initGlobalEResources();
-  initTelemetryDashboard();
-  initMaintenanceModeToggle(configDocRef);
-  initFeatureFlagTogglers();
-  initKeyRotator(configDocRef);
+.logout-badge:hover {
+  background: #ef4444;
+  color: white;
 }
 
-// 1. Fetch & Display Schools List + Populate Select Options
-async function loadRegisteredSchools() {
-  const tableBody = document.querySelector("#schoolsTable tbody");
-  const selectDropdown = document.getElementById("targetSchoolSelect");
-  
-  try {
-    const querySnapshot = await window.db.collection("schools").get();
-    if (tableBody) tableBody.innerHTML = "";
-    if (selectDropdown) selectDropdown.innerHTML = `<option value="">-- Choose Target School --</option>`;
-    
-    const totalSchoolsEl = document.getElementById("totalSchoolsCount");
-    if (totalSchoolsEl) totalSchoolsEl.innerText = querySnapshot.size;
-
-    if (querySnapshot.empty) {
-      if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">No schools registered yet. Provision your first tenant above.</td></tr>`;
-      return;
-    }
-
-    querySnapshot.forEach((docSnap) => {
-      const data = docSnap.data();
-      const dateStr = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleDateString() : "Just now";
-      const statusBadge = data.status === 'suspended' ? '<span style="color:#ef4444;font-weight:600;">Suspended</span>' : '<span style="color:#10b981;font-weight:600;">Active</span>';
-      
-      if (tableBody) {
-        tableBody.innerHTML += `
-          <tr>
-            <td><code>${data.schoolId}</code></td>
-            <td><strong>${data.schoolName}</strong></td>
-            <td>${data.location || "N/A"}</td>
-            <td>${statusBadge}</td>
-            <td>${dateStr}</td>
-          </tr>
-        `;
-      }
-
-      if (selectDropdown) {
-        const option = document.createElement("option");
-        option.value = data.schoolId;
-        option.textContent = `${data.schoolName} (${data.schoolId})`;
-        selectDropdown.appendChild(option);
-      }
-    });
-
-  } catch (error) {
-    if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: red;">Failed to fetch tenant data from Firestore.</td></tr>`;
-  }
+.logout-icon {
+  width: 14px;
+  height: 14px;
 }
 
-// 2. Setup Super Admin Event Listeners & Migration Handlers
-function setupAdminActions() {
-  const schoolForm = document.getElementById("superSchoolForm");
-  if (schoolForm) {
-    schoolForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const schoolId = document.getElementById("newSchoolId").value.trim().toLowerCase().replace(/\s+/g, '_');
-      const schoolName = document.getElementById("newSchoolName").value.trim();
-      const location = document.getElementById("newSchoolLocation").value.trim();
-
-      try {
-        await window.db.collection("schools").doc(schoolId).set({
-          schoolId,
-          schoolName,
-          location,
-          status: "active",
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        await logAuditAction("PROVISION_SCHOOL", `Provisioned new school instance: ${schoolName} (${schoolId})`);
-        await showCustomModal("Success", `School instance "${schoolName}" has been provisioned.`);
-        schoolForm.reset();
-        loadRegisteredSchools();
-      } catch (error) {
-        await showCustomModal("Error", "Failed to register school instance.");
-      }
-    });
-  }
-
-  const migrationBtn = document.getElementById("executeMigrationBtn");
-  if (migrationBtn) {
-    migrationBtn.addEventListener("click", async () => {
-      const targetSchoolId = document.getElementById("targetSchoolSelect").value;
-      
-      if (!targetSchoolId) {
-        await showCustomModal("Selection Required", "Please select a target school first to map the legacy collections into.");
-        return;
-      }
-
-      const confirmed = await showCustomModal(
-        "Confirm Migration", 
-        `Are you sure you want to map all unassigned root data documents across all ${collectionsToMigrate.length} collections to school ID: "${targetSchoolId}"?`, 
-        "confirm"
-      );
-
-      if (!confirmed) return;
-
-      try {
-        let totalUpdated = 0;
-        for (const colName of collectionsToMigrate) {
-          const snapshot = await window.db.collection(colName).get();
-          const batch = window.db.batch();
-
-          snapshot.forEach((documentSnap) => {
-            const docRef = window.db.collection(colName).doc(documentSnap.id);
-            batch.update(docRef, { schoolId: targetSchoolId });
-            totalUpdated++;
-          });
-
-          await batch.commit();
-        }
-
-        await logAuditAction("DATA_MIGRATION", `Migrated ${totalUpdated} legacy documents across root collections to school: ${targetSchoolId}`);
-        await showCustomModal("Migration Complete", `Successfully linked ${totalUpdated} total documents to ${targetSchoolId}.`);
-      } catch (error) {
-        await showCustomModal("Migration Error", "Migration process failed. Check security rules or indices.");
-      }
-    });
-  }
+.fatal-error-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  background-color: var(--bg-app);
+  color: white;
+  text-align: center;
+  padding: 24px;
 }
 
-async function logAuditAction(actionType, details) {
-  try {
-    await window.db.collection("audit_logs").add({
-      actionType,
-      details,
-      timestamp: firebase.firestore.FieldValue.serverTimestamp()
-    });
-  } catch (err) {
-    // Silent fail if offline or permission denied
-  }
+.error-heading {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: #f87171;
 }
 
-// ==========================================
-// 10 FULLY FUNCTIONAL SUPER ADMIN FEATURES (ELEVATED CARDS)
-// ==========================================
-
-// Feature 1: Global Announcement Broadcaster
-function initGlobalAnnouncements() {
-  const container = document.getElementById("featureAnnouncements") || createFeatureSection("Global Announcement Broadcaster", "broadcastSection");
-  container.innerHTML = `
-    <h2>📢 Global Announcement Broadcaster</h2>
-    <p class="panel-desc">Publish platform-wide announcements instantly to targeted user groups or all connected tenants.</p>
-    <div class="form-group">
-      <label for="globalAnnounceText">Announcement Message</label>
-      <textarea id="globalAnnounceText" placeholder="Type platform-wide broadcast message..." style="width:100%;height:90px;background:var(--bg-surface-subtle);border:1px solid var(--border-subtle);color:var(--text-main);padding:12px 16px;border-radius:var(--radius-sm);outline:none;resize:vertical;font-size:0.95rem;transition:var(--transition);"></textarea>
-    </div>
-    <div class="form-group">
-      <label for="announceTarget">Target Audience</label>
-      <select id="announceTarget" class="form-select">
-        <option value="all">All Schools & Users</option>
-        <option value="teachers">Teachers Only</option>
-        <option value="students">Students Only</option>
-      </select>
-    </div>
-    <button id="sendBroadcastBtn" class="btn-primary">Publish Broadcast</button>
-  `;
-
-  document.getElementById("sendBroadcastBtn").addEventListener("click", async () => {
-    const text = document.getElementById("globalAnnounceText").value.trim();
-    const target = document.getElementById("announceTarget").value;
-    if (!text) {
-      await showCustomModal("Validation Error", "Announcement message cannot be empty.");
-      return;
-    }
-
-    try {
-      await window.db.collection("announcements").add({
-        message: text,
-        targetAudience: target,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      await logAuditAction("GLOBAL_BROADCAST", `Published broadcast to target: ${target}`);
-      document.getElementById("globalAnnounceText").value = "";
-      await showCustomModal("Success", "Global announcement published successfully.");
-    } catch (err) {
-      await showCustomModal("Error", "Failed to publish broadcast.");
-    }
-  });
+.error-text {
+  color: #94a3b8;
+  font-size: 0.95rem;
 }
 
-// Feature 2: Tenant Status & Subscription Manager
-function initTenantSubscriptionManager() {
-  const container = document.getElementById("featureTenants") || createFeatureSection("Tenant Status & Subscription Manager", "tenantManagerSection");
-  container.innerHTML = `
-    <h2>🏫 Tenant Status & Subscriptions</h2>
-    <p class="panel-desc">Manage school account lifecycles, active states, and suspend delinquent or expired licenses.</p>
-    <div class="form-group">
-      <label for="manageSchoolIdInput">Target School ID</label>
-      <input type="text" id="manageSchoolIdInput" placeholder="Enter exact School ID (e.g. standard_college)..." />
-    </div>
-    <button id="toggleStatusBtn" class="btn-warning">Toggle Active / Suspended State</button>
-  `;
-
-  document.getElementById("toggleStatusBtn").addEventListener("click", async () => {
-    const schoolId = document.getElementById("manageSchoolIdInput").value.trim().toLowerCase();
-    if (!schoolId) {
-      await showCustomModal("Input Required", "Please enter a valid school ID.");
-      return;
-    }
-
-    try {
-      const docRef = window.db.collection("schools").doc(schoolId);
-      const docSnap = await docRef.get();
-      if (!docSnap.exists) {
-        await showCustomModal("Not Found", `No school found with ID: ${schoolId}`);
-        return;
-      }
-
-      const currentStatus = docSnap.data().status || "active";
-      const newStatus = currentStatus === "active" ? "suspended" : "active";
-
-      await docRef.update({ status: newStatus });
-      await logAuditAction("UPDATE_TENANT_STATUS", `Changed school ${schoolId} status to ${newStatus}`);
-      await showCustomModal("Success", `School ${schoolId} status updated to ${newStatus.toUpperCase()}.`);
-      loadRegisteredSchools();
-    } catch (err) {
-      await showCustomModal("Error", "Failed to update tenant status.");
-    }
-  });
+/* Extended Feature Card Styles */
+.admin-feature-card {
+  background: var(--bg-surface);
+  padding: 32px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 32px;
+  transition: var(--transition);
 }
 
-// Feature 3: Cross-Tenant Global Search
-function initCrossTenantSearch() {
-  const container = document.getElementById("featureSearch") || createFeatureSection("Cross-Tenant Global Search", "searchSection");
-  container.innerHTML = `
-    <h2>🔍 Cross-Tenant Global Search</h2>
-    <p class="panel-desc">Query records, user profiles, quizzes, and threads across all tenants simultaneously.</p>
-    <div class="form-group">
-      <label for="globalSearchQuery">Search Query</label>
-      <input type="text" id="globalSearchQuery" placeholder="Search users, quizzes, threads..." />
-    </div>
-    <button id="executeGlobalSearchBtn" class="btn-primary" style="margin-bottom: 16px;">Execute Search</button>
-    <div id="globalSearchResults" style="max-height:160px;overflow-y:auto;font-size:0.875rem;color:var(--text-muted);background:var(--bg-surface-subtle);padding:12px;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);">Enter keywords above to query collections.</div>
-  `;
-
-  document.getElementById("executeGlobalSearchBtn").addEventListener("click", async () => {
-    const query = document.getElementById("globalSearchQuery").value.trim().toLowerCase();
-    const resultsContainer = document.getElementById("globalSearchResults");
-    if (!query) return;
-
-    resultsContainer.innerHTML = "Searching collections...";
-    try {
-      let matches = 0;
-      let html = "";
-      const collections = ['users', 'quizzes', 'forum_threads', 'announcements'];
-
-      for (const col of collections) {
-        const snap = await window.db.collection(col).limit(20).get();
-        snap.forEach(doc => {
-          const data = doc.data();
-          const stringified = JSON.stringify(data).toLowerCase();
-          if (stringified.includes(query)) {
-            matches++;
-            html += `<div style="padding:6px 0;border-bottom:1px solid var(--border-subtle);"><strong style="color:var(--text-main);">[${col}]</strong> ID: ${doc.id} (School: ${data.schoolId || 'N/A'})</div>`;
-          }
-        });
-      }
-
-      resultsContainer.innerHTML = matches > 0 ? html : `<div>No matching records found for "${query}".</div>`;
-    } catch (err) {
-      resultsContainer.innerHTML = `<span style="color:red;">Search failed due to permissions or connection.</span>`;
-    }
-  });
+.admin-feature-card:hover {
+  box-shadow: var(--shadow-md);
+  border-color: #cbd5e1;
 }
 
-// Feature 4: Comprehensive System Audit Logs
-function initAuditLogsViewer() {
-  const container = document.getElementById("featureAudit") || createFeatureSection("System Audit Logs", "auditSection");
-  container.innerHTML = `
-    <h2>📋 Comprehensive Audit Trail</h2>
-    <p class="panel-desc">Review high-security administrative activities and modification logs across the platform.</p>
-    <div style="display:flex; justify-content:flex-end; margin-bottom: 12px;">
-      <button id="refreshAuditBtn" class="btn-outline" style="padding:6px 14px;font-size:0.825rem;">Refresh Logs</button>
-    </div>
-    <div id="auditLogsList" style="max-height:180px;overflow-y:auto;font-size:0.85rem;color:var(--text-muted);background:var(--bg-surface-subtle);padding:12px;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);">Click Refresh to load system audit trails.</div>
-  `;
-
-  document.getElementById("refreshAuditBtn").addEventListener("click", async () => {
-    const listEl = document.getElementById("auditLogsList");
-    listEl.innerHTML = "Loading logs...";
-    try {
-      const snap = await window.db.collection("audit_logs").orderBy("timestamp", "desc").limit(15).get();
-      if (snap.empty) {
-        listEl.innerHTML = "No audit logs recorded yet.";
-        return;
-      }
-      let html = "";
-      snap.forEach(doc => {
-        const d = doc.data();
-        const time = d.timestamp ? new Date(d.timestamp.seconds * 1000).toLocaleString() : "Just now";
-        html += `<div style="margin-bottom:8px;border-bottom:1px solid var(--border-subtle);padding-bottom:6px;"><strong style="color:var(--text-main);">[${d.actionType}]</strong> ${d.details} <div style="font-size:0.75rem;color:var(--text-muted);margin-top:2px;">${time}</div></div>`;
-      });
-      listEl.innerHTML = html;
-    } catch (err) {
-      listEl.innerHTML = "<span style='color:red;'>Failed to load audit logs. Ensure Firestore index exists.</span>";
-    }
-  });
+.feature-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-main);
+  margin-bottom: 12px;
+  letter-spacing: -0.01em;
 }
 
-// Feature 5: Global Backup & Snapshot Generator
-function initBackupGenerator() {
-  const container = document.getElementById("featureBackup") || createFeatureSection("Global Backup & Snapshot Generator", "backupSection");
-  container.innerHTML = `
-    <h2>💾 Global Backup & Snapshot</h2>
-    <p class="panel-desc">Export entire multi-tenant database collections into a comprehensive downloadable JSON backup file.</p>
-    <div style="height: 24px;"></div>
-    <button id="generateBackupBtn" class="btn-primary" style="background-color: var(--success);">Download Full JSON Backup</button>
-  `;
-
-  document.getElementById("generateBackupBtn").addEventListener("click", async () => {
-    try {
-      const backupData = {};
-      for (const col of collectionsToMigrate) {
-        const snap = await window.db.collection(col).get();
-        backupData[col] = [];
-        snap.forEach(doc => {
-          backupData[col].push({ id: doc.id, ...doc.data() });
-        });
-      }
-
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `samcam_full_backup_${new Date().toISOString().slice(0,10)}.json`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-
-      await logAuditAction("GENERATE_BACKUP", "Downloaded complete system JSON backup snapshot.");
-      await showCustomModal("Success", "Backup snapshot generated and downloaded successfully.");
-    } catch (err) {
-      await showCustomModal("Error", "Backup generation failed.");
-    }
-  });
+.feature-description {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  line-height: 1.5;
 }
 
-// Feature 6: Centralized E-Resource Repository Manager
-function initGlobalEResources() {
-  const container = document.getElementById("featureEResources") || createFeatureSection("Centralized E-Resource Repository Manager", "eResourceSection");
-  container.innerHTML = `
-    <h2>📚 Centralized E-Resource Publisher</h2>
-    <p class="panel-desc">Upload core syllabus materials, revision packs, and past papers centrally to all school portals.</p>
-    <div class="form-group">
-      <label for="globalResTitle">Resource Title</label>
-      <input type="text" id="globalResTitle" placeholder="e.g. Senior 4 ICT Practical Guide..." />
-    </div>
-    <div class="form-group">
-      <label for="globalResUrl">Resource URL / Download Link</label>
-      <input type="text" id="globalResUrl" placeholder="https://..." />
-    </div>
-    <button id="publishGlobalResBtn" class="btn-primary">Publish to All Schools</button>
-  `;
-
-  document.getElementById("publishGlobalResBtn").addEventListener("click", async () => {
-    const title = document.getElementById("globalResTitle").value.trim();
-    const url = document.getElementById("globalResUrl").value.trim();
-    if (!title || !url) {
-      await showCustomModal("Validation Error", "Title and URL are required.");
-      return;
-    }
-
-    try {
-      await window.db.collection("e_library_resources").add({
-        title,
-        url,
-        isGlobal: true,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      await logAuditAction("PUBLISH_GLOBAL_RESOURCE", `Published central resource: ${title}`);
-      document.getElementById("globalResTitle").value = "";
-      document.getElementById("globalResUrl").value = "";
-      await showCustomModal("Success", "Resource successfully published across all school e-libraries.");
-    } catch (err) {
-      await showCustomModal("Error", "Failed to publish resource.");
-    }
-  });
+.feature-textarea {
+  width: 100%;
+  min-height: 90px;
+  padding: 12px 16px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  background-color: var(--bg-surface-subtle);
+  color: var(--text-main);
+  outline: none;
+  resize: vertical;
+  margin-bottom: 16px;
+  transition: var(--transition);
 }
 
-// Feature 7: Global Analytics & Telemetry Dashboard
-function initTelemetryDashboard() {
-  const container = document.getElementById("featureTelemetry") || createFeatureSection("Global Analytics & Telemetry Dashboard", "telemetrySection");
-  container.innerHTML = `
-    <h2>📈 Telemetry & Analytics</h2>
-    <p class="panel-desc">View cross-tenant aggregate platform adoption metrics and usage totals in real-time.</p>
-    <div style="display:flex; justify-content:flex-end; margin-bottom: 12px;">
-      <button id="loadTelemetryBtn" class="btn-outline" style="padding:6px 14px;font-size:0.825rem;">Fetch Live Stats</button>
-    </div>
-    <div id="telemetryStatsContent" style="font-size:0.9rem;color:var(--text-muted);background:var(--bg-surface-subtle);padding:16px;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);text-align:center;">Click button to aggregate system stats.</div>
-  `;
-
-  document.getElementById("loadTelemetryBtn").addEventListener("click", async () => {
-    const contentEl = document.getElementById("telemetryStatsContent");
-    contentEl.innerHTML = "Calculating metrics across collections...";
-    try {
-      let totalUsers = 0;
-      let totalQuizzes = 0;
-      let totalSubmissions = 0;
-
-      const usersSnap = await window.db.collection("users").get();
-      totalUsers = usersSnap.size;
-
-      const quizSnap = await window.db.collection("quizzes").get();
-      totalQuizzes = quizSnap.size;
-
-      const subSnap = await window.db.collection("submissions").get();
-      totalSubmissions = subSnap.size;
-
-      contentEl.innerHTML = `
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;text-align:center;">
-          <div style="background:var(--bg-surface);padding:12px;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);"><strong style="font-size:1.5rem;color:var(--primary);">${totalUsers}</strong><br><span style="font-size:0.75rem;text-transform:uppercase;color:var(--text-muted);">Users</span></div>
-          <div style="background:var(--bg-surface);padding:12px;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);"><strong style="font-size:1.5rem;color:var(--primary);">${totalQuizzes}</strong><br><span style="font-size:0.75rem;text-transform:uppercase;color:var(--text-muted);">Quizzes</span></div>
-          <div style="background:var(--bg-surface);padding:12px;border-radius:var(--radius-sm);border:1px solid var(--border-subtle);"><strong style="font-size:1.5rem;color:var(--primary);">${totalSubmissions}</strong><br><span style="font-size:0.75rem;text-transform:uppercase;color:var(--text-muted);">Submissions</span></div>
-        </div>
-      `;
-    } catch (err) {
-      contentEl.innerHTML = "<span style='color:red;'>Failed to load analytics telemetry.</span>";
-    }
-  });
+.feature-textarea:focus {
+  border-color: var(--border-focus);
+  background-color: var(--bg-surface);
+  box-shadow: var(--shadow-glow);
 }
 
-// Feature 8: System Maintenance & Read-Only Mode Switch
-function initMaintenanceModeToggle(configDocRef) {
-  const container = document.getElementById("featureMaintenance") || createFeatureSection("System Maintenance Mode", "maintenanceSection");
-  container.innerHTML = `
-    <h2>🛡️ System Maintenance Mode</h2>
-    <p class="panel-desc">Toggle global read-only mode to lock database writes across tenant apps during system upgrades.</p>
-    <div style="height: 24px;"></div>
-    <button id="toggleMaintenanceBtn" class="btn-warning" style="background-color: #ef4444;">Toggle Maintenance Lock</button>
-  `;
-
-  document.getElementById("toggleMaintenanceBtn").addEventListener("click", async () => {
-    try {
-      const snap = await configDocRef.get();
-      const currentMode = snap.exists ? (snap.data().maintenanceMode || false) : false;
-      const newMode = !currentMode;
-
-      await configDocRef.set({ maintenanceMode: newMode }, { merge: true });
-      await logAuditAction("TOGGLE_MAINTENANCE", `Set system maintenance mode to: ${newMode}`);
-      await showCustomModal("Success", `System Maintenance Mode is now ${newMode ? 'ENABLED (Locked)' : 'DISABLED (Normal)'}.`);
-    } catch (err) {
-      await showCustomModal("Error", "Failed to toggle maintenance mode.");
-    }
-  });
+.feature-controls-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
 }
 
-// Feature 9: Custom Feature Flag / Module Toggler
-function initFeatureFlagTogglers() {
-  const container = document.getElementById("featureFlags") || createFeatureSection("Custom Feature Flag & Module Toggler", "featureFlagsSection");
-  container.innerHTML = `
-    <h2>⚡ Feature Flags & Modules</h2>
-    <p class="panel-desc">Remotely enable or disable specific modules and advanced features per individual school.</p>
-    <div class="form-group">
-      <label for="flagSchoolId">School ID</label>
-      <input type="text" id="flagSchoolId" placeholder="Enter School ID..." />
-    </div>
-    <div class="form-group">
-      <label for="flagModule">Target Module</label>
-      <select id="flagModule" class="form-select">
-        <option value="live_classes">Live Classes Portal</option>
-        <option value="ai_formulas">AI Formula Submissions</option>
-        <option value="discussions">Forum Discussions</option>
-      </select>
-    </div>
-    <button id="toggleModuleBtn" class="btn-primary">Toggle Module Access</button>
-  `;
-
-  document.getElementById("toggleModuleBtn").addEventListener("click", async () => {
-    const schoolId = document.getElementById("flagSchoolId").value.trim().toLowerCase();
-    const moduleName = document.getElementById("flagModule").value;
-    if (!schoolId) {
-      await showCustomModal("Input Required", "Please enter a valid school ID.");
-      return;
-    }
-
-    try {
-      const docRef = window.db.collection("schools").doc(schoolId);
-      const docSnap = await docRef.get();
-      if (!docSnap.exists) {
-        await showCustomModal("Not Found", `School ID "${schoolId}" does not exist.`);
-        return;
-      }
-
-      const flags = docSnap.data().featureFlags || {};
-      const newState = !(flags[moduleName] ?? true);
-      flags[moduleName] = newState;
-
-      await docRef.update({ featureFlags: flags });
-      await logAuditAction("TOGGLE_FEATURE_FLAG", `Set module ${moduleName} for school ${schoolId} to ${newState}`);
-      await showCustomModal("Success", `Module "${moduleName}" for school ${schoolId} is now ${newState ? 'ENABLED' : 'DISABLED'}.`);
-    } catch (err) {
-      await showCustomModal("Error", "Failed to update feature flag.");
-    }
-  });
+.feature-select, .feature-input-flex, .feature-input-block {
+  padding: 10px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  background-color: var(--bg-surface-subtle);
+  color: var(--text-main);
+  outline: none;
+  transition: var(--transition);
 }
 
-// Feature 10: Master Admin Access & Credential Rotator
-function initKeyRotator(configDocRef) {
-  const container = document.getElementById("featureKeyRotator") || createFeatureSection("Master Admin Key Rotator", "keyRotatorSection");
-  container.innerHTML = `
-    <h2>🔑 Master Key Rotator</h2>
-    <p class="panel-desc">Securely change and rotate your master control key stored directly in the Firestore configuration.</p>
-    <div style="height: 24px;"></div>
-    <button id="rotateMasterKeyBtn" class="btn-primary" style="background-color: #8b5cf6;">Change Master Admin Key</button>
-  `;
-
-  document.getElementById("rotateMasterKeyBtn").addEventListener("click", async () => {
-    const newKey = await showCustomModal(
-      "Rotate Master Key",
-      "Enter a new secure master key (at least 6 characters):",
-      "prompt",
-      "Enter new master key..."
-    );
-
-    if (!newKey || newKey.trim().length < 6) {
-      if (newKey !== null) await showCustomModal("Invalid Key", "Key must be at least 6 characters long.");
-      return;
-    }
-
-    try {
-      await configDocRef.set({ masterKey: newKey.trim() }, { merge: true });
-      sessionStorage.setItem("samcam_super_auth", newKey.trim());
-      await logAuditAction("ROTATE_MASTER_KEY", "Successfully rotated master super admin key.");
-      await showCustomModal("Success", "Master key rotated successfully and session updated!");
-    } catch (err) {
-      await showCustomModal("Error", "Failed to rotate master key.");
-    }
-  });
+.feature-select:focus, .feature-input-flex:focus, .feature-input-block:focus {
+  border-color: var(--border-focus);
+  background-color: var(--bg-surface);
+  box-shadow: var(--shadow-glow);
 }
 
-// Helper injector to format and inject elevated feature card sections cleanly into a structured grid layout
-function createFeatureSection(title, id) {
-  let parent = document.getElementById("extendedFeaturesContainer");
-  if (!parent) {
-    parent = document.createElement("div");
-    parent.id = "extendedFeaturesContainer";
-    parent.className = "admin-grid"; // Matches design system grid alignment
-    const mainContent = document.querySelector(".admin-content") || document.body;
-    mainContent.appendChild(parent);
-  }
-
-  const section = document.createElement("div");
-  section.id = id;
-  section.className = "panel-card"; // Uses design system elevated panel-card styling
-  parent.appendChild(section);
-  return section;
+.feature-input-flex {
+  flex: 1;
+  min-width: 200px;
 }
 
-  // Add Logout capability to the admin profile header element
-document.addEventListener("DOMContentLoaded", () => {
-  const adminProfileEl = document.querySelector(".admin-profile");
-  if (adminProfileEl) {
-    adminProfileEl.style.cursor = "pointer";
-    adminProfileEl.title = "Click to log out of Super Admin session";
-    
-    // Append a clean logout icon/text indicator
-    adminProfileEl.innerHTML = `
-      <span>Super Admin</span>
-      <span style="display:inline-flex;align-items:center;margin-left:6px;padding-left:8px;border-left:1px solid rgba(255,255,255,0.15);color:#ef4444;" title="Logout">
-        <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-      </span>
-    `;
+.feature-input-block {
+  width: 100%;
+  margin-bottom: 16px;
+}
 
-    adminProfileEl.addEventListener("click", async () => {
-      const confirmLogout = await showCustomModal(
-        "Sign Out",
-        "Are you sure you want to end your active Super Admin session?",
-        "confirm"
-      );
+.feature-results-box {
+  margin-top: 16px;
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  max-height: 220px;
+  overflow-y: auto;
+  font-size: 0.875rem;
+}
 
-      if (confirmLogout) {
-        sessionStorage.removeItem("samcam_super_auth");
-        await showCustomModal("Logged Out", "Your session has been terminated securely.");
-        window.location.reload();
-      }
-    });
-  }
-});
+.search-result-item {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.search-result-item:last-child {
+  border-bottom: none;
+}
+
+/* Audit Trail & Telemetry styles */
+.audit-logs-container {
+  margin-top: 16px;
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  max-height: 250px;
+  overflow-y: auto;
+  font-size: 0.85rem;
+  font-family: monospace;
+}
+
+.audit-log-row {
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border-subtle);
+}
+
+.audit-action-title {
+  color: var(--primary);
+}
+
+.audit-timestamp {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  float: right;
+}
+
+.telemetry-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.telemetry-card {
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  padding: 16px;
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.telemetry-number {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+/* Status Badges */
+.status-badge-active {
+  background: var(--success-glow);
+  color: var(--success);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.status-badge-suspended {
+  background: var(--warning-glow);
+  color: var(--warning);
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* Additional Button Variants */
+.btn-success {
+  background-color: var(--success);
+  color: var(--text-inverse);
+  padding: 12px 24px;
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-success:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px var(--success-glow);
+}
+
+.btn-danger {
+  background-color: #ef4444;
+  color: var(--text-inverse);
+  padding: 12px 24px;
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-danger:hover {
+  background-color: #dc2626;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.25);
+}
+
+.btn-purple {
+  background-color: #8b5cf6;
+  color: var(--text-inverse);
+  padding: 12px 24px;
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: var(--transition);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-purple:hover {
+  background-color: #7c3aed;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);
+}
+
+.btn-secondary-small {
+  background: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-main);
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: var(--transition);
+}
+
+.btn-secondary-small:hover {
+  background: var(--border-subtle);
+}
+
+/* Custom Modal Elements */
+.modal-hidden {
+  display: none !important;
+}
+
+.modal-active {
+  display: flex !important;
+}
