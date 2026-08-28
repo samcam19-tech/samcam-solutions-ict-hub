@@ -873,8 +873,8 @@ function highlightFormula(text) {
 
     let bracketDepth = 0;
 
-    // Tokenize and wrap elements with syntax classes
-    return safeText.replace(/(=)|([A-Z][A-Z0-9_]*\b(?=\s*\()|(?:\b[A-Z]+\b(?!\s*\())))|([()])/g, (match, eq, func, bracket) => {
+    // Tokenize and wrap elements with syntax classes (Fixed regex capture group syntax)
+    return safeText.replace(/(=)|([A-Z][A-Z0-9_]*\b(?=\s*\())|([()])/g, (match, eq, func, bracket) => {
         if (eq) return `<span class="token-equals">${eq}</span>`;
         if (func) return `<span class="token-function">${func}</span>`;
         if (bracket) {
