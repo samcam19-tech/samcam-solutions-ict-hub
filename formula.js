@@ -930,18 +930,27 @@ document.addEventListener("DOMContentLoaded", () => {
             textarea.value = '';
         }
 
-        function updateEditor() {
-            const rawText = textarea.value;
-            
-            // Double-guard: never process text that contains HTML span tags
-            if (rawText.includes('<span')) {
-                textarea.value = '';
-                backdropCode.innerHTML = ' ';
-                return;
-            }
+       function updateEditor() {
+    let rawText = textarea.value;
+    
+    // Double-guard: never process text that contains HTML span tags
+    if (rawText.includes('<span')) {
+        textarea.value = '';
+        backdropCode.innerHTML = ' ';
+        return;
+    }
 
-            backdropCode.innerHTML = highlightFormula(rawText) + ' ';
-        }
+    // Automatically remove unwanted spaces between function names and opening brackets (e.g., "IF (" -> "IF(")
+    const sanitizedText = rawText.replace(/([A-Z][A-Z0-9_]*)\s+(\()/g, '$1$2');
+    if (sanitizedText !== rawText) {
+        const cursorPosition = textarea.selectionStart;
+        textarea.value = sanitizedText;
+        // Keep the cursor from jumping to the end of the line
+        textarea.setSelectionRange(cursorPosition - 1, cursorPosition - 1);
+    }
+
+    backdropCode.innerHTML = highlightFormula(textarea.value) + ' ';
+}
 
         textarea.addEventListener('input', updateEditor);
         
