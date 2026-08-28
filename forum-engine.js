@@ -118,6 +118,9 @@ function getCurrentUserSession(userParam) {
     };
 }
 
+// ==========================================================================
+// REAL-TIME FORUM THREADS (WITH SCHOOL ID SCOPING)
+// ==========================================================================
 function initRealtimeForumThreads() {
     const feedContainer = document.getElementById('threadsFeedContainer');
     if (!feedContainer) return;
@@ -129,7 +132,17 @@ function initRealtimeForumThreads() {
 
     if (unsubscribeThreads) unsubscribeThreads();
 
-    unsubscribeThreads = db.collection('forum_threads')
+    // Resolve active school ID cleanly from currentUser or window context
+    const activeSchoolId = (typeof currentSchoolId !== 'undefined' && currentSchoolId) ? currentSchoolId.toUpperCase() : (currentUser && currentUser.schoolId ? currentUser.schoolId.toUpperCase() : '');
+
+    let queryRef = db.collection('forum_threads');
+    
+    // Apply schoolId filter if present to ensure strict multi-tenant isolation
+    if (activeSchoolId) {
+        queryRef = queryRef.where('schoolId', '==', activeSchoolId);
+    }
+
+    unsubscribeThreads = queryRef
         .orderBy('createdAt', 'desc')
         .onSnapshot(snapshot => {
             globalThreads = [];
@@ -148,6 +161,11 @@ function initRealtimeForumThreads() {
                 // Only trigger selection if not already active to prevent reload loops
                 if (typeof activeThreadId === 'undefined' || activeThreadId !== targetId) {
                     selectThread(targetId);
+                }
+            } else {
+                const detailPane = document.getElementById('threadDetailPane');
+                if (detailPane) {
+                    detailPane.innerHTML = `<div class="loading-state" style="padding: 2rem; text-align: center; color: #64748b;">No discussions found for this institution.</div>`;
                 }
             }
         }, err => {
@@ -390,15 +408,39 @@ window.selectThread = async function(threadId) {
     listenToTypingIndicator(thread.id);
 };
 
-function markAllThreadsAsRead() {
+// ==========================================================================
+// INDEPENDENT PREMISE VERIFICATION & BULK READ SYNC
+// ==========================================================================
+async function markAllThreadsAsRead() {
     const now = Date.now();
+    const session = getCurrentUserSession();
+    
+    // Update local storage and cache for each thread
     globalThreads.forEach(t => {
         localStorage.setItem(`samcam_thread_last_read_${t.id}`, now);
         userReadReceiptsCache[t.id] = now;
     });
+
+    // Sync all read receipts in a batch or loop to Firestore profile for multi-device support
+    if (session && session.name && typeof db !== 'undefined') {
+        try {
+            const batch = db.batch();
+            const userRef = db.collection('users').doc(session.name);
+            
+            const readThreadsUpdate = {};
+            globalThreads.forEach(t => {
+                readThreadsUpdate[`readThreads.${t.id}`] = firebase.firestore.FieldValue.serverTimestamp();
+            });
+
+            batch.set(userRef, { readThreads: readThreadsUpdate }, { merge: true });
+            await batch.commit();
+        } catch (e) {
+            console.warn("Could not sync bulk read states to cloud:", e);
+        }
+    }
+
     filterForumThreads();
 }
-
 
 // Scan comment text for @username mentions and trigger notifications
 async function checkAndSendMentions(threadId, threadTitle, commentBody, authorName) {
@@ -459,7 +501,6 @@ function showForumToast(title, message, threadId) {
     }, 5000);
 }
 
-
 function insertMarkdown(wrapperStart, wrapperEnd) {
     const textarea = document.getElementById('replyMessageInput');
     if (!textarea) return;
@@ -500,6 +541,7 @@ function switchInputTab(mode) {
         if (previewBtn) previewBtn.classList.remove('active');
     }
 }
+
 function autoResizeTextarea(el) {
     el.style.height = 'auto';
     el.style.height = (el.scrollHeight) + 'px';
@@ -588,7 +630,6 @@ window.generateAiSummary = async function(threadId) {
         `;
     }
 };
-
 
 function toggleBookmark(threadId) {
   const session = getCurrentUserSession();
@@ -728,7 +769,6 @@ async function deleteComment(threadId, replyId, authorName) {
     return;
   }
 
-  // Use custom confirmation modal if available
   if (typeof showSystemModal === 'function') {
     showSystemModal({
       title: "Confirm Deletion",
@@ -744,7 +784,6 @@ async function deleteComment(threadId, replyId, authorName) {
       }
     });
   } else {
-    // Fallback if custom modal helper is missing
     if (!confirm("Are you sure you want to delete this comment?")) return;
     try {
       await db.collection('forum_threads').doc(threadId).collection('replies').doc(replyId).delete();
@@ -755,6 +794,9 @@ async function deleteComment(threadId, replyId, authorName) {
   }
 }
 
+// ==========================================================================
+// REAL-TIME THREAD REPLIES & DISCUSSION MANAGEMENT
+// ==========================================================================
 function loadThreadRepliesRealtime(threadId) {
   const repliesContainer = document.getElementById('repliesListContainer');
   if (!repliesContainer) return;
@@ -872,7 +914,6 @@ window.openEditThreadModal = function(threadId) {
   if (titleText) titleText.textContent = "Edit Discussion";
   if (messageEl) messageEl.textContent = "Update the title and question details below:";
   
-  // Inject custom form inputs for Title and Body into the prompt container
   if (promptContainer) {
     promptContainer.style.display = 'block';
     promptContainer.innerHTML = `
@@ -888,7 +929,6 @@ window.openEditThreadModal = function(threadId) {
 
   if (cancelBtn) cancelBtn.style.display = 'inline-block';
 
-  // Override the confirmation callback to save both fields to Firestore
   currentModalCallback = async () => {
     const titleInput = document.getElementById('customEditTitleInput');
     const bodyInput = document.getElementById('customEditBodyInput');
@@ -926,7 +966,6 @@ window.openEditThreadModal = function(threadId) {
   modal.style.display = 'flex';
 };
 
-// 3. Confirm & Delete Discussion Thread using Custom Modal Confirmation
 window.confirmDeleteThread = function(threadId) {
   if (typeof showSystemModal === 'function') {
     showSystemModal({
@@ -1036,7 +1075,6 @@ async function submitReplyOptimistic(threadId) {
   const hasFile = fileInput && fileInput.files && fileInput.files.length > 0;
   const hasAudio = typeof recordedAudioBlob !== 'undefined' && recordedAudioBlob !== null;
 
-  // Helper for triggering your custom system modal correctly
   const showCustomAlert = (title, message) => {
     if (typeof showSystemModal === 'function') {
       showSystemModal({
@@ -1053,11 +1091,10 @@ async function submitReplyOptimistic(threadId) {
         onConfirm: () => {}
       });
     } else {
-      console.warn(message); // Avoid blocking native alert if custom modal is missing
+      console.warn(message);
     }
   };
 
-  // Only alert if truly nothing is provided
   if (!replyBody && !hasAudio && !hasFile) {
     showCustomAlert("Notice", "Please enter a reply message or attach a file/voice note before submitting.");
     return;
@@ -1074,7 +1111,6 @@ async function submitReplyOptimistic(threadId) {
   const studentClass = session.userClass || session.classLevel || session.classTarget || 'Senior ICT';
   const studentStream = session.stream || session.userStream || '';
 
-  // Optimistic UI injection
   const container = document.getElementById('repliesListContainer');
   if (container) {
     const tempHtml = `
@@ -1108,7 +1144,6 @@ async function submitReplyOptimistic(threadId) {
 
     const finalBody = replyBody || (hasAudio ? '🎤 [Voice Note]' : '[Attached File]');
 
-    // Add the reply document
     await db.collection('forum_threads').doc(threadId).collection('replies').add({
       studentName: studentName,
       role: userRole,
@@ -1121,21 +1156,16 @@ async function submitReplyOptimistic(threadId) {
       submittedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    // Update parent thread's last activity timestamp for notification badges
     await db.collection('forum_threads').doc(threadId).update({
       lastCommentAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    // --- MENTION NOTIFICATION HOOK ---
-    // Safely grab thread title if available in globalThreads cache
     const targetThread = (typeof globalThreads !== 'undefined') ? globalThreads.find(t => t.id === threadId) : null;
     const threadTitle = targetThread ? targetThread.title : 'Discussion Thread';
     
-    // Scan body for @mentions and trigger notification records
     if (replyBody && typeof checkAndSendMentions === 'function') {
       await checkAndSendMentions(threadId, threadTitle, replyBody, studentName);
     }
-    // ---------------------------------
 
     inputEl.value = '';
     inputEl.style.height = 'auto';
@@ -1156,6 +1186,9 @@ async function submitReplyOptimistic(threadId) {
   }
 }
 
+// ==========================================================================
+// TYPING INDICATORS, NOTIFICATIONS, FORMATTING & THREAD CREATION (SCOPED)
+// ==========================================================================
 function handleTypingInput(threadId) {
   const session = getCurrentUserSession();
   const name = session.name || 'Someone';
@@ -1283,6 +1316,9 @@ async function handleCreateThread(e) {
   const classTarget = document.getElementById('threadClassInput').value;
   const body = document.getElementById('threadBodyInput').value.trim();
   const authorName = session.name || 'ICT Instructor';
+  
+  // Resolve active school ID for tenant isolation
+  const activeSchoolId = session.schoolId || session.schoolID || window.currentSchoolId || 'default_school';
 
   if (!title || !body) return;
 
@@ -1297,6 +1333,7 @@ async function handleCreateThread(e) {
       classTarget,
       body,
       authorName,
+      schoolId: activeSchoolId,
       upvotedBy: [],
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     };
