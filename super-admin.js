@@ -688,3 +688,28 @@ function initKeyRotator(configDocRef) {
     <h3 class="feature-title">🔑 Master Key Rotator</h3>
     <button id="rotateMasterKeyBtn" class="btn-purple">Change Master Admin Key</button>
   `;
+
+  document.getElementById("rotateMasterKeyBtn").addEventListener("click", async () => {
+    const newKey = await showCustomModal(
+      "Rotate Master Key",
+      "Enter your new master secret key (at least 6 characters):",
+      "prompt",
+      "Enter new master key..."
+    );
+
+    if (newKey === null) return;
+    if (newKey.trim().length < 6) {
+      await showCustomModal("Invalid Key", "The master key must be at least 6 characters long.");
+      return;
+    }
+
+    try {
+      await configDocRef.set({ masterKey: newKey.trim() }, { merge: true });
+      sessionStorage.setItem("samcam_super_auth", newKey.trim());
+      await logAuditAction("ROTATE_MASTER_KEY", "Rotated super admin master secret key.");
+      await showCustomModal("Success", "Master key updated successfully!");
+    } catch (err) {
+      await showCustomModal("Error", "Failed to update master key.");
+    }
+  });
+} // <-- Ensure this closing brace is present at the end of the file
