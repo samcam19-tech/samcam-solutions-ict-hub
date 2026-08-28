@@ -80,6 +80,34 @@ document.addEventListener("DOMContentLoaded", () => {
     collectionsCountEl.innerText = collectionsToMigrate.length;
   }
 
+  // Bind Logout functionality to admin profile header
+  const adminProfileEl = document.querySelector(".admin-profile");
+  if (adminProfileEl) {
+    adminProfileEl.style.cursor = "pointer";
+    adminProfileEl.title = "Click to log out of Super Admin session";
+    
+    adminProfileEl.innerHTML = `
+      <span>Master Administrator</span>
+      <span style="display:inline-flex;align-items:center;margin-left:6px;padding-left:8px;border-left:1px solid rgba(255,255,255,0.15);color:#ef4444;" title="Logout">
+        <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+      </span>
+    `;
+
+    adminProfileEl.addEventListener("click", async () => {
+      const confirmLogout = await showCustomModal(
+        "Sign Out",
+        "Are you sure you want to end your active Super Admin session?",
+        "confirm"
+      );
+
+      if (confirmLogout) {
+        sessionStorage.removeItem("samcam_super_auth");
+        await showCustomModal("Logged Out", "Your session has been terminated securely.");
+        window.location.reload();
+      }
+    });
+  }
+
   const checkDbInterval = setInterval(async () => {
     if (window.db) {
       clearInterval(checkDbInterval);
@@ -315,7 +343,7 @@ async function logAuditAction(actionType, details) {
 
 // Feature 1: Global Announcement Broadcaster
 function initGlobalAnnouncements() {
-  const container = document.getElementById("featureAnnouncements") || createFeatureSection("Global Announcement Broadcaster", "broadcastSection");
+  const container = document.getElementById("featureAnnouncements") || createFeatureSection("Global Announcement Broadcaster", "featureAnnouncements");
   container.innerHTML = `
     <h3 style="margin-bottom:12px;color:var(--text-main);">📢 Global Announcement Broadcaster</h3>
     <textarea id="globalAnnounceText" placeholder="Type platform-wide broadcast message..." style="width:100%;height:80px;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-main);padding:8px;border-radius:6px;margin-bottom:8px;resize:vertical;"></textarea>
@@ -354,7 +382,7 @@ function initGlobalAnnouncements() {
 
 // Feature 2: Tenant Status & Subscription Manager
 function initTenantSubscriptionManager() {
-  const container = document.getElementById("featureTenants") || createFeatureSection("Tenant Status & Subscription Manager", "tenantManagerSection");
+  const container = document.getElementById("featureTenants") || createFeatureSection("Tenant Status & Subscription Manager", "featureTenants");
   container.innerHTML = `
     <h3 style="margin-bottom:12px;color:var(--text-main);">🏫 Tenant Status & Subscriptions</h3>
     <div style="display:flex;gap:10px;margin-bottom:10px;">
@@ -393,7 +421,7 @@ function initTenantSubscriptionManager() {
 
 // Feature 3: Cross-Tenant Global Search
 function initCrossTenantSearch() {
-  const container = document.getElementById("featureSearch") || createFeatureSection("Cross-Tenant Global Search", "searchSection");
+  const container = document.getElementById("featureSearch") || createFeatureSection("Cross-Tenant Global Search", "featureSearch");
   container.innerHTML = `
     <h3 style="margin-bottom:12px;color:var(--text-main);">🔍 Cross-Tenant Global Search</h3>
     <div style="display:flex;gap:10px;margin-bottom:10px;">
@@ -435,7 +463,7 @@ function initCrossTenantSearch() {
 
 // Feature 4: Comprehensive System Audit Logs
 function initAuditLogsViewer() {
-  const container = document.getElementById("featureAudit") || createFeatureSection("System Audit Logs", "auditSection");
+  const container = document.getElementById("featureAudit") || createFeatureSection("System Audit Logs", "featureAudit");
   container.innerHTML = `
     <h3 style="margin-bottom:12px;color:var(--text-main);">📋 Comprehensive Audit Trail</h3>
     <button id="refreshAuditBtn" style="background:var(--bg-card);color:var(--text-main);border:1px solid var(--border-color);padding:6px 12px;border-radius:6px;cursor:pointer;margin-bottom:8px;font-size:12px;">Refresh Logs</button>
@@ -466,7 +494,7 @@ function initAuditLogsViewer() {
 
 // Feature 5: Global Backup & Snapshot Generator
 function initBackupGenerator() {
-  const container = document.getElementById("featureBackup") || createFeatureSection("Global Backup & Snapshot Generator", "backupSection");
+  const container = document.getElementById("featureBackup") || createFeatureSection("Global Backup & Snapshot Generator", "featureBackup");
   container.innerHTML = `
     <h3 style="margin-bottom:12px;color:var(--text-main);">💾 Global Backup & Snapshot</h3>
     <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">Export entire multi-tenant database collections into a downloadable JSON backup file.</p>
@@ -502,7 +530,7 @@ function initBackupGenerator() {
 
 // Feature 6: Centralized E-Resource Repository Manager
 function initGlobalEResources() {
-  const container = document.getElementById("featureEResources") || createFeatureSection("Centralized E-Resource Repository Manager", "eResourceSection");
+  const container = document.getElementById("featureEResources") || createFeatureSection("Centralized E-Resource Repository Manager", "featureEResources");
   container.innerHTML = `
     <h3 style="margin-bottom:12px;color:var(--text-main);">📚 Centralized E-Resource Publisher</h3>
     <input type="text" id="globalResTitle" placeholder="Resource Title..." style="width:100%;background:var(--bg-card);border:1px solid var(--border-color);color:var(--text-main);padding:6px 10px;border-radius:6px;margin-bottom:6px;" />
@@ -537,7 +565,7 @@ function initGlobalEResources() {
 
 // Feature 7: Global Analytics & Telemetry Dashboard
 function initTelemetryDashboard() {
-  const container = document.getElementById("featureTelemetry") || createFeatureSection("Global Analytics & Telemetry Dashboard", "telemetrySection");
+  const container = document.getElementById("featureTelemetry") || createFeatureSection("Global Analytics & Telemetry Dashboard", "featureTelemetry");
   container.innerHTML = `
     <h3 style="margin-bottom:12px;color:var(--text-main);">📈 Telemetry & Analytics</h3>
     <button id="loadTelemetryBtn" style="background:var(--bg-card);color:var(--text-main);border:1px solid var(--border-color);padding:6px 12px;border-radius:6px;cursor:pointer;margin-bottom:8px;font-size:12px;">Fetch Live Telemetry Stats</button>
@@ -576,7 +604,7 @@ function initTelemetryDashboard() {
 
 // Feature 8: System Maintenance & Read-Only Mode Switch
 function initMaintenanceModeToggle(configDocRef) {
-  const container = document.getElementById("featureMaintenance") || createFeatureSection("System Maintenance Mode", "maintenanceSection");
+  const container = document.getElementById("featureMaintenance") || createFeatureSection("System Maintenance Mode", "featureMaintenance");
   container.innerHTML = `
     <h3 style="margin-bottom:12px;color:var(--text-main);">🛡️ System Maintenance Mode</h3>
     <p style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">Toggle global read-only mode to lock standard user writes during updates.</p>
@@ -600,7 +628,7 @@ function initMaintenanceModeToggle(configDocRef) {
 
 // Feature 9: Custom Feature Flag / Module Toggler
 function initFeatureFlagTogglers() {
-  const container = document.getElementById("featureFlags") || createFeatureSection("Custom Feature Flag & Module Toggler", "featureFlagsSection");
+  const container = document.getElementById("featureFlags") || createFeatureSection("Custom Feature Flag & Module Toggler", "featureFlags");
   container.innerHTML = `
     <h3 style="margin-bottom:12px;color:var(--text-main);">⚡ Feature Flags & Modules</h3>
     <div style="display:flex;gap:10px;margin-bottom:8px;">
@@ -645,7 +673,7 @@ function initFeatureFlagTogglers() {
 
 // Feature 10: Master Admin Access & Credential Rotator
 function initKeyRotator(configDocRef) {
-  const container = document.getElementById("featureKeyRotator") || createFeatureSection("Master Admin Key Rotator", "keyRotatorSection");
+  const container = document.getElementById("featureKeyRotator") || createFeatureSection("Master Admin Key Rotator", "featureKeyRotator");
   container.innerHTML = `
     <h3 style="margin-bottom:12px;color:var(--text-main);">🔑 Master Key Rotator</h3>
     <button id="rotateMasterKeyBtn" style="background:#8b5cf6;color:white;border:none;padding:8px 16px;border-radius:6px;cursor:pointer;font-weight:600;">Change Master Admin Key</button>
@@ -688,7 +716,8 @@ function createFeatureSection(title, id) {
 
   const section = document.createElement("div");
   section.id = id;
-  section.style.cssText = "background:var(--bg-secondary);border:1px solid var(--border-color);padding:20px;border-radius:10px;";
+  section.className = "panel-card";
+  section.style.cssText = "margin-bottom:0;";
   parent.appendChild(section);
   return section;
 }
