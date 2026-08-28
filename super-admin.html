@@ -92,16 +92,16 @@
     </main>
   </div>
 
-  <!-- Add this modal markup right before the closing </body> tag in your HTML -->
+<!-- Add this modal markup right before the closing </body> tag in your HTML -->
 <div id="customModal" class="modal-overlay" style="display: none;">
   <div class="modal-card">
     <h3 id="modalTitle">Notice</h3>
     <p id="modalMessage">Message content goes here...</p>
-    <div id="modalInputContainer" style="margin-bottom: 16px; display: none;">
+    <div id="modalInputContainer" class="modal-hidden" style="margin-bottom: 16px;">
       <input type="text" id="modalInput" class="form-control" placeholder="Enter value..." />
     </div>
     <div class="modal-actions">
-      <button id="modalCancelBtn" class="btn-outline" style="display: none;">Cancel</button>
+      <button id="modalCancelBtn" class="btn-outline modal-hidden">Cancel</button>
       <button id="modalConfirmBtn" class="btn-primary">OK</button>
     </div>
   </div>
