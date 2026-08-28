@@ -887,7 +887,7 @@ function highlightFormula(text) {
 
     // 2. Use a single regex scanner that matches strings, cells, functions, operators, and brackets simultaneously,
     // preventing any sequential replacement overlap or attribute corruption.
-    const tokenRegex = /(".*?"|'.*?')|([A-Z][A-Z0-9_]*\b(?=\s*\())|([A-Z]+\d+:[A-Z]+\d+|\$[A-Z]+\$\d+[A-Z]?|[A-Z]+\d+)|(=)|([()]+)|([+\-*/^=<>]=?)/g;
+    const tokenRegex = /(".*?"|'.*?')|([A-Z][A-Z0-9_]*\b(?=\())|([A-Z]+\d+:[A-Z]+\d+|\$[A-Z]+\$\d+[A-Z]?|[A-Z]+\d+)|(=)|([()]+)|([+\-*/^=<>]=?)/g;
 
     return safeText.replace(tokenRegex, (match, str, func, cell, eq, bracket, op) => {
         if (str) {
