@@ -109,6 +109,7 @@ function setupAdminActions() {
       'submissions',
       'users'
     ];
+    document.getElementById("collectionsCount").innerText = collectionsToMigrate.length;
 
     try {
       let totalUpdated = 0;
