@@ -10,7 +10,6 @@ function showCustomModal(title, message, type = "alert", inputPlaceholder = "") 
     const inputField = document.getElementById("modalInput");
 
     if (!modal) {
-      // Fallback if modal HTML isn't loaded yet
       if (type === "confirm") resolve(window.confirm(message));
       else if (type === "prompt") resolve(window.prompt(message));
       else { window.alert(message); resolve(true); }
@@ -28,6 +27,7 @@ function showCustomModal(title, message, type = "alert", inputPlaceholder = "") 
       cancelBtn.style.display = "inline-block";
       inputContainer.style.display = "block";
       inputField.placeholder = inputPlaceholder;
+      inputField.type = "text";
     } else {
       cancelBtn.style.display = "none";
       inputContainer.style.display = "none";
@@ -72,6 +72,9 @@ const collectionsToMigrate = [
   'users'
 ];
 
+// Set your authorized Master Super Admin Firebase UID here
+const MASTER_ADMIN_UID = "xaQVWdmhd7ST9m6yUHRq7...", // Replace with your exact UID from Firebase Auth
+
 document.addEventListener("DOMContentLoaded", () => {
   // Update collections targeted count display on load
   const collectionsCountEl = document.getElementById("collectionsCount");
@@ -79,12 +82,29 @@ document.addEventListener("DOMContentLoaded", () => {
     collectionsCountEl.innerText = collectionsToMigrate.length;
   }
 
-  // Wait slightly to ensure initializeSamcamFirebase has bound window.db
-  const checkDbInterval = setInterval(() => {
-    if (window.db) {
-      clearInterval(checkDbInterval);
-      loadRegisteredSchools();
-      setupAdminActions();
+  // Enforce Firebase Auth UID Security Gate on load
+  const checkAuthInterval = setInterval(() => {
+    if (window.db && typeof firebase.auth !== 'undefined') {
+      clearInterval(checkAuthInterval);
+      
+      firebase.auth().onAuthStateChanged(async (user) => {
+        if (user && user.uid === MASTER_ADMIN_UID) {
+          // Authorized Super Admin: Load Portal Interface
+          loadRegisteredSchools();
+          setupAdminActions();
+        } else {
+          // Unauthorized or Not Logged In
+          document.body.innerHTML = `
+            <div style="display:flex;height:100vh;justify-content:center;align-items:center;background:#030712;color:white;font-family:system-ui;text-align:center;padding:20px;">
+              <div>
+                <h2 style="color:#ef4444;margin-bottom:8px;">Access Denied</h2>
+                <p style="color:#94a3b8;margin-bottom:16px;">You must be signed in with the authorized master administrator account to view the Samcam Super Admin portal.</p>
+                <a href="index.html" style="color:#3b82f6;text-decoration:none;font-weight:600;">Return to Portal Home</a>
+              </div>
+            </div>
+          `;
+        }
+      });
     }
   }, 50);
 });
