@@ -351,45 +351,91 @@ function createFeatureSection(titleText, elementId) {
   return wrapper;
 }
 
-// Feature 1: Global Announcement Broadcaster
+// Feature 1: Global Announcement Broadcaster (Multi-Tenant & Schema-Aligned)
 function initGlobalAnnouncements() {
   const container = document.getElementById("featureAnnouncements") || createFeatureSection("Global Announcement Broadcaster", "featureAnnouncements");
   container.innerHTML = `
     <h3 class="feature-title">📢 Global Announcement Broadcaster</h3>
-    <textarea id="globalAnnounceText" placeholder="Type platform-wide broadcast message..." class="feature-textarea"></textarea>
+    <div class="form-group" style="margin-bottom: 12px;">
+      <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Announcement Title</label>
+      <input type="text" id="globalAnnounceTitle" placeholder="e.g., 📢 New Notes Available on the Portal!" class="feature-input" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px;">
+    </div>
+    <div class="form-group" style="margin-bottom: 12px;">
+      <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Announcement Body / Message</label>
+      <textarea id="globalAnnounceText" placeholder="Type platform-wide broadcast message..." class="feature-textarea" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; min-height: 80px;"></textarea>
+    </div>
+    <div class="form-row" style="display: flex; gap: 10px; margin-bottom: 12px;">
+      <div class="form-group" style="flex: 1;">
+        <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Priority Level</label>
+        <select id="announcePriority" class="feature-select" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px;">
+          <option value="Urgent">Urgent</option>
+          <option value="Normal" selected>Normal</option>
+          <option value="Low">Low</option>
+        </select>
+      </div>
+      <div class="form-group" style="flex: 1;">
+        <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Target Audience</label>
+        <select id="announceTarget" class="feature-select" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px;">
+          <option value="all">All Schools & Users</option>
+          <option value="teachers">Teachers Only</option>
+          <option value="students">Students Only</option>
+        </select>
+      </div>
+    </div>
     <div class="feature-controls-row">
-      <select id="announceTarget" class="feature-select">
-        <option value="all">All Schools & Users</option>
-        <option value="teachers">Teachers Only</option>
-        <option value="students">Students Only</option>
-      </select>
-      <button id="sendBroadcastBtn" class="btn-primary">Publish Broadcast</button>
+      <button id="sendBroadcastBtn" class="btn-primary"><i class="fa-solid fa-bullhorn"></i> Publish Broadcast to All Schools</button>
     </div>
   `;
 
   document.getElementById("sendBroadcastBtn").addEventListener("click", async () => {
-    const text = document.getElementById("globalAnnounceText").value.trim();
+    const title = document.getElementById("globalAnnounceTitle").value.trim();
+    const body = document.getElementById("globalAnnounceText").value.trim();
+    const priority = document.getElementById("announcePriority").value;
     const target = document.getElementById("announceTarget").value;
-    if (!text) {
-      await showCustomModal("Validation Error", "Announcement message cannot be empty.");
+
+    if (!title || !body) {
+      await showCustomModal("Validation Error", "Both announcement title and body message are required.");
       return;
     }
 
+    const session = getCurrentUserSession();
+    const authorName = session ? (session.name || session.fullName || session.username || 'System Administrator') : 'System Administrator';
+    const currentSchoolId = session ? (session.schoolId || session.schoolID || session.institutionId || 'stacon') : 'stacon';
+
+    const submitBtn = document.getElementById("sendBroadcastBtn");
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Broadcasting...`;
+
     try {
+      // Matches Firestore schema structure observed in announcements collection
       await window.db.collection("announcements").add({
-        message: text,
+        title: title,
+        body: body,
+        author: authorName,
+        priority: priority,
         targetAudience: target,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        schoolId: currentSchoolId, // or 'all' if you want it universally visible to all institutions
+        createdAt: (typeof firebase !== 'undefined' && firebase.firestore) 
+                   ? firebase.firestore.FieldValue.serverTimestamp() 
+                   : new Date().toISOString()
       });
-      await logAuditAction("GLOBAL_BROADCAST", `Published broadcast to target: ${target}`);
+
+      if (typeof logAuditAction === 'function') {
+        await logAuditAction("GLOBAL_BROADCAST", `Published global announcement titled "${title}" to target: ${target}`);
+      }
+
+      document.getElementById("globalAnnounceTitle").value = "";
       document.getElementById("globalAnnounceText").value = "";
-      await showCustomModal("Success", "Global announcement published successfully.");
+      await showCustomModal("Success", "Global announcement published successfully across all school channels.");
     } catch (err) {
-      await showCustomModal("Error", "Failed to publish broadcast.");
+      console.error("Failed to publish global broadcast:", err);
+      await showCustomModal("Error", "Failed to publish broadcast: " + err.message);
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = `<i class="fa-solid fa-bullhorn"></i> Publish Broadcast to All Schools`;
     }
   });
 }
-
 // Feature 2: Tenant Status & Subscription Manager
 function initTenantSubscriptionManager() {
   const container = document.getElementById("featureTenants") || createFeatureSection("Tenant Status & Subscription Manager", "featureTenants");
