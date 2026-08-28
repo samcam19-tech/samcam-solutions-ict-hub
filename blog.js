@@ -10,15 +10,17 @@ let currentPage = 1;
 const postsPerPage = 4;
 let currentUser = null;
 let expandedPostId = null; // Tracks which card is currently expanded
+let currentSchoolId = ''; // Tracks active school context for multi-tenancy
 
 // Initialize Blog, Load Session, and Attach Firestore Real-Time Listeners
 document.addEventListener('DOMContentLoaded', () => {
   loadUserSession();
+  detectSchoolContext();
   fetchBlogPostsFromCloud();
 });
 
 /* ==========================================================================
-   SESSION & ROLE MANAGEMENT
+   SESSION, ROLE & MULTI-TENANT CONTEXT MANAGEMENT
    ========================================================================== */
 function loadUserSession() {
   try {
@@ -31,6 +33,23 @@ function loadUserSession() {
   }
   
   updateBlogUIPermissions();
+}
+
+function detectSchoolContext() {
+  // Extract schoolId from URL parameters or session if present
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('schoolId')) {
+    currentSchoolId = params.get('schoolId').toLowerCase().trim();
+  } else if (currentUser && currentUser.schoolId) {
+    currentSchoolId = currentUser.schoolId.toLowerCase().trim();
+  } else {
+    try {
+      const session = JSON.parse(localStorage.getItem('portal_session'));
+      if (session && session.schoolId) {
+        currentSchoolId = session.schoolId.toLowerCase().trim();
+      }
+    } catch (e) {}
+  }
 }
 
 function updateBlogUIPermissions() {
@@ -52,27 +71,32 @@ function updateBlogUIPermissions() {
 }
 
 /* ==========================================================================
-   FIRESTORE DATA RETRIEVAL (Reverse Chronological Order)
+   FIRESTORE DATA RETRIEVAL (Reverse Chronological Order, School-Scoped)
    ========================================================================== */
 function fetchBlogPostsFromCloud() {
   const gridContainer = document.getElementById('blogGrid');
   gridContainer.innerHTML = `<div class="loading-state"><i class="fa-solid fa-spinner fa-spin"></i> Syncing live ICT insights from Firestore...</div>`;
 
-  db.collection('blog_posts')
-    .orderBy('createdAt', 'desc')
-    .onSnapshot((snapshot) => {
-      blogPosts = [];
-      snapshot.forEach((doc) => {
-        blogPosts.push({
-          id: doc.id,
-          ...doc.data()
-        });
+  let queryRef = db.collection('blog_posts').orderBy('createdAt', 'desc');
+  
+  // Apply multi-tenant scope if schoolId is active
+  if (currentSchoolId) {
+    queryRef = queryRef.where('schoolId', '==', currentSchoolId);
+  }
+
+  queryRef.onSnapshot((snapshot) => {
+    blogPosts = [];
+    snapshot.forEach((doc) => {
+      blogPosts.push({
+        id: doc.id,
+        ...doc.data()
       });
-      renderBlog();
-    }, (error) => {
-      console.error("Error fetching blog posts: ", error);
-      gridContainer.innerHTML = `<div class="no-posts" style="color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> Failed to load cloud posts. Please check your Firebase configuration.</div>`;
     });
+    renderBlog();
+  }, (error) => {
+    console.error("Error fetching blog posts: ", error);
+    gridContainer.innerHTML = `<div class="no-posts" style="color:var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i> Failed to load cloud posts. Please check your Firebase configuration.</div>`;
+  });
 }
 
 /* ==========================================================================
@@ -111,6 +135,7 @@ function updatePostInFirestore(e, postId) {
     category: document.getElementById('newCategory').value,
     excerpt: document.getElementById('newExcerpt').value,
     content: document.getElementById('newContent').value,
+    schoolId: currentSchoolId || 'global',
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
 
@@ -193,6 +218,7 @@ function renderBlog() {
     }
 
     const isExpanded = expandedPostId === post.id;
+    const postSchoolId = post.schoolId || 'global';
 
     // Resolve Author Avatar (Fallback to default local avatar if missing)
     const defaultAvatar = "images/default-avatar.png";
@@ -211,8 +237,11 @@ function renderBlog() {
 
     htmlContent += `
       <article class="blog-card ${isExpanded ? 'expanded-card full-page-card' : ''}" ${isExpanded ? 'style="width: 100%; max-width: 900px; margin: 0 auto; box-shadow: 0 10px 25px rgba(0,0,0,0.1);"' : ''}>
-        <div class="blog-card-header">
-          <span class="blog-badge ${badgeClass}">${post.category || 'General'}</span>
+        <div class="blog-card-header" style="display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <span class="blog-badge ${badgeClass}">${post.category || 'General'}</span>
+            <span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;"><i class="fa-solid fa-school"></i> ${postSchoolId.toUpperCase()}</span>
+          </div>
           <span class="blog-date"><i class="fa-regular fa-calendar"></i> ${formattedDate}</span>
         </div>
         <div class="blog-card-body">
@@ -339,6 +368,7 @@ async function handlePublishSubmit(e) {
     authorAvatar: latestAvatar, // Captures the guaranteed profile picture link
     excerpt: document.getElementById('newExcerpt').value,
     content: document.getElementById('newContent').value,
+    schoolId: currentSchoolId || currentUser.schoolId || 'global', // Embeds school context for multi-tenancy
     createdAt: firebase.firestore.FieldValue.serverTimestamp()
   };
 
