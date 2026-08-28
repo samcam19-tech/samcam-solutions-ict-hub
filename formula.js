@@ -39,6 +39,33 @@ let currentQuestionsList = [];
 let currentIndex = 0;
 let isAnswerCorrect = false;
 
+// Helper function to verify matching parenthesis depth
+function areParenthesesBalanced(str) {
+    let count = 0;
+    let inString = false;
+    let stringChar = '';
+
+    for (let i = 0; i < str.length; i++) {
+        let char = str[i];
+
+        if ((char === '"' || char === "'") && (i === 0 || str[i - 1] !== '\\')) {
+            if (!inString) {
+                inString = true;
+                stringChar = char;
+            } else if (stringChar === char) {
+                inString = false;
+            }
+        }
+
+        if (!inString) {
+            if (char === '(') count++;
+            if (char === ')') count--;
+            if (count < 0) return false; // Closed before opened
+        }
+    }
+    return count === 0;
+}
+
 // ==========================================
 // 3. FULLY UPGRADED WORLD-CLASS EXCEL & ACCESS ENGINE
 // ==========================================
@@ -167,6 +194,14 @@ function validateStudentAnswer(question, inputStr) {
         };
     }
 
+    // Global Parenthesis Balance Check for Excel Formulas
+    if (rule.startsWith("EXCEL_") && !areParenthesesBalanced(cleanInput)) {
+        return { 
+            correct: false, 
+            message: `#VALUE! Error: Unbalanced parentheses. Ensure every opened bracket has a matching closing bracket.` 
+        };
+    }
+
     const upperInput = cleanInput.toUpperCase();
 
     switch (rule) {
@@ -264,6 +299,20 @@ function validateStudentAnswer(question, inputStr) {
                 };
             }
 
+            // Optional structural cross-check against question properties if defined
+            if (question.expectedTrue && valueIfTrue.replace(/\s+/g, '').toUpperCase() !== question.expectedTrue.replace(/\s+/g, '').toUpperCase()) {
+                return {
+                    correct: false,
+                    message: `#VALUE! Error: Your 'value_if_true' argument doesn't match the expected outcome. Expected: ${question.expectedTrue}`
+                };
+            }
+            if (question.expectedFalse && valueIfFalse.replace(/\s+/g, '').toUpperCase() !== question.expectedFalse.replace(/\s+/g, '').toUpperCase()) {
+                return {
+                    correct: false,
+                    message: `#VALUE! Error: Your 'value_if_false' argument doesn't match the expected outcome. Expected: ${question.expectedFalse}`
+                };
+            }
+
             return {
                 correct: true,
                 message: `Correct! "${cleanInput}" properly satisfies Excel's IF function argument structure and data typing rules.`
@@ -315,7 +364,7 @@ function validateStudentAnswer(question, inputStr) {
             }
 
             const args = splitExcelArguments(match[1]);
-            const minArgs = func === 'COUNTIF' ? 2 : 2; // COUNTIF(range, criteria), SUMIF/AVERAGEIF(range, criteria, [sum_range])
+            const minArgs = func === 'COUNTIF' ? 2 : 2; 
             if (args.length < minArgs) {
                 return { correct: false, message: `#VALUE! Error: The ${func} function requires at least ${minArgs} arguments. Found ${args.length}.` };
             }
@@ -391,7 +440,6 @@ function validateStudentAnswer(question, inputStr) {
         }
     }
 }
-
 // ==========================================
 // 4. DYNAMIC QUESTION FETCHING FROM FIRESTORE
 // ==========================================
