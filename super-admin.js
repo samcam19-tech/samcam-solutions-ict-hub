@@ -1,4 +1,4 @@
-// Custom Modal Helper Utility
+// Custom Modal Helper Utility (Corrected)
 function showCustomModal(title, message, type = "alert", inputPlaceholder = "") {
   return new Promise((resolve) => {
     const modal = document.getElementById("customModal");
@@ -25,7 +25,7 @@ function showCustomModal(title, message, type = "alert", inputPlaceholder = "") 
       inputContainer.classList.add("modal-hidden");
     } else if (type === "prompt") {
       cancelBtn.classList.remove("modal-hidden");
-      inputContainer.classList.remove("modal-hidden");
+      inputContainer.classList.remove("modal-hidden"); // Ensures input field is shown
       inputField.placeholder = inputPlaceholder;
       inputField.type = inputPlaceholder.toLowerCase().includes("key") || inputPlaceholder.toLowerCase().includes("password") ? "password" : "text";
     } else {
