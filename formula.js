@@ -931,27 +931,28 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
        function updateEditor() {
-    let rawText = textarea.value;
+        let rawText = textarea.value;
+        
+        // Double-guard: never process text that contains HTML span tags
+        if (rawText.includes('<span')) {
+            textarea.value = '';
+            backdropCode.innerHTML = ' ';
+            return;
+        }
     
-    // Double-guard: never process text that contains HTML span tags
-    if (rawText.includes('<span')) {
-        textarea.value = '';
-        backdropCode.innerHTML = ' ';
-        return;
+        // Globally and aggressively strip spaces after ANY function name before an opening bracket
+        const sanitizedText = rawText.replace(/([A-Z][A-Z0-9_]*)\s+(\()/g, '$1$2');
+        
+        if (sanitizedText !== rawText) {
+            const cursorPosition = textarea.selectionStart;
+            textarea.value = sanitizedText;
+            // Keep the cursor positioned correctly after the fix
+            const newCursorPos = Math.max(0, cursorPosition - 1);
+            textarea.setSelectionRange(newCursorPos, newCursorPos);
+        }
+    
+        backdropCode.innerHTML = highlightFormula(textarea.value) + ' ';
     }
-
-    // Automatically remove unwanted spaces between function names and opening brackets (e.g., "IF (" -> "IF(")
-    const sanitizedText = rawText.replace(/([A-Z][A-Z0-9_]*)\s+(\()/g, '$1$2');
-    if (sanitizedText !== rawText) {
-        const cursorPosition = textarea.selectionStart;
-        textarea.value = sanitizedText;
-        // Keep the cursor from jumping to the end of the line
-        textarea.setSelectionRange(cursorPosition - 1, cursorPosition - 1);
-    }
-
-    backdropCode.innerHTML = highlightFormula(textarea.value) + ' ';
-}
-
         textarea.addEventListener('input', updateEditor);
         
         textarea.addEventListener('scroll', () => {
