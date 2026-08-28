@@ -262,7 +262,18 @@ function validateStudentAnswer(question, inputStr) {
                 };
             }
 
-            const args = splitExcelArguments(match[1]);
+            const innerContent = match[1];
+
+            // Strict regex check to catch nested or inline functions missing their opening parenthesis (e.g., ifc2>=2...)
+            const malformedNestedPattern = /\b(IF|SUM|AVERAGE|COUNT|MAX|MIN)[A-Za-z0-9]/i;
+            if (malformedNestedPattern.test(innerContent)) {
+                return {
+                    correct: false,
+                    message: `#NAME? Error: It looks like you missed an opening bracket after a function name (e.g., writing "ifc2" instead of "if(c2)"). Every function name must be followed immediately by an open parenthesis.`
+                };
+            }
+
+            const args = splitExcelArguments(innerContent);
             
             if (args.length < 3) {
                 return { 
@@ -318,7 +329,6 @@ function validateStudentAnswer(question, inputStr) {
                 message: `Correct! "${cleanInput}" properly satisfies Excel's IF function argument structure and data typing rules.`
             };
         }
-
         // --- 3. LOOKUP FUNCTIONS (VLOOKUP, HLOOKUP, LOOKUP) WITH AST ARGUMENT VALIDATION ---
         case "EXCEL_VLOOKUP":
         case "EXCEL_HLOOKUP":
