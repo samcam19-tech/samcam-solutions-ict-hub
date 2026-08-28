@@ -199,7 +199,6 @@ function normalizeAlgebraicExpression(expr) {
 }
 
 function validateStudentAnswer(question, inputStr) {
-    function validateStudentAnswer(question, inputStr) {
     let cleanInput = inputStr ? inputStr.trim() : "";
     
     // Permanently auto-fix any space between a function name and its opening parenthesis (e.g. "IF (" -> "IF(")
