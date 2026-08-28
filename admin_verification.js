@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 let pendingPaymentsList = [];
+let currentSchoolId = ''; // Global schoolId tracking context for payments
 
 // 1. Role Guard: Read session data from localStorage and check user role
 function checkAdminAuthorization() {
@@ -33,29 +34,41 @@ function checkAdminAuthorization() {
   if (restrictedView) restrictedView.style.display = 'none';
   if (allowedPanel) allowedPanel.style.display = 'block';
 
+  // Extract schoolId from URL parameters if present
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('schoolId')) {
+    currentSchoolId = params.get('schoolId').toLowerCase().trim();
+  } else if (sessionUser && sessionUser.schoolId) {
+    currentSchoolId = sessionUser.schoolId.toLowerCase().trim();
+  }
+
   // Load real-time pending payments queue
   fetchPendingPayments();
 }
 
-// 2. Fetch Pending Payments from Firestore
+// 2. Fetch Pending Payments from Firestore (Scoped by schoolId if active)
 function fetchPendingPayments() {
   if (!window.db) return;
 
-  window.db.collection("pending_payments")
-    .where("status", "==", "pending")
-    .onSnapshot((snapshot) => {
-      pendingPaymentsList = [];
-      snapshot.forEach((doc) => {
-        pendingPaymentsList.push({
-          id: doc.id,
-          ...doc.data()
-        });
-      });
+  let queryRef = window.db.collection("pending_payments").where("status", "==", "pending");
+  
+  if (currentSchoolId) {
+    queryRef = queryRef.where("schoolId", "==", currentSchoolId);
+  }
 
-      renderPendingTable(pendingPaymentsList);
-    }, (error) => {
-      console.error("Error fetching pending payments:", error);
+  queryRef.onSnapshot((snapshot) => {
+    pendingPaymentsList = [];
+    snapshot.forEach((doc) => {
+      pendingPaymentsList.push({
+        id: doc.id,
+        ...doc.data()
+      });
     });
+
+    renderPendingTable(pendingPaymentsList);
+  }, (error) => {
+    console.error("Error fetching pending payments:", error);
+  });
 }
 
 // 3. Render Table Data
@@ -64,7 +77,7 @@ function renderPendingTable(payments) {
   if (!tbody) return;
 
   if (payments.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#64748b; padding: 2rem;">No pending payment verifications found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding: 2rem;">No pending payment verifications found.</td></tr>`;
     return;
   }
 
@@ -72,10 +85,14 @@ function renderPendingTable(payments) {
   payments.forEach((item) => {
     const formattedDate = item.createdAt && item.createdAt.toDate ? item.createdAt.toDate().toLocaleString() : 'Just now';
     const badgeColor = item.network === 'MTN' ? '#eab308' : '#ef4444';
+    const itemSchoolId = item.schoolId || 'global';
 
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${formattedDate}</td>
+      <td>
+        <span style="background: #e0f2fe; color: #0369a1; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;"><i class="fa-solid fa-school"></i> ${itemSchoolId.toUpperCase()}</span>
+      </td>
       <td>
         <span style="background: ${badgeColor}; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; font-weight: 600;">${item.network}</span>
         <br><strong style="font-size: 0.85rem;">${item.phone}</strong>
@@ -148,7 +165,8 @@ function filterPendingPayments() {
   const filtered = pendingPaymentsList.filter(item => 
     item.phone.toLowerCase().includes(query) ||
     item.transactionId.toLowerCase().includes(query) ||
-    item.network.toLowerCase().includes(query)
+    item.network.toLowerCase().includes(query) ||
+    (item.schoolId && item.schoolId.toLowerCase().includes(query))
   );
   renderPendingTable(filtered);
 }
