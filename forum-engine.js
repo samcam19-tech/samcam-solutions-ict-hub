@@ -1156,8 +1156,6 @@ async function submitReplyOptimistic(threadId) {
   }
 }
 
-let typingTimeout = null;
-
 function handleTypingInput(threadId) {
   const session = getCurrentUserSession();
   const name = session.name || 'Someone';
