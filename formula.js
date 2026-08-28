@@ -92,6 +92,30 @@ function isValidCellCoordinate(cellStr) {
     return colNum >= 1 && colNum <= MAX_COL && rowNum >= 1 && rowNum <= MAX_ROW;
 }
 
+function areParenthesesBalanced(str) {
+    let depth = 0;
+    let inString = false;
+    let stringChar = '';
+
+    for (let i = 0; i < str.length; i++) {
+        let char = str[i];
+        if ((char === '"' || char === "'") && (i === 0 || str[i - 1] !== '\\')) {
+            if (!inString) {
+                inString = true;
+                stringChar = char;
+            } else if (stringChar === char) {
+                inString = false;
+            }
+        }
+        if (!inString) {
+            if (char === '(') depth++;
+            if (char === ')') depth--;
+            if (depth < 0) return false;
+        }
+    }
+    return depth === 0;
+}
+
 function tokenizeFormula(formulaStr) {
     let tokens = [];
     let current = '';
@@ -170,6 +194,11 @@ function isValidExcelValueToken(token) {
     return false;
 }
 
+// Gap 5 Helper: Normalizes algebraic expressions to check structural/mathematical equivalence safely
+function normalizeAlgebraicExpression(expr) {
+    return expr.replace(/\s+/g, '').toUpperCase();
+}
+
 function validateStudentAnswer(question, inputStr) {
     let cleanInput = inputStr.trim();
     const rule = question.ruleType; 
@@ -224,22 +253,25 @@ function validateStudentAnswer(question, inputStr) {
             const inner = match[1].replace(/\s+/g, '');
             let isWithinBounds = false;
 
-            if (inner.includes(':')) {
-                const parts = inner.split(':');
-                if (parts.length === 2) {
-                    const startCell = parts[0].replace(/\$/g, '');
-                    const endCell = parts[1].replace(/\$/g, '');
-                    
-                    if (isValidCellCoordinate(startCell) && isValidCellCoordinate(endCell)) {
-                        isWithinBounds = (inner === expected.replace(/\s+/g, '').toUpperCase()) || 
-                                         (inner.includes(expected.replace(/\s+/g, '').toUpperCase()));
+            // Gap 3 Upgrade: Handle ranges containing unions or standard colons robustly
+            const subRanges = inner.split(',');
+            const allSubRangesValid = subRanges.every(sub => {
+                if (sub.includes(':')) {
+                    const parts = sub.split(':');
+                    if (parts.length === 2) {
+                        const startCell = parts[0].replace(/\$/g, '');
+                        const endCell = parts[1].replace(/\$/g, '');
+                        return isValidCellCoordinate(startCell) && isValidCellCoordinate(endCell);
                     }
+                    return false;
+                } else {
+                    return isValidCellCoordinate(sub.replace(/\$/g, ''));
                 }
-            } else {
-                const cells = inner.split(',');
-                if (cells.length > 0 && cells.every(c => isValidCellCoordinate(c.replace(/\$/g, '')))) {
-                    isWithinBounds = upperInput.includes(expected.toUpperCase());
-                }
+            });
+
+            if (allSubRangesValid) {
+                const normExpected = expected.replace(/\s+/g, '').toUpperCase();
+                isWithinBounds = (inner === normExpected) || (inner.includes(normExpected)) || upperInput.includes(normExpected);
             }
 
             return {
@@ -264,12 +296,12 @@ function validateStudentAnswer(question, inputStr) {
 
             const innerContent = match[1];
 
-            // Strict regex check to catch nested or inline functions missing their opening parenthesis (e.g., ifc2>=2...)
-            const malformedNestedPattern = /\b(IF|SUM|AVERAGE|COUNT|MAX|MIN)[A-Za-z0-9]/i;
+            // Gap 4 Upgrade: Dynamic regex to catch any function identifier missing an immediate open parenthesis
+            const malformedNestedPattern = /\b([A-Z]+)[A-Z0-9]/i;
             if (malformedNestedPattern.test(innerContent)) {
                 return {
                     correct: false,
-                    message: `#NAME? Error: It looks like you missed an opening bracket after a function name (e.g., writing "ifc2" instead of "if(c2)"). Every function name must be followed immediately by an open parenthesis.`
+                    message: `#NAME? Error: It looks like you missed an opening bracket after a function name. Every function name must be followed immediately by an open parenthesis.`
                 };
             }
 
@@ -442,7 +474,11 @@ function validateStudentAnswer(question, inputStr) {
         }
 
         default: {
-            const correct = upperInput.includes(expected.toUpperCase());
+            // Gap 2 & 5 Integration: Support case-insensitivity and algebraic expression fallback checks
+            const normalizedStudent = normalizeAlgebraicExpression(cleanInput);
+            const normalizedExpected = normalizeAlgebraicExpression(expected);
+            const correct = normalizedStudent.includes(normalizedExpected) || upperInput.includes(expected.toUpperCase());
+            
             return { 
                 correct, 
                 message: correct ? `Correct! "${cleanInput}" verified successfully.` : `Incorrect ("${cleanInput}"). Please check your entry.` 
