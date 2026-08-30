@@ -6,6 +6,11 @@ let allResources = [];
 let downloadsChartInstance = null;
 let selectedResourceIds = new Set();
 
+// Pagination State Variables
+let currentPage = 1;
+const rowsPerPage = 5;
+let currentFilteredResources = [];
+
 document.addEventListener("DOMContentLoaded", () => {
   initTenantContext();
   fetchLibraryResources();
@@ -161,7 +166,7 @@ function applyAdvancedFilters() {
   const classFilter = document.getElementById("filterClass").value;
   const accessFilter = document.getElementById("filterAccess").value;
 
-  const filtered = allResources.filter(r => {
+  currentFilteredResources = allResources.filter(r => {
     const matchesSearch = (r.title || '').toLowerCase().includes(searchQuery) ||
                           (r.category || '').toLowerCase().includes(searchQuery) ||
                           (r.description || '').toLowerCase().includes(searchQuery);
@@ -172,19 +177,26 @@ function applyAdvancedFilters() {
     return matchesSearch && matchesClass && matchesAccess;
   });
 
-  renderLibraryTable(filtered);
+  currentPage = 1; // Reset to page 1 on new filter criteria
+  renderLibraryTable();
 }
 
-function renderLibraryTable(resources) {
+function renderLibraryTable() {
   const tbody = document.getElementById("libraryTableBody");
   if (!tbody) return;
 
-  if (resources.length === 0) {
+  if (currentFilteredResources.length === 0) {
     tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding: 2rem;">No matching resources found for your school.</td></tr>`;
+    renderPaginationControls(0);
     return;
   }
 
-  tbody.innerHTML = resources.map(res => {
+  // Calculate slice boundaries for current page
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const paginatedResources = currentFilteredResources.slice(startIndex, endIndex);
+
+  tbody.innerHTML = paginatedResources.map(res => {
     const isChecked = selectedResourceIds.has(res.id) ? 'checked' : '';
     return `
       <tr class="${isChecked ? 'selected-row' : ''}">
@@ -214,6 +226,81 @@ function renderLibraryTable(resources) {
       </tr>
     `;
   }).join('');
+
+  renderPaginationControls(currentFilteredResources.length);
+}
+
+// Generate Dynamic Pagination Controls with Ellipses (...)
+function renderPaginationControls(totalItems) {
+  let paginationContainer = document.getElementById("libraryPaginationContainer");
+  
+  // Create pagination container dynamically below the table if it doesn't exist yet
+  if (!paginationContainer) {
+    const tableWrapper = document.querySelector(".table-responsive") || document.getElementById("libraryTableBody").parentElement.parentElement;
+    paginationContainer = document.createElement("div");
+    paginationContainer.id = "libraryPaginationContainer";
+    paginationContainer.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 1rem 0.5rem; font-family: Inter, sans-serif; font-size: 0.875rem; color: var(--text-muted, #475569);";
+    tableWrapper.after(paginationContainer);
+  }
+
+  const totalPages = Math.ceil(totalItems / rowsPerPage);
+  if (totalPages <= 1) {
+    paginationContainer.innerHTML = '';
+    return;
+  }
+
+  const startRecord = totalItems === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
+  const endRecord = Math.min(currentPage * rowsPerPage, totalItems);
+
+  let pagesHtml = '';
+  const maxVisiblePages = 5;
+
+  let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+  let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+  if (endPage - startPage + 1 < maxVisiblePages) {
+    startPage = Math.max(1, endPage - maxVisiblePages + 1);
+  }
+
+  // Previous Button
+  pagesHtml += `<button onclick="changePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} style="padding: 6px 12px; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-chevron-left"></i> Prev</button>`;
+
+  // First page & left ellipsis
+  if (startPage > 1) {
+    pagesHtml += `<button onclick="changePage(1)" style="padding: 6px 10px; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; cursor: pointer;">1</button>`;
+    if (startPage > 2) {
+      pagesHtml += `<span style="padding: 0 4px;">...</span>`;
+    }
+  }
+
+  // Numbered pages
+  for (let i = startPage; i <= endPage; i++) {
+    const isActive = i === currentPage;
+    pagesHtml += `<button onclick="changePage(${i})" style="padding: 6px 10px; border: 1px solid ${isActive ? '#4f46e5' : '#cbd5e1'}; background: ${isActive ? '#4f46e5' : '#fff'}; color: ${isActive ? '#fff' : '#0f172a'}; border-radius: 6px; cursor: pointer; font-weight: ${isActive ? '600' : '400'};">${i}</button>`;
+  }
+
+  // Right ellipsis & last page
+  if (endPage < totalPages) {
+    if (endPage < totalPages - 1) {
+      pagesHtml += `<span style="padding: 0 4px;">...</span>`;
+    }
+    pagesHtml += `<button onclick="changePage(${totalPages})" style="padding: 6px 10px; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; cursor: pointer;">${totalPages}</button>`;
+  }
+
+  // Next Button
+  pagesHtml += `<button onclick="changePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''} style="padding: 6px 12px; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; cursor: pointer;">Next <i class="fa-solid fa-chevron-right"></i></button>`;
+
+  paginationContainer.innerHTML = `
+    <div>Showing <strong>${startRecord}</strong> to <strong>${endRecord}</strong> of <strong>${totalItems}</strong> resources</div>
+    <div style="display: flex; gap: 4px; align-items: center;">${pagesHtml}</div>
+  `;
+}
+
+function changePage(newPage) {
+  const totalPages = Math.ceil(currentFilteredResources.length / rowsPerPage);
+  if (newPage < 1 || newPage > totalPages) return;
+  currentPage = newPage;
+  renderLibraryTable();
 }
 
 // Row & Bulk Selection Management
