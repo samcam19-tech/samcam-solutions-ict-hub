@@ -951,3 +951,38 @@ grid-template-columns:1fr;
     font-size: 1.5rem;
   }
 }
+
+/* Header Brand Container */
+.admin-header .header-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Dynamic System Logo Styling (100% Circular & Fallback Ready) */
+.dynamic-system-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+/* Automatically hide the logo image if no source is available */
+.dynamic-system-logo:not([src]), 
+.dynamic-system-logo[src=""] {
+  display: none;
+}
+
+/* Dynamic System Name */
+.dynamic-system-name {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #ffffff;
+}
+
+/* Dynamic System Slogan */
+.dynamic-system-slogan {
+  margin: 0;
+  font-size: 0.8rem;
+  color: #94a3b8;
+}
