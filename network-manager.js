@@ -1,5 +1,5 @@
 // ==========================================
-// SAMCAM NETOPS - LIVE FIRESTORE TELEMETRY ENGINE
+// SAMCAM NETOPS - FULLY FUNCTIONAL LIVE TELEMETRY & COMMAND ENGINE
 // ==========================================
 
 let workstationsData = [];
@@ -30,7 +30,7 @@ function initLiveTelemetryListener() {
                 activity: data.activeTitle || data.activity || "Active Browser Session",
                 shortUrl: data.activeUrl || "Local Workspace",
                 fullUrl: data.fullUrl || "#",
-                screenUrl: data.screenUrl || "", // Captured screenshot URL from Firebase Storage
+                screenUrl: data.screenUrl || "", // Captured screenshot URL / Base64 string
                 status: data.status || "active",
                 cpu: data.cpu || "15%",
                 ram: data.ram || "45%",
@@ -112,6 +112,12 @@ function renderWorkstations(stations) {
     if (onlineCounter) {
         onlineCounter.textContent = stations.filter(s => s.status !== 'locked').length;
     }
+
+    const loadCounter = document.getElementById("globalLoadCount");
+    if (loadCounter && stations.length > 0) {
+        const avgCpu = Math.round(stations.reduce((acc, s) => acc + parseInt(s.cpu || 0), 0) / stations.length);
+        loadCounter.textContent = `${avgCpu}%`;
+    }
 }
 
 function initEventListeners() {
@@ -137,16 +143,43 @@ function initEventListeners() {
     const closeModalBtn = document.getElementById("closeModalBtn");
     if (closeModalBtn) closeModalBtn.onclick = closeModal;
 
+    // Close modal when clicking outside content wrapper
+    const modal = document.getElementById("nodeModal");
+    if (modal) {
+        modal.addEventListener("click", (e) => {
+            if (e.target === modal) closeModal();
+        });
+    }
+
+    // Fully Functional: Lock All Screens Action
     const lockAllBtn = document.getElementById("lockAllBtn");
     if (lockAllBtn) {
         lockAllBtn.onclick = async () => {
             if (!window.db) return;
-            const batch = window.db.batch();
-            workstationsData.forEach(pc => {
-                const ref = window.db.collection("workstation_telemetry").doc(pc.id);
-                batch.update(ref, { status: "locked", activity: "Screen Locked by Instructor" });
-            });
-            await batch.commit();
+            if (!confirm("Are you sure you want to lock all connected workstation screens?")) return;
+            
+            try {
+                const batch = window.db.batch();
+                workstationsData.forEach(pc => {
+                    const ref = window.db.collection("workstation_telemetry").doc(pc.id);
+                    batch.update(ref, { status: "locked", activity: "Screen Locked by Instructor" });
+                });
+                await batch.commit();
+                alert("All workstation screens have been successfully locked.");
+            } catch (err) {
+                console.error("Error locking all screens:", err);
+                alert("Failed to lock all screens. Check console logs.");
+            }
+        };
+    }
+
+    // Fully Functional: Push Prompt / Broadcast Modal Action
+    const pushPromptBtn = document.getElementById("pushPromptBtn") || document.querySelector("button[onclick*='Push'], .btn-primary");
+    if (pushPromptBtn && !pushPromptBtn.id) pushPromptBtn.id = "pushPromptBtn";
+
+    if (document.getElementById("pushPromptBtn")) {
+        document.getElementById("pushPromptBtn").onclick = () => {
+            openBroadcastModal();
         };
     }
 }
@@ -161,7 +194,7 @@ function openNodeModal(pc) {
 
     title.textContent = `Workstation Control: ${pc.id}`;
     body.innerHTML = `
-        ${pc.screenUrl ? `<div style="margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 1px solid #334155;"><img src="${pc.screenUrl}" alt="Enlarged Screen View" style="width: 100%; max-height: 250px; object-fit: cover; display: block;" /></div>` : ''}
+        ${pc.screenUrl ? `<div style="margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 1px solid #334155;"><img src="${pc.screenUrl}" alt="Enlarged Screen View" style="width: 100%; max-height: 250px; object-fit: cover; display: block;" /></div>` : '<div style="padding: 20px; text-align: center; background: rgba(0,0,0,0.2); border-radius: 6px; margin-bottom: 15px; color: var(--text-muted);">No live screen snapshot available yet</div>'}
         <p><strong>Assigned Learner:</strong> ${pc.learner}</p>
         <p><strong>IP Address:</strong> ${pc.ip}</p>
         <p><strong>Active Window Title:</strong> ${pc.activity}</p>
@@ -175,10 +208,14 @@ function openNodeModal(pc) {
     
     lockBtn.onclick = async () => {
         if (window.db) {
-            await window.db.collection("workstation_telemetry").doc(pc.id).update({
-                status: nextStatus,
-                activity: nextStatus === "locked" ? "Screen Locked by Instructor" : "Resumed Session"
-            });
+            try {
+                await window.db.collection("workstation_telemetry").doc(pc.id).update({
+                    status: nextStatus,
+                    activity: nextStatus === "locked" ? "Screen Locked by Instructor" : "Resumed Session"
+                });
+            } catch (err) {
+                console.error("Error updating terminal lock state:", err);
+            }
         }
         closeModal();
     };
@@ -189,4 +226,52 @@ function openNodeModal(pc) {
 function closeModal() {
     const modal = document.getElementById("nodeModal");
     if (modal) modal.style.display = "none";
+}
+
+// Additional helper to manage the Push Prompt / Broadcast console modal if present in DOM
+function openBroadcastModal() {
+    let bModal = document.getElementById("broadcastModal");
+    if (!bModal) {
+        bModal = document.createElement("div");
+        bModal.id = "broadcastModal";
+        bModal.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 9999;";
+        bModal.innerHTML = `
+            <div style="background: #1e293b; padding: 25px; border-radius: 10px; width: 450px; border: 1px solid #334155; color: #f8fafc;">
+                <h3 style="margin-top: 0; margin-bottom: 15px; color: #38bdf8;"><i class="fa-solid fa-bullhorn"></i> Broadcast Prompt to Class</h3>
+                <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 15px;">Send an instant notification or instruction banner to all active student terminals.</p>
+                <textarea id="broadcastMessage" placeholder="Type instructions or task prompt here..." style="width: 100%; height: 100px; background: #0f172a; border: 1px solid #475569; color: #fff; padding: 10px; border-radius: 6px; resize: none; margin-bottom: 15px;"></textarea>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button id="closeBroadcast" style="padding: 8px 16px; background: #475569; border: none; color: #fff; border-radius: 5px; cursor: pointer;">Cancel</button>
+                    <button id="sendBroadcast" style="padding: 8px 16px; background: #0ea5e9; border: none; color: #fff; border-radius: 5px; cursor: pointer; font-weight: 600;">Broadcast Now</button>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(bModal);
+
+        document.getElementById("closeBroadcast").onclick = () => { bModal.style.display = "none"; };
+        document.getElementById("sendBroadcast").onclick = async () => {
+            const msg = document.getElementById("broadcastMessage").value.trim();
+            if (!msg) {
+                alert("Please enter a message to broadcast.");
+                return;
+            }
+            if (window.db) {
+                try {
+                    const batch = window.db.batch();
+                    workstationsData.forEach(pc => {
+                        const ref = window.db.collection("workstation_telemetry").doc(pc.id);
+                        batch.update(ref, { broadcastNotice: msg });
+                    });
+                    await batch.commit();
+                    alert("Broadcast message sent successfully to all workstations!");
+                    bModal.style.display = "none";
+                    document.getElementById("broadcastMessage").value = "";
+                } catch (err) {
+                    console.error("Broadcast failed:", err);
+                    alert("Error sending broadcast.");
+                }
+            }
+        };
+    }
+    bModal.style.display = "flex";
 }
