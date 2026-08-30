@@ -16,11 +16,13 @@
     <!-- Header -->
     <header class="dash-header">
       <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-        <div>
-          <h2><i class="fa-solid fa-book-bookmark"></i> E-Library Management Portal</h2>
-          <p>Modern administration hub for digital assets, pricing control, and resource inventory.</p>
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <img src="images/logo.png" alt="System Logo" class="dynamic-system-logo" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
+          <div>
+            <h2 class="dynamic-system-name" style="margin: 0; font-size: 1.25rem; font-weight: 700;"><i class="fa-solid fa-book-bookmark"></i> E-Library Management Portal</h2>
+            <p class="dynamic-system-slogan" style="margin: 0.35rem 0 0 0; font-size: 0.8rem; color: #64748b;">Modern administration hub for digital assets, pricing control, and resource inventory.</p>
+          </div>
         </div>
-        <!-- Hamburger Menu Button for Small Devices -->
         <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle navigation menu">
           <i class="fa-solid fa-bars" id="menuIcon"></i>
         </button>
