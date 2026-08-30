@@ -287,11 +287,80 @@
 
         <!-- Feature 6: Centralized E-Resource Repository Manager -->
         <div id="featureEResources" class="admin-feature-card">
-          <h3 class="feature-title"><i class="fa-solid fa-book-bookmark" style="margin-right: 8px; color: var(--primary);"></i> Centralized E-Resource Publisher</h3>
-          <p class="feature-description">Distribute study materials, notes, and curriculum files instantly to all tenant schools.</p>
-          <input type="text" id="globalResTitle" placeholder="Resource Title..." class="feature-input-block" />
-          <input type="text" id="globalResUrl" placeholder="Download Link / URL..." class="feature-input-block" />
-          <button id="publishGlobalResBtn" class="btn-primary"><i class="fa-solid fa-cloud-arrow-up" style="margin-right: 6px;"></i> Publish to All Schools</button>
+          <div style="padding: 1.5rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+              <i class="fa-solid fa-floppy-disk" style="font-size: 1.2rem; color: #0284c7;"></i>
+              <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 700;">Centralized E-Resource Publisher</h3>
+            </div>
+            <p style="margin: 0 0 1rem 0; font-size: 0.85rem; color: #64748b;">
+              Distribute study materials, notes, and curriculum files instantly with complete metadata to tenant schools.
+            </p>
+
+            <!-- Form Layout matching database schema -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+              <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Resource Title *</label>
+                <input type="text" id="globalResTitle" placeholder="e.g., S.5 END OF TERM 2 ICT GUIDE" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;" />
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Class / Level</label>
+                <select id="globalResClassLevel" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #fff;">
+                  <option value="S1">S.1</option>
+                  <option value="S2">S.2</option>
+                  <option value="S3">S.3</option>
+                  <option value="S4">S.4</option>
+                  <option value="S5" selected>S.5</option>
+                  <option value="S6">S.6</option>
+                  <option value="General">General / All</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="margin-bottom: 0.75rem;">
+              <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Description / Notes</label>
+              <textarea id="globalResDescription" placeholder="The marking guide for S.5 end of term 2..." style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; height: 60px; resize: vertical;"></textarea>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+              <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Category</label>
+                <select id="globalResCategory" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #fff;">
+                  <option value="Datasets">Datasets</option>
+                  <option value="Notes & Handouts" selected>Notes & Handouts</option>
+                  <option value="Past Papers">Past Papers</option>
+                  <option value="Marking Guides">Marking Guides</option>
+                  <option value="Practicals">Practicals</option>
+                </select>
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Access Type</label>
+                <select id="globalResAccessType" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #fff;">
+                  <option value="free" selected>Free</option>
+                  <option value="paid">Paid</option>
+                </select>
+              </div>
+              <div>
+                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Price (UGX)</label>
+                <input type="number" id="globalResPrice" value="0" placeholder="0" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;" />
+              </div>
+            </div>
+
+            <div style="margin-bottom: 1rem;">
+              <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Resource File (PDF / Doc / ZIP) *</label>
+              <input type="file" id="globalResFileInput" style="width: 100%; padding: 0.4rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #f8fafc;" />
+            </div>
+
+            <button type="button" id="publishGlobalResBtn" class="btn btn-primary" style="width: 100%; padding: 0.65rem; background: #0284c7; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.9rem;">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Publish to All Schools
+            </button>
+
+            <div style="margin-top: 1.5rem; border-top: 1px solid #e2e8f0; padding-top: 1rem;">
+              <h4 style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: #334155; font-weight: 600;">Repository Manager & Status Toggle</h4>
+              <div id="globalResourcesList">
+                <!-- Live feed gets injected here -->
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Feature 7: Global Analytics & Telemetry Dashboard -->
