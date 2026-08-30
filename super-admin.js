@@ -166,7 +166,7 @@ document.addEventListener("DOMContentLoaded", () => {
       await enforceFirestoreMasterKeyGate();
     }
   }, 50);
-});
+
 
 // Handles Firestore-backed Super Admin Key setup, authentication gate, and advanced feature hooks
 async function enforceFirestoreMasterKeyGate() {
