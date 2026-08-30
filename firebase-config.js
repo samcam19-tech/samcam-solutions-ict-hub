@@ -3,7 +3,7 @@
    ========================================================================== */
 
 const firebaseConfig = {
-  apiKey: "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw",
+  apiKey: window.env?.FIREBASE_API_KEY,
   authDomain: "samcam-system.firebaseapp.com",
   projectId: "samcam-system",
   storageBucket: "samcam-system.firebasestorage.app",
