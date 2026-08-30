@@ -377,9 +377,9 @@ async function loadMigrationCollectionsCheckboxes() {
         validCount++;
         const displayName = formatCollectionName(col);
         checkboxesHtml += `
-          <label style="display: flex; align-items: center; justify-content: flex-start; gap: 10px; font-size: 13px; cursor: pointer; background: transparent; padding: 6px 4px; border-radius: 4px; border: none; width: 100%; box-sizing: border-box;">
+          <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; cursor: pointer; background: transparent; padding: 6px 4px; border-radius: 4px; width: 100%; box-sizing: border-box;">
             <input type="checkbox" class="migration-col-checkbox" value="${col}" checked style="cursor: pointer; margin: 0; flex-shrink: 0;">
-            <span style="font-family: inherit; color: #0f172a; font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block;">${displayName}</span>
+            <span style="font-family: inherit; color: #0f172a; font-weight: 500; font-size: 13px;">${displayName}</span>
           </label>
         `;
       }
