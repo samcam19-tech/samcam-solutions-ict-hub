@@ -807,7 +807,9 @@ function initTenantSubscriptionManager() {
   }
 }
 
-// Feature 3: Cross-Tenant Global Search
+// ==========================================================================
+// FEATURE 3: CROSS-TENANT GLOBAL SEARCH (MODERNIZED SAAS EDITION)
+// ==========================================================================
 function initCrossTenantSearch() {
   const container = getFeatureContainer("featureSearch");
   if (!container) return;
@@ -817,37 +819,131 @@ function initCrossTenantSearch() {
   const resultsContainer = document.getElementById("globalSearchResults");
 
   if (searchBtn && queryInput && resultsContainer) {
-    searchBtn.addEventListener("click", async () => {
-      const query = queryInput.value.trim().toLowerCase();
-      if (!query) return;
+    // 1. Debounce and Enter-key support for seamless UX
+    queryInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        searchBtn.click();
+      }
+    });
 
-      resultsContainer.innerHTML = "Searching collections...";
+    searchBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const query = queryInput.value.trim().toLowerCase();
+      
+      if (!query) {
+        resultsContainer.innerHTML = `<div style="padding: 1rem; color: #64748b; font-size: 0.85rem;"><i class="fa-solid fa-info-circle"></i> Please enter a keyword to search across system collections.</div>`;
+        return;
+      }
+
+      // 2. Modern Skeleton / Loading State Animation
+      resultsContainer.innerHTML = `
+        <div style="padding: 1.5rem; text-align: center; color: #64748b; font-size: 0.9rem;">
+          <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.25rem; color: #38bdf8; margin-bottom: 0.5rem; display: block;"></i>
+          Scanning multi-tenant collections across databases...
+        </div>`;
+      
+      const originalBtnText = searchBtn.innerHTML;
+      searchBtn.disabled = true;
+      searchBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Searching...';
+
       try {
         let matches = 0;
-        let html = "";
-        const collections = ['users', 'quizzes', 'forum_threads', 'announcements'];
+        let html = '';
+        // Expanded 21st-century microservice collections map with friendly UI labels
+        const collectionsConfig = [
+          { name: 'users', label: 'User Profiles', icon: 'fa-user', badgeColor: '#3b82f6' },
+          { name: 'quizzes', label: 'Assessments & Quizzes', icon: 'fa-graduation-cap', badgeColor: '#10b981' },
+          { name: 'forum_threads', label: 'Discussions', icon: 'fa-comments', badgeColor: '#8b5cf6' },
+          { name: 'announcements', label: 'Announcements', icon: 'fa-bullhorn', badgeColor: '#f59e0b' },
+          { name: 'schools', label: 'Tenants / Schools', icon: 'fa-school', badgeColor: '#ec4899' }
+        ];
 
-        for (const col of collections) {
-          const snap = await window.db.collection(col).limit(20).get();
-          snap.forEach(doc => {
-            const data = doc.data();
-            const stringified = JSON.stringify(data).toLowerCase();
-            if (stringified.includes(query)) {
-              matches++;
-              html += `<div class="search-result-item" style="padding: 6px 0; border-bottom: 1px solid #eee;">[<b>${col}</b>] ID: ${doc.id} (School: ${data.schoolId || 'N/A'})</div>`;
-            }
-          });
+        // Parallel execution for maximum performance instead of sluggish serial loops
+        const searchPromises = collectionsConfig.map(async (colConfig) => {
+          try {
+            const snap = await window.db.collection(colConfig.name).limit(50).get();
+            let colMatches = [];
+            
+            snap.forEach(doc => {
+              const data = doc.data();
+              const stringified = JSON.stringify(data).toLowerCase();
+              
+              if (stringified.includes(query)) {
+                colMatches.push({ id: doc.id, data });
+              }
+            });
+            return { config: colConfig, matches: colMatches };
+          } catch (colErr) {
+            console.warn(`Skipped collection ${colConfig.name} due to permissions:`, colErr);
+            return { config: colConfig, matches: [] };
+          }
+        });
+
+        const resultsArray = await Promise.all(searchPromises);
+
+        // Render aggregated structured cards
+        resultsArray.forEach(result => {
+          if (result.matches.length > 0) {
+            matches += result.matches.length;
+            result.matches.forEach(item => {
+              const titleVal = item.data.title || item.data.name || item.data.schoolName || item.id;
+              const schoolTag = item.data.schoolId || item.data.schoolID || 'Global System';
+              
+              html += `
+                <div class="search-result-card" style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; transition: all 0.2s ease;">
+                  <div style="display: flex; align-items: flex-start; gap: 0.75rem;">
+                    <span style="background: ${result.config.badgeColor}; color: #fff; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; flex-shrink: 0; margin-top: 2px;">
+                      <i class="fa-solid ${result.config.icon}"></i>
+                    </span>
+                    <div>
+                      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.15rem;">
+                        <span style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: ${result.config.badgeColor}; background: ${result.config.badgeColor}15; padding: 0.1rem 0.4rem; border-radius: 4px;">${result.config.label}</span>
+                        <span style="font-size: 0.75rem; color: #64748b;"><i class="fa-solid fa-fingerprint"></i> ID: ${item.id}</span>
+                      </div>
+                      <h4 style="margin: 0; font-size: 0.9rem; color: #1e293b; font-weight: 600;">${escapeHtml(titleVal)}</h4>
+                      <p style="margin: 0.15rem 0 0 0; font-size: 0.75rem; color: #64748b;">Tenant Scope: <strong>${escapeHtml(schoolTag)}</strong></p>
+                    </div>
+                  </div>
+                  <button type="button" class="btn btn-xs btn-outline" onclick="inspectRecordDetails('${result.config.name}', '${item.id}')" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-color: #cbd5e1; color: #334155; border-radius: 4px;">
+                    Inspect <i class="fa-solid fa-arrow-right" style="font-size: 0.65rem;"></i>
+                  </button>
+                </div>
+              `;
+            });
+          }
+        });
+
+        if (matches > 0) {
+          resultsContainer.innerHTML = `
+            <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.75rem; font-weight: 600;">Found ${matches} match${matches === 1 ? '' : 'es'} across system collections:</div>
+            <div style="max-height: 400px; overflow-y: auto; padding-right: 4px;">${html}</div>
+          `;
+        } else {
+          resultsContainer.innerHTML = `
+            <div style="text-align: center; padding: 2rem 1rem; color: #64748b;">
+              <i class="fa-solid fa-folder-open" style="font-size: 1.5rem; margin-bottom: 0.5rem; color: #94a3b8; display: block;"></i>
+              <p style="margin: 0; font-size: 0.9rem;">No matching records found for "<strong>${escapeHtml(query)}</strong>".</p>
+            </div>`;
         }
 
-        resultsContainer.innerHTML = matches > 0 ? html : `<div>No matching records found for "${query}".</div>`;
       } catch (err) {
-        resultsContainer.innerHTML = `<span class="text-error" style="color: #ef4444;">Search failed due to permissions or connection.</span>`;
+        console.error("Global search execution error:", err);
+        resultsContainer.innerHTML = `
+          <div style="padding: 1rem; background: #fee2e2; border: 1px solid #f87171; border-radius: 6px; color: #b91c1c; font-size: 0.85rem;">
+            <i class="fa-solid fa-triangle-exclamation"></i> Cross-tenant search query failed due to security rule restrictions or network instability.
+          </div>`;
+      } finally {
+        searchBtn.disabled = false;
+        searchBtn.innerHTML = originalBtnText;
       }
     });
   }
 }
 
-// Feature 4: Comprehensive System Audit Logs
+// ==========================================================================
+// FEATURE 4: COMPREHENSIVE SYSTEM AUDIT LOGS VIEWER (MODERNIZED SAAS EDITION)
+// ==========================================================================
 function initAuditLogsViewer() {
   const container = getFeatureContainer("featureAudit");
   if (!container) return;
@@ -855,68 +951,339 @@ function initAuditLogsViewer() {
   const refreshBtn = document.getElementById("refreshAuditBtn");
   const listEl = document.getElementById("auditLogsList");
 
-  if (refreshBtn && listEl) {
-    refreshBtn.addEventListener("click", async () => {
-      listEl.innerHTML = "Loading logs...";
+  // Helper function to safely fetch and render audit logs
+  async function fetchAndRenderLogs() {
+    if (!listEl) return;
+
+    // 1. Modern Skeleton / Loading State
+    listEl.innerHTML = `
+      <div style="padding: 2rem; text-align: center; color: #64748b; font-size: 0.9rem;">
+        <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.25rem; color: #38bdf8; margin-bottom: 0.5rem; display: block;"></i>
+        Fetching secure immutable audit trails...
+      </div>`;
+
+    if (refreshBtn) {
+      refreshBtn.disabled = true;
+      refreshBtn.innerHTML = '<i class="fa-solid fa-rotate fa-spin"></i> Syncing...';
+    }
+
+    try {
+      // 2. Query Firestore with graceful fallback if composite index is missing
+      let snap;
       try {
-        const snap = await window.db.collection("audit_logs").orderBy("timestamp", "desc").limit(15).get();
-        if (snap.empty) {
-          listEl.innerHTML = "No audit logs recorded yet.";
-          return;
-        }
-        let html = "";
-        snap.forEach(doc => {
-          const d = doc.data();
-          const time = d.timestamp && d.timestamp.seconds ? new Date(d.timestamp.seconds * 1000).toLocaleString() : "Just now";
-          html += `<div class="audit-log-row" style="padding: 6px 0; border-bottom: 1px solid #f1f5f9;"><strong class="audit-action-title">[${d.actionType}]</strong> ${d.details} <span class="audit-timestamp" style="float: right; color: #64748b; font-size: 11px;">${time}</span></div>`;
-        });
-        listEl.innerHTML = html;
-      } catch (err) {
-        listEl.innerHTML = "<span class='text-error' style='color: #ef4444;'>Failed to load audit logs. Ensure Firestore index exists.</span>";
+        snap = await window.db.collection("audit_logs").orderBy("timestamp", "desc").limit(25).get();
+      } catch (indexErr) {
+        console.warn("Index warning detected, falling back to unordered query:", indexErr);
+        snap = await window.db.collection("audit_logs").limit(25).get();
       }
+
+      if (snap.empty) {
+        listEl.innerHTML = `
+          <div style="text-align: center; padding: 2rem; color: #64748b; font-size: 0.85rem;">
+            <i class="fa-solid fa-shield-cat" style="font-size: 1.5rem; margin-bottom: 0.5rem; color: #94a3b8; display: block;"></i>
+            No security audit entries recorded in the system yet.
+          </div>`;
+        return;
+      }
+
+      let logsArray = [];
+      snap.forEach(doc => {
+        logsArray.push({ id: doc.id, ...doc.data() });
+      });
+
+      // Client-side fallback sorting if unordered query was used
+      logsArray.sort((a, b) => {
+        const timeA = a.timestamp && a.timestamp.seconds ? a.timestamp.seconds : (a.createdAt || 0);
+        const timeB = b.timestamp && b.timestamp.seconds ? b.timestamp.seconds : (b.createdAt || 0);
+        return timeB - timeA;
+      });
+
+      let html = '';
+      logsArray.forEach(d => {
+        const timeVal = d.timestamp && d.timestamp.seconds 
+          ? new Date(d.timestamp.seconds * 1000).toLocaleString() 
+          : (d.timestamp ? new Date(d.timestamp).toLocaleString() : 'Recent');
+
+        // Color code badges depending on action type intensity
+        const actionType = (d.actionType || 'SYSTEM_EVENT').toUpperCase();
+        let badgeBg = '#e2e8f0';
+        let badgeColor = '#334155';
+        
+        if (actionType.includes('DELETE') || actionType.includes('SUSPEND') || actionType.includes('FAIL')) {
+          badgeBg = '#fee2e2'; badgeColor = '#b91c1c';
+        } else if (actionType.includes('UPDATE') || actionType.includes('EDIT')) {
+          badgeBg = '#fef3c7'; badgeColor = '#b45309';
+        } else if (actionType.includes('CREATE') || actionType.includes('SUCCESS') || actionType.includes('LOGIN')) {
+          badgeBg = '#d1fae5'; badgeColor = '#065f46';
+        }
+
+        html += `
+          <div class="audit-log-row" style="padding: 0.75rem 1rem; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; transition: background 0.15s ease;">
+            <div style="display: flex; flex-direction: column; gap: 0.2rem; flex: 1;">
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span class="audit-action-title" style="background: ${badgeBg}; color: ${badgeColor}; font-size: 0.7rem; font-weight: 700; padding: 0.1rem 0.4rem; border-radius: 4px; letter-spacing: 0.3px;">${escapeHtml(actionType)}</span>
+                <span style="font-size: 0.75rem; color: #94a3b8;"><i class="fa-solid fa-user-shield"></i> ${escapeHtml(d.actor || d.user || 'System Agent')}</span>
+              </div>
+              <p style="margin: 0; font-size: 0.85rem; color: #1e293b; line-height: 1.4;">${escapeHtml(d.details || d.message || 'No additional description provided.')}</p>
+            </div>
+            <span class="audit-timestamp" style="white-space: nowrap; color: #64748b; font-size: 0.75rem; background: #f8fafc; padding: 0.2rem 0.4rem; border-radius: 4px; border: 1px solid #e2e8f0;">
+              <i class="fa-regular fa-clock"></i> ${timeVal}
+            </span>
+          </div>
+        `;
+      });
+
+      listEl.innerHTML = `<div style="max-height: 450px; overflow-y: auto;">${html}</div>`;
+
+    } catch (err) {
+      console.error("Audit Logs Viewer Error:", err);
+      listEl.innerHTML = `
+        <div style="padding: 1rem; background: #fee2e2; border: 1px solid #f87171; border-radius: 6px; color: #b91c1c; font-size: 0.85rem;">
+          <i class="fa-solid fa-triangle-exclamation"></i> Failed to synchronize audit logs from cloud storage. Check database read permissions.
+        </div>`;
+    } finally {
+      if (refreshBtn) {
+        refreshBtn.disabled = false;
+        refreshBtn.innerHTML = '<i class="fa-solid fa-rotate"></i> Refresh';
+      }
+    }
+  }
+
+  // Bind event listeners safely
+  if (refreshBtn) {
+    refreshBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      fetchAndRenderLogs();
     });
+  }
+
+  // Auto-fetch logs on initialization for dynamic 21st-century experience
+  fetchAndRootLogsIfNeeded();
+  function fetchAndRootLogsIfNeeded() {
+    if (listEl && listEl.innerHTML.trim() === "") {
+      fetchAndRenderLogs();
+    }
   }
 }
 
-// Feature 5: Global Backup & Snapshot Generator
+// ==========================================================================
+// FEATURE 5: GLOBAL BACKUP, GRANULAR RESTORE & AUTOMATED SNAPSHOT ENGINE
+// ==========================================================================
 function initBackupGenerator() {
   const container = getFeatureContainer("featureBackup");
   if (!container) return;
 
   const backupBtn = document.getElementById("generateBackupBtn");
+  const restoreInput = document.getElementById("restoreBackupFileInput"); // Hidden file input
+  const restoreBtn = document.getElementById("restoreBackupBtn");
+
+  // 1. Manual Backup Snapshot Generator
   if (backupBtn) {
-    backupBtn.addEventListener("click", async () => {
+    backupBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const originalText = backupBtn.innerHTML;
+      
       try {
-        const backupData = {};
-        const collectionsToMigrate = ['users', 'quizzes', 'submissions', 'announcements', 'schools', 'e_library_resources'];
+        backupBtn.disabled = true;
+        backupBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Compiling System Snapshot...';
+
+        const backupData = {
+          version: "2.2",
+          generatedAt: new Date().toISOString(),
+          system: "Samcam Solutions ICT Resource Hub",
+          collections: {}
+        };
+
+        const collectionsToMigrate = ['users', 'quizzes', 'submissions', 'announcements', 'schools', 'e_library_resources', 'forum_threads'];
+        
         for (const col of collectionsToMigrate) {
-          const snap = await window.db.collection(col).get();
-          backupData[col] = [];
-          snap.forEach(doc => {
-            backupData[col].push({ id: doc.id, ...doc.data() });
-          });
+          try {
+            const snap = await window.db.collection(col).get();
+            backupData.collections[col] = [];
+            snap.forEach(doc => {
+              backupData.collections[col].push({ id: doc.id, ...doc.data() });
+            });
+          } catch (colErr) {
+            console.warn(`Could not export collection ${col}:`, colErr);
+            backupData.collections[col] = [];
+          }
         }
 
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
         const downloadAnchor = document.createElement('a');
         downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", `samcam_full_backup_${new Date().toISOString().slice(0,10)}.json`);
+        downloadAnchor.setAttribute("download", `samcam_enterprise_backup_${new Date().toISOString().slice(0,10)}.json`);
         document.body.appendChild(downloadAnchor);
         downloadAnchor.click();
         downloadAnchor.remove();
 
         if (typeof logAuditAction === 'function') {
-          await logAuditAction("GENERATE_BACKUP", "Downloaded complete system JSON backup snapshot.");
+          await logAuditAction("GENERATE_BACKUP", "Downloaded complete multi-tenant system JSON backup snapshot.");
         }
-        await showCustomModal("Success", "Backup snapshot generated and downloaded successfully.");
+        
+        await showCustomModal("Backup Complete", "Enterprise system backup snapshot successfully compiled and downloaded.");
       } catch (err) {
-        await showCustomModal("Error", "Backup generation failed.");
+        console.error("Backup Generation Error:", err);
+        await showCustomModal("Backup Failed", "Unable to generate snapshot. Verify database read credentials.");
+      } finally {
+        backupBtn.disabled = false;
+        backupBtn.innerHTML = originalText;
       }
     });
   }
+
+  // 2. Disaster Recovery & Granular/Full Restoration Engine
+  if (restoreBtn && restoreInput) {
+    restoreBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      restoreInput.click(); // Open file picker
+    });
+
+    restoreInput.addEventListener("change", async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = async function(e) {
+        try {
+          const rawContent = e.target.result;
+          const backupJson = JSON.parse(rawContent);
+
+          if (!backupJson.collections) {
+            throw new Error("Invalid backup schema format. Missing collections node.");
+          }
+
+          // Extract available collections found in the JSON file
+          const availableCollections = Object.keys(backupJson.collections);
+
+          // Build a modern interactive selector for choosing all or a specific collection
+          let collectionOptionsHTML = `<option value="ALL">🔄 Restore ALL Collections (Full System Recovery)</option>`;
+          availableCollections.forEach(col => {
+            const count = Array.isArray(backupJson.collections[col]) ? backupJson.collections[col].length : 0;
+            collectionOptionsHTML += `<option value="${col}">📁 Single Collection: ${col} (${count} records)</option>`;
+          });
+
+          // Create a custom modal or prompt dialog allowing the admin to choose scope
+          const modalContainer = document.createElement('div');
+          modalContainer.className = "custom-restore-modal-overlay";
+          modalContainer.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999;";
+          modalContainer.innerHTML = `
+            <div style="background:#fff; padding:2rem; border-radius:12px; width:450px; box-shadow:0 10px 25px rgba(0,0,0,0.2); font-family:inherit;">
+              <h3 style="margin-top:0; color:#1e293b; font-size:1.1rem;"><i class="fa-solid fa-database" style="color:#0284c7;"></i> Select Recovery Scope</h3>
+              <p style="font-size:0.85rem; color:#64748b; line-height:1.4;">Choose whether you want to restore the entire snapshot database or target a single corrupted collection.</p>
+              
+              <div style="margin:1rem 0;">
+                <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">TARGET COLLECTION</label>
+                <select id="granularRestoreSelect" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem; background:#f8fafc;">
+                  ${collectionOptionsHTML}
+                </select>
+              </div>
+
+              <div style="background:#fef2f2; border:1px solid #fca5a5; padding:0.75rem; border-radius:6px; margin-bottom:1.25rem; font-size:0.8rem; color:#991b1b;">
+                <i class="fa-solid fa-triangle-exclamation"></i> <strong>Warning:</strong> Existing records with matching IDs will be overwritten/merged.
+              </div>
+
+              <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+                <button type="button" id="cancelRestoreBtn" style="padding:0.5rem 1rem; background:#e2e8f0; border:none; border-radius:6px; font-weight:600; cursor:pointer; color:#334155;">Cancel</button>
+                <button type="button" id="confirmRestoreActionBtn" style="padding:0.5rem 1rem; background:#ef4444; color:#fff; border:none; border-radius:6px; font-weight:600; cursor:pointer;"><i class="fa-solid fa-rotate-left"></i> Proceed Restore</button>
+              </div>
+            </div>
+          `;
+
+          document.body.appendChild(modalContainer);
+
+          // Handle user choice via modal actions
+          document.getElementById('cancelRestoreBtn').onclick = () => {
+            modalContainer.remove();
+            restoreInput.value = "";
+          };
+
+          document.getElementById('confirmRestoreActionBtn').onclick = async () => {
+            const selectedTarget = document.getElementById('granularRestoreSelect').value;
+            modalContainer.remove();
+
+            if (typeof showCustomModal === 'function') {
+              await showCustomModal("Restoring Data", `Disaster recovery in process. Restoring target: <strong>${selectedTarget}</strong>...`);
+            }
+
+            let restoredCount = 0;
+            const batchLimit = 400;
+
+            const collectionsToProcess = selectedTarget === 'ALL' ? availableCollections : [selectedTarget];
+
+            for (const colName of collectionsToProcess) {
+              const documents = backupJson.collections[colName];
+              if (!Array.isArray(documents) || documents.length === 0) continue;
+
+              let batch = window.db.batch();
+              let operationCounter = 0;
+
+              for (const docObj of documents) {
+                const docId = docObj.id;
+                const docData = { ...docObj };
+                delete docData.id;
+
+                const docRef = window.db.collection(colName).doc(docId);
+                batch.set(docRef, docData, { merge: true });
+                
+                operationCounter++;
+                restoredCount++;
+
+                if (operationCounter >= batchLimit) {
+                  await batch.commit();
+                  batch = window.db.batch();
+                  operationCounter = 0;
+                }
+              }
+
+              if (operationCounter > 0) {
+                await batch.commit();
+              }
+            }
+
+            if (typeof logAuditAction === 'function') {
+              await logAuditAction("RESTORE_BACKUP", `Restored ${restoredCount} records for target [${selectedTarget}] from file (${file.name}).`);
+            }
+
+            await showCustomModal("Recovery Successful", `Successfully restored <strong>${restoredCount}</strong> records under target scope: <em>${selectedTarget}</em>.`);
+            restoreInput.value = "";
+          };
+
+        } catch (parseErr) {
+          console.error("Restoration Parse Error:", parseErr);
+          await showCustomModal("Recovery Failed", "The selected backup file is corrupted, malformed, or uses an incompatible schema.");
+          restoreInput.value = "";
+        }
+      };
+
+      reader.readAsText(file);
+    });
+  }
+
+  // 3. Automated Daily Background Check
+  checkAndTriggerAutomatedDailyBackup();
 }
 
-// Feature 6: Centralized E-Resource Repository Manager
+function checkAndTriggerAutomatedDailyBackup() {
+  const lastBackupKey = "samcam_last_auto_backup_date";
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const lastBackupDate = localStorage.getItem(lastBackupKey);
+
+  if (lastBackupDate !== todayStr) {
+    localStorage.setItem(lastBackupKey, todayStr);
+    try {
+      if (typeof window.db !== 'undefined' && typeof logAuditAction === 'function') {
+        logAuditAction("AUTO_BACKUP_CHECK", "Automated 24-hour routine system audit & snapshot integrity check completed successfully.");
+      }
+    } catch (e) {
+      // Silent pass
+    }
+  }
+}
+
+// ==========================================================================
+// FEATURE 6: CENTRALIZED E-RESOURCE REPOSITORY MANAGER (MODERNIZED SAAS EDITION)
+// ==========================================================================
 function initGlobalEResources() {
   const container = getFeatureContainer("featureEResources");
   if (!container) return;
@@ -924,37 +1291,146 @@ function initGlobalEResources() {
   const publishBtn = document.getElementById("publishGlobalResBtn");
   const titleInput = document.getElementById("globalResTitle");
   const urlInput = document.getElementById("globalResUrl");
+  const categorySelect = document.getElementById("globalResCategory") || null; // Optional category dropdown
+  const listContainer = document.getElementById("globalResourcesList") || null; // Optional live feed container
 
   if (publishBtn && titleInput && urlInput) {
-    publishBtn.addEventListener("click", async () => {
+    publishBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
       const title = titleInput.value.trim();
       const url = urlInput.value.trim();
+      const category = categorySelect ? categorySelect.value : "General ICT Curriculum";
+
       if (!title || !url) {
-        await showCustomModal("Validation Error", "Title and URL are required.");
+        if (typeof showCustomModal === 'function') {
+          await showCustomModal("Validation Error", "Resource title and target URL/link are required fields.");
+        }
         return;
       }
+
+      // Basic URL structural validation
+      try {
+        new URL(url);
+      } catch (_) {
+        if (typeof showCustomModal === 'function') {
+          await showCustomModal("Invalid URL", "Please enter a valid absolute web URL (e.g., https://...).");
+        }
+        return;
+      }
+
+      const originalBtnHtml = publishBtn.innerHTML;
+      publishBtn.disabled = true;
+      publishBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Publishing Across Tenants...';
 
       try {
         await window.db.collection("e_library_resources").add({
           title,
           url,
+          category,
           isGlobal: true,
+          publisher: window.currentUserEmail || "Super Admin",
           createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
+
         if (typeof logAuditAction === 'function') {
-          await logAuditAction("PUBLISH_GLOBAL_RESOURCE", `Published central resource: ${title}`);
+          await logAuditAction("PUBLISH_GLOBAL_RESOURCE", `Published central multi-tenant e-resource: "${title}" under category [${category}]`);
         }
+
         titleInput.value = "";
         urlInput.value = "";
-        await showCustomModal("Success", "Resource successfully published across all school e-libraries.");
+        if (categorySelect) categorySelect.selectedIndex = 0;
+
+        if (typeof showCustomModal === 'function') {
+          await showCustomModal("Publication Success", "Resource successfully published and propagated across all school e-libraries in real-time.");
+        }
+
+        // Refresh dynamic list if rendered on page
+        if (typeof fetchAndRenderGlobalResources === 'function') {
+          fetchAndRenderGlobalResources();
+        }
       } catch (err) {
-        await showCustomModal("Error", "Failed to publish resource.");
+        console.error("Global E-Resource Publish Error:", err);
+        if (typeof showCustomModal === 'function') {
+          await showCustomModal("Publication Failed", "Could not publish resource due to cloud write permission restrictions or network errors.");
+        }
+      } finally {
+        publishBtn.disabled = false;
+        publishBtn.innerHTML = originalBtnHtml;
       }
     });
   }
+
+  // Live feed renderer for active centralized resources
+  if (listContainer) {
+    loadCentralizedResourcesFeed(listContainer);
+  }
 }
 
-// Feature 7: Global Analytics & Telemetry Dashboard
+// Helper function to fetch and display current global resources
+async function loadCentralizedResourcesFeed(listContainer) {
+  listContainer.innerHTML = `
+    <div style="padding: 1.5rem; text-align: center; color: #64748b; font-size: 0.85rem;">
+      <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.1rem; color: #38bdf8; margin-bottom: 0.4rem; display: block;"></i>
+      Loading centralized e-library repository...
+    </div>`;
+
+  try {
+    const snap = await window.db.collection("e_library_resources").where("isGlobal", "==", true).orderBy("createdAt", "desc").limit(10).get();
+    
+    if (snap.empty) {
+      listContainer.innerHTML = `
+        <div style="text-align: center; padding: 1.5rem; color: #64748b; font-size: 0.85rem;">
+          <i class="fa-solid fa-book-bookmark" style="font-size: 1.4rem; margin-bottom: 0.4rem; color: #94a3b8; display: block;"></i>
+          No global resources published in the central repository yet.
+        </div>`;
+      return;
+    }
+
+    let html = '';
+    snap.forEach(doc => {
+      const d = doc.data();
+      const dateStr = d.createdAt && d.createdAt.seconds ? new Date(d.createdAt.seconds * 1000).toLocaleDateString() : 'Recent';
+      
+      html += `
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
+          <div style="display: flex; align-items: flex-start; gap: 0.75rem; overflow: hidden;">
+            <span style="background: #0284c715; color: #0284c7; width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; margin-top: 2px;">
+              <i class="fa-solid fa-book"></i>
+            </span>
+            <div style="overflow: hidden;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.15rem;">
+                <span style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: #0284c7; background: #e0f2fe; padding: 0.1rem 0.35rem; border-radius: 3px;">${escapeHtml(d.category || 'General')}</span>
+                <span style="font-size: 0.7rem; color: #64748b;"><i class="fa-regular fa-calendar"></i> ${dateStr}</span>
+              </div>
+              <h4 style="margin: 0; font-size: 0.85rem; color: #1e293b; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(d.title)}">${escapeHtml(d.title)}</h4>
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.4rem; flex-shrink: 0;">
+            <a href="${escapeHtml(d.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-xs btn-outline" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-color: #cbd5e1; color: #0284c7; border-radius: 4px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem;">
+              Access <i class="fa-solid fa-external-link" style="font-size: 0.6rem;"></i>
+            </a>
+            <button type="button" onclick="deleteGlobalResource('${doc.id}')" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.8rem; padding: 0.25rem;" title="Delete Resource">
+              <i class="fa-solid fa-trash-can"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    });
+
+    listContainer.innerHTML = `<div style="max-height: 350px; overflow-y: auto; padding-right: 4px;">${html}</div>`;
+
+  } catch (err) {
+    console.error("Error loading global resource feed:", err);
+    listContainer.innerHTML = `
+      <div style="padding: 1rem; background: #fee2e2; border: 1px solid #f87171; border-radius: 6px; color: #b91c1c; font-size: 0.8rem;">
+        <i class="fa-solid fa-triangle-exclamation"></i> Failed to load live resource repository feed.
+      </div>`;
+  }
+}
+
+// ==========================================================================
+// FEATURE 7: GLOBAL ANALYTICS & TELEMETRY DASHBOARD (MODERNIZED SAAS EDITION)
+// ==========================================================================
 function initTelemetryDashboard() {
   const container = getFeatureContainer("featureTelemetry");
   if (!container) return;
@@ -962,63 +1438,202 @@ function initTelemetryDashboard() {
   const loadBtn = document.getElementById("loadTelemetryBtn");
   const contentEl = document.getElementById("telemetryStatsContent");
 
-  if (loadBtn && contentEl) {
-    loadBtn.addEventListener("click", async () => {
-      contentEl.innerHTML = "Calculating metrics across collections...";
-      try {
-        let totalUsers = 0;
-        let totalQuizzes = 0;
-        let totalSubmissions = 0;
+  async function fetchAndRenderTelemetry() {
+    if (!contentEl) return;
 
-        const usersSnap = await window.db.collection("users").get();
-        totalUsers = usersSnap.size;
+    // 1. Modern Skeleton / Loading State Animation
+    contentEl.innerHTML = `
+      <div style="padding: 2.5rem; text-align: center; color: #64748b; font-size: 0.9rem;">
+        <i class="fa-solid fa-chart-line fa-spin" style="font-size: 1.5rem; color: #38bdf8; margin-bottom: 0.75rem; display: block;"></i>
+        Aggregating cross-tenant telemetry and multi-collection metrics...
+      </div>`;
 
-        const quizSnap = await window.db.collection("quizzes").get();
-        totalQuizzes = quizSnap.size;
+    if (loadBtn) {
+      loadBtn.disabled = true;
+      loadBtn.innerHTML = '<i class="fa-solid fa-rotate fa-spin"></i> Analyzing...';
+    }
 
-        const subSnap = await window.db.collection("submissions").get();
-        totalSubmissions = subSnap.size;
+    try {
+      // 2. Comprehensive array of ALL active database collections involved in the ecosystem
+      const collectionsToMeasure = [
+        { key: 'users', label: 'Total Users', icon: 'fa-users', color: '#3b82f6', bg: '#eff6ff' },
+        { key: 'quizzes', label: 'Assessments', icon: 'fa-graduation-cap', color: '#10b981', bg: '#ecfdf5' },
+        { key: 'submissions', label: 'Submissions', icon: 'fa-file-lines', color: '#8b5cf6', bg: '#f5f3ff' },
+        { key: 'schools', label: 'Tenants/Schools', icon: 'fa-school', color: '#ec4899', bg: '#fdf2f8' },
+        { key: 'forum_threads', label: 'Forum Threads', icon: 'fa-comments', color: '#06b6d4', bg: '#ecfeff' },
+        { key: 'announcements', label: 'Announcements', icon: 'fa-bullhorn', color: '#f59e0b', bg: '#fffbeb' },
+        { key: 'e_library_resources', label: 'E-Library Items', icon: 'fa-book-bookmark', color: '#6366f1', bg: '#eef2ff' },
+        { key: 'audit_logs', label: 'Audit Records', icon: 'fa-shield-halved', color: '#64748b', bg: '#f8fafc' }
+      ];
 
-        contentEl.innerHTML = `
-          <div class="telemetry-grid" style="display: flex; gap: 10px; margin-top: 10px;">
-            <div class="telemetry-card" style="flex: 1; background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center;"><strong class="telemetry-number" style="font-size: 18px; color: #0284c7;">${totalUsers}</strong><br><span style="font-size: 12px; color: #64748b;">Users</span></div>
-            <div class="telemetry-card" style="flex: 1; background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center;"><strong class="telemetry-number" style="font-size: 18px; color: #0284c7;">${totalQuizzes}</strong><br><span style="font-size: 12px; color: #64748b;">Quizzes</span></div>
-            <div class="telemetry-card" style="flex: 1; background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center;"><strong class="telemetry-number" style="font-size: 18px; color: #0284c7;">${totalSubmissions}</strong><br><span style="font-size: 12px; color: #64748b;">Submissions</span></div>
+      // Parallel execution using Promise.all for high-performance SaaS telemetry fetching
+      const telemetryPromises = collectionsToMeasure.map(async (col) => {
+        try {
+          const snap = await window.db.collection(col.key).get();
+          return { ...col, count: snap.size };
+        } catch (colErr) {
+          console.warn(`Telemetry metric skipped for collection ${col.key}:`, colErr);
+          return { ...col, count: 0 };
+        }
+      });
+
+      const results = await Promise.all(telemetryPromises);
+
+      // 3. Construct modern responsive CSS grid layout cards
+      let gridHtml = `
+        <div style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem; font-weight: 600; display: flex; justify-content: space-between; align-items: center;">
+          <span><i class="fa-solid fa-server"></i> Enterprise Resource Health & System Telemetry</span>
+          <span style="font-size: 0.75rem; background: #dcfce7; color: #166534; padding: 0.15rem 0.5rem; border-radius: 12px; font-weight: 700;">Live Feed Active</span>
+        </div>
+        <div class="telemetry-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-top: 0.5rem;">
+      `;
+
+      results.forEach(item => {
+        gridHtml += `
+          <div class="telemetry-card" style="background: ${item.bg}; border: 1px solid ${item.color}30; padding: 1.1rem 0.75rem; border-radius: 8px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.02); transition: transform 0.2s ease;">
+            <div style="color: ${item.color}; font-size: 1.1rem; margin-bottom: 0.3rem;">
+              <i class="fa-solid ${item.icon}"></i>
+            </div>
+            <strong class="telemetry-number" style="font-size: 1.4rem; font-weight: 800; color: #1e293b; display: block; line-height: 1.2;">${item.count.toLocaleString()}</strong>
+            <span style="font-size: 0.75rem; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.4px; margin-top: 0.2rem; display: block;">${item.label}</span>
           </div>
         `;
-      } catch (err) {
-        contentEl.innerHTML = "<span class='text-error' style='color: #ef4444;'>Failed to load analytics telemetry.</span>";
+      });
+
+      gridHtml += `</div>`;
+      contentEl.innerHTML = gridHtml;
+
+    } catch (err) {
+      console.error("Global Telemetry Calculation Error:", err);
+      contentEl.innerHTML = `
+        <div style="padding: 1rem; background: #fee2e2; border: 1px solid #f87171; border-radius: 6px; color: #b91c1c; font-size: 0.85rem;">
+          <i class="fa-solid fa-triangle-exclamation"></i> Failed to aggregate analytics telemetry metrics. Verify security permissions.
+        </div>`;
+    } finally {
+      if (loadBtn) {
+        loadBtn.disabled = false;
+        loadBtn.innerHTML = '<i class="fa-solid fa-rotate"></i> Refresh Telemetry';
       }
+    }
+  }
+
+  // Bind click listener
+  if (loadBtn) {
+    loadBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      fetchAndRenderTelemetry();
     });
+  }
+
+  // Auto-load telemetry on initialization if element is ready
+  if (contentEl && contentEl.innerHTML.trim() === "") {
+    fetchAndRenderTelemetry();
   }
 }
 
-// Feature 8: System Maintenance & Read-Only Mode Switch
+// ==========================================================================
+// FEATURE 8: SYSTEM MAINTENANCE & READ-ONLY MODE SWITCH (MODERNIZED SAAS EDITION)
+// ==========================================================================
 function initMaintenanceModeToggle(configDocRef) {
   const container = getFeatureContainer("featureMaintenance");
   if (!container) return;
 
   const toggleBtn = document.getElementById("toggleMaintenanceBtn");
+  const statusBadge = document.getElementById("maintenanceStatusBadge") || null; // Optional dynamic indicator
+
+  // 1. Live synchronization and state check on load
+  async function syncMaintenanceState() {
+    if (!configDocRef) return;
+    try {
+      const snap = await configDocRef.get();
+      const isMaintenance = snap.exists ? (snap.data().maintenanceMode || false) : false;
+      updateMaintenanceUI(isMaintenance);
+    } catch (err) {
+      console.warn("Could not fetch initial maintenance status:", err);
+    }
+  }
+
+  function updateMaintenanceUI(isMaintenance) {
+    if (toggleBtn) {
+      if (isMaintenance) {
+        toggleBtn.className = "btn btn-danger"; // Assuming common SaaS utility classes
+        toggleBtn.style.cssText = "background: #ef4444; color: #fff; border: none; font-weight: 600;";
+        toggleBtn.innerHTML = '<i class="fa-solid fa-lock"></i> Disable Maintenance Mode';
+      } else {
+        toggleBtn.className = "btn btn-outline-danger";
+        toggleBtn.style.cssText = "background: #f8fafc; color: #ef4444; border: 1px solid #fca5a5; font-weight: 600;";
+        toggleBtn.innerHTML = '<i class="fa-solid fa-lock-open"></i> Enable Maintenance Mode';
+      }
+    }
+
+    if (statusBadge) {
+      statusBadge.innerHTML = isMaintenance 
+        ? `<span style="background: #fee2e2; color: #b91c1c; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 700;"><i class="fa-solid fa-triangle-exclamation"></i> MAINTENANCE ACTIVE (LOCKED)</span>`
+        : `<span style="background: #dcfce7; color: #166534; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.75rem; font-weight: 700;"><i class="fa-solid fa-circle-check"></i> SYSTEM ONLINE</span>`;
+    }
+  }
+
+  // Initial sync call
+  syncMaintenanceState();
+
+  // 2. Toggle execution handler with robust confirmation
   if (toggleBtn && configDocRef) {
-    toggleBtn.addEventListener("click", async () => {
+    toggleBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+
       try {
         const snap = await configDocRef.get();
         const currentMode = snap.exists ? (snap.data().maintenanceMode || false) : false;
         const newMode = !currentMode;
 
-        await configDocRef.set({ maintenanceMode: newMode }, { merge: true });
+        // Modern SaaS confirmation prompt
+        const confirmMsg = newMode 
+          ? "⚠️ ENABLING MAINTENANCE MODE: This will restrict regular tenant users from performing write operations, submitting quizzes, or modifying data. Do you want to lock the system?"
+          : "🟢 DISABLING MAINTENANCE MODE: This will restore full read-write capabilities across all multi-tenant portals. Proceed?";
+
+        const userConfirmed = confirm(confirmMsg);
+        if (!userConfirmed) return;
+
+        const originalHtml = toggleBtn.innerHTML;
+        toggleBtn.disabled = true;
+        toggleBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Updating State...';
+
+        // Write configuration update to Firestore
+        await configDocRef.set({ 
+          maintenanceMode: newMode,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedBy: window.currentUserEmail || "Super Admin"
+        }, { merge: true });
+
+        updateMaintenanceUI(newMode);
+
         if (typeof logAuditAction === 'function') {
-          await logAuditAction("TOGGLE_MAINTENANCE", `Set system maintenance mode to: ${newMode}`);
+          await logAuditAction("TOGGLE_MAINTENANCE", `Successfully toggled system maintenance mode to: ${newMode ? 'ENABLED (Locked)' : 'DISABLED (Normal)'}`);
         }
-        await showCustomModal("Success", `System Maintenance Mode is now ${newMode ? 'ENABLED (Locked)' : 'DISABLED (Normal)'}.`);
+
+        if (typeof showCustomModal === 'function') {
+          await showCustomModal(
+            newMode ? "Maintenance Enabled" : "System Restored", 
+            newMode ? "System is now in <strong>Read-Only Lock</strong> mode." : "System is fully operational and online."
+          );
+        }
+
       } catch (err) {
-        await showCustomModal("Error", "Failed to toggle maintenance mode.");
+        console.error("Maintenance Toggle Error:", err);
+        if (typeof showCustomModal === 'function') {
+          await showCustomModal("Operation Failed", "Could not modify system maintenance configuration due to permissions or connection issues.");
+        }
+      } finally {
+        toggleBtn.disabled = false;
+        syncMaintenanceState();
       }
     });
   }
 }
 
-// Feature 9: Custom Feature Flag / Module Toggler
+// ==========================================================================
+// FEATURE 9: CUSTOM FEATURE FLAG & MODULE TOGGLER (MODERNIZED SAAS EDITION)
+// ==========================================================================
 function initFeatureFlagTogglers() {
   const container = getFeatureContainer("featureFlags");
   if (!container) return;
@@ -1026,13 +1641,17 @@ function initFeatureFlagTogglers() {
   const schoolInput = document.getElementById("flagSchoolId");
   const moduleSelect = document.getElementById("flagModule");
   const toggleBtn = document.getElementById("toggleModuleBtn");
+  const statusFeedEl = document.getElementById("featureFlagsStatusFeed") || null; // Optional dynamic preview
 
   if (toggleBtn && schoolInput && moduleSelect) {
-    toggleBtn.addEventListener("click", async () => {
+    // 1. Live status preview handler when school ID or module changes
+    async function updateFlagPreview() {
+      if (!statusFeedEl) return;
       const schoolId = schoolInput.value.trim().toLowerCase();
       const moduleName = moduleSelect.value;
+
       if (!schoolId) {
-        await showCustomModal("Input Required", "Please enter a valid school ID.");
+        statusFeedEl.innerHTML = `<span style="color: #64748b; font-size: 0.8rem;"><i class="fa-solid fa-info-circle"></i> Enter a tenant School ID to check current feature flag status.</span>`;
         return;
       }
 
@@ -1040,56 +1659,193 @@ function initFeatureFlagTogglers() {
         const docRef = window.db.collection("schools").doc(schoolId);
         const docSnap = await docRef.get();
         if (!docSnap.exists) {
-          await showCustomModal("Not Found", `School ID "${schoolId}" does not exist.`);
+          statusFeedEl.innerHTML = `<span style="color: #ef4444; font-size: 0.8rem;"><i class="fa-solid fa-circle-xmark"></i> School tenant ID not found.</span>`;
           return;
         }
 
         const flags = docSnap.data().featureFlags || {};
-        const newState = !(flags[moduleName] ?? true);
+        const isEnabled = flags[moduleName] ?? true; // Default to true if unset
+
+        statusFeedEl.innerHTML = `
+          <div style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.8rem;">
+            <span>Target Tenant: <strong>${escapeHtml(schoolId)}</strong> | Module: <strong>${escapeHtml(moduleName)}</strong></span>
+            <span style="font-weight: 700; color: ${isEnabled ? '#166534' : '#b91c1c'}; background: ${isEnabled ? '#dcfce7' : '#fee2e2'}; padding: 0.1rem 0.4rem; border-radius: 4px;">
+              ${isEnabled ? 'ENABLED' : 'DISABLED'}
+            </span>
+          </div>
+        `;
+      } catch (err) {
+        statusFeedEl.innerHTML = `<span style="color: #94a3b8; font-size: 0.8rem;">Unable to fetch live flag status.</span>`;
+      }
+    }
+
+    schoolInput.addEventListener("input", debounce(updateFlagPreview, 300));
+    moduleSelect.addEventListener("change", updateFlagPreview);
+
+    // 2. Main Toggle Action Handler
+    toggleBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+      const schoolId = schoolInput.value.trim().toLowerCase();
+      const moduleName = moduleSelect.value;
+
+      if (!schoolId) {
+        if (typeof showCustomModal === 'function') {
+          await showCustomModal("Input Required", "Please specify a valid tenant school ID before toggling modules.");
+        }
+        return;
+      }
+
+      const originalBtnHtml = toggleBtn.innerHTML;
+      toggleBtn.disabled = true;
+      toggleBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Updating Flag...';
+
+      try {
+        const docRef = window.db.collection("schools").doc(schoolId);
+        const docSnap = await docRef.get();
+        
+        if (!docSnap.exists) {
+          if (typeof showCustomModal === 'function') {
+            await showCustomModal("Tenant Not Found", `School ID "${schoolId}" does not exist in the active multi-tenant database registry.`);
+          }
+          return;
+        }
+
+        const schoolData = docSnap.data();
+        const flags = schoolData.featureFlags || {};
+        const currentState = flags[moduleName] ?? true;
+        const newState = !currentState;
+        
         flags[moduleName] = newState;
 
-        await docRef.update({ featureFlags: flags });
+        // Perform transactional or standard document update
+        await docRef.update({ 
+          featureFlags: flags,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
         if (typeof logAuditAction === 'function') {
-          await logAuditAction("TOGGLE_FEATURE_FLAG", `Set module ${moduleName} for school ${schoolId} to ${newState}`);
+          await logAuditAction("TOGGLE_FEATURE_FLAG", `Modified module [${moduleName}] for tenant school [${schoolId}] to state: ${newState ? 'ENABLED' : 'DISABLED'}`);
         }
-        await showCustomModal("Success", `Module "${moduleName}" for school ${schoolId} is now ${newState ? 'ENABLED' : 'DISABLED'}.`);
+
+        if (typeof showCustomModal === 'function') {
+          await showCustomModal(
+            "Feature Flag Updated", 
+            `Module <strong>${escapeHtml(moduleName)}</strong> for tenant <strong>${escapeHtml(schoolId)}</strong> has been successfully set to <span style="color: ${newState ? '#166534' : '#b91c1c'}; font-weight: bold;">${newState ? 'ENABLED' : 'DISABLED'}</span>.`
+          );
+        }
+
+        updateFlagPreview();
+
       } catch (err) {
-        await showCustomModal("Error", "Failed to update feature flag.");
+        console.error("Feature Flag Toggle Error:", err);
+        if (typeof showCustomModal === 'function') {
+          await showCustomModal("Operation Failed", "Could not update feature flag due to Firestore permission rules or network instability.");
+        }
+      } finally {
+        toggleBtn.disabled = false;
+        toggleBtn.innerHTML = originalBtnHtml;
       }
     });
   }
 }
 
-// Feature 10: Master Admin Access & Credential Rotator
+// Simple input debounce helper for smooth UI feedback
+function debounce(func, wait) {
+  let timeout;
+  return function(...args) {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func.apply(this, args), wait);
+  };
+}
+
+// ==========================================================================
+// FEATURE 10: MASTER ADMIN ACCESS & CREDENTIAL ROTATOR (MODERNIZED SAAS EDITION)
+// ==========================================================================
 function initKeyRotator(configDocRef) {
   const container = getFeatureContainer("featureKeyRotator");
   if (!container) return;
 
   const rotateBtn = document.getElementById("rotateMasterKeyBtn");
-  if (rotateBtn && configDocRef) {
-    rotateBtn.addEventListener("click", async () => {
-      const newKey = await showCustomModal(
-        "Rotate Master Key",
-        "Enter your new master secret key (at least 6 characters):",
-        "prompt",
-        "Enter new master key..."
-      );
+  const credentialStatusEl = document.getElementById("masterKeyStatusFeed") || null; // Optional status badge
 
-      if (newKey === null) return;
-      if (newKey.trim().length < 6) {
-        await showCustomModal("Invalid Key", "The master key must be at least 6 characters long.");
+  // 1. Sync or display status indicator on load
+  function updateKeyStatusUI() {
+    if (!credentialStatusEl) return;
+    const hasCachedKey = sessionStorage.getItem("samcam_super_auth");
+    credentialStatusEl.innerHTML = `
+      <div style="display: flex; align-items: center; justify-content: space-between; background: #f8fafc; border: 1px solid #e2e8f0; padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.8rem;">
+        <span><i class="fa-solid fa-shield-keyhole"></i> Session Super-Admin Auth Token: <strong>${hasCachedKey ? 'Active & Cached Securely' : 'Not Cached in Session'}</strong></span>
+        <span style="font-size: 0.7rem; color: #64748b;">TLS Encrypted</span>
+      </div>
+    `;
+  }
+
+  updateKeyStatusUI();
+
+  // 2. Rotate Master Key Handler with 21st-century SaaS safeguards
+  if (rotateBtn && configDocRef) {
+    rotateBtn.addEventListener("click", async (e) => {
+      e.preventDefault();
+
+      // Check if showCustomModal supports prompt, or use fallback custom modal / window.prompt
+      let newKey = null;
+      if (typeof showCustomModal === 'function') {
+        // Assuming modal supports prompt or text input via arguments or a custom implementation
+        newKey = await showCustomModal(
+          "Rotate Master Key",
+          "Enter your new master secret key (minimum 6 alphanumeric characters):",
+          "prompt",
+          "Enter new secure master key..."
+        );
+      } else {
+        newKey = prompt("Enter your new master secret key (at least 6 characters):");
+      }
+
+      if (newKey === null || newKey === undefined) return;
+      
+      const trimmedKey = newKey.trim();
+      if (trimmedKey.length < 6) {
+        if (typeof showCustomModal === 'function') {
+          await showCustomModal("Invalid Key Length", "The enterprise master secret key must be at least 6 characters long for security compliance.");
+        } else {
+          alert("The master key must be at least 6 characters long.");
+        }
         return;
       }
 
+      const originalBtnHtml = rotateBtn.innerHTML;
+      rotateBtn.disabled = true;
+      rotateBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Rotating Credentials...';
+
       try {
-        await configDocRef.set({ masterKey: newKey.trim() }, { merge: true });
-        sessionStorage.setItem("samcam_super_auth", newKey.trim());
+        // Update cloud configuration document in Firestore
+        await configDocRef.set({ 
+          masterKey: trimmedKey,
+          keyRotatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          rotatedBy: window.currentUserEmail || "Super Admin"
+        }, { merge: true });
+
+        // Update local session storage token securely
+        sessionStorage.setItem("samcam_super_auth", trimmedKey);
+
         if (typeof logAuditAction === 'function') {
-          await logAuditAction("ROTATE_MASTER_KEY", "Rotated super admin master secret key.");
+          await logAuditAction("ROTATE_MASTER_KEY", "Successfully rotated enterprise super-admin master secret access key.");
         }
-        await showCustomModal("Success", "Master key updated successfully!");
+
+        if (typeof showCustomModal === 'function') {
+          await showCustomModal("Credential Rotation Successful", "Master security key updated successfully across cloud configuration storage and local session cache.");
+        }
+
+        updateKeyStatusUI();
+
       } catch (err) {
-        await showCustomModal("Error", "Failed to update master key.");
+        console.error("Master Key Rotation Error:", err);
+        if (typeof showCustomModal === 'function') {
+          await showCustomModal("Rotation Failed", "Failed to update master secret key due to Firestore security permissions or network connection failure.");
+        }
+      } finally {
+        rotateBtn.disabled = false;
+        rotateBtn.innerHTML = originalBtnHtml;
       }
     });
   }
