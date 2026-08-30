@@ -360,13 +360,14 @@ async function loadMigrationCollectionsCheckboxes() {
         .replace(/(^\w|\s\w)/g, (match) => match.toUpperCase());
     };
 
+    // Render Select All / Deselect All controls header
     const controlsHtml = `
       <div style="display: flex; gap: 10px; margin-bottom: 10px; font-size: 12px;">
         <button type="button" id="selectAllCols" style="background: none; border: none; color: #2563eb; cursor: pointer; padding: 0;">Select All</button>
         <span>|</span>
         <button type="button" id="deselectAllCols" style="background: none; border: none; color: #2563eb; cursor: pointer; padding: 0;">Deselect All</button>
       </div>
-      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-height: 180px; overflow-y: auto; padding: 4px;">
+      <div style="display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; padding: 4px;">
     `;
     
     let checkboxesHtml = controlsHtml;
@@ -377,9 +378,9 @@ async function loadMigrationCollectionsCheckboxes() {
         validCount++;
         const displayName = formatCollectionName(col);
         checkboxesHtml += `
-          <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; cursor: pointer; background: transparent; padding: 6px 4px; border-radius: 4px; width: 100%; box-sizing: border-box;">
+          <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; background: transparent; padding: 4px; border-radius: 4px; width: fit-content;">
             <input type="checkbox" class="migration-col-checkbox" value="${col}" checked style="cursor: pointer; margin: 0; flex-shrink: 0;">
-            <span style="font-family: inherit; color: #0f172a; font-weight: 500; font-size: 13px;">${displayName}</span>
+            <span style="font-family: inherit; color: #0f172a; font-weight: 500; font-size: 13px; white-space: nowrap;">${displayName}</span>
           </label>
         `;
       }
