@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Platform Super Admin | Multi-Tenant Manager</title>
   <link rel="stylesheet" href="super-admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
   <div class="admin-wrapper">
@@ -54,7 +55,7 @@
           </form>
         </div>
 
-        <!-- System Branding Configuration Panel (Added) -->
+        <!-- System Branding Configuration Panel -->
         <div class="panel-card">
           <h2>System Branding Configuration</h2>
           <p class="panel-desc">Manage platform-wide identity, names, slogans, and logo assets.</p>
@@ -105,6 +106,7 @@
 
       </div>
 
+      <!-- Active Platform Tenants Table Section -->
       <section class="schools-table-section">
         <h2>Active Platform Tenants</h2>
         <div class="table-container">
@@ -125,33 +127,161 @@
         </div>
       </section>
 
+      <!-- 10 Feature Cards Grid Container -->
+      <div class="feature-cards-grid">
+        <!-- Feature 1: Global Announcement Broadcaster -->
+        <div id="featureAnnouncements" class="admin-feature-card">
+          <h3 class="feature-title">📢 Global Announcement Broadcaster</h3>
+          <div id="announcementFormCard" style="background: var(--bg-main, #f8fafc); padding: 16px; border-radius: 8px; border: 1px solid var(--border, #e2e8f0); margin-bottom: 20px;">
+            <h4 id="announceFormHeading" style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">Publish New Broadcast</h4>
+            <input type="hidden" id="editingAnnouncementDocId" value="">
+            
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Announcement Title</label>
+              <input type="text" id="globalAnnounceTitle" placeholder="e.g., 📢 New Notes Available on the Portal!" class="feature-input" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;">
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 12px;">
+              <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Announcement Body / Message</label>
+              <textarea id="globalAnnounceText" placeholder="Type platform-wide broadcast message..." class="feature-textarea" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px; min-height: 80px;"></textarea>
+            </div>
+            
+            <div class="form-row" style="display: flex; gap: 10px; margin-bottom: 12px;">
+              <div class="form-group" style="flex: 1;">
+                <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Priority Level</label>
+                <select id="announcePriority" class="feature-select" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;">
+                  <option value="Urgent">Urgent</option>
+                  <option value="Normal" selected>Normal</option>
+                  <option value="Low">Low</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex: 1;">
+                <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Target Audience</label>
+                <select id="announceTarget" class="feature-select" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;">
+                  <option value="all">All Schools & Users</option>
+                  <option value="teachers">Teachers Only</option>
+                  <option value="students">Students Only</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="feature-controls-row" style="display: flex; gap: 10px;">
+              <button id="sendBroadcastBtn" class="btn-primary" style="flex: 1;"><i class="fa-solid fa-bullhorn"></i> Publish Global Broadcast</button>
+              <button id="cancelEditBroadcastBtn" class="btn-outline" style="display: none; flex: 0.4;">Cancel</button>
+            </div>
+          </div>
+
+          <div style="margin-top: 20px;">
+            <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 10px;">Active Global Broadcasts</h4>
+            <div id="activeBroadcastsList" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border, #e2e8f0); border-radius: 6px; padding: 10px; background: #fff;">
+              <p style="color: var(--text-muted, #64748b); font-size: 13px; text-align: center; padding: 15px;">Loading active broadcasts...</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature 2: Tenant Status & Subscription Manager -->
+        <div id="featureTenants" class="admin-feature-card">
+          <h3 class="feature-title">🏫 Tenant Status & Subscriptions</h3>
+          <div class="feature-controls-row">
+            <input type="text" id="manageSchoolIdInput" placeholder="Enter exact School ID..." class="feature-input-flex" />
+            <button id="toggleStatusBtn" class="btn-warning">Toggle Active/Suspended</button>
+          </div>
+        </div>
+
+        <!-- Feature 3: Cross-Tenant Global Search -->
+        <div id="featureSearch" class="admin-feature-card">
+          <h3 class="feature-title">🔍 Cross-Tenant Global Search</h3>
+          <div class="feature-controls-row">
+            <input type="text" id="globalSearchQuery" placeholder="Search users, quizzes, threads..." class="feature-input-flex" />
+            <button id="executeGlobalSearchBtn" class="btn-primary">Search</button>
+          </div>
+          <div id="globalSearchResults" class="feature-results-box"></div>
+        </div>
+
+        <!-- Feature 4: Comprehensive System Audit Logs -->
+        <div id="featureAudit" class="admin-feature-card">
+          <h3 class="feature-title">📋 Comprehensive Audit Trail</h3>
+          <button id="refreshAuditBtn" class="btn-secondary-small">Refresh Logs</button>
+          <div id="auditLogsList" class="audit-logs-container">Click Refresh to load system audit trails.</div>
+        </div>
+
+        <!-- Feature 5: Global Backup & Snapshot Generator -->
+        <div id="featureBackup" class="admin-feature-card">
+          <h3 class="feature-title">💾 Global Backup & Snapshot</h3>
+          <p class="feature-description">Export entire multi-tenant database collections into a downloadable JSON backup file.</p>
+          <button id="generateBackupBtn" class="btn-success">Download Full JSON Backup</button>
+        </div>
+
+        <!-- Feature 6: Centralized E-Resource Repository Manager -->
+        <div id="featureEResources" class="admin-feature-card">
+          <h3 class="feature-title">📚 Centralized E-Resource Publisher</h3>
+          <input type="text" id="globalResTitle" placeholder="Resource Title..." class="feature-input-block" />
+          <input type="text" id="globalResUrl" placeholder="Download Link / URL..." class="feature-input-block" />
+          <button id="publishGlobalResBtn" class="btn-primary">Publish to All Schools</button>
+        </div>
+
+        <!-- Feature 7: Global Analytics & Telemetry Dashboard -->
+        <div id="featureTelemetry" class="admin-feature-card">
+          <h3 class="feature-title">📈 Telemetry & Analytics</h3>
+          <button id="loadTelemetryBtn" class="btn-secondary-small">Fetch Live Telemetry Stats</button>
+          <div id="telemetryStatsContent" class="feature-description">Click button to aggregate system stats.</div>
+        </div>
+
+        <!-- Feature 8: System Maintenance & Read-Only Mode Switch -->
+        <div id="featureMaintenance" class="admin-feature-card">
+          <h3 class="feature-title">🛡️ System Maintenance Mode</h3>
+          <p class="feature-description">Toggle global read-only mode to lock standard user writes during updates.</p>
+          <button id="toggleMaintenanceBtn" class="btn-danger">Toggle Maintenance Lock</button>
+        </div>
+
+        <!-- Feature 9: Custom Feature Flag / Module Toggler -->
+        <div id="featureFlags" class="admin-feature-card">
+          <h3 class="feature-title">⚡ Feature Flags & Modules</h3>
+          <div class="feature-controls-row">
+            <input type="text" id="flagSchoolId" placeholder="School ID..." class="feature-input-flex" />
+            <select id="flagModule" class="feature-select">
+              <option value="live_classes">Live Classes Portal</option>
+              <option value="ai_formulas">AI Formula Submissions</option>
+              <option value="discussions">Forum Discussions</option>
+            </select>
+          </div>
+          <button id="toggleModuleBtn" class="btn-primary">Toggle Module Access</button>
+        </div>
+
+        <!-- Feature 10: Master Admin Access & Credential Rotator -->
+        <div id="featureKeyRotator" class="admin-feature-card">
+          <h3 class="feature-title">🔑 Master Key Rotator</h3>
+          <button id="rotateMasterKeyBtn" class="btn-purple">Change Master Admin Key</button>
+        </div>
+      </div>
+
     </main>
   </div>
 
-<!-- Custom Modal Markup (Managed via .modal-active class in CSS/JS) -->
-<div id="customModal" class="modal-overlay">
-  <div class="modal-card">
-    <h3 id="modalTitle">Notice</h3>
-    <p id="modalMessage">Message content goes here...</p>
-    <div id="modalInputContainer" class="modal-hidden" style="margin-bottom: 16px;">
-      <input type="text" id="modalInput" class="form-control" placeholder="Enter value..." />
-    </div>
-    <div class="modal-actions">
-      <button id="modalCancelBtn" class="btn-outline modal-hidden">Cancel</button>
-      <button id="modalConfirmBtn" class="btn-primary">OK</button>
+  <!-- Custom Modal Markup -->
+  <div id="customModal" class="modal-overlay">
+    <div class="modal-card">
+      <h3 id="modalTitle">Notice</h3>
+      <p id="modalMessage">Message content goes here...</p>
+      <div id="modalInputContainer" class="modal-hidden" style="margin-bottom: 16px;">
+        <input type="text" id="modalInput" class="form-control" placeholder="Enter value..." />
+      </div>
+      <div class="modal-actions">
+        <button id="modalCancelBtn" class="btn-outline modal-hidden">Cancel</button>
+        <button id="modalConfirmBtn" class="btn-primary">OK</button>
+      </div>
     </div>
   </div>
-</div>
 
-<!-- Load Firebase CDNs first -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+  <!-- Load Firebase CDNs first -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
 
-<!-- Your existing configuration script -->
-<script src="firebase-config.js"></script>
+  <!-- Your existing configuration script -->
+  <script src="firebase-config.js"></script>
 
-<!-- The super admin engine script -->
-<script src="super-admin.js"></script>
+  <!-- The super admin engine script -->
+  <script src="super-admin.js"></script>
 </body>
 </html>
