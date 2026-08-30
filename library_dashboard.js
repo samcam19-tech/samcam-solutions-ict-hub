@@ -230,18 +230,9 @@ function renderLibraryTable() {
   renderPaginationControls(currentFilteredResources.length);
 }
 
-// Generate Dynamic Pagination Controls with Ellipses (...)
 function renderPaginationControls(totalItems) {
-  let paginationContainer = document.getElementById("libraryPaginationContainer");
-  
-  // Create pagination container dynamically below the table if it doesn't exist yet
-  if (!paginationContainer) {
-    const tableWrapper = document.querySelector(".table-responsive") || document.getElementById("libraryTableBody").parentElement.parentElement;
-    paginationContainer = document.createElement("div");
-    paginationContainer.id = "libraryPaginationContainer";
-    paginationContainer.style.cssText = "display: flex; justify-content: space-between; align-items: center; padding: 1rem 0.5rem; font-family: Inter, sans-serif; font-size: 0.875rem; color: var(--text-muted, #475569);";
-    tableWrapper.after(paginationContainer);
-  }
+  const paginationContainer = document.getElementById("libraryPaginationContainer");
+  if (!paginationContainer) return;
 
   const totalPages = Math.ceil(totalItems / rowsPerPage);
   if (totalPages <= 1) {
