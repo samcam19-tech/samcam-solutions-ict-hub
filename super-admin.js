@@ -337,23 +337,18 @@ async function loadRegisteredSchools() {
   }
 }
 
-// Dynamically populate collection checkboxes (excluding system_config and schools)
+// Dynamically fetch and populate collection checkboxes from the Firestore database via Cloud Function
 async function loadMigrationCollectionsCheckboxes() {
   const container = document.getElementById("migrationCollectionsContainer");
   if (!container) return;
 
-  container.innerHTML = `<p style="font-size: 13px; color: #64748b;">Loading available collections...</p>`;
-
-  // Fallback default list if listCollections API isn't supported in client SDK rules
-  const fallbackCollections = [
-    'announcements', 'audit_logs', 'blog_posts', 'challenges',
-    'e_library_resources', 'formulaSubmissions', 'forum_threads',
-    'live_classes', 'notifications', 'pending_payments',
-    'portal_resources', 'quiz_results', 'quizzes', 'submissions', 'users'
-  ];
+  container.innerHTML = `<p style="font-size: 13px; color: #64748b;">Fetching collections dynamically from database...</p>`;
 
   try {
-    let collectionsList = fallbackCollections;
+    // Invoke the Firebase Cloud Function to read actual root collections using the Admin SDK
+    const getCollectionsFn = firebase.functions().httpsCallable('getFirestoreCollections');
+    const result = await getCollectionsFn();
+    const collectionsList = result.data.collections || [];
 
     container.innerHTML = "";
     
@@ -376,17 +371,27 @@ async function loadMigrationCollectionsCheckboxes() {
     `;
     
     let checkboxesHtml = controlsHtml;
+    let validCount = 0;
+
     collectionsList.forEach((col) => {
+      // Exclude system configs and school nodes from the migration UI
       if (!EXCLUDED_COLLECTIONS.includes(col)) {
+        validCount++;
         const displayName = formatCollectionName(col);
         checkboxesHtml += `
           <label style="display: flex; align-items: center; justify-content: flex-start; gap: 10px; font-size: 13px; cursor: pointer; background: transparent; padding: 6px 4px; border-radius: 4px; border: none; width: 100%; box-sizing: border-box;">
             <input type="checkbox" class="migration-col-checkbox" value="${col}" checked style="cursor: pointer; margin: 0; flex-shrink: 0;">
-            <span style="font-family: inherit; color: #334155; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayName}</span>
+            <span style="font-family: inherit; color: #0f172a; font-weight: 500; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: inline-block;">${displayName}</span>
           </label>
         `;
       }
     });
+
+    if (validCount === 0) {
+      container.innerHTML = `<p style="color: #64748b; font-size: 12px;">No active collections found in the database.</p>`;
+      return;
+    }
+
     checkboxesHtml += `</div>`;
     container.innerHTML = checkboxesHtml;
 
@@ -398,12 +403,15 @@ async function loadMigrationCollectionsCheckboxes() {
     });
 
     const countEl = document.getElementById("collectionsCount");
-    if (countEl) countEl.innerText = collectionsList.filter(c => !EXCLUDED_COLLECTIONS.includes(c)).length;
+    if (countEl) countEl.innerText = validCount;
 
   } catch (err) {
-    container.innerHTML = `<p style="color: #ef4444; font-size: 12px;">Failed to load collections list.</p>`;
+    console.error("Cloud function error:", err);
+    container.innerHTML = `<p style="color: #ef4444; font-size: 12px;">Failed to load collections dynamically. Ensure the Cloud Function is deployed.</p>`;
   }
 }
+
+
 function setupAdminActions() {
   const schoolForm = document.getElementById("superSchoolForm");
   if (schoolForm) {
