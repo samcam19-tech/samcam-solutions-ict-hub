@@ -120,10 +120,13 @@ function fetchResourcesFromFirestore() {
     }
   }
 
-  // 2. Build strict query scoped to schoolId if specified
+  // 2. Build query to pull both school-specific resources AND global resources
   let queryRef = db.collection('e_library_resources');
+  
+  // If a specific tenant school is logged in, use Firestore's 'in' query 
+  // to fetch resources tagged for this school OR marked global/'all'.
   if (currentSchoolId && currentSchoolId !== 'global' && currentSchoolId !== 'all') {
-    queryRef = queryRef.where('schoolId', '==', currentSchoolId);
+    queryRef = queryRef.where('schoolId', 'in', [currentSchoolId, 'global', 'all']);
   }
 
   queryRef.onSnapshot((snapshot) => {
@@ -137,7 +140,7 @@ function fetchResourcesFromFirestore() {
         class: data.classLevel || 'S1',        
         category: data.category || 'Notes',
         accessType: data.accessType || 'free',  
-        price: Number(data.price) || 0,          
+        price: Number(data.price) || 0,         
         schoolId: (data.schoolId || 'global').toLowerCase(),    
         fileUrl: data.fileUrl || '#',
         fileName: data.fileName || '',
