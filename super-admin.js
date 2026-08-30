@@ -89,36 +89,77 @@ document.addEventListener("DOMContentLoaded", () => {
   const adminProfileEl = document.querySelector(".admin-profile");
   if (adminProfileEl) {
     adminProfileEl.classList.add("interactive-admin-profile");
-    adminProfileEl.title = "Click to log out of Super Admin session";
     
     const currentAdmin = getCurrentUserSession();
     
+    // Updated HTML template to support dropdown interaction instead of direct logout click
     adminProfileEl.innerHTML = `
-      <div style="display: flex; flex-direction: column; text-align: right; line-height: 1.2;">
-        <span style="font-weight: 600; font-size: 13px; color: #f8fafc;">${currentAdmin.fullName}</span>
-        <span style="font-size: 11px; color: #94a3b8;">@${currentAdmin.username}</span>
+      <div id="adminDropdownBtn" style="cursor: pointer; display: flex; align-items: center; gap: 10px;">
+        <div style="display: flex; flex-direction: column; text-align: right; line-height: 1.2;">
+          <span style="font-weight: 600; font-size: 13px; color: #f8fafc;">${currentAdmin.fullName}</span>
+          <span style="font-size: 11px; color: #94a3b8;">@${currentAdmin.username}</span>
+        </div>
+        <div style="width: 32px; height: 32px; border-radius: 50%; background: rgba(239, 68, 68, 0.15); display: flex; align-items: center; justify-content: center;">
+          <i class="fa-solid fa-right-from-bracket" style="font-size: 0.85rem; color: #f87171;"></i>
+        </div>
       </div>
-      <span class="logout-badge" title="Logout" style="display: flex; align-items: center; justify-content: center; margin-left: 8px;">
-        <svg class="logout-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width: 18px; height: 18px;"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-      </span>
+
+      <div id="adminDropdownMenu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 8px; background: #fff; min-width: 220px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid #e2e8f0; z-index: 99999; overflow: hidden;">
+        <div style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; background: #f8fafc;">
+          <span style="display: block; font-size: 0.75rem; color: #64748b; font-weight: 600;">Signed in as</span>
+          <span style="display: block; font-size: 0.85rem; color: #1e293b; font-weight: bold;">${currentAdmin.fullName}</span>
+        </div>
+        <a href="#lab-network" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #334155; text-decoration: none; font-size: 0.85rem;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+          <i class="fa-solid fa-network-wired" style="color: #0284c7; width: 16px;"></i> Lab Network Management
+        </a>
+        <a href="#deep-stuff" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #334155; text-decoration: none; font-size: 0.85rem;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+          <i class="fa-solid fa-brain" style="color: #0284c7; width: 16px;"></i> Deep Stuff
+        </a>
+        <div style="border-top: 1px solid #f1f5f9; padding: 4px 0;">
+          <a href="#" id="actualLogoutBtn" style="display: flex; align-items: center; gap: 10px; padding: 8px 16px; color: #ef4444; text-decoration: none; font-size: 0.85rem;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
+            <i class="fa-solid fa-right-from-bracket" style="width: 16px;"></i> Sign Out
+          </a>
+        </div>
+      </div>
     `;
 
-    adminProfileEl.addEventListener("click", async () => {
-      const confirmLogout = await showCustomModal(
-        "Sign Out",
-        "Are you sure you want to end your active Super Admin session?",
-        "confirm"
-      );
+    // Dropdown toggle logic
+    const dropdownBtn = document.getElementById("adminDropdownBtn");
+    const dropdownMenu = document.getElementById("adminDropdownMenu");
 
-      if (confirmLogout) {
-        sessionStorage.removeItem("samcam_super_auth");
-        sessionStorage.removeItem("samcam_super_session");
-        await showCustomModal("Logged Out", "Your session has been terminated securely.");
-        window.location.reload();
-      }
-    });
+    if (dropdownBtn && dropdownMenu) {
+      dropdownBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const isVisible = dropdownMenu.style.display === "block";
+        dropdownMenu.style.display = isVisible ? "none" : "block";
+      });
+
+      document.addEventListener("click", () => {
+        dropdownMenu.style.display = "none";
+      });
+    }
+
+    // Secure logout execution handler tied exclusively to the dropdown's "Sign Out" option
+    const actualLogoutBtn = document.getElementById("actualLogoutBtn");
+    if (actualLogoutBtn) {
+      actualLogoutBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        const confirmLogout = await showCustomModal(
+          "Sign Out",
+          "Are you sure you want to end your active Super Admin session?",
+          "confirm"
+        );
+
+        if (confirmLogout) {
+          sessionStorage.removeItem("samcam_super_auth");
+          sessionStorage.removeItem("samcam_super_session");
+          await showCustomModal("Logged Out", "Your session has been terminated securely.");
+          window.location.reload();
+        }
+      });
+    }
   }
-
+});
   const checkDbInterval = setInterval(async () => {
     if (window.db) {
       clearInterval(checkDbInterval);
