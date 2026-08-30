@@ -1852,8 +1852,8 @@ function initGlobalEResources() {
 // Helper function to fetch and display all resources with icon-only actions including global status toggle
 async function loadCentralizedResourcesFeed(listContainer) {
   listContainer.innerHTML = `
-    <div style="padding: 1.5rem; text-align: center; color: #64748b; font-size: 0.85rem;">
-      <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.1rem; color: #38bdf8; margin-bottom: 0.4rem; display: block;"></i>
+    <div class="resource-feed-loading">
+      <i class="fa-solid fa-circle-notch fa-spin"></i>
       Loading e-library repository manager...
     </div>`;
 
@@ -1863,8 +1863,8 @@ async function loadCentralizedResourcesFeed(listContainer) {
     
     if (snap.empty) {
       listContainer.innerHTML = `
-        <div style="text-align: center; padding: 1.5rem; color: #64748b; font-size: 0.85rem;">
-          <i class="fa-solid fa-book-bookmark" style="font-size: 1.4rem; margin-bottom: 0.4rem; color: #94a3b8; display: block;"></i>
+        <div class="resource-feed-empty">
+          <i class="fa-solid fa-book-bookmark"></i>
           No resources found in the repository yet.
         </div>`;
       return;
@@ -1875,42 +1875,40 @@ async function loadCentralizedResourcesFeed(listContainer) {
       const d = doc.data();
       const isGlobal = d.isGlobal === true;
       
-      // Dynamic styling and icons based on whether it's currently global or local
-      const globalBadgeBg = isGlobal ? '#dcfce7' : '#f1f5f9';
-      const globalBadgeColor = isGlobal ? '#15803d' : '#64748b';
+      const globalBadgeClass = isGlobal ? 'badge-global-active' : 'badge-global-local';
       const globalIcon = isGlobal ? 'fa-globe' : 'fa-globe-slash';
       const globalTitle = isGlobal ? 'Global Resource (Click to make local)' : 'Local Resource (Click to make global)';
 
       html += `
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
-          <div style="display: flex; align-items: flex-start; gap: 0.75rem; overflow: hidden;">
-            <span style="background: #0284c715; color: #0284c7; width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; margin-top: 2px;">
+        <div class="resource-item-row">
+          <div class="resource-item-info">
+            <span class="resource-file-icon">
               <i class="fa-solid fa-file-pdf"></i>
             </span>
-            <div style="overflow: hidden;">
-              <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.15rem;">
-                <span style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: #0284c7; background: #e0f2fe; padding: 0.1rem 0.35rem; border-radius: 3px;">${escapeHtml(d.classLevel || 'S5')}</span>
-                <span style="font-size: 0.65rem; font-weight: 700; color: #0f766e; background: #ccfbf1; padding: 0.1rem 0.35rem; border-radius: 3px;">${escapeHtml(d.category || 'General')}</span>
-                <span style="font-size: 0.65rem; font-weight: 700; color: ${globalBadgeColor}; background: ${globalBadgeBg}; padding: 0.1rem 0.35rem; border-radius: 3px;">${isGlobal ? 'Global' : 'Local'}</span>
-                <span style="font-size: 0.7rem; color: #64748b;"><i class="fa-solid fa-download"></i> ${d.downloads || 0}</span>
+            <div class="resource-text-content">
+              <div class="resource-badges-row">
+                <span class="badge-pill badge-class">${escapeHtml(d.classLevel || 'S5')}</span>
+                <span class="badge-pill badge-category">${escapeHtml(d.category || 'General')}</span>
+                <span class="badge-pill ${globalBadgeClass}">${isGlobal ? 'Global' : 'Local'}</span>
+                <span class="resource-downloads-count"><i class="fa-solid fa-download"></i> ${d.downloads || 0}</span>
               </div>
-              <h4 style="margin: 0; font-size: 0.85rem; color: #1e293b; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(d.title)}">${escapeHtml(d.title)}</h4>
-              <p style="margin: 0.1rem 0 0 0; font-size: 0.75rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(d.description || d.fileName || '')}</p>
+              <h4 class="resource-item-title" title="${escapeHtml(d.title)}">${escapeHtml(d.title)}</h4>
+              <p class="resource-item-desc">${escapeHtml(d.description || d.fileName || '')}</p>
             </div>
           </div>
           
           <!-- Icon-Only Action Buttons Bar -->
-          <div style="display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0;">
-            <button type="button" onclick="toggleGlobalStatus('${doc.id}', ${isGlobal})" style="background: ${globalBadgeBg}; border: 1px solid #cbd5e1; color: ${globalBadgeColor}; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem;" title="${globalTitle}">
+          <div class="resource-actions-bar">
+            <button type="button" class="action-icon-btn btn-toggle-global ${globalBadgeClass}" onclick="toggleGlobalStatus('${doc.id}', ${isGlobal})" title="${globalTitle}">
               <i class="fa-solid ${globalIcon}"></i>
             </button>
-            <button type="button" onclick="viewGlobalResource('${doc.id}')" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #0284c7; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem;" title="View Resource">
+            <button type="button" class="action-icon-btn btn-view" onclick="viewGlobalResource('${doc.id}')" title="View Resource">
               <i class="fa-solid fa-eye"></i>
             </button>
-            <button type="button" onclick="editGlobalResource('${doc.id}')" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #d97706; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem;" title="Edit Resource">
+            <button type="button" class="action-icon-btn btn-edit" onclick="editGlobalResource('${doc.id}')" title="Edit Resource">
               <i class="fa-solid fa-pen-to-square"></i>
             </button>
-            <button type="button" onclick="deleteGlobalResource('${doc.id}')" style="background: #fef2f2; border: 1px solid #fca5a5; color: #ef4444; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem;" title="Delete Resource">
+            <button type="button" class="action-icon-btn btn-delete" onclick="deleteGlobalResource('${doc.id}')" title="Delete Resource">
               <i class="fa-solid fa-trash-can"></i>
             </button>
           </div>
@@ -1918,12 +1916,12 @@ async function loadCentralizedResourcesFeed(listContainer) {
       `;
     });
 
-    listContainer.innerHTML = `<div style="max-height: 380px; overflow-y: auto; padding-right: 4px;">${html}</div>`;
+    listContainer.innerHTML = `<div class="resource-feed-scroll">${html}</div>`;
 
   } catch (err) {
     console.error("Error loading resource feed:", err);
     listContainer.innerHTML = `
-      <div style="padding: 1rem; background: #fee2e2; border: 1px solid #f87171; border-radius: 6px; color: #b91c1c; font-size: 0.8rem;">
+      <div class="resource-feed-error">
         <i class="fa-solid fa-triangle-exclamation"></i> Failed to load live resource repository feed.
       </div>`;
   }
