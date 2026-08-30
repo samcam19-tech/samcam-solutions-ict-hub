@@ -350,5 +350,26 @@
 
   <!-- The super admin engine script -->
   <script src="super-admin.js"></script>
+
+  <script>
+  // Simple toggle script for the admin profile dropdown
+  document.addEventListener('DOMContentLoaded', () => {
+    const dropdownBtn = document.getElementById('adminDropdownBtn');
+    const dropdownMenu = document.getElementById('adminDropdownMenu');
+
+    if (dropdownBtn && dropdownMenu) {
+      dropdownBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isVisible = dropdownMenu.style.display === 'block';
+        dropdownMenu.style.display = isVisible ? 'none' : 'block';
+      });
+
+      // Close dropdown when clicking outside
+      document.addEventListener('click', () => {
+        dropdownMenu.style.display = 'none';
+      });
+    }
+  });
+</script>
 </body>
 </html>
