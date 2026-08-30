@@ -1,13 +1,10 @@
-const {setGlobalOptions} = require("firebase-functions");
 const {onRequest} = require("firebase-functions/v2/https");
 const logger = require("firebase-functions/logger");
 const admin = require("firebase-admin");
 
 admin.initializeApp();
 
-setGlobalOptions({maxInstances: 10});
-
-exports.listCollections = onRequest(async (req, res) => {
+exports.listCollections = onRequest({maxInstances: 10}, async (req, res) => {
   res.set("Access-Control-Allow-Origin", "*");
   res.set("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.set("Access-Control-Allow-Headers", "Content-Type");
