@@ -357,6 +357,14 @@ async function loadMigrationCollectionsCheckboxes() {
 
     container.innerHTML = "";
     
+    // Helper function to format collection name: replace underscores/dashes with spaces and capitalize each word
+    const formatCollectionName = (str) => {
+      return str
+        .replace(/[_-]+/g, " ")
+        .toLowerCase()
+        .replace(/(^\w|\s\w)/g, (match) => match.toUpperCase());
+    };
+
     // Render Select All / Deselect All controls header
     const controlsHtml = `
       <div style="display: flex; gap: 10px; margin-bottom: 10px; font-size: 12px;">
@@ -370,10 +378,11 @@ async function loadMigrationCollectionsCheckboxes() {
     let checkboxesHtml = controlsHtml;
     collectionsList.forEach((col) => {
       if (!EXCLUDED_COLLECTIONS.includes(col)) {
+        const displayName = formatCollectionName(col);
         checkboxesHtml += `
-          <label style="display: flex; align-items: center; justify-content: flex-start; gap: 10px; font-size: 13px; cursor: pointer; background: #f8fafc; padding: 8px 12px; border-radius: 4px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box;">
+          <label style="display: flex; align-items: center; justify-content: flex-start; gap: 10px; font-size: 13px; cursor: pointer; background: transparent; padding: 6px 4px; border-radius: 4px; border: none; width: 100%; box-sizing: border-box;">
             <input type="checkbox" class="migration-col-checkbox" value="${col}" checked style="cursor: pointer; margin: 0; flex-shrink: 0;">
-            <span style="font-family: monospace; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${col}</span>
+            <span style="font-family: inherit; color: #334155; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${displayName}</span>
           </label>
         `;
       }
@@ -395,7 +404,6 @@ async function loadMigrationCollectionsCheckboxes() {
     container.innerHTML = `<p style="color: #ef4444; font-size: 12px;">Failed to load collections list.</p>`;
   }
 }
-
 function setupAdminActions() {
   const schoolForm = document.getElementById("superSchoolForm");
   if (schoolForm) {
