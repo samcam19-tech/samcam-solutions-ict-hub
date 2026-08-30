@@ -120,35 +120,37 @@ function fetchResourcesFromFirestore() {
     }
   }
 
-  // 2. Build query to pull both school-specific resources AND global resources
+  // 2. Fetch all documents from the root collection and handle filtering in client code 
+  // to prevent missing items due to compound index limitations or missing fields.
   let queryRef = db.collection('e_library_resources');
-  
-  // If a specific tenant school is logged in, use Firestore's 'in' query 
-  // to fetch resources tagged for this school OR marked global/'all'.
-  if (currentSchoolId && currentSchoolId !== 'global' && currentSchoolId !== 'all') {
-    queryRef = queryRef.where('schoolId', 'in', [currentSchoolId, 'global', 'all']);
-  }
 
   queryRef.onSnapshot((snapshot) => {
     allResources = [];
     snapshot.forEach((doc) => {
       const data = doc.data();
-      allResources.push({
-        id: doc.id,
-        title: data.title || 'Untitled Resource',
-        description: data.description || '',
-        class: data.classLevel || 'S1',        
-        category: data.category || 'Notes',
-        accessType: data.accessType || 'free',  
-        price: Number(data.price) || 0,         
-        schoolId: (data.schoolId || 'global').toLowerCase(),    
-        fileUrl: data.fileUrl || '#',
-        fileName: data.fileName || '',
-        fileType: data.fileType || '',
-        date: data.date || '2026',
-        downloads: Number(data.downloads) || 0,  
-        createdAt: data.createdAt
-      });
+      const resSchoolId = (data.schoolId || '').toLowerCase();
+      const isGlobalRes = data.isGlobal === true || resSchoolId === 'global' || resSchoolId === 'all';
+      const isCurrentSchool = currentSchoolId && resSchoolId === currentSchoolId;
+
+      // Include if it's marked global/all or explicitly belongs to the logged-in school
+      if (isGlobalRes || isCurrentSchool || !currentSchoolId || currentSchoolId === 'global' || currentSchoolId === 'all') {
+        allResources.push({
+          id: doc.id,
+          title: data.title || 'Untitled Resource',
+          description: data.description || '',
+          class: data.classLevel || 'S1',        
+          category: data.category || 'Notes',
+          accessType: data.accessType || 'free',  
+          price: Number(data.price) || 0,         
+          schoolId: resSchoolId || 'global',    
+          fileUrl: data.fileUrl || '#',
+          fileName: data.fileName || '',
+          fileType: data.fileType || '',
+          date: data.date || '2026',
+          downloads: Number(data.downloads) || 0,  
+          createdAt: data.createdAt
+        });
+      }
     });
 
     try {
@@ -163,7 +165,6 @@ function fetchResourcesFromFirestore() {
     fallbackToLocalData();
   });
 }
-
 function fallbackToLocalData() {
   const localData = localStorage.getItem('portal_resources');
   if (localData) {
