@@ -1884,3 +1884,88 @@ if (typeof escapeHtml === 'undefined') {
       .replace(/'/g, '&#039;');
   };
 }
+
+// ==========================================================================
+// UTILITY: ROBUST CUSTOM MODAL HANDLER (FIXES ESCAPED HTML RENDERING)
+// ==========================================================================
+if (typeof showCustomModal !== 'undefined') {
+  window.showCustomModal = function(title, message, type = "alert", placeholder = "") {
+    return new Promise((resolve) => {
+      let modalOverlay = document.getElementById("saasCustomModalOverlay");
+      if (!modalOverlay) {
+        modalOverlay = document.createElement("div");
+        modalOverlay.id = "saasCustomModalOverlay";
+        modalOverlay.style.cssText = `
+          position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+          background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
+          display: flex; align-items: center; justify-content: center; z-index: 99999;
+          opacity: 0; transition: opacity 0.2s ease;
+        `;
+        document.body.appendChild(modalOverlay);
+      }
+
+      const isPrompt = type === "prompt";
+
+      modalOverlay.innerHTML = `
+        <div style="background: #fff; width: 100%; max-width: 420px; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); overflow: hidden; transform: scale(0.95); transition: transform 0.2s ease;">
+          <div style="padding: 1.25rem 1.5rem; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between;">
+            <h3 style="margin: 0; font-size: 1rem; font-weight: 700; color: #1e293b;" id="saasModalTitle"></h3>
+            <button type="button" id="saasModalCloseX" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1rem;"><i class="fa-solid fa-xmark"></i></button>
+          </div>
+          <div style="padding: 1.5rem;">
+            <div id="saasModalMessageBody" style="margin: 0 0 ${isPrompt ? '1rem' : '0'}; font-size: 0.875rem; color: #475569; line-height: 1.5;"></div>
+            ${isPrompt ? `<input type="text" id="saasModalPromptInput" placeholder="" style="width: 100%; padding: 0.65rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.875rem; outline: none; box-sizing: border-box;" />` : ''}
+          </div>
+          <div style="padding: 0.75rem 1.5rem; background: #f8fafc; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: 0.5rem;">
+            ${isPrompt ? `<button type="button" id="saasModalCancelBtn" style="padding: 0.5rem 1rem; background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer;">Cancel</button>` : ''}
+            <button type="button" id="saasModalOkBtn" style="padding: 0.5rem 1.25rem; background: #0284c7; border: none; color: #fff; border-radius: 6px; font-size: 0.8rem; font-weight: 600; cursor: pointer;"><i class="fa-solid fa-check"></i> OK</button>
+          </div>
+        </div>
+      `;
+
+      // Safely assign text vs HTML to prevent string escaping bugs
+      document.getElementById("saasModalTitle").textContent = title;
+      document.getElementById("saasModalMessageBody").innerHTML = message; // Renders <strong> and <span style="..."> properly
+      
+      if (isPrompt) {
+        const promptInput = document.getElementById("saasModalPromptInput");
+        promptInput.placeholder = placeholder;
+      }
+
+      setTimeout(() => {
+        modalOverlay.style.opacity = '1';
+        modalOverlay.querySelector('div').style.transform = 'scale(1)';
+        if (isPrompt) {
+          const inp = document.getElementById("saasModalPromptInput");
+          if (inp) inp.focus();
+        }
+      }, 10);
+
+      const closeModal = (result) => {
+        modalOverlay.style.opacity = '0';
+        setTimeout(() => {
+          if (modalOverlay.parentNode) modalOverlay.parentNode.removeChild(modalOverlay);
+        }, 200);
+        resolve(result);
+      };
+
+      document.getElementById("saasModalOkBtn").addEventListener("click", () => {
+        if (isPrompt) {
+          const val = document.getElementById("saasModalPromptInput").value;
+          closeModal(val);
+        } else {
+          closeModal(true);
+        }
+      });
+
+      if (isPrompt) {
+        document.getElementById("saasModalCancelBtn").addEventListener("click", () => closeModal(null));
+        document.getElementById("saasModalPromptInput").addEventListener("keydown", (e) => {
+          if (e.key === "Enter") closeModal(e.target.value);
+        });
+      }
+
+      document.getElementById("saasModalCloseX").addEventListener("click", () => closeModal(isPrompt ? null : true));
+    });
+  };
+}
