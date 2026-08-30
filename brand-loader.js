@@ -12,7 +12,12 @@ async function loadGlobalPlatformBranding() {
   try {
     const docSnap = await window.db.collection("system_config").doc("super_admin_settings").get();
     if (docSnap.exists) {
-      const { systemName, logoUrl, slogan } = docSnap.data();
+      const data = docSnap.data();
+      
+      // Match Firestore field names: systemName, systemLogoUrl, systemSlogan
+      const systemName = data.systemName;
+      const logoUrl = data.systemLogoUrl;
+      const slogan = data.systemSlogan;
 
       // Dynamically update elements across any page using specific class hooks
       if (systemName) {
