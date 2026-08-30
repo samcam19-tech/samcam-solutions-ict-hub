@@ -30,6 +30,7 @@ function initLiveTelemetryListener() {
                 activity: data.activeTitle || data.activity || "Active Browser Session",
                 shortUrl: data.activeUrl || "Local Workspace",
                 fullUrl: data.fullUrl || "#",
+                screenUrl: data.screenUrl || "", // Captured screenshot URL from Firebase Storage
                 status: data.status || "active",
                 cpu: data.cpu || "15%",
                 ram: data.ram || "45%",
@@ -46,6 +47,7 @@ function initLiveTelemetryListener() {
                 activity: "No active signals recorded",
                 shortUrl: "idle",
                 fullUrl: "#",
+                screenUrl: "",
                 status: "idle",
                 cpu: "0%",
                 ram: "0%",
@@ -69,17 +71,32 @@ function renderWorkstations(stations) {
         const card = document.createElement("div");
         card.className = "workstation-card";
         card.dataset.id = pc.id;
+
+        // Dynamic thumbnail content: display image snapshot if available, else show fallback title/icon
+        let previewContent = "";
+        if (pc.screenUrl) {
+            previewContent = `
+                <div style="width: 100%; height: 110px; background: #000; border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                    <img src="${pc.screenUrl}" alt="Live Screen Preview" style="width: 100%; height: 100%; object-fit: cover;" />
+                </div>
+            `;
+        } else {
+            previewContent = `
+                <div style="color: var(--text-muted); font-size: 0.8rem; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 15px 0;">
+                    <i class="fa-solid fa-globe" style="font-size: 1.4rem; color: var(--primary);"></i>
+                    <span style="font-weight: 500; color: var(--text-main); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; max-width: 230px;" title="${pc.activity}">${pc.activity}</span>
+                    <span style="font-size: 0.7rem; color: var(--primary); opacity: 0.8;">🔗 ${pc.shortUrl}</span>
+                </div>
+            `;
+        }
+
         card.innerHTML = `
             <div class="ws-header">
                 <span class="ws-id"><div class="ws-status-indicator ${pc.status}"></div> ${pc.id} (${pc.ip})</span>
                 <span style="font-size: 0.70rem; color: var(--text-muted);">${pc.lastUpdated}</span>
             </div>
-            <div class="ws-thumbnail-preview" style="padding: 10px; text-align: center;">
-                <div style="color: var(--text-muted); font-size: 0.8rem; display: flex; flex-direction: column; align-items: center; gap: 6px;">
-                    <i class="fa-solid fa-globe" style="font-size: 1.4rem; color: var(--primary);"></i>
-                    <span style="font-weight: 500; color: var(--text-main); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; max-width: 230px;" title="${pc.activity}">${pc.activity}</span>
-                    <span style="font-size: 0.7rem; color: var(--primary); opacity: 0.8;">🔗 ${pc.shortUrl}</span>
-                </div>
+            <div class="ws-thumbnail-preview" style="padding: 8px;">
+                ${previewContent}
             </div>
             <div class="ws-meta">
                 <span>Learner: <strong>${pc.learner}</strong></span>
@@ -144,6 +161,7 @@ function openNodeModal(pc) {
 
     title.textContent = `Workstation Control: ${pc.id}`;
     body.innerHTML = `
+        ${pc.screenUrl ? `<div style="margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 1px solid #334155;"><img src="${pc.screenUrl}" alt="Enlarged Screen View" style="width: 100%; max-height: 250px; object-fit: cover; display: block;" /></div>` : ''}
         <p><strong>Assigned Learner:</strong> ${pc.learner}</p>
         <p><strong>IP Address:</strong> ${pc.ip}</p>
         <p><strong>Active Window Title:</strong> ${pc.activity}</p>
