@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lab Network Management</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="network-manager.css">
+</head>
+<body>
+    <div class="app-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <img src="images/logo.png" alt="Logo" class="dynamic-system-logo" style="height: 30px; width: auto; object-fit: contain;" />
+                <span class="dynamic-system-name">Samcam NetOps</span>
+            </div>
+            <nav class="sidebar-menu">
+                <a href="#" class="nav-item active"><i class="fa-solid fa-desktop"></i> Live Lab Grid</a>
+                <a href="#" class="nav-item"><i class="fa-solid fa-chart-line"></i> Bandwidth Analytics</a>
+                <a href="#" class="nav-item"><i class="fa-solid fa-shield-halved"></i> Firewall & Policies</a>
+                <a href="#" class="nav-item"><i class="fa-solid fa-terminal"></i> Broadcast Console</a>
+            </nav>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="top-nav">
+                <div class="breadcrumb">
+                    <h1 class="dynamic-system-name">Computer Lab 1 - Real-Time Monitor</h1>
+                    <p class="dynamic-system-slogan" style="font-size: 0.8rem; opacity: 0.8; margin: 0;">Innovative Insights in Action</p>
+                    <span class="live-badge"><span class="pulse-dot"></span> Live Telemetry Active</span>
+                </div>
+                <div class="net-stats-summary">
+                    <div class="stat-pill"><i class="fa-solid fa-users"></i> Online: <strong id="onlineCount">24</strong></div>
+                    <div class="stat-pill"><i class="fa-solid fa-gauge-high"></i> Load: <strong id="networkLoad">18%</strong></div>
+                </div>
+            </header>
+
+            <!-- Control Toolbar -->
+            <section class="control-toolbar">
+                <div class="search-filter">
+                    <input type="text" id="nodeSearch" placeholder="Search workstation ID or learner name..." class="search-input">
+                    <select id="statusFilter" class="filter-select">
+                        <option value="ALL">All Stations</option>
+                        <option value="ACTIVE">Active Coding/Task</option>
+                        <option value="IDLE">Idle</option>
+                        <option value="LOCKED">Locked</option>
+                    </select>
+                </div>
+                <div class="global-actions">
+                    <button class="btn btn-outline" id="lockAllBtn"><i class="fa-solid fa-lock"></i> Lock All Screens</button>
+                    <button class="btn btn-primary" id="broadcastBtn"><i class="fa-solid fa-bullhorn"></i> Push Prompt to Class</button>
+                </div>
+            </section>
+
+            <!-- Workstation Grid -->
+            <section class="workstation-grid" id="workstationGrid">
+                <!-- Dynamically injected via JavaScript -->
+            </section>
+        </main>
+    </div>
+
+    <!-- Telemetry Inspection Modal -->
+    <div class="modal-overlay" id="nodeModal" style="display: none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3 id="modalNodeTitle">Workstation Details</h3>
+                <button class="close-modal" id="closeModalBtn">&times;</button>
+            </div>
+            <div class="modal-body" id="modalNodeBody">
+                <!-- Deep telemetry info goes here -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" id="modalLockBtn">Lock Terminal</button>
+                <button class="btn btn-warning" id="modalMessageBtn">Send Warning Note</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase Scripts Required for Brand Loader -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <!-- Dynamic Branding & Network Logic -->
+    <script src="firebase-config.js"></script>
+    <script src="brand-loader.js"></script>
+    <script src="network-manager.js"></script>
+</body>
+</html>
