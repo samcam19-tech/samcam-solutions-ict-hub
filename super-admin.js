@@ -1504,19 +1504,62 @@ function initBackupGenerator() {
   checkAndTriggerAutomatedDailyBackup();
 }
 
-function checkAndTriggerAutomatedDailyBackup() {
+async function checkAndTriggerAutomatedDailyBackup() {
   const lastBackupKey = "samcam_last_auto_backup_date";
   const todayStr = new Date().toISOString().slice(0, 10);
-  const lastBackupKeyDate = localStorage.getItem(lastBackupKey);
+  const lastBackupDate = localStorage.getItem(lastBackupKey);
 
-  if (lastBackupKeyDate !== todayStr) {
-    localStorage.setItem(lastBackupKey, todayStr);
-    try {
-      if (typeof window.db !== 'undefined' && typeof logAuditAction === 'function') {
-        logAuditAction("AUTO_BACKUP_CHECK", "Automated 24-hour routine system audit & snapshot integrity check completed successfully.");
+  // Check if it's a new day
+  if (lastBackupDate !== todayStr) {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+
+    // Check if current time is 10:30 PM (22:30) or later
+    if (currentHour > 22 || (currentHour === 22 && currentMinute >= 30)) {
+      try {
+        if (typeof window.db !== 'undefined' && typeof window.storage !== 'undefined') {
+          const backupData = {
+            version: "2.2",
+            generatedAt: now.toISOString(),
+            system: "Samcam Solutions ICT Resource Hub - Daily Snapshot",
+            collections: {}
+          };
+
+          const collectionsToMigrate = ['users', 'quizzes', 'submissions', 'announcements', 'schools', 'e_library_resources', 'forum_threads', 'blogs'];
+          
+          for (const col of collectionsToMigrate) {
+            try {
+              const snap = await window.db.collection(col).get();
+              backupData.collections[col] = [];
+              snap.forEach(doc => {
+                backupData.collections[col].push({ id: doc.id, ...doc.data() });
+              });
+            } catch (colErr) {
+              console.warn(`Could not export collection ${col} for auto backup:`, colErr);
+              backupData.collections[col] = [];
+            }
+          }
+
+          const jsonString = JSON.stringify(backupData, null, 2);
+          const blob = new Blob([jsonString], { type: "application/json" });
+
+          // Always use a fixed filename ("latest_backup.json") so new uploads automatically overwrite the old one
+          const storageRef = window.storage.ref();
+          const backupFileRef = storageRef.child('automated_backups/latest_backup.json');
+          
+          await backupFileRef.put(blob);
+
+          // Mark today as backed up
+          localStorage.setItem(lastBackupKey, todayStr);
+
+          if (typeof logAuditAction === 'function') {
+            await logAuditAction("AUTO_BACKUP_SUCCESS", "Automated daily snapshot successfully saved to Firebase Storage (overwriting previous backup).");
+          }
+        }
+      } catch (e) {
+        console.error("Automated Daily Backup Error:", e);
       }
-    } catch (e) {
-      // Silent pass
     }
   }
 }
