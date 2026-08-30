@@ -158,6 +158,9 @@ async function enforceFirestoreMasterKeyGate() {
       await configDocRef.set({
         masterKey: createdKey.trim(),
         maintenanceMode: false,
+        systemName: "SAMCAM SOLUTIONS ICT HUB",
+        systemSlogan: "Empowering Digital Education",
+        systemLogoUrl: "",
         fullName: "AKUGIZIBWE SAMUEL",
         username: "samcam",
         email: "samuelakugizibwe23@gmail.com",
@@ -219,6 +222,9 @@ async function initializeSuperAdminPortal(configDocRef) {
   setupAdminActions();
   loadMigrationCollectionsCheckboxes();
   
+  // Initialize new branding module
+  initBrandingSettings(configDocRef);
+
   initGlobalAnnouncements();
   initTenantSubscriptionManager();
   initCrossTenantSearch();
@@ -229,6 +235,48 @@ async function initializeSuperAdminPortal(configDocRef) {
   initMaintenanceModeToggle(configDocRef);
   initFeatureFlagTogglers();
   initKeyRotator(configDocRef);
+}
+
+// Module for managing system name, logo, and slogan config
+async function initBrandingSettings(configDocRef) {
+  const form = document.getElementById("systemBrandingForm");
+  const nameInput = document.getElementById("brandingSystemName");
+  const sloganInput = document.getElementById("brandingSystemSlogan");
+  const logoInput = document.getElementById("brandingSystemLogoUrl");
+
+  try {
+    const docSnap = await configDocRef.get();
+    if (docSnap.exists) {
+      const data = docSnap.data();
+      if (nameInput) nameInput.value = data.systemName || "";
+      if (sloganInput) sloganInput.value = data.systemSlogan || "";
+      if (logoInput) logoInput.value = data.systemLogoUrl || "";
+    }
+  } catch (err) {
+    console.warn("Failed to load branding configs:", err);
+  }
+
+  if (form) {
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const systemName = nameInput ? nameInput.value.trim() : "";
+      const systemSlogan = sloganInput ? sloganInput.value.trim() : "";
+      const systemLogoUrl = logoInput ? logoInput.value.trim() : "";
+
+      try {
+        await configDocRef.set({
+          systemName,
+          systemSlogan,
+          systemLogoUrl
+        }, { merge: true });
+
+        await logAuditAction("UPDATE_BRANDING", `Updated system branding settings: Name="${systemName}"`);
+        await showCustomModal("Success", "System branding parameters updated successfully!");
+      } catch (error) {
+        await showCustomModal("Error", "Failed to save branding configurations.");
+      }
+    });
+  }
 }
 
 async function loadRegisteredSchools() {
@@ -293,8 +341,6 @@ async function loadMigrationCollectionsCheckboxes() {
   ];
 
   try {
-    // Note: Firestore Web SDK doesn't natively list collections from client side unless via Admin SDK or predefined list. 
-    // We utilize the robust fallback list combined with validation, or fetch via a known registry.
     let collectionsList = fallbackCollections;
 
     container.innerHTML = "";
@@ -306,16 +352,16 @@ async function loadMigrationCollectionsCheckboxes() {
         <span>|</span>
         <button type="button" id="deselectAllCols" style="background: none; border: none; color: #2563eb; cursor: pointer; padding: 0;">Deselect All</button>
       </div>
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; max-height: 180px; overflow-y: auto; padding: 4px;">
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; max-height: 180px; overflow-y: auto; padding: 4px;">
     `;
     
     let checkboxesHtml = controlsHtml;
     collectionsList.forEach((col) => {
       if (!EXCLUDED_COLLECTIONS.includes(col)) {
         checkboxesHtml += `
-          <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; background: #f8fafc; padding: 6px 10px; border-radius: 4px; border: 1px solid #e2e8f0;">
-            <input type="checkbox" class="migration-col-checkbox" value="${col}" checked style="cursor: pointer;">
-            <span style="font-family: monospace; color: #334155;">${col}</span>
+          <label style="display: flex; align-items: center; justify-content: flex-start; gap: 10px; font-size: 13px; cursor: pointer; background: #f8fafc; padding: 8px 12px; border-radius: 4px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box;">
+            <input type="checkbox" class="migration-col-checkbox" value="${col}" checked style="cursor: pointer; margin: 0; flex-shrink: 0;">
+            <span style="font-family: monospace; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${col}</span>
           </label>
         `;
       }
@@ -426,6 +472,8 @@ async function logAuditAction(actionType, details) {
     });
   } catch (err) {}
 }
+
+
 // ==========================================
 // 10 FULLY FUNCTIONAL SUPER ADMIN FEATURES
 // ==========================================
