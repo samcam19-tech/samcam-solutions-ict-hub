@@ -135,6 +135,7 @@ async function enforceFirestoreMasterKeyGate() {
         );
 
         if (createdKey === null) {
+          await showCustomModal("Access Cancelled", "Master key setup is required to proceed.");
           document.body.innerHTML = `<div class="fatal-error-container"><div><h2 class="error-heading">Access Cancelled</h2><p class="error-text">Master key setup is required.</p></div></div>`;
           return;
         }
@@ -156,7 +157,7 @@ async function enforceFirestoreMasterKeyGate() {
     }
 
     const authenticatedKey = sessionStorage.getItem("samcam_super_auth");
-    if (authenticatedKey === currentMasterKey) {
+    if (authenticatedKey && currentMasterKey && authenticatedKey.trim() === currentMasterKey.trim()) {
       await initializeSuperAdminPortal(configDocRef);
       return;
     }
@@ -170,10 +171,11 @@ async function enforceFirestoreMasterKeyGate() {
         "Enter master key..."
       );
 
-      if (enteredKey === currentMasterKey) {
-        sessionStorage.setItem("samcam_super_auth", currentMasterKey);
+      if (enteredKey && currentMasterKey && enteredKey.trim() === currentMasterKey.trim()) {
+        sessionStorage.setItem("samcam_super_auth", currentMasterKey.trim());
         authorized = true;
       } else if (enteredKey === null) {
+        await showCustomModal("Access Denied", "Authentication required to access the dashboard.");
         document.body.innerHTML = `<div class="fatal-error-container"><div><h2 class="error-heading">Access Denied</h2><p class="error-text">Authentication required.</p></div></div>`;
         return;
       } else {
@@ -184,7 +186,16 @@ async function enforceFirestoreMasterKeyGate() {
     await initializeSuperAdminPortal(configDocRef);
 
   } catch (error) {
-    document.body.innerHTML = `<div class="fatal-error-container"><div><h2 class="error-heading">Connection Error</h2><p class="error-text">Failed to verify configuration against Firestore.</p></div></div>`;
+    console.error("FATAL MASTER KEY GATE ERROR:", error);
+    await showCustomModal("Connection Error", "Failed to verify configuration against Firestore. You may be offline or lacking permissions.");
+    document.body.innerHTML = `
+      <div class="fatal-error-container" style="padding: 40px; text-align: center; font-family: sans-serif;">
+        <div>
+          <h2 class="error-heading" style="color: #ef4444; margin-bottom: 10px;">Connection / Permission Error</h2>
+          <p class="error-text" style="color: #64748b; margin-bottom: 20px;">Failed to verify configuration against Firestore.</p>
+          <pre style="background: #f1f5f9; padding: 12px; border-radius: 6px; text-align: left; max-width: 600px; margin: 0 auto; overflow-x: auto; font-size: 12px; color: #b91c1c;">${error.message}</pre>
+        </div>
+      </div>`;
   }
 }
 
