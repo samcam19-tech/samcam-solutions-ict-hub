@@ -27,7 +27,7 @@
         </div>
         <div class="stat-card">
           <h3>Collections Targeted</h3>
-          <p class="stat-value" id="collectionsCount">4</p>
+          <p class="stat-value" id="collectionsCount">0</p>
         </div>
       </section>
 
@@ -63,8 +63,16 @@
                 <option value="">-- Load registered schools --</option>
               </select>
             </div>
-            <p class="note-text">This will inject the <code>schoolId</code> property into documents across <code>portal_resources</code>, <code>quizzes</code>, <code>challenges</code>, and <code>blog_posts</code>.</p>
-            <button type="button" id="executeMigrationBtn" class="btn-warning">Run Global Data Migration</button>
+
+            <!-- Dynamic Collections Checkbox Container -->
+            <div class="form-group" style="margin-top: 15px;">
+              <label style="display: block; font-weight: 500; font-size: 13px; margin-bottom: 6px;">Select Collections to Migrate:</label>
+              <div id="migrationCollectionsContainer" style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; background: #fff;">
+                <p style="font-size: 13px; color: #64748b;">Loading available collections...</p>
+              </div>
+            </div>
+
+            <button type="button" id="executeMigrationBtn" class="btn-warning" style="margin-top: 15px;">Run Global Data Migration</button>
           </form>
         </div>
 
@@ -79,11 +87,12 @@
                 <th>School ID</th>
                 <th>School Name</th>
                 <th>Location</th>
+                <th>Status</th>
                 <th>Date Provisioned</th>
               </tr>
             </thead>
             <tbody>
-              <tr><td colspan="4" style="text-align: center;">Loading registered schools...</td></tr>
+              <tr><td colspan="5" style="text-align: center;">Loading registered schools...</td></tr>
             </tbody>
           </table>
         </div>
@@ -92,7 +101,7 @@
     </main>
   </div>
 
-<!-- Add this modal markup right before the closing </body> tag in your HTML -->
+<!-- Custom Modal Markup -->
 <div id="customModal" class="modal-overlay" style="display: none;">
   <div class="modal-card">
     <h3 id="modalTitle">Notice</h3>
@@ -107,10 +116,10 @@
   </div>
 </div>
 
-  <!-- Load Firebase CDNs first if not already in your header -->
+<!-- Load Firebase CDNs first -->
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
 
 <!-- Your existing configuration script -->
 <script src="firebase-config.js"></script>
