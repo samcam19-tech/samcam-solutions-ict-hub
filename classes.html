@@ -25,9 +25,12 @@
 <!-- NAVBAR -->
   <header class="portal-header">
     <div class="header-container">
-      <div class="logo-area">
-        <i class="fa-solid fa-graduation-cap logo-icon"></i>
-        <span>SAMCAM <small>ICT HUB</small></span>
+      <div class="logo-area" style="display: flex; align-items: center; gap: 0.75rem;">
+        <img src="images/logo.png" alt="System Logo" class="dynamic-system-logo" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
+        <div style="display: flex; flex-direction: column;">
+          <span class="dynamic-system-name" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.1rem; color: var(--text-color, #0f172a); letter-spacing: -0.5px;">SAMCAM ICT HUB</span>
+          <span class="dynamic-system-slogan" style="font-size: 0.75rem; color: #64748b; font-weight: 500;">Innovative ICT Insights In Action</span>
+        </div>
       </div>
 
       <!-- Hamburger Menu Toggle Button -->
@@ -234,6 +237,8 @@
       }
     });
   </script>
+  <!-- Include Brand Loader Script -->
+  <script src="brand-loader.js"></script>
   <script src="classes.js"></script>
 </body>
 </html>
