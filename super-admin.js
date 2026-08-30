@@ -360,16 +360,16 @@ async function loadMigrationCollectionsCheckboxes() {
         .replace(/(^\w|\s\w)/g, (match) => match.toUpperCase());
     };
 
-    // Render Select All / Deselect All controls header
-    const controlsHtml = `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; font-size: 12px; padding: 0 4px;">
-        <div style="display: flex; gap: 10px;">
-          <button type="button" id="selectAllCols" style="background: none; border: none; color: #2563eb; cursor: pointer; padding: 0; font-weight: 600;">Select All</button>
-          <span>|</span>
-          <button type="button" id="deselectAllCols" style="background: none; border: none; color: #2563eb; cursor: pointer; padding: 0; font-weight: 600;">Deselect All</button>
+   const controlsHtml = `
+      <div class="migration-controls-bar">
+        <span class="title">Available Collections</span>
+        <div class="migration-controls-actions">
+          <button type="button" id="selectAllCols" class="migration-action-btn">Select All</button>
+          <span style="color: var(--border-subtle);">|</span>
+          <button type="button" id="deselectAllCols" class="migration-action-btn">Deselect All</button>
         </div>
       </div>
-      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; max-height: 200px; overflow-y: auto; padding: 4px;">
+      <div class="migration-grid-container">
     `;
     
     let checkboxesHtml = controlsHtml;
@@ -380,9 +380,9 @@ async function loadMigrationCollectionsCheckboxes() {
         validCount++;
         const displayName = formatCollectionName(col);
         checkboxesHtml += `
-          <label style="display: flex; align-items: center; gap: 10px; font-size: 13px; cursor: pointer; background: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box; transition: background 0.15s ease;">
-            <input type="checkbox" class="migration-col-checkbox" value="${col}" checked style="cursor: pointer; margin: 0; width: 16px; height: 16px; accent-color: #2563eb; flex-shrink: 0;">
-            <span style="font-family: inherit; color: #1e293b; font-weight: 500; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${displayName}</span>
+          <label class="migration-item-pill">
+            <input type="checkbox" class="migration-col-checkbox" value="${col}" checked>
+            <span class="label-text">${displayName}</span>
           </label>
         `;
       }
