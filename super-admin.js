@@ -363,7 +363,7 @@ function createFeatureSection(titleText, elementId) {
 }
 
 // Feature 1: Global Announcement Broadcaster with Management (Edit, Delete & Publish)
-function initGlobalAnnuoncements() {
+function initGlobalAnnouncements() {
   // Maintaining full UI layout structure with updated input field IDs for single-doc handling
   const container = document.getElementById("featureAnnouncements") || createFeatureSection("Global Announcement Broadcaster", "featureAnnouncements");
   
