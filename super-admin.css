@@ -1166,3 +1166,23 @@ grid-template-columns:1fr;
   transform: translateY(-1px);
   box-shadow: var(--shadow-sm);
 }
+/* Container holding the card grid */
+.features-grid-container {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)); /* Forces both columns to split the space equally */
+  gap: 1.5rem;
+  align-items: stretch; /* Ensures cards match height if needed */
+}
+
+/* Individual Card Styling */
+.feature-card {
+  width: 100%; /* Fills its grid track completely */
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border-subtle, #e2e8f0);
+  border-radius: var(--radius-md, 8px);
+  padding: 1.5rem;
+  box-sizing: border-box; /* Ensures padding doesn't push widths out */
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
