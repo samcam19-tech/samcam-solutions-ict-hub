@@ -1322,7 +1322,8 @@ function initBackupGenerator() {
           collections: {}
         };
 
-        const collectionsToMigrate = ['users', 'quizzes', 'submissions', 'announcements', 'schools', 'e_library_resources', 'forum_threads'];
+        // Added 'blogs' to your collections array
+        const collectionsToMigrate = ['users', 'quizzes', 'submissions', 'announcements', 'schools', 'e_library_resources', 'forum_threads', 'blogs'];
         
         for (const col of collectionsToMigrate) {
           try {
@@ -1362,130 +1363,141 @@ function initBackupGenerator() {
 
   // 2. Disaster Recovery & Granular/Full Restoration Engine
   if (restoreBtn && restoreInput) {
-    restoreBtn.addEventListener("click", (e) => {
+    // When clicking the orange button, check if a file is chosen. If not, open file picker. 
+    // If a file IS chosen, process it directly!
+    restoreBtn.addEventListener("click", async (e) => {
       e.preventDefault();
-      restoreInput.click(); // Open file picker
+      const file = restoreInput.files[0];
+      
+      if (!file) {
+        // No file selected yet, open the file picker
+        restoreInput.click();
+        return;
+      }
+
+      // File is already selected, read and process it to show the modal scope chooser
+      processBackupFile(file, restoreInput);
     });
 
-    restoreInput.addEventListener("change", async (event) => {
+    // Also trigger automatically if they use the native choose file input text link
+    restoreInput.addEventListener("change", (event) => {
       const file = event.target.files[0];
-      if (!file) return;
+      if (file && restoreBtn) {
+        restoreBtn.innerHTML = `<i class="fa-solid fa-file-arrow-up"></i> Process Recovery (${file.name.slice(0, 15)}...)`;
+      }
+    });
+  }
 
-      const reader = new FileReader();
-      reader.onload = async function(e) {
-        try {
-          const rawContent = e.target.result;
-          const backupJson = JSON.parse(rawContent);
+  // Helper function to read file and spawn the restore modal
+  function processBackupFile(file, restoreInputRef) {
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      try {
+        const rawContent = e.target.result;
+        const backupJson = JSON.parse(rawContent);
 
-          if (!backupJson.collections) {
-            throw new Error("Invalid backup schema format. Missing collections node.");
+        if (!backupJson.collections) {
+          throw new Error("Invalid backup schema format. Missing collections node.");
+        }
+
+        const availableCollections = Object.keys(backupJson.collections);
+
+        let collectionOptionsHTML = `<option value="ALL">🔄 Restore ALL Collections (Full System Recovery)</option>`;
+        availableCollections.forEach(col => {
+          const count = Array.isArray(backupJson.collections[col]) ? backupJson.collections[col].length : 0;
+          collectionOptionsHTML += `<option value="${col}">📁 Single Collection: ${col} (${count} records)</option>`;
+        });
+
+        const modalContainer = document.createElement('div');
+        modalContainer.className = "custom-restore-modal-overlay";
+        modalContainer.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999;";
+        modalContainer.innerHTML = `
+          <div style="background:#fff; padding:2rem; border-radius:12px; width:450px; box-shadow:0 10px 25px rgba(0,0,0,0.2); font-family:inherit;">
+            <h3 style="margin-top:0; color:#1e293b; font-size:1.1rem;"><i class="fa-solid fa-database" style="color:#0284c7;"></i> Select Recovery Scope</h3>
+            <p style="font-size:0.85rem; color:#64748b; line-height:1.4;">Choose whether you want to restore the entire snapshot database or target a single collection (like blogs).</p>
+            
+            <div style="margin:1rem 0;">
+              <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">TARGET COLLECTION</label>
+              <select id="granularRestoreSelect" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem; background:#f8fafc;">
+                ${collectionOptionsHTML}
+              </select>
+            </div>
+
+            <div style="background:#fef2f2; border:1px solid #fca5a5; padding:0.75rem; border-radius:6px; margin-bottom:1.25rem; font-size:0.8rem; color:#991b1b;">
+              <i class="fa-solid fa-triangle-exclamation"></i> <strong>Warning:</strong> Existing records with matching IDs will be overwritten/merged.
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
+              <button type="button" id="cancelRestoreBtn" style="padding:0.5rem 1rem; background:#e2e8f0; border:none; border-radius:6px; font-weight:600; cursor:pointer; color:#334155;">Cancel</button>
+              <button type="button" id="confirmRestoreActionBtn" style="padding:0.5rem 1rem; background:#ef4444; color:#fff; border:none; border-radius:6px; font-weight:600; cursor:pointer;"><i class="fa-solid fa-rotate-left"></i> Proceed Restore</button>
+            </div>
+          </div>
+        `;
+
+        document.body.appendChild(modalContainer);
+
+        document.getElementById('cancelRestoreBtn').onclick = () => {
+          modalContainer.remove();
+        };
+
+        document.getElementById('confirmRestoreActionBtn').onclick = async () => {
+          const selectedTarget = document.getElementById('granularRestoreSelect').value;
+          modalContainer.remove();
+
+          if (typeof showCustomModal === 'function') {
+            await showCustomModal("Restoring Data", `Disaster recovery in process. Restoring target: <strong>${selectedTarget}</strong>...`);
           }
 
-          // Extract available collections found in the JSON file
-          const availableCollections = Object.keys(backupJson.collections);
+          let restoredCount = 0;
+          const batchLimit = 400;
+          const collectionsToProcess = selectedTarget === 'ALL' ? availableCollections : [selectedTarget];
 
-          // Build a modern interactive selector for choosing all or a specific collection
-          let collectionOptionsHTML = `<option value="ALL">🔄 Restore ALL Collections (Full System Recovery)</option>`;
-          availableCollections.forEach(col => {
-            const count = Array.isArray(backupJson.collections[col]) ? backupJson.collections[col].length : 0;
-            collectionOptionsHTML += `<option value="${col}">📁 Single Collection: ${col} (${count} records)</option>`;
-          });
+          for (const colName of collectionsToProcess) {
+            const documents = backupJson.collections[colName];
+            if (!Array.isArray(documents) || documents.length === 0) continue;
 
-          // Create a custom modal or prompt dialog allowing the admin to choose scope
-          const modalContainer = document.createElement('div');
-          modalContainer.className = "custom-restore-modal-overlay";
-          modalContainer.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999;";
-          modalContainer.innerHTML = `
-            <div style="background:#fff; padding:2rem; border-radius:12px; width:450px; box-shadow:0 10px 25px rgba(0,0,0,0.2); font-family:inherit;">
-              <h3 style="margin-top:0; color:#1e293b; font-size:1.1rem;"><i class="fa-solid fa-database" style="color:#0284c7;"></i> Select Recovery Scope</h3>
-              <p style="font-size:0.85rem; color:#64748b; line-height:1.4;">Choose whether you want to restore the entire snapshot database or target a single corrupted collection.</p>
+            let batch = window.db.batch();
+            let operationCounter = 0;
+
+            for (const docObj of documents) {
+              const docId = docObj.id;
+              const docData = { ...docObj };
+              delete docData.id;
+
+              const docRef = window.db.collection(colName).doc(docId);
+              batch.set(docRef, docData, { merge: true });
               
-              <div style="margin:1rem 0;">
-                <label style="display:block; font-size:0.75rem; font-weight:700; color:#334155; margin-bottom:0.3rem;">TARGET COLLECTION</label>
-                <select id="granularRestoreSelect" style="width:100%; padding:0.6rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem; background:#f8fafc;">
-                  ${collectionOptionsHTML}
-                </select>
-              </div>
+              operationCounter++;
+              restoredCount++;
 
-              <div style="background:#fef2f2; border:1px solid #fca5a5; padding:0.75rem; border-radius:6px; margin-bottom:1.25rem; font-size:0.8rem; color:#991b1b;">
-                <i class="fa-solid fa-triangle-exclamation"></i> <strong>Warning:</strong> Existing records with matching IDs will be overwritten/merged.
-              </div>
-
-              <div style="display:flex; justify-content:flex-end; gap:0.75rem;">
-                <button type="button" id="cancelRestoreBtn" style="padding:0.5rem 1rem; background:#e2e8f0; border:none; border-radius:6px; font-weight:600; cursor:pointer; color:#334155;">Cancel</button>
-                <button type="button" id="confirmRestoreActionBtn" style="padding:0.5rem 1rem; background:#ef4444; color:#fff; border:none; border-radius:6px; font-weight:600; cursor:pointer;"><i class="fa-solid fa-rotate-left"></i> Proceed Restore</button>
-              </div>
-            </div>
-          `;
-
-          document.body.appendChild(modalContainer);
-
-          // Handle user choice via modal actions
-          document.getElementById('cancelRestoreBtn').onclick = () => {
-            modalContainer.remove();
-            restoreInput.value = "";
-          };
-
-          document.getElementById('confirmRestoreActionBtn').onclick = async () => {
-            const selectedTarget = document.getElementById('granularRestoreSelect').value;
-            modalContainer.remove();
-
-            if (typeof showCustomModal === 'function') {
-              await showCustomModal("Restoring Data", `Disaster recovery in process. Restoring target: <strong>${selectedTarget}</strong>...`);
-            }
-
-            let restoredCount = 0;
-            const batchLimit = 400;
-
-            const collectionsToProcess = selectedTarget === 'ALL' ? availableCollections : [selectedTarget];
-
-            for (const colName of collectionsToProcess) {
-              const documents = backupJson.collections[colName];
-              if (!Array.isArray(documents) || documents.length === 0) continue;
-
-              let batch = window.db.batch();
-              let operationCounter = 0;
-
-              for (const docObj of documents) {
-                const docId = docObj.id;
-                const docData = { ...docObj };
-                delete docData.id;
-
-                const docRef = window.db.collection(colName).doc(docId);
-                batch.set(docRef, docData, { merge: true });
-                
-                operationCounter++;
-                restoredCount++;
-
-                if (operationCounter >= batchLimit) {
-                  await batch.commit();
-                  batch = window.db.batch();
-                  operationCounter = 0;
-                }
-              }
-
-              if (operationCounter > 0) {
+              if (operationCounter >= batchLimit) {
                 await batch.commit();
+                batch = window.db.batch();
+                operationCounter = 0;
               }
             }
 
-            if (typeof logAuditAction === 'function') {
-              await logAuditAction("RESTORE_BACKUP", `Restored ${restoredCount} records for target [${selectedTarget}] from file (${file.name}).`);
+            if (operationCounter > 0) {
+              await batch.commit();
             }
+          }
 
-            await showCustomModal("Recovery Successful", `Successfully restored <strong>${restoredCount}</strong> records under target scope: <em>${selectedTarget}</em>.`);
-            restoreInput.value = "";
-          };
+          if (typeof logAuditAction === 'function') {
+            await logAuditAction("RESTORE_BACKUP", `Restored ${restoredCount} records for target [${selectedTarget}] from file (${file.name}).`);
+          }
 
-        } catch (parseErr) {
-          console.error("Restoration Parse Error:", parseErr);
-          await showCustomModal("Recovery Failed", "The selected backup file is corrupted, malformed, or uses an incompatible schema.");
-          restoreInput.value = "";
-        }
-      };
+          await showCustomModal("Recovery Successful", `Successfully restored <strong>${restoredCount}</strong> records under target scope: <em>${selectedTarget}</em>.`);
+          restoreInputRef.value = "";
+          if (restoreBtn) restoreBtn.innerHTML = '<i class="fa-solid fa-database"></i> Restore Database Snapshot';
+        };
 
-      reader.readAsText(file);
-    });
+      } catch (parseErr) {
+        console.error("Restoration Parse Error:", parseErr);
+        await showCustomModal("Recovery Failed", "The selected backup file is corrupted, malformed, or uses an incompatible schema.");
+        restoreInputRef.value = "";
+      }
+    };
+    reader.readAsText(file);
   }
 
   // 3. Automated Daily Background Check
@@ -1495,9 +1507,9 @@ function initBackupGenerator() {
 function checkAndTriggerAutomatedDailyBackup() {
   const lastBackupKey = "samcam_last_auto_backup_date";
   const todayStr = new Date().toISOString().slice(0, 10);
-  const lastBackupDate = localStorage.getItem(lastBackupKey);
+  const lastBackupKeyDate = localStorage.getItem(lastBackupKey);
 
-  if (lastBackupDate !== todayStr) {
+  if (lastBackupKeyDate !== todayStr) {
     localStorage.setItem(lastBackupKey, todayStr);
     try {
       if (typeof window.db !== 'undefined' && typeof logAuditAction === 'function') {
@@ -1508,7 +1520,6 @@ function checkAndTriggerAutomatedDailyBackup() {
     }
   }
 }
-
 // ==========================================================================
 // FEATURE 6: CENTRALIZED E-RESOURCE REPOSITORY MANAGER (MODERNIZED SAAS EDITION)
 // ==========================================================================
