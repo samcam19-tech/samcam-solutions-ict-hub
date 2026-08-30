@@ -775,3 +775,25 @@ function createFeatureSection(titleText, elementId) {
   grid.appendChild(wrapper);
   return wrapper;
 }
+
+/* ====================================================================
+   Additional JavaScript for Mobile Adaptability & UI Enhancements
+   ==================================================================== */
+
+// Ensures smooth table scrolling and dynamic viewport adjustments on mobile devices
+document.addEventListener("DOMContentLoaded", () => {
+  const tableContainer = document.querySelector(".table-container");
+  if (tableContainer) {
+    tableContainer.setAttribute("tabindex", "0");
+    tableContainer.setAttribute("aria-label", "Active Platform Tenants table, scroll horizontally to view more details");
+  }
+
+  // Handle dynamic viewport height adjustments for mobile keyboards
+  const setMobileViewportFix = () => {
+    let vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+  };
+
+  window.addEventListener('resize', setMobileViewportFix);
+  setMobileViewportFix();
+});
