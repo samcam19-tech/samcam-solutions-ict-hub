@@ -56,9 +56,12 @@
   <div class="blog-container">
     <!-- Header / Navigation Bar -->
     <header class="blog-header" style="position: relative;">
-      <div class="header-title">
-        <h2><i class="fa-solid fa-blog"></i> SAMCAM ICT Insights</h2>
-        <p>Expert articles, practical tutorials, theory guides, and pedagogical resources.</p>
+      <div class="header-title" style="display: flex; align-items: center; gap: 1rem;">
+        <img src="images/logo.png" alt="System Logo" class="dynamic-system-logo" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
+        <div>
+          <h2 class="dynamic-system-name" style="margin: 0; font-size: 1.25rem; font-weight: 700;"><i class="fa-solid fa-blog"></i> SAMCAM ICT Insights</h2>
+          <p class="dynamic-system-slogan" style="margin: 0; font-size: 0.8rem; color: #64748b;">Expert articles, practical tutorials, theory guides, and pedagogical resources.</p>
+        </div>
       </div>
 
       <!-- Mobile Hamburger Button -->
@@ -171,6 +174,8 @@
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
   <script src="firebase-config.js"></script>
+  <!-- Include Brand Loader Script -->
+  <script src="brand-loader.js"></script>
   <script src="blog.js"></script>
 </body>
 </html>
