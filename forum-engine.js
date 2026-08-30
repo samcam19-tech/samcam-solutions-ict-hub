@@ -2,6 +2,7 @@
 // 2. STATE MANAGEMENT, REAL-TIME LISTENERS & SESSION HANDLING
 // ==========================================================================
 let globalThreads = [];
+let userReadReceiptsCache = {};
 let activeThreadId = null;
 let unsubscribeThreads = null;
 let unsubscribeReplies = null;
@@ -119,165 +120,194 @@ function getCurrentUserSession(userParam) {
 }
 
 // ==========================================================================
-// FORUM ENGINE INITIALIZATION & THREAD LOGIC (FIXED CURRENTUSER SCOPE)
+// FORUM ENGINE INITIALIZATION & THREAD LOGIC (FIXED FILTERING & RENDERING)
 // ==========================================================================
+
 window.initRealtimeForumThreads = function() {
-  const container = document.getElementById('forumThreadsContainer');
+  const container = document.getElementById('forumThreadsContainer') || document.getElementById('threadsFeedContainer');
   if (!container) return;
 
-  // Retrieve current user safely to prevent ReferenceError
-  const currentUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser'));
+  // Retrieve current user safely across various storage keys
+  let currentUser = null;
+  try {
+    const sessionData = localStorage.getItem('portal_session') || 
+                        localStorage.getItem('currentLoggedInUser') || 
+                        sessionStorage.getItem('portal_session');
+    if (sessionData) currentUser = JSON.parse(sessionData);
+  } catch (e) {
+    currentUser = null;
+  }
+
   const activeSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || window.currentSchoolId) : null;
 
   let query = db.collection('forum_threads');
-  if (activeSchoolId && currentUser && currentUser.role !== 'admin') {
+  
+  // Only apply school isolation if schoolId exists and user is not an admin
+  if (activeSchoolId && currentUser && currentUser.role !== 'admin' && currentUser.role !== 'superadmin') {
     query = query.where('schoolId', '==', activeSchoolId);
   }
 
   query.onSnapshot((snapshot) => {
-    let threads = [];
+    globalThreads = [];
     snapshot.forEach((doc) => {
-      threads.push({ id: doc.id, ...doc.data() });
+      globalThreads.push({ id: doc.id, ...doc.data() });
     });
 
-    if (threads.length === 0) {
-      container.innerHTML = '<p style="color:#64748b; font-size:0.85rem;">No forum discussions started yet.</p>';
+    if (globalThreads.length === 0) {
+      container.innerHTML = '<div class="loading-state" style="color:#64748b; font-size:0.85rem; padding: 1rem;">No forum discussions started yet.</div>';
       return;
     }
 
-    threads.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+    // Sort by newest first
+    globalThreads.sort((a, b) => {
+      const timeA = a.createdAt && a.createdAt.toDate ? a.createdAt.toDate().getTime() : (a.createdAt || 0);
+      const timeB = b.createdAt && b.createdAt.toDate ? b.createdAt.toDate().getTime() : (b.createdAt || 0);
+      return timeB - timeA;
+    });
 
-    container.innerHTML = threads.map(thread => `
-      <div class="forum-thread-card" style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:1rem; margin-bottom:0.75rem; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem;">
-          <h4 style="margin:0; color:#1e293b; font-size:1rem;">${escapeHtml(thread.title)}</h4>
-          <span style="font-size:0.75rem; color:#64748b;">By ${escapeHtml(thread.authorName || 'Anonymous')}</span>
-        </div>
-        <p style="color:#334155; font-size:0.9rem; margin:0.5rem 0;">${escapeHtml(thread.content)}</p>
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:0.75rem; font-size:0.8rem; color:#64748b;">
-          <span><i class="fa-regular fa-comment"></i> ${thread.replyCount || 0} replies</span>
-          <button type="button" onclick="openThreadModal('${thread.id}')" class="btn-action" style="padding:0.3rem 0.6rem; font-size:0.75rem;">View Discussion</button>
-        </div>
-      </div>
-    `).join('');
+    // Re-run filter to populate UI safely considering user permissions & class levels
+    filterForumThreads();
   }, (error) => {
     console.error("Error listening to forum threads:", error);
+    container.innerHTML = '<div class="loading-state" style="color:#ef4444; font-size:0.85rem;">Error loading discussions from cloud.</div>';
   });
 };
 
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof initRealtimeForumThreads === 'function') {
-    initRealtimeForumThreads();
+    setTimeout(initRealtimeForumThreads, 300);
   }
 });
 
-function renderThreadsList(threads) {
-    const feedContainer = document.getElementById('threadsFeedContainer');
-    if (!feedContainer) return;
-
-    if (threads.length === 0) {
-        feedContainer.innerHTML = `<div class="loading-state">No matching discussions found for your class level.</div>`;
-        return;
-    }
-
-    const session = getCurrentUserSession();
-    const bookmarks = JSON.parse(localStorage.getItem(`samcam_bookmarks_${session.name}`) || '[]');
-
-    let html = '';
-    threads.forEach(thread => {
-        const timeAgo = thread.createdAt && thread.createdAt.toDate 
-            ? new Date(thread.createdAt.toDate()).toLocaleDateString() 
-            : 'Recent';
-
-        const isActive = activeThreadId === thread.id ? 'active' : '';
-        const upvotesCount = (thread.upvotedBy || []).length;
-        const isBookmarked = bookmarks.includes(thread.id);
-
-        // Unread notification badge HTML tag
-        const unreadBadge = thread.hasUnreadNotification 
-            ? `<span class="thread-unread-badge" style="background:#ef4444; color:#fff; font-size:0.65rem; padding:0.05rem 0.35rem; border-radius:10px; font-weight:600; margin-left:0.4rem; vertical-align:middle; display:inline-block;"><i class="fa-solid fa-circle" style="font-size:0.45rem; vertical-align:middle; margin-right:2px;"></i> New</span>` 
-            : '';
-
-        html += `
-            <div class="thread-card ${isActive}" onclick="selectThread('${thread.id}')">
-                <div class="thread-meta-top" style="display:flex; justify-content:space-between; align-items:center;">
-                    <span class="class-badge">${escapeHtml(thread.classTarget || 'General')}</span>
-                    <div>
-                        <button class="btn btn-xs btn-outline" style="border:none; padding:0.1rem 0.3rem;" onclick="event.stopPropagation(); toggleBookmark('${thread.id}')" title="Bookmark Thread">
-                            <i class="fa-${isBookmarked ? 'solid' : 'regular'} fa-bookmark" style="${isBookmarked ? 'color:#10b981;' : ''}"></i>
-                        </button>
-                        <span class="thread-time" style="margin-left:0.3rem;"><i class="fa-solid fa-thumbs-up"></i> ${upvotesCount} • ${timeAgo}</span>
-                    </div>
-                </div>
-                <h4>${escapeHtml(thread.title)} ${unreadBadge}</h4>
-                <div class="thread-snippet">${formatRichContent(thread.body)}</div>
-            </div>
-        `;
-    });
-
-    feedContainer.innerHTML = html;
+function getCurrentUserSession() {
+  try {
+    const raw = localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser') || '{}';
+    return JSON.parse(raw);
+  } catch (err) {
+    return { role: 'student', name: 'User', userClass: '' };
+  }
 }
 
-let userReadReceiptsCache = {};
+function renderThreadsList(threads) {
+  const feedContainer = document.getElementById('threadsFeedContainer') || document.getElementById('forumThreadsContainer');
+  if (!feedContainer) return;
+
+  if (threads.length === 0) {
+    feedContainer.innerHTML = `<div class="loading-state" style="padding: 1rem; color: #64748b;">No matching discussions found for your class level.</div>`;
+    return;
+  }
+
+  const session = getCurrentUserSession();
+  let bookmarks = [];
+  try {
+    bookmarks = JSON.parse(localStorage.getItem(`samcam_bookmarks_${session.name || 'user'}`) || '[]');
+  } catch (e) {
+    bookmarks = [];
+  }
+
+  let html = '';
+  threads.forEach(thread => {
+    const timeAgo = thread.createdAt && thread.createdAt.toDate 
+        ? new Date(thread.createdAt.toDate()).toLocaleDateString() 
+        : 'Recent';
+
+    const isActive = activeThreadId === thread.id ? 'active' : '';
+    const upvotesCount = (thread.upvotedBy || []).length;
+    const isBookmarked = bookmarks.includes(thread.id);
+
+    // Unread notification badge HTML tag
+    const unreadBadge = thread.hasUnreadNotification 
+        ? `<span class="thread-unread-badge" style="background:#ef4444; color:#fff; font-size:0.65rem; padding:0.05rem 0.35rem; border-radius:10px; font-weight:600; margin-left:0.4rem; vertical-align:middle; display:inline-block;"><i class="fa-solid fa-circle" style="font-size:0.45rem; vertical-align:middle; margin-right:2px;"></i> New</span>` 
+        : '';
+
+    html += `
+        <div class="thread-card ${isActive}" onclick="selectThread('${thread.id}')" style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:1rem; margin-bottom:0.75rem; box-shadow:0 1px 3px rgba(0,0,0,0.05); cursor:pointer;">
+            <div class="thread-meta-top" style="display:flex; justify-content:space-between; align-items:center;">
+                <span class="class-badge" style="font-size: 0.75rem; background: #e0f2fe; color: #0284c7; padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 600;">${escapeHtml(thread.classTarget || 'General')}</span>
+                <div>
+                    <button class="btn btn-xs btn-outline" style="border:none; padding:0.1rem 0.3rem;" onclick="event.stopPropagation(); toggleBookmark('${thread.id}')" title="Bookmark Thread">
+                        <i class="fa-${isBookmarked ? 'solid' : 'regular'} fa-bookmark" style="${isBookmarked ? 'color:#10b981;' : ''}"></i>
+                    </button>
+                    <span class="thread-time" style="margin-left:0.3rem; font-size:0.75rem; color:#64748b;"><i class="fa-solid fa-thumbs-up"></i> ${upvotesCount} • ${timeAgo}</span>
+                </div>
+            </div>
+            <h4 style="margin: 0.5rem 0; color:#1e293b; font-size:1rem;">${escapeHtml(thread.title || 'Untitled')} ${unreadBadge}</h4>
+            <div class="thread-snippet" style="color:#334155; font-size:0.9rem;">${typeof formatRichContent === 'function' ? formatRichContent(thread.body || thread.content || '') : escapeHtml(thread.body || thread.content || '')}</div>
+        </div>
+    `;
+  });
+
+  feedContainer.innerHTML = html;
+}
 
 function filterForumThreads() {
-    const query = document.getElementById('forumSearchInput')?.value.toLowerCase() || '';
-    const selectedClass = document.getElementById('classFilterSelect')?.value || '';
-    const session = getCurrentUserSession();
+  const searchInput = document.getElementById('forumSearchInput') || document.getElementById('announcementSearch');
+  const query = searchInput ? searchInput.value.toLowerCase() : '';
+  const classSelect = document.getElementById('classFilterSelect') || document.getElementById('priorityFilter');
+  const selectedClass = classSelect ? classSelect.value : '';
+  
+  const session = getCurrentUserSession();
+  const combinedCheck = `${session.role || ''} ${session.name || ''}`.toLowerCase();
+  const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
+                           combinedCheck.includes('admin') || 
+                           combinedCheck.includes('instructor') ||
+                           combinedCheck.includes('staff');
 
-    const combinedCheck = `${session.role} ${session.name}`.toLowerCase();
-    const isTeacherOrAdmin = combinedCheck.includes('teacher') || 
-                             combinedCheck.includes('admin') || 
-                             combinedCheck.includes('instructor') ||
-                             combinedCheck.includes('staff');
+  const filtered = globalThreads.filter(t => {
+      const target = (t.classTarget || 'General').trim().toLowerCase();
 
-    const filtered = globalThreads.filter(t => {
-        const target = (t.classTarget || 'General').trim().toLowerCase();
+      // If user is a student, ensure they see General posts or posts matching their class level
+      if (!isTeacherOrAdmin && session.userClass) {
+          const studentCls = (session.userClass || '').trim().toLowerCase();
+          const matchesStudentClass = target === 'general' || target === studentCls || studentCls.includes(target);
+          if (!matchesStudentClass) return false;
+      }
 
-        if (!isTeacherOrAdmin) {
-            const studentCls = (session.userClass || '').trim().toLowerCase();
-            const matchesStudentClass = target === 'general' || target === studentCls;
-            if (!matchesStudentClass) return false;
-        }
+      const titleText = (t.title || '').toLowerCase();
+      const bodyText = (t.body || t.content || '').toLowerCase();
+      const matchesQuery = titleText.includes(query) || bodyText.includes(query);
+      const matchesClassDropdown = !selectedClass || target === selectedClass.trim().toLowerCase();
 
-        const matchesQuery = t.title.toLowerCase().includes(query) || t.body.toLowerCase().includes(query);
-        const matchesClassDropdown = !selectedClass || target === selectedClass.trim().toLowerCase();
+      return matchesQuery && matchesClassDropdown;
+  });
 
-        return matchesQuery && matchesClassDropdown;
-    });
+  let unreadTotalCount = 0;
 
-    let unreadTotalCount = 0;
+  const enhancedFiltered = filtered.map(t => {
+      const localRead = parseInt(localStorage.getItem(`samcam_thread_last_read_${t.id}`) || '0', 10);
+      const cloudRead = userReadReceiptsCache[t.id] || 0;
+      const lastReadTime = Math.max(localRead, cloudRead);
 
-    // Attach unread notification flag and compute global count
-    const enhancedFiltered = filtered.map(t => {
-        const localRead = parseInt(localStorage.getItem(`samcam_thread_last_read_${t.id}`) || '0', 10);
-        const cloudRead = userReadReceiptsCache[t.id] || 0;
-        const lastReadTime = Math.max(localRead, cloudRead);
+      const lastCommentTime = t.lastCommentAt && t.lastCommentAt.toDate ? t.lastCommentAt.toDate().getTime() : (t.updatedAt || t.createdAt || 0);
+      const hasNewComment = lastCommentTime > lastReadTime;
 
-        const lastCommentTime = t.lastCommentAt && t.lastCommentAt.toDate ? t.lastCommentAt.toDate().getTime() : (t.updatedAt || 0);
-        const hasNewComment = lastCommentTime > lastReadTime;
+      if (hasNewComment) {
+          unreadTotalCount++;
+      }
 
-        if (hasNewComment) {
-            unreadTotalCount++;
-        }
+      return {
+          ...t,
+          hasUnreadNotification: hasNewComment
+      };
+  });
 
-        return {
-            ...t,
-            hasUnreadNotification: hasNewComment
-        };
-    });
+  const counterEl = document.getElementById('globalForumCounter');
+  if (counterEl) {
+      counterEl.innerHTML = unreadTotalCount > 0 
+          ? `<span class="nav-notification-badge" style="background:#ef4444; color:#fff; font-size:0.65rem; padding:0.1rem 0.35rem; border-radius:10px; font-weight:700; margin-left:0.3rem; display:inline-block;">${unreadTotalCount}</span>` 
+          : '';
+  }
 
-    // Update global counter UI element if present
-    const counterEl = document.getElementById('globalForumCounter');
-    if (counterEl) {
-        counterEl.innerHTML = unreadTotalCount > 0 
-            ? `<span class="nav-notification-badge" style="background:#ef4444; color:#fff; font-size:0.65rem; padding:0.1rem 0.35rem; border-radius:10px; font-weight:700; margin-left:0.3rem; animation:pulse-badge 2s infinite ease-in-out; display:inline-block;">${unreadTotalCount}</span>` 
-            : '';
-    }
-
-    renderThreadsList(enhancedFiltered);
+  renderThreadsList(enhancedFiltered);
 }
 
+// Global safety net for escapeHtml if missing
+if (typeof escapeHtml !== 'function') {
+  window.escapeHtml = function(str) {
+    if (!str) return '';
+    return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  };
+}
 window.selectThread = async function(threadId) {
     activeThreadId = threadId;
     const now = Date.now();
