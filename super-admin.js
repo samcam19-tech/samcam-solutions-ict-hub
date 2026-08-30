@@ -719,7 +719,9 @@ function initGlobalAnnouncements() {
   }
 }
 
-// Feature 2: Tenant Status & Subscription Manager
+// ==========================================================================
+// FEATURE 2: TENANT STATUS & SUBSCRIPTION MANAGER (MODERNIZED)
+// ==========================================================================
 function initTenantSubscriptionManager() {
   const container = getFeatureContainer("featureTenants");
   if (!container) return;
@@ -728,34 +730,78 @@ function initTenantSubscriptionManager() {
   const input = document.getElementById("manageSchoolIdInput");
 
   if (btn && input) {
-    btn.addEventListener("click", async () => {
+    btn.addEventListener("click", async (e) => {
+      e.preventDefault(); // Prevent accidental form submission
+      
       const schoolId = input.value.trim().toLowerCase();
+      
       if (!schoolId) {
-        await showCustomModal("Input Required", "Please enter a valid school ID.");
+        await showCustomModal("Validation Error", "Please enter a valid School/Tenant ID.");
+        input.focus();
         return;
       }
 
+      // 1. Cache original button state for loading animation recovery
+      const originalBtnContent = btn.innerHTML;
+      
       try {
+        // 2. Lock UI to prevent duplicate network requests (Double-click protection)
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Processing...';
+
+        // 3. Fetch Tenant Data
         const docRef = window.db.collection("schools").doc(schoolId);
         const docSnap = await docRef.get();
+        
         if (!docSnap.exists) {
-          await showCustomModal("Not Found", `No school found with ID: ${schoolId}`);
-          return;
+          await showCustomModal("Not Found", `No tenant found with ID: <strong>${schoolId}</strong>`);
+          return; // The 'finally' block will reset the button
         }
 
-        const currentStatus = docSnap.data().status || "active";
+        const tenantData = docSnap.data();
+        const currentStatus = tenantData.status || "active";
         const newStatus = currentStatus === "active" ? "suspended" : "active";
+        const tenantName = tenantData.schoolName || schoolId;
 
-        await docRef.update({ status: newStatus });
+        // 4. Smart Confirmation for Destructive Actions (Suspending a tenant)
+        if (newStatus === "suspended") {
+           const confirmSuspend = confirm(`⚠️ WARNING: Are you sure you want to SUSPEND "${tenantName}"? This will immediately revoke portal access for all their users.`);
+           if (!confirmSuspend) return; 
+        }
+
+        // 5. Update with Agile Metadata (Tracking the 'When' and 'Who')
+        const updatePayload = { 
+          status: newStatus,
+          statusUpdatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+          statusUpdatedBy: (window.currentUser && window.currentUser.username) ? window.currentUser.username : "Super Admin" 
+        };
+
+        await docRef.update(updatePayload);
+
+        // 6. Centralized Auditing
         if (typeof logAuditAction === 'function') {
-          await logAuditAction("UPDATE_TENANT_STATUS", `Changed school ${schoolId} status to ${newStatus}`);
+          await logAuditAction("UPDATE_TENANT_STATUS", `Changed tenant [${tenantName}] status to ${newStatus.toUpperCase()}`);
         }
-        await showCustomModal("Success", `School ${schoolId} status updated to ${newStatus.toUpperCase()}.`);
-        if (typeof loadRegisteredSchools === 'function') {
-          loadRegisteredSchools();
-        }
+
+        // 7. Rich Visual Feedback & UI Refresh
+        const statusColor = newStatus === 'active' ? '#10b981' : '#ef4444'; // Green for active, Red for suspended
+        await showCustomModal(
+          "Subscription Updated", 
+          `Tenant <span style="font-weight: bold;">${tenantName}</span> is now <strong style="color: ${statusColor};">${newStatus.toUpperCase()}</strong>.`
+        );
+        
+        input.value = ''; // Clear input on success
+
+        // Refresh dynamic UI components if they exist
+        if (typeof loadRegisteredSchools === 'function') loadRegisteredSchools();
+        
       } catch (err) {
-        await showCustomModal("Error", "Failed to update tenant status.");
+        console.error("Subscription Manager Error:", err);
+        await showCustomModal("System Error", "Failed to update tenant status. Please check your network connection and permissions.");
+      } finally {
+        // 8. Graceful Fallback: Always unlock the UI regardless of success or failure
+        btn.disabled = false;
+        btn.innerHTML = originalBtnContent;
       }
     });
   }
