@@ -720,7 +720,7 @@ function initGlobalAnnouncements() {
 }
 
 // ==========================================================================
-// FEATURE 2: TENANT STATUS & SUBSCRIPTION MANAGER (MODERNIZED WITH LIVE PREVIEW)
+// FEATURE 2: TENANT STATUS & SUBSCRIPTION MANAGER (WITH LOGO & DEFAULT AVATAR FALLBACK)
 // ==========================================================================
 function initTenantSubscriptionManager() {
   const container = getFeatureContainer("featureTenants");
@@ -734,12 +734,11 @@ function initTenantSubscriptionManager() {
   if (!previewFeed && input) {
     previewFeed = document.createElement("div");
     previewFeed.id = "tenantLivePreviewFeed";
-    previewFeed.style.cssText = "background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin: 1rem 0; font-size: 0.8rem; color: #475569;";
-    // Insert right before the input container or button
+    previewFeed.style.cssText = "background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; font-size: 0.8rem; color: #475569;";
     input.parentNode.insertBefore(previewFeed, input);
   }
 
-  // 2. Helper to fetch and render tenant metadata in real time
+  // 2. Helper to fetch and render tenant metadata in real time with school logo and fallback avatar support
   async function fetchAndRenderTenant(schoolId) {
     const cleanId = schoolId.trim().toLowerCase();
     if (!cleanId) {
@@ -771,24 +770,30 @@ function initTenantSubscriptionManager() {
       const currentStatus = data.status || "active";
       const isActive = currentStatus === "active";
       const tenantName = data.schoolName || data.name || cleanId;
+      
+      // Fallback to default avatar image if school logo is not present
+      const schoolLogoUrl = data.logoUrl || data.logo || "images/default-avatar.png";
 
       if (previewFeed) {
         previewFeed.innerHTML = `
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-            <span>ID: <strong>${escapeHtml(cleanId)}</strong></span>
+          <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">
+            <img src="${escapeHtml(schoolLogoUrl)}" alt="School Logo" style="width: 36px; height: 36px; object-fit: cover; border-radius: 50%; border: 1px solid #cbd5e1; background: #fff;" onerror="this.src='images/default-avatar.png';" />
+            <div style="flex: 1; overflow: hidden;">
+              <div style="font-weight: 700; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(tenantName)}</div>
+              <div style="font-size: 0.75rem; color: #64748b;">ID: <strong>${escapeHtml(cleanId)}</strong></div>
+            </div>
             <span style="padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 700; font-size: 0.7rem; background: ${isActive ? '#dcfce7' : '#fee2e2'}; color: ${isActive ? '#166534' : '#b91c1c'};">
               ${currentStatus.toUpperCase()}
             </span>
           </div>
           <div style="font-size: 0.78rem; color: #475569; line-height: 1.4;">
-            School Name: <strong>${escapeHtml(tenantName)}</strong><br>
             Subscription Tier: <strong>${escapeHtml(data.subscriptionPlan || 'Enterprise SaaS')}</strong><br>
             Admin Contact: <strong>${escapeHtml(data.adminEmail || data.email || 'admin@stacon.ac.ug')}</strong>
           </div>
         `;
       }
 
-      // Update button contextual label if desired
+      // Update button contextual label
       if (btn) {
         btn.innerHTML = `<i class="fa-solid fa-toggle-${isActive ? 'on' : 'off'}"></i> ${isActive ? 'Suspend Tenant Account' : 'Activate Tenant Account'}`;
       }
@@ -829,8 +834,6 @@ function initTenantSubscriptionManager() {
         input.focus();
         return;
       }
-
-      const originalBtnContent = btn.innerHTML;
       
       try {
         btn.disabled = true;
@@ -857,7 +860,6 @@ function initTenantSubscriptionManager() {
              "prompt", 
              "Type 'SUSPEND' to confirm"
            );
-           // If using a prompt-style check or simple confirm modal: adjust based on your modal utility design
            if (confirmSuspend === null) return; 
         }
 
