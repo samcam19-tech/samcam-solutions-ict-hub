@@ -10,9 +10,15 @@
 <body>
   <div class="admin-wrapper">
     <header class="admin-header">
-      <div class="header-brand">
-        <h1>Samcam Hub - Super Admin</h1>
-        <span class="global-badge"><i class="fa-solid fa-shield-halved" style="margin-right: 4px;"></i> Global Master Control</span>
+      <div class="header-brand" style="display: flex; align-items: center; gap: 12px;">
+        <!-- Dynamic Logo Hook -->
+        <img src="" alt="System Logo" class="dynamic-system-logo" style="height: 40px; width: auto; object-fit: contain;" />
+        <div>
+          <!-- Added dynamic-system-name class hook -->
+          <h1 class="dynamic-system-name" style="margin: 0; font-size: 1.25rem;">Samcam Hub - Super Admin</h1>
+          <!-- Dynamic Slogan Hook -->
+          <p class="dynamic-system-slogan" style="margin: 0; font-size: 0.8rem; opacity: 0.8;"></p>
+        </div>
       </div>
       <div class="admin-profile">
         <i class="fa-solid fa-user-shield" style="color: var(--primary);"></i>
@@ -289,6 +295,9 @@
 
   <!-- Your existing configuration script -->
   <script src="firebase-config.js"></script>
+
+  <!-- Include Brand Loader Script -->
+  <script src="brand-loader.js"></script>
 
   <!-- The super admin engine script -->
   <script src="super-admin.js"></script>
