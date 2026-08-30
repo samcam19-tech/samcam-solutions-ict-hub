@@ -1042,12 +1042,20 @@ function renderSubmissionsTablePage() {
   
   if (!resultsContainer) return;
 
+  // Safely resolve active school ID directly from currentUser or local storage without throwing missing function errors
   let activeSchoolId = '';
   if (typeof currentSchoolId !== 'undefined' && currentSchoolId) {
     activeSchoolId = currentSchoolId.trim();
+  } else if (typeof currentUser !== 'undefined' && currentUser && (currentUser.schoolId || currentUser.schoolID || currentUser.institutionId)) {
+    activeSchoolId = (currentUser.schoolId || currentUser.schoolID || currentUser.institutionId).trim();
   } else {
-    const session = getCurrentUserSession();
-    activeSchoolId = session && (session.schoolId || session.schoolID || session.institutionId) ? (session.schoolId || session.schoolID || session.institutionId).trim() : 'stacon';
+    const session = typeof getCurrentUserSession === 'function' ? getCurrentUserSession() : null;
+    if (session && (session.schoolId || session.schoolID || session.institutionId)) {
+      activeSchoolId = (session.schoolId || session.schoolID || session.institutionId).trim();
+    } else {
+      const storedUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('user') || '{}');
+      activeSchoolId = (storedUser.schoolId || storedUser.schoolID || storedUser.institutionId || 'stacon').trim();
+    }
   }
 
   // Flexible client-side filtering matching lowercase/uppercase safely
@@ -1082,9 +1090,9 @@ function renderSubmissionsTablePage() {
 
     rowsHtml += `
       <tr style="border-bottom:1px solid #f1f5f9;" id="submissionRow_${res.id}">
-        <td style="padding:0.75rem; font-weight:600; color:#0f172a;">${escapeHtml(res.studentName || 'Student')}</td>
-        <td style="padding:0.75rem; color:#475569; font-weight:500;">${escapeHtml(res.studentClass || 'N/A')}</td>
-        <td style="padding:0.75rem; font-weight:500; color:#1e293b;">${escapeHtml(res.quizTitle || 'Assessment')}</td>
+        <td style="padding:0.75rem; font-weight:600; color:#0f172a;">${typeof escapeHtml === 'function' ? escapeHtml(res.studentName || 'Student') : (res.studentName || 'Student')}</td>
+        <td style="padding:0.75rem; color:#475569; font-weight:500;">${typeof escapeHtml === 'function' ? escapeHtml(res.studentClass || 'N/A') : (res.studentClass || 'N/A')}</td>
+        <td style="padding:0.75rem; font-weight:500; color:#1e293b;">${typeof escapeHtml === 'function' ? escapeHtml(res.quizTitle || 'Assessment') : (res.quizTitle || 'Assessment')}</td>
         <td style="padding:0.75rem; font-size:0.85rem; color:#475569;">${typeof formatSeconds === 'function' ? formatSeconds(res.timeSpentSeconds) : (res.timeSpentSeconds || 0) + 's'}</td>
         <td style="padding:0.75rem;">
           <span style="font-weight:700; color:${(res.percentage || 0) >= 50 ? '#16a34a' : '#dc2626'}; background:${(res.percentage || 0) >= 50 ? '#f0fdf4' : '#fef2f2'}; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.85rem;">
