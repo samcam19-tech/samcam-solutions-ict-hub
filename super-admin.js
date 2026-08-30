@@ -1800,17 +1800,40 @@ function initGlobalEResources() {
     }
   };
 
+  // Toggle global status (isGlobal: true <-> false) for any existing resource
+  window.toggleGlobalStatus = async function(id, currentStatus) {
+    try {
+      const newStatus = !currentStatus;
+      await window.db.collection("e_library_resources").doc(id).update({
+        isGlobal: newStatus,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      if (typeof logAuditAction === 'function') {
+        await logAuditAction("TOGGLE_GLOBAL_STATUS", `Changed global resource state for ID ${id} to [${newStatus}]`);
+      }
+
+      if (listContainer) {
+        loadCentralizedResourcesFeed(listContainer);
+      }
+    } catch (e) {
+      console.error("Toggle global status error:", e);
+      if (typeof showCustomModal === 'function') {
+        await showCustomModal("Action Failed", "Could not toggle global resource state due to permission or network errors.");
+      }
+    }
+  };
+
   window.deleteGlobalResource = async function(id) {
     if (typeof showCustomModal === 'function') {
-      // Simple verification before executing deletion
-      const confirmDel = confirm("Are you sure you want to delete this global e-resource?");
+      const confirmDel = confirm("Are you sure you want to delete this e-resource?");
       if (!confirmDel) return;
     }
 
     try {
       await window.db.collection("e_library_resources").doc(id).delete();
       if (typeof logAuditAction === 'function') {
-        await logAuditAction("DELETE_GLOBAL_RESOURCE", `Deleted central e-resource ID: ${id}`);
+        await logAuditAction("DELETE_GLOBAL_RESOURCE", `Deleted e-resource ID: ${id}`);
       }
       if (listContainer) {
         loadCentralizedResourcesFeed(listContainer);
@@ -1820,28 +1843,29 @@ function initGlobalEResources() {
     }
   };
 
-  // Live feed renderer for active centralized resources
+  // Live feed renderer listing all resources to allow managing global states, viewing, editing, and deleting
   if (listContainer) {
     loadCentralizedResourcesFeed(listContainer);
   }
 }
 
-// Helper function to fetch and display current global resources with icon-only actions
+// Helper function to fetch and display all resources with icon-only actions including global status toggle
 async function loadCentralizedResourcesFeed(listContainer) {
   listContainer.innerHTML = `
     <div style="padding: 1.5rem; text-align: center; color: #64748b; font-size: 0.85rem;">
       <i class="fa-solid fa-circle-notch fa-spin" style="font-size: 1.1rem; color: #38bdf8; margin-bottom: 0.4rem; display: block;"></i>
-      Loading centralized e-library repository...
+      Loading e-library repository manager...
     </div>`;
 
   try {
-    const snap = await window.db.collection("e_library_resources").where("isGlobal", "==", true).orderBy("createdAt", "desc").limit(10).get();
+    // Fetch all resources (or a comprehensive list) ordered by creation date
+    const snap = await window.db.collection("e_library_resources").orderBy("createdAt", "desc").limit(25).get();
     
     if (snap.empty) {
       listContainer.innerHTML = `
         <div style="text-align: center; padding: 1.5rem; color: #64748b; font-size: 0.85rem;">
           <i class="fa-solid fa-book-bookmark" style="font-size: 1.4rem; margin-bottom: 0.4rem; color: #94a3b8; display: block;"></i>
-          No global resources published in the central repository yet.
+          No resources found in the repository yet.
         </div>`;
       return;
     }
@@ -1849,7 +1873,14 @@ async function loadCentralizedResourcesFeed(listContainer) {
     let html = '';
     snap.forEach(doc => {
       const d = doc.data();
+      const isGlobal = d.isGlobal === true;
       
+      // Dynamic styling and icons based on whether it's currently global or local
+      const globalBadgeBg = isGlobal ? '#dcfce7' : '#f1f5f9';
+      const globalBadgeColor = isGlobal ? '#15803d' : '#64748b';
+      const globalIcon = isGlobal ? 'fa-globe' : 'fa-globe-slash';
+      const globalTitle = isGlobal ? 'Global Resource (Click to make local)' : 'Local Resource (Click to make global)';
+
       html += `
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
           <div style="display: flex; align-items: flex-start; gap: 0.75rem; overflow: hidden;">
@@ -1860,6 +1891,7 @@ async function loadCentralizedResourcesFeed(listContainer) {
               <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.15rem;">
                 <span style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: #0284c7; background: #e0f2fe; padding: 0.1rem 0.35rem; border-radius: 3px;">${escapeHtml(d.classLevel || 'S5')}</span>
                 <span style="font-size: 0.65rem; font-weight: 700; color: #0f766e; background: #ccfbf1; padding: 0.1rem 0.35rem; border-radius: 3px;">${escapeHtml(d.category || 'General')}</span>
+                <span style="font-size: 0.65rem; font-weight: 700; color: ${globalBadgeColor}; background: ${globalBadgeBg}; padding: 0.1rem 0.35rem; border-radius: 3px;">${isGlobal ? 'Global' : 'Local'}</span>
                 <span style="font-size: 0.7rem; color: #64748b;"><i class="fa-solid fa-download"></i> ${d.downloads || 0}</span>
               </div>
               <h4 style="margin: 0; font-size: 0.85rem; color: #1e293b; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(d.title)}">${escapeHtml(d.title)}</h4>
@@ -1868,7 +1900,10 @@ async function loadCentralizedResourcesFeed(listContainer) {
           </div>
           
           <!-- Icon-Only Action Buttons Bar -->
-          <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
+          <div style="display: flex; align-items: center; gap: 0.4rem; flex-shrink: 0;">
+            <button type="button" onclick="toggleGlobalStatus('${doc.id}', ${isGlobal})" style="background: ${globalBadgeBg}; border: 1px solid #cbd5e1; color: ${globalBadgeColor}; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem;" title="${globalTitle}">
+              <i class="fa-solid ${globalIcon}"></i>
+            </button>
             <button type="button" onclick="viewGlobalResource('${doc.id}')" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #0284c7; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem;" title="View Resource">
               <i class="fa-solid fa-eye"></i>
             </button>
@@ -1883,10 +1918,10 @@ async function loadCentralizedResourcesFeed(listContainer) {
       `;
     });
 
-    listContainer.innerHTML = `<div style="max-height: 350px; overflow-y: auto; padding-right: 4px;">${html}</div>`;
+    listContainer.innerHTML = `<div style="max-height: 380px; overflow-y: auto; padding-right: 4px;">${html}</div>`;
 
   } catch (err) {
-    console.error("Error loading global resource feed:", err);
+    console.error("Error loading resource feed:", err);
     listContainer.innerHTML = `
       <div style="padding: 1rem; background: #fee2e2; border: 1px solid #f87171; border-radius: 6px; color: #b91c1c; font-size: 0.8rem;">
         <i class="fa-solid fa-triangle-exclamation"></i> Failed to load live resource repository feed.
