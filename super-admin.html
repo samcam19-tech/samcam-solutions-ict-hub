@@ -179,60 +179,138 @@
         </div>
       </section>
 
-      <!-- 10 Feature Cards Grid Container -->
+      <!-- Full-Width Feature 1: Global Announcement Broadcaster -->
+      <div id="featureAnnouncements" class="admin-feature-card" style="width: 100%; margin-bottom: 1.5rem; box-sizing: border-box;">
+         <h3 class="feature-title"><i class="fa-solid fa-bullhorn" style="margin-right: 8px; color: var(--primary);"></i> Global Announcement Broadcaster</h3>
+         <div id="announcementFormCard" style="background: var(--bg-main, #f8fafc); padding: 16px; border-radius: 8px; border: 1px solid var(--border, #e2e8f0); margin-bottom: 20px;">
+           <h4 id="announceFormHeading" style="font-size: 14px; font-weight: 600; margin-bottom: 12px;"><i class="fa-solid fa-pen-to-square" style="margin-right: 4px;"></i> Publish New Broadcast</h4>
+           <input type="hidden" id="editingAnnouncementDocId" value="">
+           
+           <div class="form-group" style="margin-bottom: 12px;">
+             <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;"><i class="fa-solid fa-heading" style="margin-right: 4px;"></i> Announcement Title</label>
+             <input type="text" id="globalAnnounceTitle" placeholder="e.g., 📢 New Notes Available on the Portal!" class="feature-input" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;">
+           </div>
+           
+           <div class="form-group" style="margin-bottom: 12px;">
+             <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;"><i class="fa-solid fa-align-left" style="margin-right: 4px;"></i> Announcement Body / Message</label>
+             <textarea id="globalAnnounceText" placeholder="Type platform-wide broadcast message..." class="feature-textarea" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px; min-height: 80px;"></textarea>
+           </div>
+           
+           <div class="form-row" style="display: flex; gap: 10px; margin-bottom: 12px;">
+             <div class="form-group" style="flex: 1;">
+               <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;"><i class="fa-solid fa-triangle-exclamation" style="margin-right: 4px;"></i> Priority Level</label>
+               <select id="announcePriority" class="feature-select" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;">
+                 <option value="Urgent">Urgent</option>
+                 <option value="Normal" selected>Normal</option>
+                 <option value="Low">Low</option>
+               </select>
+             </div>
+             <div class="form-group" style="flex: 1;">
+               <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;"><i class="fa-solid fa-users-rectangle" style="margin-right: 4px;"></i> Target Audience</label>
+               <select id="announceTarget" class="feature-select" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;">
+                 <option value="all">All Schools & Users</option>
+                 <option value="teachers">Teachers Only</option>
+                 <option value="students">Students Only</option>
+               </select>
+             </div>
+           </div>
+           
+           <div class="feature-controls-row" style="display: flex; gap: 10px;">
+             <button id="sendBroadcastBtn" class="btn-primary" style="flex: 1;"><i class="fa-solid fa-bullhorn"></i> Publish Global Broadcast</button>
+             <button id="cancelEditBroadcastBtn" class="btn-outline" style="display: none; flex: 0.4;"><i class="fa-solid fa-ban" style="margin-right: 4px;"></i> Cancel</button>
+           </div>
+         </div>
+
+         <div style="margin-top: 20px;">
+           <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 10px;"><i class="fa-solid fa-tower-broadcast" style="margin-right: 4px;"></i> Active Global Broadcasts</h4>
+           <div id="activeBroadcastsList" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border, #e2e8f0); border-radius: 6px; padding: 10px; background: #fff;">
+             <p style="color: var(--text-muted, #64748b); font-size: 13px; text-align: center; padding: 15px;"><i class="fa-solid fa-spinner fa-spin" style="margin-right: 6px;"></i> Loading active broadcasts...</p>
+           </div>
+         </div>
+      </div>
+
+      <!-- Full-Width Feature 2: Centralized E-Resource Repository Manager -->
+      <div id="featureEResources" class="admin-feature-card" style="width: 100%; margin-bottom: 1.5rem; box-sizing: border-box;">
+         <div style="padding: 1.5rem;">
+           <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+             <i class="fa-solid fa-floppy-disk" style="font-size: 1.2rem; color: #0284c7;"></i>
+             <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 700;">Centralized E-Resource Publisher</h3>
+           </div>
+           <p style="margin: 0 0 1rem 0; font-size: 0.85rem; color: #64748b;">
+             Distribute study materials, notes, and curriculum files instantly with complete metadata to tenant schools.
+           </p>
+
+           <!-- Form Layout matching database schema -->
+           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+             <div>
+               <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Resource Title *</label>
+               <input type="text" id="globalResTitle" placeholder="e.g., S.5 END OF TERM 2 ICT GUIDE" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;" />
+             </div>
+             <div>
+               <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Class / Level</label>
+               <select id="globalResClassLevel" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #fff;">
+                 <option value="S1">S.1</option>
+                 <option value="S2">S.2</option>
+                 <option value="S3">S.3</option>
+                 <option value="S4">S.4</option>
+                 <option value="S5" selected>S.5</option>
+                 <option value="S6">S.6</option>
+                 <option value="General">General / All</option>
+               </select>
+             </div>
+           </div>
+
+           <div style="margin-bottom: 0.75rem;">
+             <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Description / Notes</label>
+             <textarea id="globalResDescription" placeholder="The marking guide for S.5 end of term 2..." style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; height: 60px; resize: vertical;"></textarea>
+           </div>
+
+           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+             <div>
+               <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Category</label>
+               <select id="globalResCategory" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #fff;">
+                 <option value="Datasets">Datasets</option>
+                 <option value="Notes & Handouts" selected>Notes & Handouts</option>
+                 <option value="Past Papers">Past Papers</option>
+                 <option value="Marking Guides">Marking Guides</option>
+                 <option value="Practicals">Practicals</option>
+               </select>
+             </div>
+             <div>
+               <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Access Type</label>
+               <select id="globalResAccessType" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #fff;">
+                 <option value="free" selected>Free</option>
+                 <option value="paid">Paid</option>
+               </select>
+             </div>
+             <div>
+               <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Price (UGX)</label>
+               <input type="number" id="globalResPrice" value="0" placeholder="0" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;" />
+             </div>
+           </div>
+
+           <div style="margin-bottom: 1rem;">
+             <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Resource File (PDF / Doc / ZIP) *</label>
+             <input type="file" id="globalResFileInput" style="width: 100%; padding: 0.4rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #f8fafc;" />
+           </div>
+
+           <button type="button" id="publishGlobalResBtn" class="btn btn-primary" style="width: 100%; padding: 0.65rem; background: #0284c7; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.9rem;">
+             <i class="fa-solid fa-cloud-arrow-up"></i> Publish to All Schools
+           </button>
+
+           <div style="margin-top: 1.5rem; border-top: 1px solid #e2e8f0; padding-top: 1rem;">
+             <h4 style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: #334155; font-weight: 600;">Repository Manager & Status Toggle</h4>
+             <div id="globalResourcesList">
+               <!-- Live feed gets injected here -->
+             </div>
+           </div>
+         </div>
+      </div>
+
+      <!-- Remaining Feature Cards Grid Container -->
       <div class="feature-cards-grid">
-        <!-- Feature 1: Global Announcement Broadcaster -->
-        <div id="featureAnnouncements" class="admin-feature-card">
-          <h3 class="feature-title"><i class="fa-solid fa-bullhorn" style="margin-right: 8px; color: var(--primary);"></i> Global Announcement Broadcaster</h3>
-          <div id="announcementFormCard" style="background: var(--bg-main, #f8fafc); padding: 16px; border-radius: 8px; border: 1px solid var(--border, #e2e8f0); margin-bottom: 20px;">
-            <h4 id="announceFormHeading" style="font-size: 14px; font-weight: 600; margin-bottom: 12px;"><i class="fa-solid fa-pen-to-square" style="margin-right: 4px;"></i> Publish New Broadcast</h4>
-            <input type="hidden" id="editingAnnouncementDocId" value="">
-            
-            <div class="form-group" style="margin-bottom: 12px;">
-              <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;"><i class="fa-solid fa-heading" style="margin-right: 4px;"></i> Announcement Title</label>
-              <input type="text" id="globalAnnounceTitle" placeholder="e.g., 📢 New Notes Available on the Portal!" class="feature-input" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;">
-            </div>
-            
-            <div class="form-group" style="margin-bottom: 12px;">
-              <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;"><i class="fa-solid fa-align-left" style="margin-right: 4px;"></i> Announcement Body / Message</label>
-              <textarea id="globalAnnounceText" placeholder="Type platform-wide broadcast message..." class="feature-textarea" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px; min-height: 80px;"></textarea>
-            </div>
-            
-            <div class="form-row" style="display: flex; gap: 10px; margin-bottom: 12px;">
-              <div class="form-group" style="flex: 1;">
-                <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;"><i class="fa-solid fa-triangle-exclamation" style="margin-right: 4px;"></i> Priority Level</label>
-                <select id="announcePriority" class="feature-select" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;">
-                  <option value="Urgent">Urgent</option>
-                  <option value="Normal" selected>Normal</option>
-                  <option value="Low">Low</option>
-                </select>
-              </div>
-              <div class="form-group" style="flex: 1;">
-                <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;"><i class="fa-solid fa-users-rectangle" style="margin-right: 4px;"></i> Target Audience</label>
-                <select id="announceTarget" class="feature-select" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;">
-                  <option value="all">All Schools & Users</option>
-                  <option value="teachers">Teachers Only</option>
-                  <option value="students">Students Only</option>
-                </select>
-              </div>
-            </div>
-            
-            <div class="feature-controls-row" style="display: flex; gap: 10px;">
-              <button id="sendBroadcastBtn" class="btn-primary" style="flex: 1;"><i class="fa-solid fa-bullhorn"></i> Publish Global Broadcast</button>
-              <button id="cancelEditBroadcastBtn" class="btn-outline" style="display: none; flex: 0.4;"><i class="fa-solid fa-ban" style="margin-right: 4px;"></i> Cancel</button>
-            </div>
-          </div>
-
-          <div style="margin-top: 20px;">
-            <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 10px;"><i class="fa-solid fa-tower-broadcast" style="margin-right: 4px;"></i> Active Global Broadcasts</h4>
-            <div id="activeBroadcastsList" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border, #e2e8f0); border-radius: 6px; padding: 10px; background: #fff;">
-              <p style="color: var(--text-muted, #64748b); font-size: 13px; text-align: center; padding: 15px;"><i class="fa-solid fa-spinner fa-spin" style="margin-right: 6px;"></i> Loading active broadcasts...</p>
-            </div>
-          </div>
-        </div>
-
         
-       <!-- Feature 2: Tenant Status & Subscription Manager -->
+       <!-- Feature: Tenant Status & Subscription Manager -->
         <div id="featureTenants" class="admin-feature-card" style="display: flex; flex-direction: column; justify-content: space-between;">
           <div>
             <h3 class="feature-title"><i class="fa-solid fa-house-laptop" style="margin-right: 8px; color: var(--primary);"></i> Tenant Status & Subscriptions</h3>
@@ -244,13 +322,13 @@
             </div>
           </div>
 
-          <!-- Live Tenant Metadata Preview Feed (Anchored neatly at the bottom with Logo & Default Avatar fallback) -->
+          <!-- Live Tenant Metadata Preview Feed -->
           <div id="tenantLivePreviewFeed" style="background: var(--bg-main, #f8fafc); border: 1px solid var(--border, #e2e8f0); border-radius: 8px; padding: 1rem; font-size: 0.8rem; color: #475569; margin-top: auto;">
             <div style="text-align: center; color: #64748b;"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading tenant metadata...</div>
           </div>
         </div>
 
-        <!-- Feature 3: Cross-Tenant Global Search -->
+        <!-- Feature: Cross-Tenant Global Search -->
         <div id="featureSearch" class="admin-feature-card">
           <h3 class="feature-title"><i class="fa-solid fa-magnifying-glass-chart" style="margin-right: 8px; color: var(--primary);"></i> Cross-Tenant Global Search</h3>
           <p class="feature-description">Query system-wide data records across multiple databases seamlessly.</p>
@@ -261,7 +339,7 @@
           <div id="globalSearchResults" class="feature-results-box"></div>
         </div>
 
-        <!-- Feature 4: Comprehensive System Audit Logs -->
+        <!-- Feature: Comprehensive System Audit Logs -->
         <div id="featureAudit" class="admin-feature-card">
           <h3 class="feature-title"><i class="fa-solid fa-clipboard-list" style="margin-right: 8px; color: var(--primary);"></i> Comprehensive Audit Trail</h3>
           <p class="feature-description">Inspect sequential system logs and administrative actions for tracking purposes.</p>
@@ -269,7 +347,7 @@
           <div id="auditLogsList" class="audit-logs-container">Click Refresh to load system audit trails.</div>
         </div>
 
-        <!-- Feature 5: Global Backup & Snapshot Generator -->
+        <!-- Feature: Global Backup & Snapshot Generator -->
         <div id="featureBackup" class="admin-feature-card">
           <h3 class="feature-title"><i class="fa-solid fa-database" style="margin-right: 8px; color: var(--primary);"></i> Global Backup & Snapshot</h3>
           <p class="feature-description">Export multi-tenant database collections into a backup file, or restore from a JSON backup snapshot.</p>
@@ -285,85 +363,7 @@
           </div>
         </div>
 
-        <!-- Feature 6: Centralized E-Resource Repository Manager -->
-        <div id="featureEResources" class="admin-feature-card">
-          <div style="padding: 1.5rem;">
-            <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
-              <i class="fa-solid fa-floppy-disk" style="font-size: 1.2rem; color: #0284c7;"></i>
-              <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 700;">Centralized E-Resource Publisher</h3>
-            </div>
-            <p style="margin: 0 0 1rem 0; font-size: 0.85rem; color: #64748b;">
-              Distribute study materials, notes, and curriculum files instantly with complete metadata to tenant schools.
-            </p>
-
-            <!-- Form Layout matching database schema -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
-              <div>
-                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Resource Title *</label>
-                <input type="text" id="globalResTitle" placeholder="e.g., S.5 END OF TERM 2 ICT GUIDE" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;" />
-              </div>
-              <div>
-                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Class / Level</label>
-                <select id="globalResClassLevel" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #fff;">
-                  <option value="S1">S.1</option>
-                  <option value="S2">S.2</option>
-                  <option value="S3">S.3</option>
-                  <option value="S4">S.4</option>
-                  <option value="S5" selected>S.5</option>
-                  <option value="S6">S.6</option>
-                  <option value="General">General / All</option>
-                </select>
-              </div>
-            </div>
-
-            <div style="margin-bottom: 0.75rem;">
-              <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Description / Notes</label>
-              <textarea id="globalResDescription" placeholder="The marking guide for S.5 end of term 2..." style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; height: 60px; resize: vertical;"></textarea>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
-              <div>
-                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Category</label>
-                <select id="globalResCategory" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #fff;">
-                  <option value="Datasets">Datasets</option>
-                  <option value="Notes & Handouts" selected>Notes & Handouts</option>
-                  <option value="Past Papers">Past Papers</option>
-                  <option value="Marking Guides">Marking Guides</option>
-                  <option value="Practicals">Practicals</option>
-                </select>
-              </div>
-              <div>
-                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Access Type</label>
-                <select id="globalResAccessType" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #fff;">
-                  <option value="free" selected>Free</option>
-                  <option value="paid">Paid</option>
-                </select>
-              </div>
-              <div>
-                <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Price (UGX)</label>
-                <input type="number" id="globalResPrice" value="0" placeholder="0" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;" />
-              </div>
-            </div>
-
-            <div style="margin-bottom: 1rem;">
-              <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Resource File (PDF / Doc / ZIP) *</label>
-              <input type="file" id="globalResFileInput" style="width: 100%; padding: 0.4rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #f8fafc;" />
-            </div>
-
-            <button type="button" id="publishGlobalResBtn" class="btn btn-primary" style="width: 100%; padding: 0.65rem; background: #0284c7; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.9rem;">
-              <i class="fa-solid fa-cloud-arrow-up"></i> Publish to All Schools
-            </button>
-
-            <div style="margin-top: 1.5rem; border-top: 1px solid #e2e8f0; padding-top: 1rem;">
-              <h4 style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: #334155; font-weight: 600;">Repository Manager & Status Toggle</h4>
-              <div id="globalResourcesList">
-                <!-- Live feed gets injected here -->
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Feature 7: Global Analytics & Telemetry Dashboard -->
+        <!-- Feature: Global Analytics & Telemetry Dashboard -->
         <div id="featureTelemetry" class="admin-feature-card">
           <h3 class="feature-title"><i class="fa-solid fa-chart-line" style="margin-right: 8px; color: var(--primary);"></i> Telemetry & Analytics</h3>
           <p class="feature-description">Analyze live platform performance metrics, active counts, and resource loads.</p>
@@ -371,14 +371,14 @@
           <div id="telemetryStatsContent" class="feature-description">Click button to aggregate system stats.</div>
         </div>
 
-        <!-- Feature 8: System Maintenance & Read-Only Mode Switch -->
+        <!-- Feature: System Maintenance & Read-Only Mode Switch -->
         <div id="featureMaintenance" class="admin-feature-card">
           <h3 class="feature-title"><i class="fa-solid fa-triangle-exclamation" style="margin-right: 8px; color: var(--warning);"></i> System Maintenance Mode</h3>
           <p class="feature-description">Toggle global read-only mode to lock standard user writes during updates.</p>
           <button id="toggleMaintenanceBtn" class="btn-danger"><i class="fa-solid fa-lock" style="margin-right: 6px;"></i> Toggle Maintenance Lock</button>
         </div>
 
-        <!-- Feature 9: Custom Feature Flag / Module Toggler -->
+        <!-- Feature: Custom Feature Flag / Module Toggler -->
         <div id="featureFlags" class="admin-feature-card">
           <h3 class="feature-title"><i class="fa-solid fa-toggle-on" style="margin-right: 8px; color: var(--primary);"></i> Feature Flags & Modules</h3>
           <p class="feature-description">Enable or disable specific advanced platform modules per tenant school instance.</p>
@@ -393,12 +393,13 @@
           <button id="toggleModuleBtn" class="btn-primary"><i class="fa-solid fa-sliders" style="margin-right: 6px;"></i> Toggle Module Access</button>
         </div>
 
-        <!-- Feature 10: Master Admin Access & Credential Rotator -->
+        <!-- Feature: Master Admin Access & Credential Rotator -->
         <div id="featureKeyRotator" class="admin-feature-card">
           <h3 class="feature-title"><i class="fa-solid fa-key" style="margin-right: 8px; color: var(--purple, #8b5cf6);"></i> Master Key Rotator</h3>
           <p class="feature-description">Secure platform integrity by updating root administrative security keys.</p>
           <button id="rotateMasterKeyBtn" class="btn-purple"><i class="fa-solid fa-shield-keyhole" style="margin-right: 6px;"></i> Change Master Admin Key</button>
         </div>
+
       </div>
 
     </main>
