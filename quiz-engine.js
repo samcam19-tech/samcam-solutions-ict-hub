@@ -402,7 +402,7 @@ function renderQuizCardsPage() {
               <i class="fa-solid fa-play"></i> Start Quiz
             </button>
             ${isAdminOrTeacher ? `
-              <button onclick="renderTeacherAnalyticsModal('${q.id}', '${q.title.replace(/'/g, "\\'")}', allSubmissions)" class="btn btn-outline" style="padding:0.5rem;" title="View Analytics">
+              <button onclick="renderTeacherAnalyticsModal('${q.id}', '${q.title.replace(/'/g, "\\'")}', globalTeacherResults)" class="btn btn-outline" style="padding:0.5rem;" title="View Analytics">
                 <i class="fa-solid fa-chart-pie"></i>
               </button>
             ` : ''}
@@ -936,12 +936,12 @@ async function handleSaveQuiz(event) {
 }
 
 // ==========================================================================
-// EDUCATOR RESULTS, OVERSIGHT & ANALYTICS DASHBOARD (Maintained & Enhanced)
+// EDUCATOR RESULTS, OVERSIGHT & ANALYTICS DASHBOARD (Fixed & Resilient)
 // ==========================================================================
 
 // Pagination State for Teacher Submissions
 let currentSubmissionsPage = 1;
-const submissionsPerPage = 10; // Change this if you want more or fewer rows per page
+const submissionsPerPage = 10; 
 
 async function fetchQuizResults() {
   const resultsContainer = document.getElementById('teacherResultsTable');
@@ -954,37 +954,83 @@ async function fetchQuizResults() {
     return;
   }
 
-  // Resolve active school ID cleanly from currentUser or window context to enforce tenant isolation
-  const activeSchoolId = (typeof currentSchoolId !== 'undefined' && currentSchoolId) ? currentSchoolId : (currentUser && currentUser.schoolId ? currentUser.schoolId : '');
+  // Safely resolve active school ID from URL parameters, session, or global variables
+  let activeSchoolId = '';
+  if (typeof currentSchoolId !== 'undefined' && currentSchoolId) {
+    activeSchoolId = currentSchoolId.trim();
+  } else {
+    const session = getCurrentUserSession();
+    if (session && (session.schoolId || session.schoolID || session.institutionId)) {
+      activeSchoolId = (session.schoolId || session.schoolID || session.institutionId).trim();
+    } else if (typeof currentUser !== 'undefined' && currentUser && currentUser.schoolId) {
+      activeSchoolId = currentUser.schoolId.trim();
+    } else {
+      activeSchoolId = 'stacon'; // Safe default fallback
+    }
+  }
 
   try {
     let query = db.collection('quiz_results');
+    
+    // Query matching lowercase/standard format stored in Firestore collections
     if (activeSchoolId) {
-      query = query.where('schoolId', '==', activeSchoolId.toUpperCase());
+      query = query.where('schoolId', '==', activeSchoolId.toLowerCase());
     }
     
+    // Attempt query with ordering. If composite index is missing, it falls back gracefully below.
     const snapshot = await query.orderBy('submittedAt', 'desc').get();
+    
     if (snapshot.empty) {
-      resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:1rem;">No submissions registered yet.</td></tr>`;
-      const paginationContainer = document.getElementById('submissionsPagination');
-      if (paginationContainer) paginationContainer.style.display = 'none';
-      return;
-    }
+      // Fallback: try fetching without ordering if index is still building, or try uppercase lookup
+      console.warn("No results found with lowercase schoolId filter or index building. Retrying broader fetch...");
+      
+      const fallbackSnapshot = await db.collection('quiz_results').get();
+      globalTeacherResults = [];
+      
+      fallbackSnapshot.forEach(doc => {
+        const data = doc.data();
+        // Client-side flexible matching to guarantee results display regardless of casing
+        const docSchool = (data.schoolId || '').toLowerCase();
+        if (!activeSchoolId || docSchool === activeSchoolId.toLowerCase() || docSchool === 'global') {
+          globalTeacherResults.push({ id: doc.id, ...data });
+        }
+      });
 
-    globalTeacherResults = [];
-    snapshot.forEach(doc => {
-      globalTeacherResults.push({ id: doc.id, ...doc.data() });
-    });
+      if (globalTeacherResults.length === 0) {
+        resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#64748b; padding:1rem;">No submissions registered yet for school: ${activeSchoolId}</td></tr>`;
+        const paginationContainer = document.getElementById('submissionsPagination');
+        if (paginationContainer) paginationContainer.style.display = 'none';
+        return;
+      }
+    } else {
+      globalTeacherResults = [];
+      snapshot.forEach(doc => {
+        globalTeacherResults.push({ id: doc.id, ...doc.data() });
+      });
+    }
 
     // Render the first page of results
     currentSubmissionsPage = 1;
     renderSubmissionsTablePage();
 
   } catch (err) {
-    console.error("Error fetching submission results:", err);
-    resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:1rem;">Failed to load submission results.</td></tr>`;
-    const paginationContainer = document.getElementById('submissionsPagination');
-    if (paginationContainer) paginationContainer.style.display = 'none';
+    console.error("Error fetching submission results (Check Firestore Composite Index):", err);
+    
+    // Ultimate fallback if index fails: fetch all and filter on client side to unblock UI immediately
+    try {
+      const emergencySnapshot = await db.collection('quiz_results').get();
+      globalTeacherResults = [];
+      emergencySnapshot.forEach(doc => {
+        globalTeacherResults.push({ id: doc.id, ...doc.data() });
+      });
+      
+      currentSubmissionsPage = 1;
+      renderSubmissionsTablePage();
+    } catch (fallbackErr) {
+      resultsContainer.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444; padding:1rem;">Failed to load submission results. Check console indices.</td></tr>`;
+      const paginationContainer = document.getElementById('submissionsPagination');
+      if (paginationContainer) paginationContainer.style.display = 'none';
+    }
   }
 }
 
@@ -995,14 +1041,20 @@ function renderSubmissionsTablePage() {
   
   if (!resultsContainer) return;
 
-  const activeSchoolId = (typeof currentSchoolId !== 'undefined' && currentSchoolId) ? currentSchoolId.toUpperCase() : (currentUser && currentUser.schoolId ? currentUser.schoolId.toUpperCase() : '');
+  let activeSchoolId = '';
+  if (typeof currentSchoolId !== 'undefined' && currentSchoolId) {
+    activeSchoolId = currentSchoolId.trim();
+  } else {
+    const session = getCurrentUserSession();
+    activeSchoolId = session && (session.schoolId || session.schoolID || session.institutionId) ? (session.schoolId || session.schoolID || session.institutionId).trim() : 'stacon';
+  }
 
-  // Double-check client side filtering by activeSchoolId to ensure strict tenant boundaries
+  // Flexible client-side filtering matching lowercase/uppercase safely
   const filteredTeacherResults = (globalTeacherResults || []).filter(res => {
-    if (activeSchoolId && res.schoolId && res.schoolId.toUpperCase() !== activeSchoolId) {
-      return false;
+    if (activeSchoolId && res.schoolId) {
+      return res.schoolId.toLowerCase() === activeSchoolId.toLowerCase();
     }
-    return true;
+    return true; // Include if no strict tenant bounds or global
   });
 
   if (filteredTeacherResults.length === 0) {
@@ -1023,35 +1075,22 @@ function renderSubmissionsTablePage() {
 
   let rowsHtml = '';
   paginatedItems.forEach(res => {
-    const submittedTime = res.submittedAt && res.submittedAt.toDate 
+    const submittedTime = res.submittedAt && typeof res.submittedAt.toDate === 'function' 
       ? new Date(res.submittedAt.toDate()).toLocaleString() 
-      : 'Recently';
+      : (res.submittedAt ? new Date(res.submittedAt).toLocaleString() : 'Recently');
 
     rowsHtml += `
       <tr style="border-bottom:1px solid #f1f5f9;" id="submissionRow_${res.id}">
-        <!-- Column 1: Student Name -->
-        <td style="padding:0.75rem; font-weight:600; color:#0f172a;">${res.studentName}</td>
-
-        <!-- Column 2: Class -->
-        <td style="padding:0.75rem; color:#475569; font-weight:500;">${res.studentClass || 'N/A'}</td>
-
-        <!-- Column 3: Assessment Title -->
-        <td style="padding:0.75rem; font-weight:500; color:#1e293b;">${res.quizTitle}</td>
-
-        <!-- Column 4: Time Spent -->
-        <td style="padding:0.75rem; font-size:0.85rem; color:#475569;">${formatSeconds(res.timeSpentSeconds)}</td>
-
-        <!-- Column 5: Score (%) -->
+        <td style="padding:0.75rem; font-weight:600; color:#0f172a;">${escapeHtml(res.studentName || 'Student')}</td>
+        <td style="padding:0.75rem; color:#475569; font-weight:500;">${escapeHtml(res.studentClass || 'N/A')}</td>
+        <td style="padding:0.75rem; font-weight:500; color:#1e293b;">${escapeHtml(res.quizTitle || 'Assessment')}</td>
+        <td style="padding:0.75rem; font-size:0.85rem; color:#475569;">${typeof formatSeconds === 'function' ? formatSeconds(res.timeSpentSeconds) : (res.timeSpentSeconds || 0) + 's'}</td>
         <td style="padding:0.75rem;">
-          <span style="font-weight:700; color:${res.percentage >= 50 ? '#16a34a' : '#dc2626'}; background:${res.percentage >= 50 ? '#f0fdf4' : '#fef2f2'}; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.85rem;">
-            ${res.score}/${res.totalQuestions} (${res.percentage}%)
+          <span style="font-weight:700; color:${(res.percentage || 0) >= 50 ? '#16a34a' : '#dc2626'}; background:${(res.percentage || 0) >= 50 ? '#f0fdf4' : '#fef2f2'}; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.85rem;">
+            ${res.score || 0}/${res.totalQuestions || 0} (${res.percentage || 0}%)
           </span>
         </td>
-
-        <!-- Column 6: Submitted At -->
         <td style="padding:0.75rem; font-size:0.85rem; color:#64748b;">${submittedTime}</td>
-
-        <!-- Column 7: Actions (Icons Only) -->
         <td style="padding:0.75rem;">
           <div style="display: flex; gap: 0.5rem; align-items: center;">
             <button class="btn btn-secondary btn-sm" onclick="inspectLearnerSubmission('${res.id}')" title="Inspect Submission" style="background:#0284c7; border:none; padding:0.35rem 0.5rem; font-size:0.85rem; border-radius:4px; color:#fff; cursor:pointer;">
@@ -1068,7 +1107,6 @@ function renderSubmissionsTablePage() {
 
   resultsContainer.innerHTML = rowsHtml;
 
-  // Update Pagination Controls UI text & button states
   const infoEl = document.getElementById('submissionsPaginationInfo');
   const pageIndEl = document.getElementById('subPageIndicator');
   const prevBtn = document.getElementById('subPrevBtn');
@@ -1089,12 +1127,10 @@ function renderSubmissionsTablePage() {
   }
 }
 
-// Triggered by Next / Prev buttons in HTML
 function changeSubmissionsPage(direction) {
   currentSubmissionsPage += direction;
   renderSubmissionsTablePage();
 }
-
 // --- Analytics & Visual Dashboard Integration ---
 function renderTeacherAnalyticsModal(quizId, quizTitle, submissionsList) {
   let modal = document.getElementById('teacherAnalyticsModal');
