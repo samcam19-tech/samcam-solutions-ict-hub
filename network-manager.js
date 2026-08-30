@@ -512,3 +512,55 @@ function openBroadcastModal() {
     }
     bModal.style.display = "flex";
 }
+
+document.getElementById('pushPromptBtn').addEventListener('click', () => {
+    // 1. Open your modal or prompt dialog
+    const modal = document.getElementById('promptModal'); // Make sure you have a modal in your HTML
+    if (modal) {
+        modal.style.display = 'flex';
+    } else {
+        // Fallback quick prompt if modal isn't built yet
+        const targetUrl = prompt("Enter URL or prompt to push to all active class workstations:");
+        if (targetUrl) {
+            broadcastPromptToClass("url_redirect", targetUrl);
+        }
+    }
+});
+
+async function broadcastPromptToClass(type, content) {
+    const timestamp = new Date().toISOString();
+    const promptPayload = {
+        fields: {
+            pushedPrompt: {
+                mapValue: {
+                    fields: {
+                        type: { stringValue: type },
+                        content: { stringValue: content },
+                        timestamp: { stringValue: timestamp }
+                    }
+                }
+            }
+        }
+    };
+
+    // Fetch all active workstations from Firestore and update their 'pushedPrompt' field
+    // (Or loop through your local active workstation IDs array)
+    try {
+        const listRes = await fetch(`https://firestore.googleapis.com/v1/projects/samcam-system/databases/(default)/documents/workstation_telemetry`);
+        const data = await listRes.json();
+        
+        if (data.documents) {
+            for (const doc of data.documents) {
+                const docName = doc.name; // projects/.../documents/workstation_telemetry/PC-ID
+                await fetch(`https://firestore.googleapis.com/v1/${docName}?updateMask.fieldPaths=pushedPrompt`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(promptPayload)
+                });
+            }
+            alert("Prompt successfully pushed to all class terminals!");
+        }
+    } catch (err) {
+        console.error("Error pushing prompt to class:", err);
+    }
+}
