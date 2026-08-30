@@ -187,19 +187,21 @@
         </div>
 
         
-        <!-- Feature 2: Tenant Status & Subscription Manager -->
-        <div id="featureTenants" class="admin-feature-card">
-          <h3 class="feature-title"><i class="fa-solid fa-house-laptop" style="margin-right: 8px; color: var(--primary);"></i> Tenant Status & Subscriptions</h3>
-          <p class="feature-description">Activate, suspend, or manage tenant accounts across the ecosystem network.</p>
-          
-          <!-- Live Tenant Metadata Preview Feed (Fills vertical gap & defaults to Stacon) -->
-          <div id="tenantLivePreviewFeed" style="background: var(--bg-main, #f8fafc); border: 1px solid var(--border, #e2e8f0); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; font-size: 0.8rem; color: #475569;">
-            <div style="text-align: center; color: #64748b;"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading tenant metadata...</div>
+       <!-- Feature 2: Tenant Status & Subscription Manager -->
+        <div id="featureTenants" class="admin-feature-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <h3 class="feature-title"><i class="fa-solid fa-house-laptop" style="margin-right: 8px; color: var(--primary);"></i> Tenant Status & Subscriptions</h3>
+            <p class="feature-description" style="margin-bottom: 12px;">Activate, suspend, or manage tenant accounts across the ecosystem network.</p>
+            
+            <div class="feature-controls-row" style="margin-bottom: 12px;">
+              <input type="text" id="manageSchoolIdInput" placeholder="Enter exact School ID..." class="feature-input-flex" />
+              <button id="toggleStatusBtn" class="btn-warning"><i class="fa-solid fa-toggle-on" style="margin-right: 6px;"></i> Toggle Status</button>
+            </div>
           </div>
 
-          <div class="feature-controls-row">
-            <input type="text" id="manageSchoolIdInput" placeholder="Enter exact School ID..." class="feature-input-flex" />
-            <button id="toggleStatusBtn" class="btn-warning"><i class="fa-solid fa-toggle-on" style="margin-right: 6px;"></i> Toggle Active/Suspended</button>
+          <!-- Live Tenant Metadata Preview Feed (Anchored neatly at the bottom with Logo & Default Avatar fallback) -->
+          <div id="tenantLivePreviewFeed" style="background: var(--bg-main, #f8fafc); border: 1px solid var(--border, #e2e8f0); border-radius: 8px; padding: 1rem; font-size: 0.8rem; color: #475569; margin-top: auto;">
+            <div style="text-align: center; color: #64748b;"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading tenant metadata...</div>
           </div>
         </div>
 
