@@ -1,3 +1,4 @@
+// Retrieves active super admin session mapped from database cache or profile defaults
 function getCurrentUserSession() {
   try {
     const cachedSession = sessionStorage.getItem("samcam_super_session");
@@ -107,16 +108,22 @@ document.addEventListener("DOMContentLoaded", () => {
     collectionsCountEl.innerText = collectionsToMigrate.length;
   }
 
-  // Bind Logout functionality to admin profile header
+  // Bind Dynamic Database Session to admin profile header
   const adminProfileEl = document.querySelector(".admin-profile");
   if (adminProfileEl) {
     adminProfileEl.classList.add("interactive-admin-profile");
     adminProfileEl.title = "Click to log out of Super Admin session";
     
+    // Pull active session details dynamically
+    const currentAdmin = getCurrentUserSession();
+    
     adminProfileEl.innerHTML = `
-      <span>Master Administrator</span>
-      <span class="logout-badge" title="Logout">
-        <svg class="logout-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+      <div style="display: flex; flex-direction: column; text-align: right; line-height: 1.2;">
+        <span style="font-weight: 600; font-size: 13px; color: #f8fafc;">${currentAdmin.fullName}</span>
+        <span style="font-size: 11px; color: #94a3b8;">@${currentAdmin.username}</span>
+      </div>
+      <span class="logout-badge" title="Logout" style="display: flex; align-items: center; justify-content: center; margin-left: 8px;">
+        <svg class="logout-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="width: 18px; height: 18px;"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
       </span>
     `;
 
@@ -129,6 +136,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (confirmLogout) {
         sessionStorage.removeItem("samcam_super_auth");
+        sessionStorage.removeItem("samcam_super_session");
         await showCustomModal("Logged Out", "Your session has been terminated securely.");
         window.location.reload();
       }
@@ -174,6 +182,10 @@ async function enforceFirestoreMasterKeyGate() {
       await configDocRef.set({
         masterKey: createdKey.trim(),
         maintenanceMode: false,
+        fullName: "AKUGIZIBWE SAMUEL",
+        username: "samcam",
+        email: "samuelakugizibwe23@gmail.com",
+        contact: "0703999089",
         createdAt: firebase.firestore.FieldValue.serverTimestamp()
       });
 
@@ -183,7 +195,7 @@ async function enforceFirestoreMasterKeyGate() {
       const data = docSnap.data();
       currentMasterKey = data.masterKey;
 
-      // Cache the super admin profile details into sessionStorage for author tracking
+      // Cache the super admin profile details into sessionStorage for author tracking & dynamic UI
       sessionStorage.setItem("samcam_super_session", JSON.stringify({
         fullName: data.fullName || "AKUGIZIBWE SAMUEL",
         username: data.username || "samcam",
@@ -234,6 +246,7 @@ async function enforceFirestoreMasterKeyGate() {
       </div>`;
   }
 }
+
 // Master initializer binding core modules and fully functional extended feature modules
 async function initializeSuperAdminPortal(configDocRef) {
   loadRegisteredSchools();
@@ -382,7 +395,6 @@ async function logAuditAction(actionType, details) {
     // Silent fail if offline or permission denied
   }
 }
-
 // ==========================================
 // 10 FULLY FUNCTIONAL SUPER ADMIN FEATURES
 // ==========================================
