@@ -461,10 +461,13 @@ function renderCards() {
     const matchesClass = currentClass === 'ALL' || item.class === currentClass;
     const matchesCat = currentCategory === 'ALL' || item.category === currentCategory;
     
-    // Strict Tenant Isolation Rule: Item must belong to user's schoolId OR be marked global
+    // Updated Tenant Isolation & Global Visibility Rule: 
+    // Item is shown if it's explicitly marked global (isGlobal: true or schoolId global/all) 
+    // OR matches the active tenant school.
     const itemSchool = (item.schoolId || 'global').toLowerCase();
     const activeSchool = (currentSchoolId || '').toLowerCase();
-    const matchesSchool = !activeSchool || activeSchool === 'all' || itemSchool === activeSchool || itemSchool === 'global';
+    const isGlobalRes = item.isGlobal === true || itemSchool === 'global' || itemSchool === 'all';
+    const matchesSchool = !activeSchool || activeSchool === 'all' || isGlobalRes || itemSchool === activeSchool;
 
     const matchesSearch = !searchQuery || 
       (item.title && item.title.toLowerCase().includes(searchQuery)) ||
@@ -574,7 +577,6 @@ function renderCards() {
     }
   }
 }
-
 function renderPaginationControls(totalPages) {
   const pageNumbersContainer = document.getElementById('pageNumbers');
   const prevBtn = document.getElementById('prevPageBtn');
