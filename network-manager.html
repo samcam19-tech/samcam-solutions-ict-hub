@@ -49,6 +49,13 @@
                     </select>
                 </div>
                 <div class="global-actions">
+                    <!-- Integrated Single User Quick-Select Control Panel -->
+                    <div class="single-user-control-panel" style="display: inline-flex; gap: 8px; align-items: center; margin-right: 10px;">
+                        <select id="targetWorkstationSelect" class="filter-select" style="max-width: 200px;">
+                            <option value="">-- Select Specific Learner --</option>
+                        </select>
+                        <button class="btn btn-outline" id="quickToggleLockBtn" style="white-space: nowrap;"><i class="fa-solid fa-lock"></i> Toggle Selected</button>
+                    </div>
                     <button class="btn btn-outline" id="lockAllBtn"><i class="fa-solid fa-lock"></i> Lock All Screens</button>
                     <button class="btn btn-primary" id="broadcastBtn"><i class="fa-solid fa-bullhorn"></i> Push Prompt to Class</button>
                 </div>
