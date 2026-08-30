@@ -959,13 +959,15 @@ async function fetchQuizResults() {
   if (typeof currentSchoolId !== 'undefined' && currentSchoolId) {
     activeSchoolId = currentSchoolId.trim();
   } else {
-    const session = getCurrentUserSession();
+    // Fixed: safely check if getCurrentUserSession exists before calling it to prevent ReferenceErrors
+    const session = typeof getCurrentUserSession === 'function' ? getCurrentUserSession() : null;
     if (session && (session.schoolId || session.schoolID || session.institutionId)) {
       activeSchoolId = (session.schoolId || session.schoolID || session.institutionId).trim();
     } else if (typeof currentUser !== 'undefined' && currentUser && currentUser.schoolId) {
       activeSchoolId = currentUser.schoolId.trim();
     } else {
-      activeSchoolId = 'stacon'; // Safe default fallback
+      const storedUser = JSON.parse(localStorage.getItem('userSession') || localStorage.getItem('user') || '{}');
+      activeSchoolId = (storedUser.schoolId || storedUser.schoolID || storedUser.institutionId || 'stacon').trim();
     }
   }
 
