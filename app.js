@@ -143,7 +143,7 @@ function fetchResourcesFromFirestore() {
         fileName: data.fileName || '',
         fileType: data.fileType || '',
         date: data.date || '2026',
-        downloads: Number(data.downloads) || 0, 
+        downloads: Number(data.downloads) || 0,  
         createdAt: data.createdAt
       });
     });
@@ -489,8 +489,8 @@ function renderCards() {
     return;
   }
 
-  // --- PAGINATION CALCULATIONS ---
-  const totalPages = Math.ceil(filtered.length / itemsPerPage);
+  // --- PAGINATION CALCULATIONS & FIXES ---
+  const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
   if (currentPage > totalPages) currentPage = totalPages;
   if (currentPage < 1) currentPage = 1;
 
@@ -560,7 +560,15 @@ function renderCards() {
     container.appendChild(card);
   });
 
-  renderPaginationControls(totalPages);
+  // Ensure pagination container visibility is correctly managed based on total pages
+  if (paginationContainer) {
+    if (totalPages > 1) {
+      paginationContainer.style.display = 'flex';
+      renderPaginationControls(totalPages);
+    } else {
+      paginationContainer.style.display = 'none';
+    }
+  }
 }
 
 function renderPaginationControls(totalPages) {
@@ -575,7 +583,7 @@ function renderPaginationControls(totalPages) {
     prevBtn.onclick = () => changePage(-1);
   }
   if (nextBtn) {
-    nextBtn.disabled = currentPage === totalPages;
+    nextBtn.disabled = currentPage >= totalPages;
     nextBtn.onclick = () => changePage(1);
   }
 
