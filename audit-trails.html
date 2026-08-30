@@ -64,23 +64,28 @@
 
   <main class="audit-dashboard-container">
     <!-- TOP HEADER & ACTION BAR -->
-    <header class="audit-header">
-      <div>
-        <h2><i class="fa-solid fa-shield-halved"></i> System Audit Trails</h2>
-        <p>Monitor and review all successful and failed authentication attempts across the portal.</p>
-      </div>
-      <div class="audit-actions">
-        <a href="library_dashboard.html" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
-          <i class="fa-solid fa-arrow-left"></i> Back to Library
-        </a>
-        <button type="button" class="btn btn-secondary" onclick="refreshAuditLogs()">
-          <i class="fa-solid fa-rotate"></i> Refresh
-        </button>
-        <button type="button" class="btn btn-primary" onclick="exportAuditLogs()">
-          <i class="fa-solid fa-download"></i> Export CSV
-        </button>
-      </div>
-    </header>
+    <header class="audit-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+  <div style="display: flex; align-items: center; gap: 1rem;">
+    <img src="images/logo.png" alt="System Logo" class="dynamic-system-logo" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
+    
+    <div>
+      <h2 class="dynamic-system-name" style="margin: 0; font-size: 1.25rem; font-weight: 700;">System Audit Trails</h2>
+      <p class="dynamic-system-slogan" style="margin: 0; font-size: 0.8rem; color: #64748b;">Monitor and review all successful and failed authentication attempts across the portal.</p>
+    </div>
+  </div>
+
+  <div class="audit-actions">
+    <a href="library_dashboard.html" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+      <i class="fa-solid fa-arrow-left"></i> Back to Library
+    </a>
+    <button type="button" class="btn btn-secondary" onclick="refreshAuditLogs()">
+      <i class="fa-solid fa-rotate"></i> Refresh
+    </button>
+    <button type="button" class="btn btn-primary" onclick="exportAuditLogs()">
+      <i class="fa-solid fa-download"></i> Export CSV
+    </button>
+  </div>
+</header>
 
     <!-- FILTER CONTROLS BAR -->
     <section class="audit-filters">
