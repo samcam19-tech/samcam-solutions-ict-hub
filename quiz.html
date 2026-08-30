@@ -201,64 +201,62 @@
 
 <!-- Top Portal Header -->
   <header class="portal-header">
-    <div class="header-container" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-      <div class="brand-title">
-        <i class="fa-solid fa-graduation-cap"></i>
-        <h2>ICT Assessment Engine</h2>
-      </div>
-
-      <!-- Mobile Hamburger Button -->
-      <button type="button" class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle Navigation Menu">
-        <i class="fa-solid fa-bars" id="menuToggleIcon"></i>
-      </button>
-
-      <div class="user-profile" id="userProfileContainer" style="display: flex; align-items: center; gap: 1rem;">
-        
-        <!-- Profile Dropdown Widget -->
-        <div class="profile-dropdown-wrapper" style="position: relative;">
-          <div class="user-profile-widget" onclick="toggleProfileDropdown(event)" style="cursor: pointer; display: flex; align-items: center; gap: 10px;">
-            <img src="images/default-avatar.png" id="bannerProfilePic" alt="User Profile" onerror="this.src='images/default-avatar.png'">
-            <div class="user-meta-text">
-              <span class="full-name" id="userNameDisplay">Loading...</span>
-              <span class="username" id="profileUsernameDisplay">@user</span>
-            </div>
-            <i class="fa-solid fa-chevron-down" style="font-size: 0.75rem; color: #94a3b8; margin-left: 4px;"></i>
-          </div>
-
-          <!-- Dropdown Menu Content -->
-          <div id="profileDropdownMenu" class="profile-dropdown-menu" style="display: none; position: absolute; right: 0; top: calc(100% + 10px); background: #1e293b; border: 1px solid #334155; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); width: 200px; z-index: 1100; overflow: hidden;">
-              <a href="#" onclick="openViewProfileModal(event)" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f8fafc; text-decoration: none; font-size: 0.85rem; border-bottom: 1px solid #334155;">
-                <i class="fa-solid fa-user" style="color: #38bdf8; width: 16px;"></i> View Profile
-              </a>
-              <a href="#" onclick="openEditProfileModal(event)" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f8fafc; text-decoration: none; font-size: 0.85rem; border-bottom: 1px solid #334155;">
-                <i class="fa-solid fa-user-pen" style="color: #38bdf8; width: 16px;"></i> Edit Profile
-              </a>
-            
-              <!-- Formula Module Link -->
-              <a href="formula.html" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f8fafc; text-decoration: none; font-size: 0.85rem; border-bottom: 1px solid #334155;">
-                <i class="fa-solid fa-calculator" style="color: #38bdf8; width: 16px;"></i> Formula & Query Lab
-              </a>
-            
-              <a href="#" onclick="handlePortalLogout(event)" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f87171; text-decoration: none; font-size: 0.85rem;">
-                <i class="fa-solid fa-right-from-bracket" style="width: 16px;"></i> Logout
-              </a>
-          </div>
-        </div>
-
-        <div id="userBadge" class="user-badge" style="display:none;">
-          <i class="fa-solid fa-circle-notch fa-spin"></i> Checking Session...
-        </div>
-
-        <!-- Back to Assessment Page Button -->
-        <a href="assessments.html" class="btn btn-outline" title="Back to Assessments" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; background: rgba(255,255,255,0.1); border-color: #334155; color: #fff; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 20px;">
-          <i class="fa-solid fa-arrow-left"></i> Back
-        </a>
-        <button type="button" class="btn btn-outline" onclick="exitQuizRunner()" style="padding: 0.35rem 0.7rem; font-size: 0.8rem; display: none;" id="runnerBackButton">
-          <i class="fa-solid fa-arrow-left"></i> Back
-        </button>
+  <div class="header-container" style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 1rem;">
+    <div class="brand-title" style="display: flex; align-items: center; gap: 0.75rem;">
+      <img src="images/logo.png" alt="System Logo" class="dynamic-system-logo" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
+      <div style="display: flex; flex-direction: column;">
+        <h2 class="dynamic-system-name" style="margin: 0; font-size: 1.1rem; font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif;">ICT Assessment Engine</h2>
+        <span class="dynamic-system-slogan" style="font-size: 0.75rem; color: #94a3b8; font-weight: 500;">Innovative ICT Insights In Action</span>
       </div>
     </div>
-  </header>
+
+    <button type="button" class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle Navigation Menu">
+      <i class="fa-solid fa-bars" id="menuToggleIcon"></i>
+    </button>
+
+    <div class="user-profile" id="userProfileContainer" style="display: flex; align-items: center; gap: 1rem;">
+      
+      <div class="profile-dropdown-wrapper" style="position: relative;">
+        <div class="user-profile-widget" onclick="toggleProfileDropdown(event)" style="cursor: pointer; display: flex; align-items: center; gap: 10px;">
+          <img src="images/default-avatar.png" id="bannerProfilePic" alt="User Profile" onerror="this.src='images/default-avatar.png'">
+          <div class="user-meta-text">
+            <span class="full-name" id="userNameDisplay">Loading...</span>
+            <span class="username" id="profileUsernameDisplay">@user</span>
+          </div>
+          <i class="fa-solid fa-chevron-down" style="font-size: 0.75rem; color: #94a3b8; margin-left: 4px;"></i>
+        </div>
+
+        <div id="profileDropdownMenu" class="profile-dropdown-menu" style="display: none; position: absolute; right: 0; top: calc(100% + 10px); background: #1e293b; border: 1px solid #334155; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); width: 200px; z-index: 1100; overflow: hidden;">
+            <a href="#" onclick="openViewProfileModal(event)" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f8fafc; text-decoration: none; font-size: 0.85rem; border-bottom: 1px solid #334155;">
+              <i class="fa-solid fa-user" style="color: #38bdf8; width: 16px;"></i> View Profile
+            </a>
+            <a href="#" onclick="openEditProfileModal(event)" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f8fafc; text-decoration: none; font-size: 0.85rem; border-bottom: 1px solid #334155;">
+              <i class="fa-solid fa-user-pen" style="color: #38bdf8; width: 16px;"></i> Edit Profile
+            </a>
+          
+            <a href="formula.html" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f8fafc; text-decoration: none; font-size: 0.85rem; border-bottom: 1px solid #334155;">
+              <i class="fa-solid fa-calculator" style="color: #38bdf8; width: 16px;"></i> Formula & Query Lab
+            </a>
+          
+            <a href="#" onclick="handlePortalLogout(event)" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f87171; text-decoration: none; font-size: 0.85rem;">
+              <i class="fa-solid fa-right-from-bracket" style="width: 16px;"></i> Logout
+            </a>
+        </div>
+      </div>
+
+      <div id="userBadge" class="user-badge" style="display:none;">
+        <i class="fa-solid fa-circle-notch fa-spin"></i> Checking Session...
+      </div>
+
+      <a href="assessments.html" class="btn btn-outline" title="Back to Assessments" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; background: rgba(255,255,255,0.1); border-color: #334155; color: #fff; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 20px;">
+        <i class="fa-solid fa-arrow-left"></i> Back
+      </a>
+      <button type="button" class="btn btn-outline" onclick="exitQuizRunner()" style="padding: 0.35rem 0.7rem; font-size: 0.8rem; display: none;" id="runnerBackButton">
+        <i class="fa-solid fa-arrow-left"></i> Back
+      </button>
+    </div>
+  </div>
+</header>
 
   <!-- Main Container -->
   <main class="portal-container">
@@ -727,6 +725,8 @@ async function handleSaveProfile(event) {
   <script src="firebase-config.js"></script>
 
   <!-- Quiz Engine Logic -->
+  <!-- Include Brand Loader Script -->
+  <script src="brand-loader.js"></script>
   <script src="quiz-engine.js"></script>
 </body>
 </html>
