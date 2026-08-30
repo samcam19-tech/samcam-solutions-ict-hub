@@ -43,9 +43,12 @@
         
         <!-- Register New School Panel -->
         <div class="panel-card">
-          <h2><i class="fa-solid fa-circle-plus" style="margin-right: 8px; color: var(--primary);"></i> Register New School Instance</h2>
-          <p class="panel-desc">Create a brand new tenant record in the global database.</p>
+          <h2><i class="fa-solid fa-circle-plus" style="margin-right: 8px; color: var(--primary);"></i> <span id="schoolFormTitle">Register New School Instance</span></h2>
+          <p class="panel-desc" id="schoolFormDesc">Create a brand new tenant record in the global database.</p>
+          
           <form id="superSchoolForm">
+            <input type="hidden" id="isEditingSchool" value="false">
+            
             <div class="form-group">
               <label for="newSchoolId"><i class="fa-solid fa-fingerprint" style="margin-right: 4px;"></i> School Identifier (Slug):</label>
               <input type="text" id="newSchoolId" placeholder="e.g. standard_college_ntungamo" required />
@@ -58,7 +61,23 @@
               <label for="newSchoolLocation"><i class="fa-solid fa-location-dot" style="margin-right: 4px;"></i> Location / District:</label>
               <input type="text" id="newSchoolLocation" placeholder="Ntungamo" required />
             </div>
-            <button type="submit" class="btn-primary"><i class="fa-solid fa-plus" style="margin-right: 6px;"></i> Provision School Instance</button>
+
+            <!-- School Logo Upload & Live Preview Container -->
+            <div class="form-group">
+              <label><i class="fa-solid fa-image" style="margin-right: 4px;"></i> School Logo:</label>
+              <div style="display: flex; align-items: center; gap: 12px; margin-top: 6px;">
+                <img id="schoolLogoPreview" src="images/default-avatar.png" alt="Logo Preview" style="width: 48px; height: 48px; object-fit: cover; border-radius: 50%; border: 1px solid #cbd5e1; background: #fff;" />
+                <div style="flex: 1;">
+                  <input type="file" id="newSchoolLogoFile" accept="image/*" class="form-control" style="font-size: 0.8rem;" />
+                  <span style="font-size: 0.72rem; color: #64748b;">Upload PNG/JPEG logo.</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+              <button type="submit" id="saveSchoolBtn" class="btn-primary" style="flex: 1;"><i class="fa-solid fa-plus" style="margin-right: 6px;"></i> Provision School Instance</button>
+              <button type="button" id="cancelSchoolEditBtn" class="btn-outline" style="display: none;"><i class="fa-solid fa-xmark"></i> Cancel</button>
+            </div>
           </form>
         </div>
 
@@ -125,10 +144,11 @@
                 <th><i class="fa-solid fa-map-pin" style="margin-right: 4px;"></i> Location</th>
                 <th><i class="fa-solid fa-signal" style="margin-right: 4px;"></i> Status</th>
                 <th><i class="fa-solid fa-calendar-days" style="margin-right: 4px;"></i> Date Provisioned</th>
+                <th><i class="fa-solid fa-sliders" style="margin-right: 4px;"></i> Actions</th>
               </tr>
             </thead>
             <tbody>
-              <tr><td colspan="5" style="text-align: center;"><i class="fa-solid fa-spinner fa-spin" style="margin-right: 6px;"></i> Loading registered schools...</td></tr>
+              <tr><td colspan="6" style="text-align: center;"><i class="fa-solid fa-spinner fa-spin" style="margin-right: 6px;"></i> Loading registered schools...</td></tr>
             </tbody>
           </table>
         </div>
@@ -227,8 +247,17 @@
         <!-- Feature 5: Global Backup & Snapshot Generator -->
         <div id="featureBackup" class="admin-feature-card">
           <h3 class="feature-title"><i class="fa-solid fa-database" style="margin-right: 8px; color: var(--primary);"></i> Global Backup & Snapshot</h3>
-          <p class="feature-description">Export entire multi-tenant database collections into a downloadable JSON backup file.</p>
-          <button id="generateBackupBtn" class="btn-success"><i class="fa-solid fa-download" style="margin-right: 6px;"></i> Download Full JSON Backup</button>
+          <p class="feature-description">Export multi-tenant database collections into a backup file, or restore from a JSON backup snapshot.</p>
+          
+          <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+            <button id="generateBackupBtn" class="btn-success"><i class="fa-solid fa-download" style="margin-right: 6px;"></i> Download Full JSON Backup</button>
+            
+            <div style="border-top: 1px solid var(--border, #e2e8f0); padding-top: 10px; margin-top: 5px;">
+              <label for="restoreBackupFile" style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 6px;"><i class="fa-solid fa-upload" style="margin-right: 4px;"></i> Restore from JSON Backup:</label>
+              <input type="file" id="restoreBackupFile" accept=".json" class="form-control" style="font-size: 0.8rem; margin-bottom: 8px;" />
+              <button id="restoreBackupBtn" class="btn-warning" style="width: 100%;"><i class="fa-solid fa-database" style="margin-right: 6px;"></i> Restore Database Snapshot</button>
+            </div>
+          </div>
         </div>
 
         <!-- Feature 6: Centralized E-Resource Repository Manager -->
