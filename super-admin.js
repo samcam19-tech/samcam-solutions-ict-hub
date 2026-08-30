@@ -304,7 +304,7 @@ async function loadRegisteredSchools() {
     if (totalSchoolsEl) totalSchoolsEl.innerText = querySnapshot.size;
 
     if (querySnapshot.empty) {
-      if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" class="table-empty-notice">No schools registered yet.</td></tr>`;
+      if (tableBody) tableBody.innerHTML = `<tr><td colspan="6" class="table-empty-notice">No schools registered yet.</td></tr>`;
       return;
     }
 
@@ -312,15 +312,25 @@ async function loadRegisteredSchools() {
       const data = docSnap.data();
       const dateStr = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleDateString() : "Just now";
       const statusBadge = data.status === 'suspended' ? '<span class="status-badge-suspended">Suspended</span>' : '<span class="status-badge-active">Active</span>';
+      const logoUrl = data.logoUrl || 'images/default-avatar.png';
       
       if (tableBody) {
         tableBody.innerHTML += `
           <tr>
-            <td><code>${data.schoolId}</code></td>
-            <td><strong>${data.schoolName}</strong></td>
-            <td>${data.location || "N/A"}</td>
+            <td><code>${escapeHtml(data.schoolId)}</code></td>
+            <td>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <img src="${escapeHtml(logoUrl)}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1px solid #cbd5e1; background: #fff;" onerror="this.src='images/default-avatar.png';" />
+                <strong>${escapeHtml(data.schoolName)}</strong>
+              </div>
+            </td>
+            <td>${escapeHtml(data.location || "N/A")}</td>
             <td>${statusBadge}</td>
             <td>${dateStr}</td>
+            <td>
+              <button class="btn-secondary-small" onclick="editSchoolInstance('${escapeHtml(data.schoolId)}')" title="Edit School"><i class="fa-solid fa-pen"></i></button>
+              <button class="btn-danger-small" onclick="deleteSchoolInstance('${escapeHtml(data.schoolId)}')" title="Delete School"><i class="fa-solid fa-trash"></i></button>
+            </td>
           </tr>
         `;
       }
@@ -333,10 +343,10 @@ async function loadRegisteredSchools() {
       }
     });
   } catch (error) {
-    if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" class="table-error-notice">Failed to fetch tenant data.</td></tr>`;
+    console.error("Load Schools Error:", error);
+    if (tableBody) tableBody.innerHTML = `<tr><td colspan="6" class="table-error-notice">Failed to fetch tenant data.</td></tr>`;
   }
 }
-
 async function loadMigrationCollectionsCheckboxes() {
   const container = document.getElementById("migrationCollectionsContainer");
   if (!container) return;
@@ -412,34 +422,163 @@ async function loadMigrationCollectionsCheckboxes() {
   }
 }
 
+// ==========================================================================
+// ADMIN ACTIONS: PROVISION, EDIT, DELETE & LOGO STORAGE
+// ==========================================================================
 function setupAdminActions() {
   const schoolForm = document.getElementById("superSchoolForm");
-  if (schoolForm) {
-    schoolForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const schoolId = document.getElementById("newSchoolId").value.trim().toLowerCase().replace(/\s+/g, '_');
-      const schoolName = document.getElementById("newSchoolName").value.trim();
-      const location = document.getElementById("newSchoolLocation").value.trim();
+  const logoFileInput = document.getElementById("newSchoolLogoFile");
+  const logoPreview = document.getElementById("schoolLogoPreview");
+  const isEditingInput = document.getElementById("isEditingSchool");
+  const schoolIdInput = document.getElementById("newSchoolId");
+  const formTitle = document.getElementById("schoolFormTitle");
+  const formDesc = document.getElementById("schoolFormDesc");
+  const saveBtn = document.getElementById("saveSchoolBtn");
+  const cancelEditBtn = document.getElementById("cancelSchoolEditBtn");
 
-      try {
-        await window.db.collection("schools").doc(schoolId).set({
-          schoolId,
-          schoolName,
-          location,
-          status: "active",
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+  let selectedLogoFile = null;
 
-        await logAuditAction("PROVISION_SCHOOL", `Provisioned new school instance: ${schoolName} (${schoolId})`);
-        await showCustomModal("Success", `School instance "${schoolName}" has been provisioned.`);
-        schoolForm.reset();
-        loadRegisteredSchools();
-      } catch (error) {
-        await showCustomModal("Error", "Failed to register school instance.");
+  // Live Image Preview Handler
+  if (logoFileInput && logoPreview) {
+    logoFileInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        selectedLogoFile = file;
+        const reader = new FileReader();
+        reader.onload = (uploadEvent) => {
+          logoPreview.src = uploadEvent.target.result;
+        };
+        reader.readAsDataURL(file);
       }
     });
   }
 
+  // Handle Form Submit (Create or Update School)
+  if (schoolForm) {
+    schoolForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const schoolId = schoolIdInput.value.trim().toLowerCase().replace(/\s+/g, '_');
+      const schoolName = document.getElementById("newSchoolName").value.trim();
+      const location = document.getElementById("newSchoolLocation").value.trim();
+      const isEditing = isEditingInput.value === "true";
+
+      try {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Saving...';
+
+        let logoUrl = logoPreview.src;
+
+        // Upload new logo file to Firebase Storage if selected
+        if (selectedLogoFile) {
+          const storageRef = firebase.storage().ref(`school_logos/${schoolId}_${Date.now()}`);
+          const snapshot = await storageRef.put(selectedLogoFile);
+          logoUrl = await snapshot.ref.getDownloadURL();
+        }
+
+        const schoolPayload = {
+          schoolId,
+          schoolName,
+          location,
+          logoUrl,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        if (!isEditing) {
+          schoolPayload.status = "active";
+          schoolPayload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+        }
+
+        // Save to Firestore 'schools' collection
+        await window.db.collection("schools").doc(schoolId).set(schoolPayload, { merge: true });
+
+        await logAuditAction(
+          isEditing ? "UPDATE_SCHOOL" : "PROVISION_SCHOOL", 
+          `${isEditing ? 'Updated' : 'Provisioned'} school instance: ${schoolName} (${schoolId})`
+        );
+
+        await showCustomModal("Success", `School instance "${schoolName}" has been successfully ${isEditing ? 'updated' : 'provisioned'}.`);
+        
+        resetSchoolForm();
+        if (typeof loadRegisteredSchools === 'function') loadRegisteredSchools();
+
+      } catch (error) {
+        console.error("School Save Error:", error);
+        await showCustomModal("Error", "Failed to save school instance. Check console for details.");
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = isEditing ? '<i class="fa-solid fa-floppy-disk"></i> Update School' : '<i class="fa-solid fa-plus"></i> Provision School Instance';
+      }
+    });
+  }
+
+  if (cancelEditBtn) {
+    cancelEditBtn.addEventListener("click", () => {
+      resetSchoolForm();
+    });
+  }
+
+  function resetSchoolForm() {
+    schoolForm.reset();
+    isEditingInput.value = "false";
+    schoolIdInput.disabled = false;
+    formTitle.textContent = "Register New School Instance";
+    formDesc.textContent = "Create a brand new tenant record in the global database.";
+    saveBtn.innerHTML = '<i class="fa-solid fa-plus" style="margin-right: 6px;"></i> Provision School Instance';
+    cancelEditBtn.style.display = "none";
+    logoPreview.src = "images/default-avatar.png";
+    selectedLogoFile = null;
+  }
+
+  // Global Attachments for Edit / Delete Triggered from the Tenants Table
+  window.editSchoolInstance = async function(schoolId) {
+    try {
+      const docSnap = await window.db.collection("schools").doc(schoolId).get();
+      if (!docSnap.exists) {
+        await showCustomModal("Not Found", "School record not found.");
+        return;
+      }
+
+      const data = docSnap.data();
+      schoolIdInput.value = data.schoolId || schoolId;
+      schoolIdInput.disabled = true; // Lock slug during edit
+      document.getElementById("newSchoolName").value = data.schoolName || "";
+      document.getElementById("newSchoolLocation").value = data.location || "";
+      logoPreview.src = data.logoUrl || "images/default-avatar.png";
+      
+      isEditingInput.value = "true";
+      formTitle.textContent = `Edit School: ${data.schoolName || schoolId}`;
+      formDesc.textContent = "Modify existing tenant details and branding assets.";
+      saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk" style="margin-right: 6px;"></i> Update School Details';
+      cancelEditBtn.style.display = "inline-block";
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      console.error("Error loading school for edit:", err);
+    }
+  };
+
+  window.deleteSchoolInstance = async function(schoolId) {
+    const confirmDelete = await showCustomModal(
+      "Confirm Deletion",
+      `⚠️ Are you sure you want to delete school ID "<strong>${escapeHtml(schoolId)}</strong>"? This action cannot be undone.`,
+      "prompt",
+      "Type 'DELETE' to confirm"
+    );
+
+    if (confirmDelete === null) return;
+
+    try {
+      await window.db.collection("schools").doc(schoolId).delete();
+      await logAuditAction("DELETE_SCHOOL", `Deleted school instance: ${schoolId}`);
+      await showCustomModal("Deleted", `School instance ${schoolId} has been removed.`);
+      if (typeof loadRegisteredSchools === 'function') loadRegisteredSchools();
+    } catch (err) {
+      console.error("Delete Error:", err);
+      await showCustomModal("Error", "Failed to delete school instance.");
+    }
+  };
+
+  // Migration Action Handler...
   const migrationBtn = document.getElementById("executeMigrationBtn");
   if (migrationBtn) {
     migrationBtn.addEventListener("click", async () => {
@@ -450,7 +589,6 @@ function setupAdminActions() {
         return;
       }
 
-      // Collect checked collections
       const selectedCheckboxes = document.querySelectorAll(".migration-col-checkbox:checked");
       const selectedCollections = Array.from(selectedCheckboxes).map(cb => cb.value);
 
@@ -490,7 +628,6 @@ function setupAdminActions() {
     });
   }
 }
-
 async function logAuditAction(actionType, details) {
   try {
     await window.db.collection("audit_logs").add({
