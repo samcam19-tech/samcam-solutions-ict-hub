@@ -44,9 +44,12 @@
     </header>
 
     <div class="container">
-        <header class="content-header">
-            <h1>ICT Formula & Access Query Verifier</h1>
-            <p>Master Excel logical, lookup, and conditional functions along with Access criteria rules.</p>
+        <header class="content-header" style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+          <img src="images/logo.png" alt="System Logo" class="dynamic-system-logo" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
+          <div>
+            <h1 class="dynamic-system-name" style="margin: 0; font-size: 1.5rem; font-weight: 700;">ICT Formula & Access Query Verifier</h1>
+            <p class="dynamic-system-slogan" style="margin: 0; font-size: 0.85rem; color: #64748b;">Master Excel logical, lookup, and conditional functions along with Access criteria rules.</p>
+          </div>
         </header>
 
         <main>
@@ -94,6 +97,8 @@
 
     <!-- Firebase Configuration & Initialization -->
     <script src="firebase-config.js"></script>
+    <!-- Include Brand Loader Script -->
+    <script src="brand-loader.js"></script>
     <!-- Main Application Script -->
     <script src="formula.js"></script>
     <script>
