@@ -175,7 +175,7 @@ function initEventListeners() {
             if (!window.db) return;
             showCustomConfirm(
                 "Lock All Terminals",
-                "Are you sure you want to lock all connected workstation screens across the lab?",
+                "Are you sure you want to lock all connected workstation screens across the lab (including your test device)?",
                 async () => {
                     try {
                         const batch = window.db.batch();
