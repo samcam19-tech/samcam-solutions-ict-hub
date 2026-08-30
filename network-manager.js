@@ -57,10 +57,31 @@ function initLiveTelemetryListener() {
 
         workstationsData = liveStations;
         renderWorkstations(workstationsData);
+        populateTargetWorkstationSelect(workstationsData);
         updateGlobalLockToggleButtonState();
     }, (error) => {
         console.error("Error reading workstation telemetry:", error);
     });
+}
+
+function populateTargetWorkstationSelect(stations) {
+    const select = document.getElementById("targetWorkstationSelect");
+    if (!select) return;
+
+    // Preserve currently selected value if possible
+    const currentVal = select.value;
+    
+    select.innerHTML = '<option value="">-- Select Specific Learner --</option>';
+    stations.forEach(pc => {
+        const opt = document.createElement("option");
+        opt.value = pc.id;
+        opt.textContent = `${pc.id} - ${pc.learner}`;
+        select.appendChild(opt);
+    });
+
+    if (currentVal) {
+        select.value = currentVal;
+    }
 }
 
 function renderWorkstations(stations) {
@@ -138,6 +159,7 @@ function renderWorkstations(stations) {
     }
 
     updateGlobalLockToggleButtonState();
+    updateQuickToggleBtnState();
 }
 
 function areAllTerminalsLocked() {
@@ -159,9 +181,33 @@ function updateGlobalLockToggleButtonState() {
     }
 }
 
+function updateQuickToggleBtnState() {
+    const select = document.getElementById("targetWorkstationSelect");
+    const quickToggleBtn = document.getElementById("quickToggleLockBtn");
+    if (!select || !quickToggleBtn) return;
+
+    const selectedId = select.value;
+    if (!selectedId) {
+        quickToggleBtn.innerHTML = `<i class="fa-solid fa-lock"></i> Toggle Selected`;
+        quickToggleBtn.style.background = "";
+        return;
+    }
+
+    const targetPc = workstationsData.find(pc => pc.id === selectedId);
+    if (targetPc && targetPc.status === "locked") {
+        quickToggleBtn.innerHTML = `<i class="fa-solid fa-lock-open"></i> Unlock Selected`;
+        quickToggleBtn.style.background = "#10b981";
+    } else {
+        quickToggleBtn.innerHTML = `<i class="fa-solid fa-lock"></i> Lock Selected`;
+        quickToggleBtn.style.background = "";
+    }
+}
+
 function initEventListeners() {
     const searchInput = document.getElementById("nodeSearch");
     const statusFilter = document.getElementById("statusFilter");
+    const targetWorkstationSelect = document.getElementById("targetWorkstationSelect");
+    const quickToggleLockBtn = document.getElementById("quickToggleLockBtn");
 
     const filterData = () => {
         const query = searchInput ? searchInput.value.toLowerCase() : "";
@@ -178,6 +224,37 @@ function initEventListeners() {
 
     if (searchInput) searchInput.addEventListener("input", filterData);
     if (statusFilter) statusFilter.addEventListener("change", filterData);
+    if (targetWorkstationSelect) {
+        targetWorkstationSelect.addEventListener("change", () => {
+            updateQuickToggleBtnState();
+        });
+    }
+
+    if (quickToggleLockBtn) {
+        quickToggleLockBtn.onclick = async () => {
+            if (!targetWorkstationSelect) return;
+            const selectedId = targetWorkstationSelect.value;
+            if (!selectedId) {
+                showCustomAlert("Selection Required", "Please select a specific learner/workstation from the dropdown list first.");
+                return;
+            }
+
+            const targetPc = workstationsData.find(pc => pc.id === selectedId);
+            if (!targetPc || !window.db) return;
+
+            const nextStatus = targetPc.status === "locked" ? "active" : "locked";
+            try {
+                await window.db.collection("workstation_telemetry").doc(targetPc.id).update({
+                    status: nextStatus,
+                    activity: nextStatus === "locked" ? "Screen Locked by Instructor" : "Resumed Session"
+                });
+                showCustomAlert("Status Updated", `Workstation ${targetPc.id} has been successfully ${nextStatus === "locked" ? "locked" : "unlocked"}.`);
+            } catch (err) {
+                console.error("Error toggling single workstation state:", err);
+                showCustomAlert("Error", "Failed to update workstation status. Check console logs.");
+            }
+        };
+    }
 
     const closeModalBtn = document.getElementById("closeModalBtn");
     if (closeModalBtn) closeModalBtn.onclick = closeModal;
