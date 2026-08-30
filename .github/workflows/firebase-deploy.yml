@@ -1,0 +1,18 @@
+name: Deploy to Firebase
+on:
+  push:
+    branches: [ main, master ]
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install Dependencies & Deploy
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          npm --prefix functions install
+          npx firebase-tools deploy --only functions --token "$FIREBASE_TOKEN"
