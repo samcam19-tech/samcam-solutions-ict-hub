@@ -487,93 +487,53 @@ async function logAuditAction(actionType, details) {
 
 
 // ==========================================
-// 10 FULLY FUNCTIONAL SUPER ADMIN FEATURES
+// 10 FULLY FUNCTIONAL SUPER ADMIN FEATURES (LOGIC ONLY)
 // ==========================================
 
-// Helper function to create feature sections cleanly without inline styles
-function createFeatureSection(titleText, elementId) {
-  const wrapper = document.createElement("div");
-  wrapper.id = elementId;
-  wrapper.className = "admin-feature-card";
-  const mainContent = document.querySelector("main") || document.body;
-  mainContent.appendChild(wrapper);
-  return wrapper;
+// Helper function to verify that the required HTML container exists in super-admin.html
+function getFeatureContainer(elementId) {
+  const container = document.getElementById(elementId);
+  if (!container) {
+    console.warn(`Container with ID "${elementId}" was not found in super-admin.html.`);
+  }
+  return container;
 }
 
 // Feature 1: Global Announcement Broadcaster with Management (Edit, Delete & Publish)
 function initGlobalAnnouncements() {
-  // Maintaining full UI layout structure with updated input field IDs for single-doc handling
-  const container = document.getElementById("featureAnnouncements") || createFeatureSection("Global Announcement Broadcaster", "featureAnnouncements");
-  
-  container.innerHTML = `
-    <h3 class="feature-title">📢 Global Announcement Broadcaster</h3>
-    
-    <!-- Form for Creating / Editing -->
-    <div id="announcementFormCard" style="background: var(--bg-main, #f8fafc); padding: 16px; border-radius: 8px; border: 1px solid var(--border, #e2e8f0); margin-bottom: 20px;">
-      <h4 id="announceFormHeading" style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">Publish New Broadcast</h4>
-      <input type="hidden" id="editingAnnouncementDocId" value="">
-      
-      <div class="form-group" style="margin-bottom: 12px;">
-        <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Announcement Title</label>
-        <input type="text" id="globalAnnounceTitle" placeholder="e.g., 📢 New Notes Available on the Portal!" class="feature-input" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;">
-      </div>
-      
-      <div class="form-group" style="margin-bottom: 12px;">
-        <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Announcement Body / Message</label>
-        <textarea id="globalAnnounceText" placeholder="Type platform-wide broadcast message..." class="feature-textarea" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px; min-height: 80px;"></textarea>
-      </div>
-      
-      <div class="form-row" style="display: flex; gap: 10px; margin-bottom: 12px;">
-        <div class="form-group" style="flex: 1;">
-          <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Priority Level</label>
-          <select id="announcePriority" class="feature-select" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;">
-            <option value="Urgent">Urgent</option>
-            <option value="Normal" selected>Normal</option>
-            <option value="Low">Low</option>
-          </select>
-        </div>
-        <div class="form-group" style="flex: 1;">
-          <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Target Audience</label>
-          <select id="announceTarget" class="feature-select" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;">
-            <option value="all">All Schools & Users</option>
-            <option value="teachers">Teachers Only</option>
-            <option value="students">Students Only</option>
-          </select>
-        </div>
-      </div>
-      
-      <div class="feature-controls-row" style="display: flex; gap: 10px;">
-        <button id="sendBroadcastBtn" class="btn-primary" style="flex: 1;"><i class="fa-solid fa-bullhorn"></i> Publish Global Broadcast</button>
-        <button id="cancelEditBroadcastBtn" class="btn-outline" style="display: none; flex: 0.4;">Cancel</button>
-      </div>
-    </div>
+  const container = getFeatureContainer("featureAnnouncements");
+  if (!container) return;
 
-    <!-- Active Broadcasts Management List -->
-    <div style="margin-top: 20px;">
-      <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 10px;">Active Global Broadcasts</h4>
-      <div id="activeBroadcastsList" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border, #e2e8f0); border-radius: 6px; padding: 10px; background: #fff;">
-        <p style="color: var(--text-muted, #64748b); font-size: 13px; text-align: center; padding: 15px;">Loading active broadcasts...</p>
-      </div>
-    </div>
-  `;
+  const formCard = document.getElementById("announcementFormCard");
+  const editingDocIdInput = document.getElementById("editingAnnouncementDocId");
+  const titleInput = document.getElementById("globalAnnounceTitle");
+  const bodyInput = document.getElementById("globalAnnounceText");
+  const prioritySelect = document.getElementById("announcePriority");
+  const targetSelect = document.getElementById("announceTarget");
+  const formHeading = document.getElementById("announceFormHeading");
+  const sendBtn = document.getElementById("sendBroadcastBtn");
+  const cancelBtn = document.getElementById("cancelEditBroadcastBtn");
+  const listContainer = document.getElementById("activeBroadcastsList");
 
   // Helper to reset form state
   const resetForm = () => {
-    document.getElementById("editingAnnouncementDocId").value = "";
-    document.getElementById("globalAnnounceTitle").value = "";
-    document.getElementById("globalAnnounceText").value = "";
-    document.getElementById("announcePriority").value = "Normal";
-    document.getElementById("announceTarget").value = "all";
-    document.getElementById("announceFormHeading").innerText = "Publish New Broadcast";
-    document.getElementById("sendBroadcastBtn").innerHTML = `<i class="fa-solid fa-bullhorn"></i> Publish Global Broadcast`;
-    document.getElementById("cancelEditBroadcastBtn").style.display = "none";
+    if (editingDocIdInput) editingDocIdInput.value = "";
+    if (titleInput) titleInput.value = "";
+    if (bodyInput) bodyInput.value = "";
+    if (prioritySelect) prioritySelect.value = "Normal";
+    if (targetSelect) targetSelect.value = "all";
+    if (formHeading) formHeading.innerText = "Publish New Broadcast";
+    if (sendBtn) sendBtn.innerHTML = `<i class="fa-solid fa-bullhorn"></i> Publish Global Broadcast`;
+    if (cancelBtn) cancelBtn.style.display = "none";
   };
 
-  document.getElementById("cancelEditBroadcastBtn").addEventListener("click", resetForm);
+  if (cancelBtn) {
+    cancelBtn.addEventListener("click", resetForm);
+  }
 
   // Load and Render Existing Broadcasts for Management using schoolId == "all"
   const loadActiveBroadcasts = async () => {
-    const listContainer = document.getElementById("activeBroadcastsList");
+    if (!listContainer) return;
     try {
       const snapshot = await window.db.collection("announcements")
         .where("schoolId", "==", "all")
@@ -600,19 +560,19 @@ function initGlobalAnnouncements() {
       snapshot.forEach(docSnap => {
         const item = docSnap.data();
         const docId = docSnap.id;
-        const safeTitle = item.title.replace(/"/g, '&quot;');
-        const safeBody = item.body.replace(/"/g, '&quot;');
+        const safeTitle = (item.title || '').replace(/"/g, '&quot;');
+        const safeBody = (item.body || '').replace(/"/g, '&quot;');
         
         html += `
           <tr style="border-bottom: 1px solid var(--border, #e2e8f0);">
             <td style="padding: 8px;">
-              <strong>${item.title}</strong><br>
-              <span style="color: var(--text-muted, #64748b); font-size: 11px;">${item.body.substring(0, 50)}...</span>
+              <strong>${item.title || ''}</strong><br>
+              <span style="color: var(--text-muted, #64748b); font-size: 11px;">${(item.body || '').substring(0, 50)}...</span>
             </td>
-            <td style="padding: 8px;"><span style="padding: 2px 6px; border-radius: 4px; font-size: 11px; background: #e0f2fe; color: #0369a1;">${item.priority}</span></td>
-            <td style="padding: 8px; text-transform: capitalize;">${item.targetAudience}</td>
+            <td style="padding: 8px;"><span style="padding: 2px 6px; border-radius: 4px; font-size: 11px; background: #e0f2fe; color: #0369a1;">${item.priority || 'Normal'}</span></td>
+            <td style="padding: 8px; text-transform: capitalize;">${item.targetAudience || 'all'}</td>
             <td style="padding: 8px; text-align: right; white-space: nowrap;">
-              <button class="btn-outline edit-broadcast-btn" data-id="${docId}" data-title="${safeTitle}" data-body="${safeBody}" data-priority="${item.priority}" data-target="${item.targetAudience}" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;"><i class="fa-solid fa-pen"></i> Edit</button>
+              <button class="btn-outline edit-broadcast-btn" data-id="${docId}" data-title="${safeTitle}" data-body="${safeBody}" data-priority="${item.priority || 'Normal'}" data-target="${item.targetAudience || 'all'}" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;"><i class="fa-solid fa-pen"></i> Edit</button>
               <button class="btn-warning delete-broadcast-btn" data-id="${docId}" data-title="${safeTitle}" style="padding: 4px 8px; font-size: 11px; background: #ef4444; border: none; color: white;"><i class="fa-solid fa-trash"></i> Delete</button>
             </td>
           </tr>`;
@@ -622,24 +582,24 @@ function initGlobalAnnouncements() {
       listContainer.innerHTML = html;
 
       // Attach Event Listeners for Edit Action
-      document.querySelectorAll(".edit-broadcast-btn").forEach(btn => {
+      listContainer.querySelectorAll(".edit-broadcast-btn").forEach(btn => {
         btn.addEventListener("click", () => {
-          document.getElementById("globalAnnounceTitle").value = btn.getAttribute("data-title");
-          document.getElementById("globalAnnounceText").value = btn.getAttribute("data-body");
-          document.getElementById("announcePriority").value = btn.getAttribute("data-priority");
-          document.getElementById("announceTarget").value = btn.getAttribute("data-target");
+          if (titleInput) titleInput.value = btn.getAttribute("data-title");
+          if (bodyInput) bodyInput.value = btn.getAttribute("data-body");
+          if (prioritySelect) prioritySelect.value = btn.getAttribute("data-priority");
+          if (targetSelect) targetSelect.value = btn.getAttribute("data-target");
           
-          document.getElementById("editingAnnouncementDocId").value = btn.getAttribute("data-id");
-          document.getElementById("announceFormHeading").innerText = "Edit Global Broadcast";
-          document.getElementById("sendBroadcastBtn").innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Update Global Broadcast`;
-          document.getElementById("cancelEditBroadcastBtn").style.display = "block";
+          if (editingDocIdInput) editingDocIdInput.value = btn.getAttribute("data-id");
+          if (formHeading) formHeading.innerText = "Edit Global Broadcast";
+          if (sendBtn) sendBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Update Global Broadcast`;
+          if (cancelBtn) cancelBtn.style.display = "block";
           
-          document.getElementById("announcementFormCard").scrollIntoView({ behavior: 'smooth' });
+          if (formCard) formCard.scrollIntoView({ behavior: 'smooth' });
         });
       });
 
       // Attach Event Listeners for Delete Action
-      document.querySelectorAll(".delete-broadcast-btn").forEach(btn => {
+      listContainer.querySelectorAll(".delete-broadcast-btn").forEach(btn => {
         btn.addEventListener("click", async () => {
           const docId = btn.getAttribute("data-id");
           const titleToDelete = btn.getAttribute("data-title");
@@ -666,424 +626,416 @@ function initGlobalAnnouncements() {
 
     } catch (err) {
       console.error("Failed to load active broadcasts:", err);
-      listContainer.innerHTML = `<p style="color: #ef4444; font-size: 13px; text-align: center; padding: 15px;">Failed to load broadcasts list.</p>`;
+      if (listContainer) {
+        listContainer.innerHTML = `<p style="color: #ef4444; font-size: 13px; text-align: center; padding: 15px;">Failed to load broadcasts list.</p>`;
+      }
     }
   };
 
   loadActiveBroadcasts();
 
-  // Publish / Update Submission Handler using single document set/update
-  document.getElementById("sendBroadcastBtn").addEventListener("click", async () => {
-    const title = document.getElementById("globalAnnounceTitle").value.trim();
-    const body = document.getElementById("globalAnnounceText").value.trim();
-    const priority = document.getElementById("announcePriority").value;
-    const target = document.getElementById("announceTarget").value;
-    const editingDocId = document.getElementById("editingAnnouncementDocId").value;
+  // Publish / Update Submission Handler
+  if (sendBtn) {
+    sendBtn.addEventListener("click", async () => {
+      const title = titleInput ? titleInput.value.trim() : "";
+      const body = bodyInput ? bodyInput.value.trim() : "";
+      const priority = prioritySelect ? prioritySelect.value : "Normal";
+      const target = targetSelect ? targetSelect.value : "all";
+      const editingDocId = editingDocIdInput ? editingDocIdInput.value : "";
 
-    if (!title || !body) {
-      await showCustomModal("Validation Error", "Both announcement title and body message are required.");
-      return;
-    }
-
-    const session = getCurrentUserSession();
-    const authorName = session ? (session.name || session.fullName || session.username || 'System Administrator') : 'System Administrator';
-
-    const submitBtn = document.getElementById("sendBroadcastBtn");
-    submitBtn.disabled = true;
-    const isEditing = Boolean(editingDocId);
-    submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${isEditing ? 'Updating...' : 'Publishing...'}`;
-
-    try {
-      const timestamp = (typeof firebase !== 'undefined' && firebase.firestore) 
-                       ? firebase.firestore.FieldValue.serverTimestamp() 
-                       : new Date().toISOString();
-
-      if (isEditing) {
-        await window.db.collection("announcements").doc(editingDocId).update({
-          title: title,
-          body: body,
-          priority: priority,
-          targetAudience: target,
-          author: authorName,
-          updatedAt: timestamp
-        });
-
-        if (typeof logAuditAction === 'function') {
-          await logAuditAction("UPDATE_GLOBAL_BROADCAST", `Updated global announcement titled "${title}".`);
-        }
-      } else {
-        await window.db.collection("announcements").add({
-          title: title,
-          body: body,
-          author: authorName,
-          priority: priority,
-          targetAudience: target,
-          schoolId: "all",
-          createdAt: timestamp
-        });
-
-        if (typeof logAuditAction === 'function') {
-          await logAuditAction("GLOBAL_BROADCAST", `Published global announcement titled "${title}".`);
-        }
-      }
-
-      resetForm();
-      loadActiveBroadcasts();
-      await showCustomModal("Success", `Global announcement successfully ${isEditing ? 'updated' : 'published'}!`);
-    } catch (err) {
-      console.error("Failed to process global broadcast operation:", err);
-      await showCustomModal("Error", "Operation failed: " + err.message);
-    } finally {
-      submitBtn.disabled = false;
-      submitBtn.innerHTML = `<i class="fa-solid fa-bullhorn"></i> Publish Global Broadcast`;
-    }
-  });
-}
-// Feature 2: Tenant Status & Subscription Manager
-function initTenantSubscriptionManager() {
-  const container = document.getElementById("featureTenants") || createFeatureSection("Tenant Status & Subscription Manager", "featureTenants");
-  container.innerHTML = `
-    <h3 class="feature-title">🏫 Tenant Status & Subscriptions</h3>
-    <div class="feature-controls-row">
-      <input type="text" id="manageSchoolIdInput" placeholder="Enter exact School ID..." class="feature-input-flex" />
-      <button id="toggleStatusBtn" class="btn-warning">Toggle Active/Suspended</button>
-    </div>
-  `;
-
-  document.getElementById("toggleStatusBtn").addEventListener("click", async () => {
-    const schoolId = document.getElementById("manageSchoolIdInput").value.trim().toLowerCase();
-    if (!schoolId) {
-      await showCustomModal("Input Required", "Please enter a valid school ID.");
-      return;
-    }
-
-    try {
-      const docRef = window.db.collection("schools").doc(schoolId);
-      const docSnap = await docRef.get();
-      if (!docSnap.exists) {
-        await showCustomModal("Not Found", `No school found with ID: ${schoolId}`);
+      if (!title || !body) {
+        await showCustomModal("Validation Error", "Both announcement title and body message are required.");
         return;
       }
 
-      const currentStatus = docSnap.data().status || "active";
-      const newStatus = currentStatus === "active" ? "suspended" : "active";
+      const session = getCurrentUserSession();
+      const authorName = session ? (session.name || session.fullName || session.username || 'System Administrator') : 'System Administrator';
 
-      await docRef.update({ status: newStatus });
-      await logAuditAction("UPDATE_TENANT_STATUS", `Changed school ${schoolId} status to ${newStatus}`);
-      await showCustomModal("Success", `School ${schoolId} status updated to ${newStatus.toUpperCase()}.`);
-      loadRegisteredSchools();
-    } catch (err) {
-      await showCustomModal("Error", "Failed to update tenant status.");
-    }
-  });
+      sendBtn.disabled = true;
+      const isEditing = Boolean(editingDocId);
+      sendBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${isEditing ? 'Updating...' : 'Publishing...'}`;
+
+      try {
+        const timestamp = (typeof firebase !== 'undefined' && firebase.firestore) 
+                         ? firebase.firestore.FieldValue.serverTimestamp() 
+                         : new Date().toISOString();
+
+        if (isEditing) {
+          await window.db.collection("announcements").doc(editingDocId).update({
+            title: title,
+            body: body,
+            priority: priority,
+            targetAudience: target,
+            author: authorName,
+            updatedAt: timestamp
+          });
+
+          if (typeof logAuditAction === 'function') {
+            await logAuditAction("UPDATE_GLOBAL_BROADCAST", `Updated global announcement titled "${title}".`);
+          }
+        } else {
+          await window.db.collection("announcements").add({
+            title: title,
+            body: body,
+            author: authorName,
+            priority: priority,
+            targetAudience: target,
+            schoolId: "all",
+            createdAt: timestamp
+          });
+
+          if (typeof logAuditAction === 'function') {
+            await logAuditAction("GLOBAL_BROADCAST", `Published global announcement titled "${title}".`);
+          }
+        }
+
+        resetForm();
+        loadActiveBroadcasts();
+        await showCustomModal("Success", `Global announcement successfully ${isEditing ? 'updated' : 'published'}!`);
+      } catch (err) {
+        console.error("Failed to process global broadcast operation:", err);
+        await showCustomModal("Error", "Operation failed: " + err.message);
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.innerHTML = `<i class="fa-solid fa-bullhorn"></i> Publish Global Broadcast`;
+      }
+    });
+  }
+}
+
+// Feature 2: Tenant Status & Subscription Manager
+function initTenantSubscriptionManager() {
+  const container = getFeatureContainer("featureTenants");
+  if (!container) return;
+
+  const btn = document.getElementById("toggleStatusBtn");
+  const input = document.getElementById("manageSchoolIdInput");
+
+  if (btn && input) {
+    btn.addEventListener("click", async () => {
+      const schoolId = input.value.trim().toLowerCase();
+      if (!schoolId) {
+        await showCustomModal("Input Required", "Please enter a valid school ID.");
+        return;
+      }
+
+      try {
+        const docRef = window.db.collection("schools").doc(schoolId);
+        const docSnap = await docRef.get();
+        if (!docSnap.exists) {
+          await showCustomModal("Not Found", `No school found with ID: ${schoolId}`);
+          return;
+        }
+
+        const currentStatus = docSnap.data().status || "active";
+        const newStatus = currentStatus === "active" ? "suspended" : "active";
+
+        await docRef.update({ status: newStatus });
+        if (typeof logAuditAction === 'function') {
+          await logAuditAction("UPDATE_TENANT_STATUS", `Changed school ${schoolId} status to ${newStatus}`);
+        }
+        await showCustomModal("Success", `School ${schoolId} status updated to ${newStatus.toUpperCase()}.`);
+        if (typeof loadRegisteredSchools === 'function') {
+          loadRegisteredSchools();
+        }
+      } catch (err) {
+        await showCustomModal("Error", "Failed to update tenant status.");
+      }
+    });
+  }
 }
 
 // Feature 3: Cross-Tenant Global Search
 function initCrossTenantSearch() {
-  const container = document.getElementById("featureSearch") || createFeatureSection("Cross-Tenant Global Search", "featureSearch");
-  container.innerHTML = `
-    <h3 class="feature-title">🔍 Cross-Tenant Global Search</h3>
-    <div class="feature-controls-row">
-      <input type="text" id="globalSearchQuery" placeholder="Search users, quizzes, threads..." class="feature-input-flex" />
-      <button id="executeGlobalSearchBtn" class="btn-primary">Search</button>
-    </div>
-    <div id="globalSearchResults" class="feature-results-box"></div>
-  `;
+  const container = getFeatureContainer("featureSearch");
+  if (!container) return;
 
-  document.getElementById("executeGlobalSearchBtn").addEventListener("click", async () => {
-    const query = document.getElementById("globalSearchQuery").value.trim().toLowerCase();
-    const resultsContainer = document.getElementById("globalSearchResults");
-    if (!query) return;
+  const searchBtn = document.getElementById("executeGlobalSearchBtn");
+  const queryInput = document.getElementById("globalSearchQuery");
+  const resultsContainer = document.getElementById("globalSearchResults");
 
-    resultsContainer.innerHTML = "Searching collections...";
-    try {
-      let matches = 0;
-      let html = "";
-      const collections = ['users', 'quizzes', 'forum_threads', 'announcements'];
+  if (searchBtn && queryInput && resultsContainer) {
+    searchBtn.addEventListener("click", async () => {
+      const query = queryInput.value.trim().toLowerCase();
+      if (!query) return;
 
-      for (const col of collections) {
-        const snap = await window.db.collection(col).limit(20).get();
-        snap.forEach(doc => {
-          const data = doc.data();
-          const stringified = JSON.stringify(data).toLowerCase();
-          if (stringified.includes(query)) {
-            matches++;
-            html += `<div class="search-result-item">[<b>${col}</b>] ID: ${doc.id} (School: ${data.schoolId || 'N/A'})</div>`;
-          }
-        });
+      resultsContainer.innerHTML = "Searching collections...";
+      try {
+        let matches = 0;
+        let html = "";
+        const collections = ['users', 'quizzes', 'forum_threads', 'announcements'];
+
+        for (const col of collections) {
+          const snap = await window.db.collection(col).limit(20).get();
+          snap.forEach(doc => {
+            const data = doc.data();
+            const stringified = JSON.stringify(data).toLowerCase();
+            if (stringified.includes(query)) {
+              matches++;
+              html += `<div class="search-result-item" style="padding: 6px 0; border-bottom: 1px solid #eee;">[<b>${col}</b>] ID: ${doc.id} (School: ${data.schoolId || 'N/A'})</div>`;
+            }
+          });
+        }
+
+        resultsContainer.innerHTML = matches > 0 ? html : `<div>No matching records found for "${query}".</div>`;
+      } catch (err) {
+        resultsContainer.innerHTML = `<span class="text-error" style="color: #ef4444;">Search failed due to permissions or connection.</span>`;
       }
-
-      resultsContainer.innerHTML = matches > 0 ? html : `<div>No matching records found for "${query}".</div>`;
-    } catch (err) {
-      resultsContainer.innerHTML = `<span class="text-error">Search failed due to permissions or connection.</span>`;
-    }
-  });
+    });
+  }
 }
 
 // Feature 4: Comprehensive System Audit Logs
 function initAuditLogsViewer() {
-  const container = document.getElementById("featureAudit") || createFeatureSection("System Audit Logs", "featureAudit");
-  container.innerHTML = `
-    <h3 class="feature-title">📋 Comprehensive Audit Trail</h3>
-    <button id="refreshAuditBtn" class="btn-secondary-small">Refresh Logs</button>
-    <div id="auditLogsList" class="audit-logs-container">Click Refresh to load system audit trails.</div>
-  `;
+  const container = getFeatureContainer("featureAudit");
+  if (!container) return;
 
-  document.getElementById("refreshAuditBtn").addEventListener("click", async () => {
-    const listEl = document.getElementById("auditLogsList");
-    listEl.innerHTML = "Loading logs...";
-    try {
-      const snap = await window.db.collection("audit_logs").orderBy("timestamp", "desc").limit(15).get();
-      if (snap.empty) {
-        listEl.innerHTML = "No audit logs recorded yet.";
-        return;
+  const refreshBtn = document.getElementById("refreshAuditBtn");
+  const listEl = document.getElementById("auditLogsList");
+
+  if (refreshBtn && listEl) {
+    refreshBtn.addEventListener("click", async () => {
+      listEl.innerHTML = "Loading logs...";
+      try {
+        const snap = await window.db.collection("audit_logs").orderBy("timestamp", "desc").limit(15).get();
+        if (snap.empty) {
+          listEl.innerHTML = "No audit logs recorded yet.";
+          return;
+        }
+        let html = "";
+        snap.forEach(doc => {
+          const d = doc.data();
+          const time = d.timestamp && d.timestamp.seconds ? new Date(d.timestamp.seconds * 1000).toLocaleString() : "Just now";
+          html += `<div class="audit-log-row" style="padding: 6px 0; border-bottom: 1px solid #f1f5f9;"><strong class="audit-action-title">[${d.actionType}]</strong> ${d.details} <span class="audit-timestamp" style="float: right; color: #64748b; font-size: 11px;">${time}</span></div>`;
+        });
+        listEl.innerHTML = html;
+      } catch (err) {
+        listEl.innerHTML = "<span class='text-error' style='color: #ef4444;'>Failed to load audit logs. Ensure Firestore index exists.</span>";
       }
-      let html = "";
-      snap.forEach(doc => {
-        const d = doc.data();
-        const time = d.timestamp ? new Date(d.timestamp.seconds * 1000).toLocaleString() : "Just now";
-        html += `<div class="audit-log-row"><strong class="audit-action-title">[${d.actionType}]</strong> ${d.details} <span class="audit-timestamp">${time}</span></div>`;
-      });
-      listEl.innerHTML = html;
-    } catch (err) {
-      listEl.innerHTML = "<span class='text-error'>Failed to load audit logs. Ensure Firestore index exists.</span>";
-    }
-  });
+    });
+  }
 }
 
 // Feature 5: Global Backup & Snapshot Generator
 function initBackupGenerator() {
-  const container = document.getElementById("featureBackup") || createFeatureSection("Global Backup & Snapshot Generator", "featureBackup");
-  container.innerHTML = `
-    <h3 class="feature-title">💾 Global Backup & Snapshot</h3>
-    <p class="feature-description">Export entire multi-tenant database collections into a downloadable JSON backup file.</p>
-    <button id="generateBackupBtn" class="btn-success">Download Full JSON Backup</button>
-  `;
+  const container = getFeatureContainer("featureBackup");
+  if (!container) return;
 
-  document.getElementById("generateBackupBtn").addEventListener("click", async () => {
-    try {
-      const backupData = {};
-      for (const col of collectionsToMigrate) {
-        const snap = await window.db.collection(col).get();
-        backupData[col] = [];
-        snap.forEach(doc => {
-          backupData[col].push({ id: doc.id, ...doc.data() });
-        });
+  const backupBtn = document.getElementById("generateBackupBtn");
+  if (backupBtn) {
+    backupBtn.addEventListener("click", async () => {
+      try {
+        const backupData = {};
+        const collectionsToMigrate = ['users', 'quizzes', 'submissions', 'announcements', 'schools', 'e_library_resources'];
+        for (const col of collectionsToMigrate) {
+          const snap = await window.db.collection(col).get();
+          backupData[col] = [];
+          snap.forEach(doc => {
+            backupData[col].push({ id: doc.id, ...doc.data() });
+          });
+        }
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `samcam_full_backup_${new Date().toISOString().slice(0,10)}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+
+        if (typeof logAuditAction === 'function') {
+          await logAuditAction("GENERATE_BACKUP", "Downloaded complete system JSON backup snapshot.");
+        }
+        await showCustomModal("Success", "Backup snapshot generated and downloaded successfully.");
+      } catch (err) {
+        await showCustomModal("Error", "Backup generation failed.");
       }
-
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", `samcam_full_backup_${new Date().toISOString().slice(0,10)}.json`);
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
-
-      await logAuditAction("GENERATE_BACKUP", "Downloaded complete system JSON backup snapshot.");
-      await showCustomModal("Success", "Backup snapshot generated and downloaded successfully.");
-    } catch (err) {
-      await showCustomModal("Error", "Backup generation failed.");
-    }
-  });
+    });
+  }
 }
 
 // Feature 6: Centralized E-Resource Repository Manager
 function initGlobalEResources() {
-  const container = document.getElementById("featureEResources") || createFeatureSection("Centralized E-Resource Repository Manager", "featureEResources");
-  container.innerHTML = `
-    <h3 class="feature-title">📚 Centralized E-Resource Publisher</h3>
-    <input type="text" id="globalResTitle" placeholder="Resource Title..." class="feature-input-block" />
-    <input type="text" id="globalResUrl" placeholder="Download Link / URL..." class="feature-input-block" />
-    <button id="publishGlobalResBtn" class="btn-primary">Publish to All Schools</button>
-  `;
+  const container = getFeatureContainer("featureEResources");
+  if (!container) return;
 
-  document.getElementById("publishGlobalResBtn").addEventListener("click", async () => {
-    const title = document.getElementById("globalResTitle").value.trim();
-    const url = document.getElementById("globalResUrl").value.trim();
-    if (!title || !url) {
-      await showCustomModal("Validation Error", "Title and URL are required.");
-      return;
-    }
+  const publishBtn = document.getElementById("publishGlobalResBtn");
+  const titleInput = document.getElementById("globalResTitle");
+  const urlInput = document.getElementById("globalResUrl");
 
-    try {
-      await window.db.collection("e_library_resources").add({
-        title,
-        url,
-        isGlobal: true,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      await logAuditAction("PUBLISH_GLOBAL_RESOURCE", `Published central resource: ${title}`);
-      document.getElementById("globalResTitle").value = "";
-      document.getElementById("globalResUrl").value = "";
-      await showCustomModal("Success", "Resource successfully published across all school e-libraries.");
-    } catch (err) {
-      await showCustomModal("Error", "Failed to publish resource.");
-    }
-  });
+  if (publishBtn && titleInput && urlInput) {
+    publishBtn.addEventListener("click", async () => {
+      const title = titleInput.value.trim();
+      const url = urlInput.value.trim();
+      if (!title || !url) {
+        await showCustomModal("Validation Error", "Title and URL are required.");
+        return;
+      }
+
+      try {
+        await window.db.collection("e_library_resources").add({
+          title,
+          url,
+          isGlobal: true,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        if (typeof logAuditAction === 'function') {
+          await logAuditAction("PUBLISH_GLOBAL_RESOURCE", `Published central resource: ${title}`);
+        }
+        titleInput.value = "";
+        urlInput.value = "";
+        await showCustomModal("Success", "Resource successfully published across all school e-libraries.");
+      } catch (err) {
+        await showCustomModal("Error", "Failed to publish resource.");
+      }
+    });
+  }
 }
 
 // Feature 7: Global Analytics & Telemetry Dashboard
 function initTelemetryDashboard() {
-  const container = document.getElementById("featureTelemetry") || createFeatureSection("Global Analytics & Telemetry Dashboard", "featureTelemetry");
-  container.innerHTML = `
-    <h3 class="feature-title">📈 Telemetry & Analytics</h3>
-    <button id="loadTelemetryBtn" class="btn-secondary-small">Fetch Live Telemetry Stats</button>
-    <div id="telemetryStatsContent" class="feature-description">Click button to aggregate system stats.</div>
-  `;
+  const container = getFeatureContainer("featureTelemetry");
+  if (!container) return;
 
-  document.getElementById("loadTelemetryBtn").addEventListener("click", async () => {
-    const contentEl = document.getElementById("telemetryStatsContent");
-    contentEl.innerHTML = "Calculating metrics across collections...";
-    try {
-      let totalUsers = 0;
-      let totalQuizzes = 0;
-      let totalSubmissions = 0;
+  const loadBtn = document.getElementById("loadTelemetryBtn");
+  const contentEl = document.getElementById("telemetryStatsContent");
 
-      const usersSnap = await window.db.collection("users").get();
-      totalUsers = usersSnap.size;
+  if (loadBtn && contentEl) {
+    loadBtn.addEventListener("click", async () => {
+      contentEl.innerHTML = "Calculating metrics across collections...";
+      try {
+        let totalUsers = 0;
+        let totalQuizzes = 0;
+        let totalSubmissions = 0;
 
-      const quizSnap = await window.db.collection("quizzes").get();
-      totalQuizzes = quizSnap.size;
+        const usersSnap = await window.db.collection("users").get();
+        totalUsers = usersSnap.size;
 
-      const subSnap = await window.db.collection("submissions").get();
-      totalSubmissions = subSnap.size;
+        const quizSnap = await window.db.collection("quizzes").get();
+        totalQuizzes = quizSnap.size;
 
-      contentEl.innerHTML = `
-        <div class="telemetry-grid">
-          <div class="telemetry-card"><strong class="telemetry-number">${totalUsers}</strong><br>Users</div>
-          <div class="telemetry-card"><strong class="telemetry-number">${totalQuizzes}</strong><br>Quizzes</div>
-          <div class="telemetry-card"><strong class="telemetry-number">${totalSubmissions}</strong><br>Submissions</div>
-        </div>
-      `;
-    } catch (err) {
-      contentEl.innerHTML = "<span class='text-error'>Failed to load analytics telemetry.</span>";
-    }
-  });
+        const subSnap = await window.db.collection("submissions").get();
+        totalSubmissions = subSnap.size;
+
+        contentEl.innerHTML = `
+          <div class="telemetry-grid" style="display: flex; gap: 10px; margin-top: 10px;">
+            <div class="telemetry-card" style="flex: 1; background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center;"><strong class="telemetry-number" style="font-size: 18px; color: #0284c7;">${totalUsers}</strong><br><span style="font-size: 12px; color: #64748b;">Users</span></div>
+            <div class="telemetry-card" style="flex: 1; background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center;"><strong class="telemetry-number" style="font-size: 18px; color: #0284c7;">${totalQuizzes}</strong><br><span style="font-size: 12px; color: #64748b;">Quizzes</span></div>
+            <div class="telemetry-card" style="flex: 1; background: #f8fafc; padding: 10px; border-radius: 6px; text-align: center;"><strong class="telemetry-number" style="font-size: 18px; color: #0284c7;">${totalSubmissions}</strong><br><span style="font-size: 12px; color: #64748b;">Submissions</span></div>
+          </div>
+        `;
+      } catch (err) {
+        contentEl.innerHTML = "<span class='text-error' style='color: #ef4444;'>Failed to load analytics telemetry.</span>";
+      }
+    });
+  }
 }
 
 // Feature 8: System Maintenance & Read-Only Mode Switch
 function initMaintenanceModeToggle(configDocRef) {
-  const container = document.getElementById("featureMaintenance") || createFeatureSection("System Maintenance Mode", "featureMaintenance");
-  container.innerHTML = `
-    <h3 class="feature-title">🛡️ System Maintenance Mode</h3>
-    <p class="feature-description">Toggle global read-only mode to lock standard user writes during updates.</p>
-    <button id="toggleMaintenanceBtn" class="btn-danger">Toggle Maintenance Lock</button>
-  `;
+  const container = getFeatureContainer("featureMaintenance");
+  if (!container) return;
 
-  document.getElementById("toggleMaintenanceBtn").addEventListener("click", async () => {
-    try {
-      const snap = await configDocRef.get();
-      const currentMode = snap.exists ? (snap.data().maintenanceMode || false) : false;
-      const newMode = !currentMode;
+  const toggleBtn = document.getElementById("toggleMaintenanceBtn");
+  if (toggleBtn && configDocRef) {
+    toggleBtn.addEventListener("click", async () => {
+      try {
+        const snap = await configDocRef.get();
+        const currentMode = snap.exists ? (snap.data().maintenanceMode || false) : false;
+        const newMode = !currentMode;
 
-      await configDocRef.set({ maintenanceMode: newMode }, { merge: true });
-      await logAuditAction("TOGGLE_MAINTENANCE", `Set system maintenance mode to: ${newMode}`);
-      await showCustomModal("Success", `System Maintenance Mode is now ${newMode ? 'ENABLED (Locked)' : 'DISABLED (Normal)'}.`);
-    } catch (err) {
-      await showCustomModal("Error", "Failed to toggle maintenance mode.");
-    }
-  });
+        await configDocRef.set({ maintenanceMode: newMode }, { merge: true });
+        if (typeof logAuditAction === 'function') {
+          await logAuditAction("TOGGLE_MAINTENANCE", `Set system maintenance mode to: ${newMode}`);
+        }
+        await showCustomModal("Success", `System Maintenance Mode is now ${newMode ? 'ENABLED (Locked)' : 'DISABLED (Normal)'}.`);
+      } catch (err) {
+        await showCustomModal("Error", "Failed to toggle maintenance mode.");
+      }
+    });
+  }
 }
 
 // Feature 9: Custom Feature Flag / Module Toggler
 function initFeatureFlagTogglers() {
-  const container = document.getElementById("featureFlags") || createFeatureSection("Custom Feature Flag & Module Toggler", "featureFlags");
-  container.innerHTML = `
-    <h3 class="feature-title">⚡ Feature Flags & Modules</h3>
-    <div class="feature-controls-row">
-      <input type="text" id="flagSchoolId" placeholder="School ID..." class="feature-input-flex" />
-      <select id="flagModule" class="feature-select">
-        <option value="live_classes">Live Classes Portal</option>
-        <option value="ai_formulas">AI Formula Submissions</option>
-        <option value="discussions">Forum Discussions</option>
-      </select>
-    </div>
-    <button id="toggleModuleBtn" class="btn-primary">Toggle Module Access</button>
-  `;
+  const container = getFeatureContainer("featureFlags");
+  if (!container) return;
 
-  document.getElementById("toggleModuleBtn").addEventListener("click", async () => {
-    const schoolId = document.getElementById("flagSchoolId").value.trim().toLowerCase();
-    const moduleName = document.getElementById("flagModule").value;
-    if (!schoolId) {
-      await showCustomModal("Input Required", "Please enter a valid school ID.");
-      return;
-    }
+  const schoolInput = document.getElementById("flagSchoolId");
+  const moduleSelect = document.getElementById("flagModule");
+  const toggleBtn = document.getElementById("toggleModuleBtn");
 
-    try {
-      const docRef = window.db.collection("schools").doc(schoolId);
-      const docSnap = await docRef.get();
-      if (!docSnap.exists) {
-        await showCustomModal("Not Found", `School ID "${schoolId}" does not exist.`);
+  if (toggleBtn && schoolInput && moduleSelect) {
+    toggleBtn.addEventListener("click", async () => {
+      const schoolId = schoolInput.value.trim().toLowerCase();
+      const moduleName = moduleSelect.value;
+      if (!schoolId) {
+        await showCustomModal("Input Required", "Please enter a valid school ID.");
         return;
       }
 
-      const flags = docSnap.data().featureFlags || {};
-      const newState = !(flags[moduleName] ?? true);
-      flags[moduleName] = newState;
+      try {
+        const docRef = window.db.collection("schools").doc(schoolId);
+        const docSnap = await docRef.get();
+        if (!docSnap.exists) {
+          await showCustomModal("Not Found", `School ID "${schoolId}" does not exist.`);
+          return;
+        }
 
-      await docRef.update({ featureFlags: flags });
-      await logAuditAction("TOGGLE_FEATURE_FLAG", `Set module ${moduleName} for school ${schoolId} to ${newState}`);
-      await showCustomModal("Success", `Module "${moduleName}" for school ${schoolId} is now ${newState ? 'ENABLED' : 'DISABLED'}.`);
-    } catch (err) {
-      await showCustomModal("Error", "Failed to update feature flag.");
-    }
-  });
+        const flags = docSnap.data().featureFlags || {};
+        const newState = !(flags[moduleName] ?? true);
+        flags[moduleName] = newState;
+
+        await docRef.update({ featureFlags: flags });
+        if (typeof logAuditAction === 'function') {
+          await logAuditAction("TOGGLE_FEATURE_FLAG", `Set module ${moduleName} for school ${schoolId} to ${newState}`);
+        }
+        await showCustomModal("Success", `Module "${moduleName}" for school ${schoolId} is now ${newState ? 'ENABLED' : 'DISABLED'}.`);
+      } catch (err) {
+        await showCustomModal("Error", "Failed to update feature flag.");
+      }
+    });
+  }
 }
 
 // Feature 10: Master Admin Access & Credential Rotator
 function initKeyRotator(configDocRef) {
-  const container = document.getElementById("featureKeyRotator") || createFeatureSection("Master Admin Key Rotator", "featureKeyRotator");
-  container.innerHTML = `
-    <h3 class="feature-title">🔑 Master Key Rotator</h3>
-    <button id="rotateMasterKeyBtn" class="btn-purple">Change Master Admin Key</button>
-  `;
+  const container = getFeatureContainer("featureKeyRotator");
+  if (!container) return;
 
-  document.getElementById("rotateMasterKeyBtn").addEventListener("click", async () => {
-    const newKey = await showCustomModal(
-      "Rotate Master Key",
-      "Enter your new master secret key (at least 6 characters):",
-      "prompt",
-      "Enter new master key..."
-    );
+  const rotateBtn = document.getElementById("rotateMasterKeyBtn");
+  if (rotateBtn && configDocRef) {
+    rotateBtn.addEventListener("click", async () => {
+      const newKey = await showCustomModal(
+        "Rotate Master Key",
+        "Enter your new master secret key (at least 6 characters):",
+        "prompt",
+        "Enter new master key..."
+      );
 
-    if (newKey === null) return;
-    if (newKey.trim().length < 6) {
-      await showCustomModal("Invalid Key", "The master key must be at least 6 characters long.");
-      return;
-    }
+      if (newKey === null) return;
+      if (newKey.trim().length < 6) {
+        await showCustomModal("Invalid Key", "The master key must be at least 6 characters long.");
+        return;
+      }
 
-    try {
-      await configDocRef.set({ masterKey: newKey.trim() }, { merge: true });
-      sessionStorage.setItem("samcam_super_auth", newKey.trim());
-      await logAuditAction("ROTATE_MASTER_KEY", "Rotated super admin master secret key.");
-      await showCustomModal("Success", "Master key updated successfully!");
-    } catch (err) {
-      await showCustomModal("Error", "Failed to update master key.");
-    }
-  });
-} 
-
-// Helper function to create feature sections cleanly inside the 2-column grid container
-function createFeatureSection(titleText, elementId) {
-  let grid = document.querySelector(".feature-cards-grid");
-  if (!grid) {
-    const mainContent = document.querySelector("main") || document.body;
-    grid = document.createElement("div");
-    grid.className = "feature-cards-grid";
-    mainContent.appendChild(grid);
+      try {
+        await configDocRef.set({ masterKey: newKey.trim() }, { merge: true });
+        sessionStorage.setItem("samcam_super_auth", newKey.trim());
+        if (typeof logAuditAction === 'function') {
+          await logAuditAction("ROTATE_MASTER_KEY", "Rotated super admin master secret key.");
+        }
+        await showCustomModal("Success", "Master key updated successfully!");
+      } catch (err) {
+        await showCustomModal("Error", "Failed to update master key.");
+      }
+    });
   }
-  const wrapper = document.createElement("div");
-  wrapper.id = elementId;
-  wrapper.className = "admin-feature-card";
-  grid.appendChild(wrapper);
-  return wrapper;
 }
 
 /* ====================================================================
    Additional JavaScript for Mobile Adaptability & UI Enhancements
    ==================================================================== */
-
-// Ensures smooth table scrolling and dynamic viewport adjustments on mobile devices
 document.addEventListener("DOMContentLoaded", () => {
   const tableContainer = document.querySelector(".table-container");
   if (tableContainer) {
@@ -1091,7 +1043,6 @@ document.addEventListener("DOMContentLoaded", () => {
     tableContainer.setAttribute("aria-label", "Active Platform Tenants table, scroll horizontally to view more details");
   }
 
-  // Handle dynamic viewport height adjustments for mobile keyboards
   const setMobileViewportFix = () => {
     let vh = window.innerHeight * 0.01;
     document.documentElement.style.setProperty('--vh', `${vh}px`);
