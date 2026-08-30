@@ -1629,6 +1629,7 @@ async function checkAndTriggerAutomatedDailyBackup() {
     }
   }
 }
+
 // ==========================================================================
 // FEATURE 6: CENTRALIZED E-RESOURCE REPOSITORY MANAGER (MODERNIZED SAAS EDITION)
 // ==========================================================================
@@ -1638,68 +1639,116 @@ function initGlobalEResources() {
 
   const publishBtn = document.getElementById("publishGlobalResBtn");
   const titleInput = document.getElementById("globalResTitle");
-  const urlInput = document.getElementById("globalResUrl");
-  const categorySelect = document.getElementById("globalResCategory") || null; // Optional category dropdown
-  const listContainer = document.getElementById("globalResourcesList") || null; // Optional live feed container
+  const descInput = document.getElementById("globalResDescription"); 
+  const classLevelSelect = document.getElementById("globalResClassLevel"); 
+  const categorySelect = document.getElementById("globalResCategory"); 
+  const accessTypeSelect = document.getElementById("globalResAccessType"); 
+  const priceInput = document.getElementById("globalResPrice"); 
+  const fileInput = document.getElementById("globalResFileInput"); 
+  const listContainer = document.getElementById("globalResourcesList") || null;
 
-  if (publishBtn && titleInput && urlInput) {
+  // Track active editing ID if user is updating an existing resource
+  let editingDocId = null;
+
+  if (publishBtn && titleInput && fileInput) {
     publishBtn.addEventListener("click", async (e) => {
       e.preventDefault();
       const title = titleInput.value.trim();
-      const url = urlInput.value.trim();
-      const category = categorySelect ? categorySelect.value : "General ICT Curriculum";
+      const description = descInput ? descInput.value.trim() : "";
+      const classLevel = classLevelSelect ? classLevelSelect.value : "S5";
+      const category = categorySelect ? categorySelect.value : "Notes & Handouts";
+      const accessType = accessTypeSelect ? accessTypeSelect.value : "free";
+      const price = priceInput ? parseFloat(priceInput.value) || 0 : 0;
+      const file = fileInput.files[0];
 
-      if (!title || !url) {
+      // If creating new, file is mandatory. If editing, file is optional.
+      if (!title || (!file && !editingDocId)) {
         if (typeof showCustomModal === 'function') {
-          await showCustomModal("Validation Error", "Resource title and target URL/link are required fields.");
-        }
-        return;
-      }
-
-      // Basic URL structural validation
-      try {
-        new URL(url);
-      } catch (_) {
-        if (typeof showCustomModal === 'function') {
-          await showCustomModal("Invalid URL", "Please enter a valid absolute web URL (e.g., https://...).");
+          await showCustomModal("Validation Error", "Resource title and a resource file are required fields.");
         }
         return;
       }
 
       const originalBtnHtml = publishBtn.innerHTML;
       publishBtn.disabled = true;
-      publishBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Publishing Across Tenants...';
+      publishBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Saving Resource...';
 
       try {
-        await window.db.collection("e_library_resources").add({
-          title,
-          url,
-          category,
-          isGlobal: true,
-          publisher: window.currentUserEmail || "Super Admin",
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        let fileUrl = null;
+        let fileName = null;
+        let fileType = null;
 
-        if (typeof logAuditAction === 'function') {
-          await logAuditAction("PUBLISH_GLOBAL_RESOURCE", `Published central multi-tenant e-resource: "${title}" under category [${category}]`);
+        // 1. Upload new file if provided
+        if (file) {
+          const storageRef = window.storage.ref();
+          const uniqueFileName = `${Date.now()}_${file.name}`;
+          const fileRef = storageRef.child(`e_library_files/${uniqueFileName}`);
+          
+          const snapshot = await fileRef.put(file);
+          fileUrl = await snapshot.ref.getDownloadURL();
+          fileName = file.name;
+          fileType = file.type || "application/octet-stream";
         }
 
+        // 2. Build payload
+        const payload = {
+          title,
+          description,
+          classLevel,
+          category,
+          accessType,
+          price,
+          isGlobal: true,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        if (fileUrl) {
+          payload.fileUrl = fileUrl;
+          payload.fileName = fileName;
+          payload.fileType = fileType;
+        }
+
+        if (editingDocId) {
+          // Update existing document
+          await window.db.collection("e_library_resources").doc(editingDocId).update(payload);
+          if (typeof logAuditAction === 'function') {
+            await logAuditAction("UPDATE_GLOBAL_RESOURCE", `Updated central e-resource: "${title}"`);
+          }
+          editingDocId = null;
+          publishBtn.innerHTML = '<i class="fa-solid fa-upload"></i> Publish Resource';
+        } else {
+          // Create new document
+          payload.downloads = 0;
+          payload.schoolId = window.currentSchoolId || "stacon";
+          payload.publisher = window.currentUserEmail || "Super Admin";
+          payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+
+          await window.db.collection("e_library_resources").add(payload);
+          if (typeof logAuditAction === 'function') {
+            await logAuditAction("PUBLISH_GLOBAL_RESOURCE", `Published central e-resource file: "${title}" under class [${classLevel}]`);
+          }
+        }
+
+        // Reset form inputs
         titleInput.value = "";
-        urlInput.value = "";
+        if (descInput) descInput.value = "";
+        if (priceInput) priceInput.value = "";
+        fileInput.value = "";
+        if (classLevelSelect) classLevelSelect.selectedIndex = 0;
         if (categorySelect) categorySelect.selectedIndex = 0;
+        if (accessTypeSelect) accessTypeSelect.selectedIndex = 0;
 
         if (typeof showCustomModal === 'function') {
-          await showCustomModal("Publication Success", "Resource successfully published and propagated across all school e-libraries in real-time.");
+          await showCustomModal("Success", "Resource successfully saved and propagated across the system.");
         }
 
-        // Refresh dynamic list if rendered on page
-        if (typeof fetchAndRenderGlobalResources === 'function') {
-          fetchAndRenderGlobalResources();
+        if (listContainer) {
+          loadCentralizedResourcesFeed(listContainer);
         }
       } catch (err) {
-        console.error("Global E-Resource Publish Error:", err);
+        console.error("Global E-Resource Save Error:", err);
         if (typeof showCustomModal === 'function') {
-          await showCustomModal("Publication Failed", "Could not publish resource due to cloud write permission restrictions or network errors.");
+          await showCustomModal("Operation Failed", "Could not complete action due to permissions or network errors.");
         }
       } finally {
         publishBtn.disabled = false;
@@ -1708,13 +1757,76 @@ function initGlobalEResources() {
     });
   }
 
+  // Expose global handler functions for the icon actions
+  window.viewGlobalResource = async function(id) {
+    try {
+      const doc = await window.db.collection("e_library_resources").doc(id).get();
+      if (!doc.exists) return;
+      const d = doc.data();
+
+      if (d.fileUrl) {
+        window.open(d.fileUrl, '_blank');
+      } else {
+        if (typeof showCustomModal === 'function') {
+          await showCustomModal("Resource View", `<strong>${escapeHtml(d.title)}</strong><br><br>${escapeHtml(d.description || 'No description available.')}`);
+        }
+      }
+    } catch (e) {
+      console.error("View error:", e);
+    }
+  };
+
+  window.editGlobalResource = async function(id) {
+    try {
+      const doc = await window.db.collection("e_library_resources").doc(id).get();
+      if (!doc.exists) return;
+      const d = doc.data();
+
+      titleInput.value = d.title || "";
+      if (descInput) descInput.value = d.description || "";
+      if (classLevelSelect) classLevelSelect.value = d.classLevel || "S5";
+      if (categorySelect) categorySelect.value = d.category || "Notes & Handouts";
+      if (accessTypeSelect) accessTypeSelect.value = d.accessType || "free";
+      if (priceInput) priceInput.value = d.price || 0;
+
+      editingDocId = id;
+      if (publishBtn) {
+        publishBtn.innerHTML = '<i class="fa-solid fa-pen-to-square"></i> Update Resource';
+      }
+
+      container.scrollIntoView({ behavior: 'smooth' });
+    } catch (e) {
+      console.error("Edit preparation error:", e);
+    }
+  };
+
+  window.deleteGlobalResource = async function(id) {
+    if (typeof showCustomModal === 'function') {
+      // Simple verification before executing deletion
+      const confirmDel = confirm("Are you sure you want to delete this global e-resource?");
+      if (!confirmDel) return;
+    }
+
+    try {
+      await window.db.collection("e_library_resources").doc(id).delete();
+      if (typeof logAuditAction === 'function') {
+        await logAuditAction("DELETE_GLOBAL_RESOURCE", `Deleted central e-resource ID: ${id}`);
+      }
+      if (listContainer) {
+        loadCentralizedResourcesFeed(listContainer);
+      }
+    } catch (e) {
+      console.error("Delete error:", e);
+    }
+  };
+
   // Live feed renderer for active centralized resources
   if (listContainer) {
     loadCentralizedResourcesFeed(listContainer);
   }
 }
 
-// Helper function to fetch and display current global resources
+// Helper function to fetch and display current global resources with icon-only actions
 async function loadCentralizedResourcesFeed(listContainer) {
   listContainer.innerHTML = `
     <div style="padding: 1.5rem; text-align: center; color: #64748b; font-size: 0.85rem;">
@@ -1737,27 +1849,33 @@ async function loadCentralizedResourcesFeed(listContainer) {
     let html = '';
     snap.forEach(doc => {
       const d = doc.data();
-      const dateStr = d.createdAt && d.createdAt.seconds ? new Date(d.createdAt.seconds * 1000).toLocaleDateString() : 'Recent';
       
       html += `
         <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 0.75rem 1rem; margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem;">
           <div style="display: flex; align-items: flex-start; gap: 0.75rem; overflow: hidden;">
             <span style="background: #0284c715; color: #0284c7; width: 32px; height: 32px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; margin-top: 2px;">
-              <i class="fa-solid fa-book"></i>
+              <i class="fa-solid fa-file-pdf"></i>
             </span>
             <div style="overflow: hidden;">
               <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.15rem;">
-                <span style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: #0284c7; background: #e0f2fe; padding: 0.1rem 0.35rem; border-radius: 3px;">${escapeHtml(d.category || 'General')}</span>
-                <span style="font-size: 0.7rem; color: #64748b;"><i class="fa-regular fa-calendar"></i> ${dateStr}</span>
+                <span style="font-size: 0.65rem; font-weight: 700; text-transform: uppercase; color: #0284c7; background: #e0f2fe; padding: 0.1rem 0.35rem; border-radius: 3px;">${escapeHtml(d.classLevel || 'S5')}</span>
+                <span style="font-size: 0.65rem; font-weight: 700; color: #0f766e; background: #ccfbf1; padding: 0.1rem 0.35rem; border-radius: 3px;">${escapeHtml(d.category || 'General')}</span>
+                <span style="font-size: 0.7rem; color: #64748b;"><i class="fa-solid fa-download"></i> ${d.downloads || 0}</span>
               </div>
               <h4 style="margin: 0; font-size: 0.85rem; color: #1e293b; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(d.title)}">${escapeHtml(d.title)}</h4>
+              <p style="margin: 0.1rem 0 0 0; font-size: 0.75rem; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(d.description || d.fileName || '')}</p>
             </div>
           </div>
-          <div style="display: flex; gap: 0.4rem; flex-shrink: 0;">
-            <a href="${escapeHtml(d.url)}" target="_blank" rel="noopener noreferrer" class="btn btn-xs btn-outline" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; border-color: #cbd5e1; color: #0284c7; border-radius: 4px; text-decoration: none; display: inline-flex; align-items: center; gap: 0.25rem;">
-              Access <i class="fa-solid fa-external-link" style="font-size: 0.6rem;"></i>
-            </a>
-            <button type="button" onclick="deleteGlobalResource('${doc.id}')" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 0.8rem; padding: 0.25rem;" title="Delete Resource">
+          
+          <!-- Icon-Only Action Buttons Bar -->
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0;">
+            <button type="button" onclick="viewGlobalResource('${doc.id}')" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #0284c7; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem;" title="View Resource">
+              <i class="fa-solid fa-eye"></i>
+            </button>
+            <button type="button" onclick="editGlobalResource('${doc.id}')" style="background: #f1f5f9; border: 1px solid #cbd5e1; color: #d97706; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem;" title="Edit Resource">
+              <i class="fa-solid fa-pen-to-square"></i>
+            </button>
+            <button type="button" onclick="deleteGlobalResource('${doc.id}')" style="background: #fef2f2; border: 1px solid #fca5a5; color: #ef4444; width: 28px; height: 28px; border-radius: 4px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 0.8rem;" title="Delete Resource">
               <i class="fa-solid fa-trash-can"></i>
             </button>
           </div>
