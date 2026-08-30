@@ -1869,3 +1869,18 @@ document.addEventListener("DOMContentLoaded", () => {
   window.addEventListener('resize', setMobileViewportFix);
   setMobileViewportFix();
 });
+
+// ==========================================================================
+// UTILITY: ROBUST HTML ESCAPER (FIXES 'escapeHtml is not defined' GLOBALLY)
+// ==========================================================================
+if (typeof escapeHtml === 'undefined') {
+  window.escapeHtml = function(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  };
+}
