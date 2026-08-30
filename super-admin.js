@@ -1346,6 +1346,23 @@ function initBackupGenerator() {
   const restoreInput = document.getElementById("restoreBackupFileInput"); // Hidden file input
   const restoreBtn = document.getElementById("restoreBackupBtn");
 
+  // Helper function to fetch all collections dynamically using your Cloud Function
+  async function fetchAllCollectionNames() {
+    try {
+      const response = await fetch('https://us-central1-samcam-system.cloudfunctions.net/listCollections');
+      const result = await response.json();
+      
+      if (result.success && Array.isArray(result.collections)) {
+        const excluded = typeof EXCLUDED_COLLECTIONS !== 'undefined' ? EXCLUDED_COLLECTIONS : [];
+        return result.collections.filter(col => !excluded.includes(col));
+      }
+    } catch (err) {
+      console.warn("Could not fetch collections dynamically from Cloud Function, falling back to defaults:", err);
+    }
+    // Fallback array if network call fails
+    return ['users', 'quizzes', 'submissions', 'announcements', 'schools', 'e_library_resources', 'forum_threads', 'blogs'];
+  }
+
   // 1. Manual Backup Snapshot Generator
   if (backupBtn) {
     backupBtn.addEventListener("click", async (e) => {
@@ -1354,17 +1371,18 @@ function initBackupGenerator() {
       
       try {
         backupBtn.disabled = true;
+        backupBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Discovering Collections...';
+
+        const collectionsToMigrate = await fetchAllCollectionNames();
+
         backupBtn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Compiling System Snapshot...';
 
         const backupData = {
-          version: "2.2",
+          version: "2.6",
           generatedAt: new Date().toISOString(),
           system: "Samcam Solutions ICT Resource Hub",
           collections: {}
         };
-
-        // Added 'blogs' to your collections array
-        const collectionsToMigrate = ['users', 'quizzes', 'submissions', 'announcements', 'schools', 'e_library_resources', 'forum_threads', 'blogs'];
         
         for (const col of collectionsToMigrate) {
           try {
@@ -1388,7 +1406,7 @@ function initBackupGenerator() {
         downloadAnchor.remove();
 
         if (typeof logAuditAction === 'function') {
-          await logAuditAction("GENERATE_BACKUP", "Downloaded complete multi-tenant system JSON backup snapshot.");
+          await logAuditAction("GENERATE_BACKUP", "Downloaded complete multi-tenant system JSON backup snapshot using cloud function discovery.");
         }
         
         await showCustomModal("Backup Complete", "Enterprise system backup snapshot successfully compiled and downloaded.");
@@ -1404,23 +1422,18 @@ function initBackupGenerator() {
 
   // 2. Disaster Recovery & Granular/Full Restoration Engine
   if (restoreBtn && restoreInput) {
-    // When clicking the orange button, check if a file is chosen. If not, open file picker. 
-    // If a file IS chosen, process it directly!
     restoreBtn.addEventListener("click", async (e) => {
       e.preventDefault();
       const file = restoreInput.files[0];
       
       if (!file) {
-        // No file selected yet, open the file picker
         restoreInput.click();
         return;
       }
 
-      // File is already selected, read and process it to show the modal scope chooser
       processBackupFile(file, restoreInput);
     });
 
-    // Also trigger automatically if they use the native choose file input text link
     restoreInput.addEventListener("change", (event) => {
       const file = event.target.files[0];
       if (file && restoreBtn) {
@@ -1502,6 +1515,8 @@ function initBackupGenerator() {
 
             for (const docObj of documents) {
               const docId = docObj.id;
+              if (!docId) continue;
+
               const docData = { ...docObj };
               delete docData.id;
 
@@ -1560,14 +1575,24 @@ async function checkAndTriggerAutomatedDailyBackup() {
     if (currentHour > 22 || (currentHour === 22 && currentMinute >= 30)) {
       try {
         if (typeof window.db !== 'undefined' && typeof window.storage !== 'undefined') {
+          let collectionsToMigrate = ['users', 'quizzes', 'submissions', 'announcements', 'schools', 'e_library_resources', 'forum_threads', 'blogs'];
+          
+          try {
+            const response = await fetch('https://us-central1-samcam-system.cloudfunctions.net/listCollections');
+            const result = await response.json();
+            if (result.success && Array.isArray(result.collections)) {
+              collectionsToMigrate = result.collections;
+            }
+          } catch (err) {
+            console.warn("Auto-backup using fallback collection list");
+          }
+
           const backupData = {
-            version: "2.2",
+            version: "2.6",
             generatedAt: now.toISOString(),
             system: "Samcam Solutions ICT Resource Hub - Daily Snapshot",
             collections: {}
           };
-
-          const collectionsToMigrate = ['users', 'quizzes', 'submissions', 'announcements', 'schools', 'e_library_resources', 'forum_threads', 'blogs'];
           
           for (const col of collectionsToMigrate) {
             try {
@@ -1595,7 +1620,7 @@ async function checkAndTriggerAutomatedDailyBackup() {
           localStorage.setItem(lastBackupKey, todayStr);
 
           if (typeof logAuditAction === 'function') {
-            await logAuditAction("AUTO_BACKUP_SUCCESS", "Automated daily snapshot successfully saved to Firebase Storage (overwriting previous backup).");
+            await logAuditAction("AUTO_BACKUP_SUCCESS", "Automated daily snapshot successfully saved using cloud function collection discovery.");
           }
         }
       } catch (e) {
