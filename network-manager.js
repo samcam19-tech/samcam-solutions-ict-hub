@@ -465,7 +465,9 @@ function showCustomConfirm(titleText, messageText, onConfirmCallback) {
     };
 }
 
-// Additional helper to manage the Push Prompt / Broadcast console modal if present in DOM
+/* ==========================================================================
+   BROADCAST MODAL & PUSH PROMPT CONTROLLER (FIXED)
+   ========================================================================== */
 function openBroadcastModal() {
     let bModal = document.getElementById("broadcastModal");
     if (!bModal) {
@@ -486,27 +488,48 @@ function openBroadcastModal() {
         document.body.appendChild(bModal);
 
         document.getElementById("closeBroadcast").onclick = () => { bModal.style.display = "none"; };
+        
         document.getElementById("sendBroadcast").onclick = async () => {
             const msg = document.getElementById("broadcastMessage").value.trim();
             if (!msg) {
                 showCustomAlert("Validation Error", "Please enter a message to broadcast.");
                 return;
             }
+            
             if (window.db) {
                 try {
+                    // Fetch live workstation documents directly from Firestore to ensure we target active machines
+                    const snapshot = await window.db.collection("workstation_telemetry").get();
+                    if (snapshot.empty) {
+                        showCustomAlert("Notice", "No active workstations found in database.");
+                        return;
+                    }
+
                     const batch = window.db.batch();
-                    workstationsData.forEach(pc => {
-                        const ref = window.db.collection("workstation_telemetry").doc(pc.id);
-                        batch.update(ref, { broadcastNotice: msg });
+                    const timestamp = new Date().toISOString();
+
+                    snapshot.forEach((doc) => {
+                        const ref = window.db.collection("workstation_telemetry").doc(doc.id);
+                        // Structure matches what the Chrome extension background script checks for
+                        batch.update(ref, {
+                            pushedPrompt: {
+                                type: "broadcast",
+                                content: msg,
+                                timestamp: timestamp
+                            }
+                        });
                     });
+
                     await batch.commit();
                     showCustomAlert("Broadcast Sent", "Broadcast message sent successfully to all workstations!");
                     bModal.style.display = "none";
                     document.getElementById("broadcastMessage").value = "";
                 } catch (err) {
                     console.error("Broadcast failed:", err);
-                    showCustomAlert("Error", "Error sending broadcast.");
+                    showCustomAlert("Error", "Error sending broadcast: " + err.message);
                 }
+            } else {
+                showCustomAlert("Error", "Firestore database instance 'db' not found.");
             }
         };
     }
@@ -514,51 +537,40 @@ function openBroadcastModal() {
 }
 
 document.getElementById('pushPromptBtn').addEventListener('click', () => {
-    // 1. Open your modal or prompt dialog
-    const modal = document.getElementById('promptModal'); // Make sure you have a modal in your HTML
-    if (modal) {
-        modal.style.display = 'flex';
-    } else {
-        // Fallback quick prompt if modal isn't built yet
-        // const targetUrl = prompt("Enter URL or prompt to push to all active class workstations:");
-        
-    }
+    // Open the dynamic broadcast modal instead of relying on a missing HTML element
+    openBroadcastModal();
 });
-
 async function broadcastPromptToClass(type, content) {
-    const timestamp = new Date().toISOString();
-    const promptPayload = {
-        fields: {
-            pushedPrompt: {
-                mapValue: {
-                    fields: {
-                        type: { stringValue: type },
-                        content: { stringValue: content },
-                        timestamp: { stringValue: timestamp }
-                    }
-                }
-            }
-        }
-    };
+    if (!window.db) {
+        console.error("Firestore database 'db' not initialized.");
+        return;
+    }
 
-    // Fetch all active workstations from Firestore and update their 'pushedPrompt' field
-    // (Or loop through your local active workstation IDs array)
+    const timestamp = new Date().toISOString();
+
     try {
-        const listRes = await fetch(`https://firestore.googleapis.com/v1/projects/samcam-system/databases/(default)/documents/workstation_telemetry`);
-        const data = await listRes.json();
-        
-        if (data.documents) {
-            for (const doc of data.documents) {
-                const docName = doc.name; // projects/.../documents/workstation_telemetry/PC-ID
-                await fetch(`https://firestore.googleapis.com/v1/${docName}?updateMask.fieldPaths=pushedPrompt`, {
-                    method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(promptPayload)
-                });
-            }
-            alert("Prompt successfully pushed to all class terminals!");
+        const snapshot = await window.db.collection("workstation_telemetry").get();
+        if (snapshot.empty) {
+            console.log("No workstations found in database to broadcast to.");
+            return;
         }
+
+        const batch = window.db.batch();
+        snapshot.forEach((doc) => {
+            const ref = window.db.collection("workstation_telemetry").doc(doc.id);
+            batch.update(ref, {
+                pushedPrompt: {
+                    type: type,
+                    content: content,
+                    timestamp: timestamp
+                }
+            });
+        });
+
+        await batch.commit();
+        alert("Prompt successfully pushed to all class terminals!");
     } catch (err) {
         console.error("Error pushing prompt to class:", err);
+        alert("Failed to send broadcast. Check console for details.");
     }
 }
