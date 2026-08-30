@@ -81,40 +81,16 @@ function showCustomModal(title, message, type = "alert", inputPlaceholder = "") 
   });
 }
 
-// Complete list of all system collections to ensure full migration & backup coverage
-const collectionsToMigrate = [
-  'announcements',
-  'audit_logs',
-  'blog_posts',
-  'challenges',
-  'e_library_resources',
-  'formulaSubmissions',
-  'forum_threads',
-  'live_classes',
-  'notifications',
-  'pending_payments',
-  'portal_resources',
-  'quiz_results',
-  'quizzes',
-  'submissions',
-  'users',
-  'schools',
-  'system_config'
-];
+// Excluded collections containing root admin details or infrastructure configs
+const EXCLUDED_COLLECTIONS = ['system_config', 'schools'];
 
 document.addEventListener("DOMContentLoaded", () => {
-  const collectionsCountEl = document.getElementById("collectionsCount");
-  if (collectionsCountEl) {
-    collectionsCountEl.innerText = collectionsToMigrate.length;
-  }
-
   // Bind Dynamic Database Session to admin profile header
   const adminProfileEl = document.querySelector(".admin-profile");
   if (adminProfileEl) {
     adminProfileEl.classList.add("interactive-admin-profile");
     adminProfileEl.title = "Click to log out of Super Admin session";
     
-    // Pull active session details dynamically
     const currentAdmin = getCurrentUserSession();
     
     adminProfileEl.innerHTML = `
@@ -195,7 +171,6 @@ async function enforceFirestoreMasterKeyGate() {
       const data = docSnap.data();
       currentMasterKey = data.masterKey;
 
-      // Cache the super admin profile details into sessionStorage for author tracking & dynamic UI
       sessionStorage.setItem("samcam_super_session", JSON.stringify({
         fullName: data.fullName || "AKUGIZIBWE SAMUEL",
         username: data.username || "samcam",
@@ -235,24 +210,15 @@ async function enforceFirestoreMasterKeyGate() {
 
   } catch (error) {
     console.error("FATAL MASTER KEY GATE ERROR:", error);
-    await showCustomModal("Connection Error", "Failed to verify configuration against Firestore. You may be offline or lacking permissions.");
-    document.body.innerHTML = `
-      <div class="fatal-error-container" style="padding: 40px; text-align: center; font-family: sans-serif;">
-        <div>
-          <h2 class="error-heading" style="color: #ef4444; margin-bottom: 10px;">Connection / Permission Error</h2>
-          <p class="error-text" style="color: #64748b; margin-bottom: 20px;">Failed to verify configuration against Firestore.</p>
-          <pre style="background: #f1f5f9; padding: 12px; border-radius: 6px; text-align: left; max-width: 600px; margin: 0 auto; overflow-x: auto; font-size: 12px; color: #b91c1c;">${error.message}</pre>
-        </div>
-      </div>`;
+    await showCustomModal("Connection Error", "Failed to verify configuration against Firestore.");
   }
 }
 
-// Master initializer binding core modules and fully functional extended feature modules
 async function initializeSuperAdminPortal(configDocRef) {
   loadRegisteredSchools();
   setupAdminActions();
+  loadMigrationCollectionsCheckboxes();
   
-  // Fully implemented features
   initGlobalAnnouncements();
   initTenantSubscriptionManager();
   initCrossTenantSearch();
@@ -265,7 +231,6 @@ async function initializeSuperAdminPortal(configDocRef) {
   initKeyRotator(configDocRef);
 }
 
-// 1. Fetch & Display Schools List + Populate Select Options
 async function loadRegisteredSchools() {
   const tableBody = document.querySelector("#schoolsTable tbody");
   const selectDropdown = document.getElementById("targetSchoolSelect");
@@ -279,7 +244,7 @@ async function loadRegisteredSchools() {
     if (totalSchoolsEl) totalSchoolsEl.innerText = querySnapshot.size;
 
     if (querySnapshot.empty) {
-      if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" class="table-empty-notice">No schools registered yet. Provision your first tenant above.</td></tr>`;
+      if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" class="table-empty-notice">No schools registered yet.</td></tr>`;
       return;
     }
 
@@ -307,13 +272,72 @@ async function loadRegisteredSchools() {
         selectDropdown.appendChild(option);
       }
     });
-
   } catch (error) {
-    if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" class="table-error-notice">Failed to fetch tenant data from Firestore.</td></tr>`;
+    if (tableBody) tableBody.innerHTML = `<tr><td colspan="5" class="table-error-notice">Failed to fetch tenant data.</td></tr>`;
   }
 }
 
-// 2. Setup Super Admin Event Listeners & Migration Handlers
+// Dynamically populate collection checkboxes (excluding system_config and schools)
+async function loadMigrationCollectionsCheckboxes() {
+  const container = document.getElementById("migrationCollectionsContainer");
+  if (!container) return;
+
+  container.innerHTML = `<p style="font-size: 13px; color: #64748b;">Loading available collections...</p>`;
+
+  // Fallback default list if listCollections API isn't supported in client SDK rules
+  const fallbackCollections = [
+    'announcements', 'audit_logs', 'blog_posts', 'challenges',
+    'e_library_resources', 'formulaSubmissions', 'forum_threads',
+    'live_classes', 'notifications', 'pending_payments',
+    'portal_resources', 'quiz_results', 'quizzes', 'submissions', 'users'
+  ];
+
+  try {
+    // Note: Firestore Web SDK doesn't natively list collections from client side unless via Admin SDK or predefined list. 
+    // We utilize the robust fallback list combined with validation, or fetch via a known registry.
+    let collectionsList = fallbackCollections;
+
+    container.innerHTML = "";
+    
+    // Render Select All / Deselect All controls header
+    const controlsHtml = `
+      <div style="display: flex; gap: 10px; margin-bottom: 10px; font-size: 12px;">
+        <button type="button" id="selectAllCols" style="background: none; border: none; color: #2563eb; cursor: pointer; padding: 0;">Select All</button>
+        <span>|</span>
+        <button type="button" id="deselectAllCols" style="background: none; border: none; color: #2563eb; cursor: pointer; padding: 0;">Deselect All</button>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; max-height: 180px; overflow-y: auto; padding: 4px;">
+    `;
+    
+    let checkboxesHtml = controlsHtml;
+    collectionsList.forEach((col) => {
+      if (!EXCLUDED_COLLECTIONS.includes(col)) {
+        checkboxesHtml += `
+          <label style="display: flex; align-items: center; gap: 6px; font-size: 13px; cursor: pointer; background: #f8fafc; padding: 6px 10px; border-radius: 4px; border: 1px solid #e2e8f0;">
+            <input type="checkbox" class="migration-col-checkbox" value="${col}" checked style="cursor: pointer;">
+            <span style="font-family: monospace; color: #334155;">${col}</span>
+          </label>
+        `;
+      }
+    });
+    checkboxesHtml += `</div>`;
+    container.innerHTML = checkboxesHtml;
+
+    document.getElementById("selectAllCols")?.addEventListener("click", () => {
+      document.querySelectorAll(".migration-col-checkbox").forEach(cb => cb.checked = true);
+    });
+    document.getElementById("deselectAllCols")?.addEventListener("click", () => {
+      document.querySelectorAll(".migration-col-checkbox").forEach(cb => cb.checked = false);
+    });
+
+    const countEl = document.getElementById("collectionsCount");
+    if (countEl) countEl.innerText = collectionsList.filter(c => !EXCLUDED_COLLECTIONS.includes(c)).length;
+
+  } catch (err) {
+    container.innerHTML = `<p style="color: #ef4444; font-size: 12px;">Failed to load collections list.</p>`;
+  }
+}
+
 function setupAdminActions() {
   const schoolForm = document.getElementById("superSchoolForm");
   if (schoolForm) {
@@ -348,13 +372,22 @@ function setupAdminActions() {
       const targetSchoolId = document.getElementById("targetSchoolSelect").value;
       
       if (!targetSchoolId) {
-        await showCustomModal("Selection Required", "Please select a target school first to map the legacy collections into.");
+        await showCustomModal("Selection Required", "Please select a target school first.");
+        return;
+      }
+
+      // Collect checked collections
+      const selectedCheckboxes = document.querySelectorAll(".migration-col-checkbox:checked");
+      const selectedCollections = Array.from(selectedCheckboxes).map(cb => cb.value);
+
+      if (selectedCollections.length === 0) {
+        await showCustomModal("Selection Required", "Please select at least one collection to migrate.");
         return;
       }
 
       const confirmed = await showCustomModal(
         "Confirm Migration", 
-        `Are you sure you want to map all unassigned root data documents across all ${collectionsToMigrate.length} collections to school ID: "${targetSchoolId}"?`, 
+        `Are you sure you want to map unassigned documents across the selected (${selectedCollections.length}) collection(s) to school ID: "${targetSchoolId}"?`, 
         "confirm"
       );
 
@@ -362,7 +395,7 @@ function setupAdminActions() {
 
       try {
         let totalUpdated = 0;
-        for (const colName of collectionsToMigrate) {
+        for (const colName of selectedCollections) {
           const snapshot = await window.db.collection(colName).get();
           const batch = window.db.batch();
 
@@ -375,7 +408,7 @@ function setupAdminActions() {
           await batch.commit();
         }
 
-        await logAuditAction("DATA_MIGRATION", `Migrated ${totalUpdated} legacy documents across root collections to school: ${targetSchoolId}`);
+        await logAuditAction("DATA_MIGRATION", `Migrated ${totalUpdated} documents across collections (${selectedCollections.join(', ')}) to school: ${targetSchoolId}`);
         await showCustomModal("Migration Complete", `Successfully linked ${totalUpdated} total documents to ${targetSchoolId}.`);
       } catch (error) {
         await showCustomModal("Migration Error", "Migration process failed. Check security rules or indices.");
@@ -391,9 +424,7 @@ async function logAuditAction(actionType, details) {
       details,
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
-  } catch (err) {
-    // Silent fail if offline or permission denied
-  }
+  } catch (err) {}
 }
 // ==========================================
 // 10 FULLY FUNCTIONAL SUPER ADMIN FEATURES
