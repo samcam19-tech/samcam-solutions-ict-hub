@@ -520,10 +520,8 @@ document.getElementById('pushPromptBtn').addEventListener('click', () => {
         modal.style.display = 'flex';
     } else {
         // Fallback quick prompt if modal isn't built yet
-        const targetUrl = prompt("Enter URL or prompt to push to all active class workstations:");
-        if (targetUrl) {
-            broadcastPromptToClass("url_redirect", targetUrl);
-        }
+        // const targetUrl = prompt("Enter URL or prompt to push to all active class workstations:");
+        
     }
 });
 
