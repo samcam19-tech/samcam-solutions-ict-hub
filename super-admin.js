@@ -237,12 +237,13 @@ async function initializeSuperAdminPortal(configDocRef) {
   initKeyRotator(configDocRef);
 }
 
-// Module for managing system name, logo, and slogan config
+// Updated Branding Module with Firebase Storage Support
 async function initBrandingSettings(configDocRef) {
   const form = document.getElementById("systemBrandingForm");
   const nameInput = document.getElementById("brandingSystemName");
   const sloganInput = document.getElementById("brandingSystemSlogan");
-  const logoInput = document.getElementById("brandingSystemLogoUrl");
+  const logoUrlInput = document.getElementById("brandingSystemLogoUrl");
+  const logoFileInput = document.getElementById("brandingSystemLogoFile"); // Optional file input in HTML
 
   try {
     const docSnap = await configDocRef.get();
@@ -250,7 +251,7 @@ async function initBrandingSettings(configDocRef) {
       const data = docSnap.data();
       if (nameInput) nameInput.value = data.systemName || "";
       if (sloganInput) sloganInput.value = data.systemSlogan || "";
-      if (logoInput) logoInput.value = data.systemLogoUrl || "";
+      if (logoUrlInput) logoUrlInput.value = data.systemLogoUrl || "";
     }
   } catch (err) {
     console.warn("Failed to load branding configs:", err);
@@ -259,11 +260,22 @@ async function initBrandingSettings(configDocRef) {
   if (form) {
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const systemName = nameInput ? nameInput.value.trim() : "";
-      const systemSlogan = sloganInput ? sloganInput.value.trim() : "";
-      const systemLogoUrl = logoInput ? logoInput.value.trim() : "";
+      let systemLogoUrl = logoUrlInput ? logoUrlInput.value.trim() : "";
 
       try {
+        // If a physical file was chosen, upload it to Firebase Storage first
+        if (logoFileInput && logoFileInput.files && logoFileInput.files[0]) {
+          const file = logoFileInput.files[0];
+          const storageRef = firebase.storage().ref(`system_branding/logo_${Date.now()}_${file.name}`);
+          const snapshot = await storageRef.put(file);
+          systemLogoUrl = await snapshot.ref.getDownloadURL();
+          
+          if (logoUrlInput) logoUrlInput.value = systemLogoUrl; // Sync back to input
+        }
+
+        const systemName = nameInput ? nameInput.value.trim() : "";
+        const systemSlogan = sloganInput ? sloganInput.value.trim() : "";
+
         await configDocRef.set({
           systemName,
           systemSlogan,
@@ -271,14 +283,14 @@ async function initBrandingSettings(configDocRef) {
         }, { merge: true });
 
         await logAuditAction("UPDATE_BRANDING", `Updated system branding settings: Name="${systemName}"`);
-        await showCustomModal("Success", "System branding parameters updated successfully!");
+        await showCustomModal("Success", "System branding parameters and logo updated successfully!");
       } catch (error) {
-        await showCustomModal("Error", "Failed to save branding configurations.");
+        console.error("Branding update error:", error);
+        await showCustomModal("Error", "Failed to save branding configurations or upload logo file.");
       }
     });
   }
 }
-
 async function loadRegisteredSchools() {
   const tableBody = document.querySelector("#schoolsTable tbody");
   const selectDropdown = document.getElementById("targetSchoolSelect");
