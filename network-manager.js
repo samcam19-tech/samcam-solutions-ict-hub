@@ -151,25 +151,29 @@ function initEventListeners() {
         });
     }
 
-    // Fully Functional: Lock All Screens Action
+    // Fully Functional: Lock All Screens Action (Using Custom Dialog Modal)
     const lockAllBtn = document.getElementById("lockAllBtn");
     if (lockAllBtn) {
-        lockAllBtn.onclick = async () => {
+        lockAllBtn.onclick = () => {
             if (!window.db) return;
-            if (!confirm("Are you sure you want to lock all connected workstation screens?")) return;
-            
-            try {
-                const batch = window.db.batch();
-                workstationsData.forEach(pc => {
-                    const ref = window.db.collection("workstation_telemetry").doc(pc.id);
-                    batch.update(ref, { status: "locked", activity: "Screen Locked by Instructor" });
-                });
-                await batch.commit();
-                alert("All workstation screens have been successfully locked.");
-            } catch (err) {
-                console.error("Error locking all screens:", err);
-                alert("Failed to lock all screens. Check console logs.");
-            }
+            showCustomConfirm(
+                "Lock All Terminals",
+                "Are you sure you want to lock all connected workstation screens across the lab?",
+                async () => {
+                    try {
+                        const batch = window.db.batch();
+                        workstationsData.forEach(pc => {
+                            const ref = window.db.collection("workstation_telemetry").doc(pc.id);
+                            batch.update(ref, { status: "locked", activity: "Screen Locked by Instructor" });
+                        });
+                        await batch.commit();
+                        showCustomAlert("Success", "All workstation screens have been successfully locked.");
+                    } catch (err) {
+                        console.error("Error locking all screens:", err);
+                        showCustomAlert("Error", "Failed to lock all screens. Check console logs.");
+                    }
+                }
+            );
         };
     }
 
@@ -228,6 +232,63 @@ function closeModal() {
     if (modal) modal.style.display = "none";
 }
 
+// Custom UI Modal Replacement for standard browser alert()
+function showCustomAlert(titleText, messageText) {
+    let alertModal = document.getElementById("samcamCustomAlert");
+    if (!alertModal) {
+        alertModal = document.createElement("div");
+        alertModal.id = "samcamCustomAlert";
+        alertModal.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000;";
+        document.body.appendChild(alertModal);
+    }
+    alertModal.innerHTML = `
+        <div style="background: #1e293b; padding: 25px; border-radius: 10px; width: 400px; border: 1px solid #334155; color: #f8fafc; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            <h3 id="alertTitle" style="margin-top: 0; margin-bottom: 12px; color: #38bdf8; font-size: 1.1rem;"><i class="fa-solid fa-circle-info"></i> ${titleText}</h3>
+            <p id="alertMessage" style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 20px; line-height: 1.4;">${messageText}</p>
+            <div style="display: flex; justify-content: flex-end;">
+                <button id="alertOkBtn" style="padding: 8px 18px; background: #0ea5e9; border: none; color: #fff; border-radius: 6px; cursor: pointer; font-weight: 600;">OK</button>
+            </div>
+        </div>
+    `;
+    alertModal.style.display = "flex";
+    document.getElementById("alertOkBtn").onclick = () => {
+        alertModal.style.display = "none";
+    };
+}
+
+// Custom UI Modal Replacement for standard browser confirm()
+function showCustomConfirm(titleText, messageText, onConfirmCallback) {
+    let confirmModal = document.getElementById("samcamCustomConfirm");
+    if (!confirmModal) {
+        confirmModal = document.createElement("div");
+        confirmModal.id = "samcamCustomConfirm";
+        confirmModal.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 10000;";
+        document.body.appendChild(confirmModal);
+    }
+    confirmModal.innerHTML = `
+        <div style="background: #1e293b; padding: 25px; border-radius: 10px; width: 400px; border: 1px solid #334155; color: #f8fafc; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            <h3 style="margin-top: 0; margin-bottom: 12px; color: #f59e0b; font-size: 1.1rem;"><i class="fa-solid fa-triangle-exclamation"></i> ${titleText}</h3>
+            <p style="font-size: 0.9rem; color: #94a3b8; margin-bottom: 20px; line-height: 1.4;">${messageText}</p>
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button id="confirmCancelBtn" style="padding: 8px 16px; background: #475569; border: none; color: #fff; border-radius: 6px; cursor: pointer;">Cancel</button>
+                <button id="confirmOkBtn" style="padding: 8px 16px; background: #ef4444; border: none; color: #fff; border-radius: 6px; cursor: pointer; font-weight: 600;">Proceed</button>
+            </div>
+        </div>
+    `;
+    confirmModal.style.display = "flex";
+
+    document.getElementById("confirmCancelBtn").onclick = () => {
+        confirmModal.style.display = "none";
+    };
+
+    document.getElementById("confirmOkBtn").onclick = () => {
+        confirmModal.style.display = "none";
+        if (typeof onConfirmCallback === "function") {
+            onConfirmCallback();
+        }
+    };
+}
+
 // Additional helper to manage the Push Prompt / Broadcast console modal if present in DOM
 function openBroadcastModal() {
     let bModal = document.getElementById("broadcastModal");
@@ -252,7 +313,7 @@ function openBroadcastModal() {
         document.getElementById("sendBroadcast").onclick = async () => {
             const msg = document.getElementById("broadcastMessage").value.trim();
             if (!msg) {
-                alert("Please enter a message to broadcast.");
+                showCustomAlert("Validation Error", "Please enter a message to broadcast.");
                 return;
             }
             if (window.db) {
@@ -263,12 +324,12 @@ function openBroadcastModal() {
                         batch.update(ref, { broadcastNotice: msg });
                     });
                     await batch.commit();
-                    alert("Broadcast message sent successfully to all workstations!");
+                    showCustomAlert("Broadcast Sent", "Broadcast message sent successfully to all workstations!");
                     bModal.style.display = "none";
                     document.getElementById("broadcastMessage").value = "";
                 } catch (err) {
                     console.error("Broadcast failed:", err);
-                    alert("Error sending broadcast.");
+                    showCustomAlert("Error", "Error sending broadcast.");
                 }
             }
         };
