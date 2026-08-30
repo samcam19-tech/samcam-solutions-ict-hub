@@ -569,24 +569,25 @@ width:100%;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/*Isolated Grid for 2 Feature Cards in a Row*/
-.feature-cards-grid{
-display:grid;
-grid-template-columns:repeat(2,1fr);
-gap:28px;
-margin-bottom:32px;
+/* Update your feature cards grid container */
+.feature-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  align-items: stretch; /* Forces equal height columns if cards vary */
 }
-.admin-feature-card{
-background:var(--bg-surface);
-padding:32px;
-border-radius:var(--radius-lg);
-border:1px solid var(--border-subtle);
-box-shadow:var(--shadow-sm);
-margin-bottom:0;
-transition:var(--transition);
-display:flex;
-flex-direction:column;
-justify-content:space-between;
+
+/* Ensure all admin feature cards act as consistent flex containers */
+.admin-feature-card {
+  background: var(--bg-surface, #ffffff);
+  border: 1px solid var(--border, #e2e8f0);
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 100%;
 }
 .admin-feature-card:hover{
 box-shadow:var(--shadow-md);
