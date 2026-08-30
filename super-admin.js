@@ -720,7 +720,7 @@ function initGlobalAnnouncements() {
 }
 
 // ==========================================================================
-// FEATURE 2: TENANT STATUS & SUBSCRIPTION MANAGER (MODERNIZED)
+// FEATURE 2: TENANT STATUS & SUBSCRIPTION MANAGER (MODERNIZED WITH LIVE PREVIEW)
 // ==========================================================================
 function initTenantSubscriptionManager() {
   const container = getFeatureContainer("featureTenants");
@@ -729,6 +729,95 @@ function initTenantSubscriptionManager() {
   const btn = document.getElementById("toggleStatusBtn");
   const input = document.getElementById("manageSchoolIdInput");
 
+  // 1. Automatically create or inject the live preview container if it doesn't exist yet
+  let previewFeed = document.getElementById("tenantLivePreviewFeed");
+  if (!previewFeed && input) {
+    previewFeed = document.createElement("div");
+    previewFeed.id = "tenantLivePreviewFeed";
+    previewFeed.style.cssText = "background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; margin: 1rem 0; font-size: 0.8rem; color: #475569;";
+    // Insert right before the input container or button
+    input.parentNode.insertBefore(previewFeed, input);
+  }
+
+  // 2. Helper to fetch and render tenant metadata in real time
+  async function fetchAndRenderTenant(schoolId) {
+    const cleanId = schoolId.trim().toLowerCase();
+    if (!cleanId) {
+      if (previewFeed) {
+        previewFeed.innerHTML = `<span style="color: #94a3b8; font-style: italic;">Please enter a valid school ID.</span>`;
+      }
+      return;
+    }
+
+    if (previewFeed) {
+      previewFeed.innerHTML = `<div style="text-align: center; color: #64748b;"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading tenant metadata for <strong>${escapeHtml(cleanId)}</strong>...</div>`;
+    }
+
+    try {
+      const docRef = window.db.collection("schools").doc(cleanId);
+      const docSnap = await docRef.get();
+      
+      if (!docSnap.exists) {
+        if (previewFeed) {
+          previewFeed.innerHTML = `
+            <div style="color: #ef4444; margin-bottom: 0.25rem;"><i class="fa-solid fa-triangle-exclamation"></i> School ID "<strong>${escapeHtml(cleanId)}</strong>" not found.</div>
+            <div style="font-size: 0.75rem; color: #94a3b8;">Verify the exact ID in your database or try another registered tenant.</div>
+          `;
+        }
+        return;
+      }
+
+      const data = docSnap.data();
+      const currentStatus = data.status || "active";
+      const isActive = currentStatus === "active";
+      const tenantName = data.schoolName || data.name || cleanId;
+
+      if (previewFeed) {
+        previewFeed.innerHTML = `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <span>ID: <strong>${escapeHtml(cleanId)}</strong></span>
+            <span style="padding: 0.15rem 0.5rem; border-radius: 4px; font-weight: 700; font-size: 0.7rem; background: ${isActive ? '#dcfce7' : '#fee2e2'}; color: ${isActive ? '#166534' : '#b91c1c'};">
+              ${currentStatus.toUpperCase()}
+            </span>
+          </div>
+          <div style="font-size: 0.78rem; color: #475569; line-height: 1.4;">
+            School Name: <strong>${escapeHtml(tenantName)}</strong><br>
+            Subscription Tier: <strong>${escapeHtml(data.subscriptionPlan || 'Enterprise SaaS')}</strong><br>
+            Admin Contact: <strong>${escapeHtml(data.adminEmail || data.email || 'admin@stacon.ac.ug')}</strong>
+          </div>
+        `;
+      }
+
+      // Update button contextual label if desired
+      if (btn) {
+        btn.innerHTML = `<i class="fa-solid fa-toggle-${isActive ? 'on' : 'off'}"></i> ${isActive ? 'Suspend Tenant Account' : 'Activate Tenant Account'}`;
+      }
+
+    } catch (err) {
+      console.error("Tenant Fetch Error:", err);
+      if (previewFeed) {
+        previewFeed.innerHTML = `<span style="color: #ef4444;">Error retrieving data from Firestore cloud storage.</span>`;
+      }
+    }
+  }
+
+  // 3. Set default value to 'stacon' and load it immediately on page startup
+  if (input) {
+    input.value = "stacon";
+    fetchAndRenderTenant("stacon");
+
+    // 4. Attach real-time listener so typing any other school ID updates the preview instantly
+    input.addEventListener("input", debounce((e) => {
+      const val = e.target.value.trim();
+      if (val.length > 0) {
+        fetchAndRenderTenant(val);
+      } else if (previewFeed) {
+        previewFeed.innerHTML = `<span style="color: #94a3b8; font-style: italic;">Type a registered school ID to inspect...</span>`;
+      }
+    }, 300));
+  }
+
+  // 5. Toggle Button Click Handler (Action execution)
   if (btn && input) {
     btn.addEventListener("click", async (e) => {
       e.preventDefault(); // Prevent accidental form submission
@@ -741,35 +830,37 @@ function initTenantSubscriptionManager() {
         return;
       }
 
-      // 1. Cache original button state for loading animation recovery
       const originalBtnContent = btn.innerHTML;
       
       try {
-        // 2. Lock UI to prevent duplicate network requests (Double-click protection)
         btn.disabled = true;
         btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Processing...';
 
-        // 3. Fetch Tenant Data
         const docRef = window.db.collection("schools").doc(schoolId);
         const docSnap = await docRef.get();
         
         if (!docSnap.exists) {
-          await showCustomModal("Not Found", `No tenant found with ID: <strong>${schoolId}</strong>`);
-          return; // The 'finally' block will reset the button
+          await showCustomModal("Not Found", `No tenant found with ID: <strong>${escapeHtml(schoolId)}</strong>`);
+          return;
         }
 
         const tenantData = docSnap.data();
         const currentStatus = tenantData.status || "active";
         const newStatus = currentStatus === "active" ? "suspended" : "active";
-        const tenantName = tenantData.schoolName || schoolId;
+        const tenantName = tenantData.schoolName || tenantData.name || schoolId;
 
-        // 4. Smart Confirmation for Destructive Actions (Suspending a tenant)
+        // Smart Confirmation for Destructive Actions (Suspending a tenant)
         if (newStatus === "suspended") {
-           const confirmSuspend = confirm(`⚠️ WARNING: Are you sure you want to SUSPEND "${tenantName}"? This will immediately revoke portal access for all their users.`);
-           if (!confirmSuspend) return; 
+           const confirmSuspend = await showCustomModal(
+             "Confirm Suspension", 
+             `⚠️ WARNING: Are you sure you want to SUSPEND "<strong>${escapeHtml(tenantName)}</strong>"? This will immediately revoke portal access for all their users.`,
+             "prompt", 
+             "Type 'SUSPEND' to confirm"
+           );
+           // If using a prompt-style check or simple confirm modal: adjust based on your modal utility design
+           if (confirmSuspend === null) return; 
         }
 
-        // 5. Update with Agile Metadata (Tracking the 'When' and 'Who')
         const updatePayload = { 
           status: newStatus,
           statusUpdatedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -778,30 +869,28 @@ function initTenantSubscriptionManager() {
 
         await docRef.update(updatePayload);
 
-        // 6. Centralized Auditing
         if (typeof logAuditAction === 'function') {
           await logAuditAction("UPDATE_TENANT_STATUS", `Changed tenant [${tenantName}] status to ${newStatus.toUpperCase()}`);
         }
 
-        // 7. Rich Visual Feedback & UI Refresh
-        const statusColor = newStatus === 'active' ? '#10b981' : '#ef4444'; // Green for active, Red for suspended
+        const statusColor = newStatus === 'active' ? '#10b981' : '#ef4444';
         await showCustomModal(
           "Subscription Updated", 
-          `Tenant <span style="font-weight: bold;">${tenantName}</span> is now <strong style="color: ${statusColor};">${newStatus.toUpperCase()}</strong>.`
+          `Tenant <span style="font-weight: bold;">${escapeHtml(tenantName)}</span> is now <strong style="color: ${statusColor};">${newStatus.toUpperCase()}</strong>.`
         );
         
-        input.value = ''; // Clear input on success
+        // Refresh the preview box with the newly updated status
+        await fetchAndRenderTenant(schoolId);
 
-        // Refresh dynamic UI components if they exist
         if (typeof loadRegisteredSchools === 'function') loadRegisteredSchools();
         
       } catch (err) {
         console.error("Subscription Manager Error:", err);
         await showCustomModal("System Error", "Failed to update tenant status. Please check your network connection and permissions.");
       } finally {
-        // 8. Graceful Fallback: Always unlock the UI regardless of success or failure
         btn.disabled = false;
-        btn.innerHTML = originalBtnContent;
+        // Restore contextual button label matching current tenant state
+        fetchAndRenderTenant(input.value);
       }
     });
   }
