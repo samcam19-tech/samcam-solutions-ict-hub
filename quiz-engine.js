@@ -954,19 +954,18 @@ async function fetchQuizResults() {
     return;
   }
 
-  // Safely resolve active school ID from URL parameters, session, or global variables
+  // Safely resolve active school ID directly from the active currentUser session first
   let activeSchoolId = '';
-  if (typeof currentSchoolId !== 'undefined' && currentSchoolId) {
+  if (typeof currentUser !== 'undefined' && currentUser && (currentUser.schoolId || currentUser.schoolID || currentUser.institutionId)) {
+    activeSchoolId = (currentUser.schoolId || currentUser.schoolID || currentUser.institutionId).trim();
+  } else if (typeof currentSchoolId !== 'undefined' && currentSchoolId) {
     activeSchoolId = currentSchoolId.trim();
   } else {
-    // Fixed: safely check if getCurrentUserSession exists before calling it to prevent ReferenceErrors
     const session = typeof getCurrentUserSession === 'function' ? getCurrentUserSession() : null;
     if (session && (session.schoolId || session.schoolID || session.institutionId)) {
       activeSchoolId = (session.schoolId || session.schoolID || session.institutionId).trim();
-    } else if (typeof currentUser !== 'undefined' && currentUser && currentUser.schoolId) {
-      activeSchoolId = currentUser.schoolId.trim();
     } else {
-      const storedUser = JSON.parse(localStorage.getItem('userSession') || localStorage.getItem('user') || '{}');
+      const storedUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('user') || '{}');
       activeSchoolId = (storedUser.schoolId || storedUser.schoolID || storedUser.institutionId || 'stacon').trim();
     }
   }
