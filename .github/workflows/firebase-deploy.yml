@@ -15,4 +15,4 @@ jobs:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
           npm --prefix functions install
-          npx firebase-tools deploy --only functions --token "$FIREBASE_TOKEN"
+          npx firebase-tools deploy --only functions --project samcam-system --token "$FIREBASE_TOKEN"
