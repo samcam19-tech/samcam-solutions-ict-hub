@@ -337,7 +337,6 @@ async function loadRegisteredSchools() {
   }
 }
 
-// Dynamically fetch and populate collection checkboxes from the Firestore database via Cloud Function
 async function loadMigrationCollectionsCheckboxes() {
   const container = document.getElementById("migrationCollectionsContainer");
   if (!container) return;
@@ -345,14 +344,15 @@ async function loadMigrationCollectionsCheckboxes() {
   container.innerHTML = `<p style="font-size: 13px; color: #64748b;">Fetching collections dynamically from database...</p>`;
 
   try {
-    // Invoke the Firebase Cloud Function to read actual root collections using the Admin SDK
-    const getCollectionsFn = firebase.functions().httpsCallable('getFirestoreCollections');
-    const result = await getCollectionsFn();
-    const collectionsList = result.data.collections || [];
+    // Replace with your actual deployed region and project URL endpoint
+    const response = await fetch('https://us-central1-samcam-system.cloudfunctions.net/listCollections');
+    const result = await response.json();
+    
+    if (!result.success) throw new Error(result.error);
+    const collectionsList = result.collections || [];
 
     container.innerHTML = "";
     
-    // Helper function to format collection name: replace underscores/dashes with spaces and capitalize each word
     const formatCollectionName = (str) => {
       return str
         .replace(/[_-]+/g, " ")
@@ -360,7 +360,6 @@ async function loadMigrationCollectionsCheckboxes() {
         .replace(/(^\w|\s\w)/g, (match) => match.toUpperCase());
     };
 
-    // Render Select All / Deselect All controls header
     const controlsHtml = `
       <div style="display: flex; gap: 10px; margin-bottom: 10px; font-size: 12px;">
         <button type="button" id="selectAllCols" style="background: none; border: none; color: #2563eb; cursor: pointer; padding: 0;">Select All</button>
@@ -374,7 +373,6 @@ async function loadMigrationCollectionsCheckboxes() {
     let validCount = 0;
 
     collectionsList.forEach((col) => {
-      // Exclude system configs and school nodes from the migration UI
       if (!EXCLUDED_COLLECTIONS.includes(col)) {
         validCount++;
         const displayName = formatCollectionName(col);
@@ -410,7 +408,6 @@ async function loadMigrationCollectionsCheckboxes() {
     container.innerHTML = `<p style="color: #ef4444; font-size: 12px;">Failed to load collections dynamically. Ensure the Cloud Function is deployed.</p>`;
   }
 }
-
 
 function setupAdminActions() {
   const schoolForm = document.getElementById("superSchoolForm");
