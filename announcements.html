@@ -65,10 +65,10 @@
   <nav class="navbar" role="navigation" aria-label="Main Navigation">
     <div class="nav-container">
       <div class="brand" style="display: flex; align-items: center; gap: 0.75rem;">
-        <img src="images/logo.png" alt="Samcam Solutions Logo" class="brand-logo" style="height: 40px; width: auto;" onerror="this.style.display='none'">
+        <img src="images/logo.png" alt="Samcam Solutions Logo" class="dynamic-system-logo" style="height: 40px; width: 40px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
         <div class="brand-text" style="display: flex; flex-direction: column;">
-          <span class="brand-title" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.1rem; color: var(--text-color, #0f172a); letter-spacing: -0.5px;">SAMCAM SOLUTIONS</span>
-          <span class="brand-tagline" style="font-size: 0.75rem; color: #64748b; font-weight: 500;">Innovative ICT Insights In Action</span>
+          <span class="dynamic-system-name" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.1rem; color: var(--text-color, #0f172a); letter-spacing: -0.5px;">SAMCAM SOLUTIONS</span>
+          <span class="dynamic-system-slogan" style="font-size: 0.75rem; color: #64748b; font-weight: 500;">Innovative ICT Insights In Action</span>
         </div>
       </div>
       
@@ -192,50 +192,54 @@
 
   <!-- 2. Load Firebase Configuration & Initialization -->
   <script src="firebase-config.js"></script>
+
+  <!-- 3. Load Global Branding Engine -->
+  <script src="brand-loader.js"></script>
+
   <script src="script.js"></script>
 
-  <!-- 3. Load Announcements Logic -->
+  <!-- 4. Load Announcements Logic -->
   <script src="announcements.js"></script>
 
- <script>
-  document.addEventListener("DOMContentLoaded", () => {
-    function updateNavbarProfile() {
-      // Priority: window.currentUser first, then fallback to storage
-      let activeUser = window.currentUser;
-      if (!activeUser) {
-        const sessionData = localStorage.getItem('currentLoggedInUser') || 
-                            localStorage.getItem('portal_session') || 
-                            sessionStorage.getItem('portal_session');
-        if (sessionData) {
-          try { activeUser = JSON.parse(sessionData); } catch (err) {}
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      function updateNavbarProfile() {
+        // Priority: window.currentUser first, then fallback to storage
+        let activeUser = window.currentUser;
+        if (!activeUser) {
+          const sessionData = localStorage.getItem('currentLoggedInUser') || 
+                              localStorage.getItem('portal_session') || 
+                              sessionStorage.getItem('portal_session');
+          if (sessionData) {
+            try { activeUser = JSON.parse(sessionData); } catch (err) {}
+          }
+        }
+
+        if (activeUser && typeof activeUser === 'object') {
+          const fullName = activeUser.fullName || activeUser.name || activeUser.username || 'User';
+          const username = activeUser.username || 'user';
+          const pic = activeUser.profilePic || activeUser.avatarUrl || activeUser.photoURL || 'images/default-avatar.png';
+
+          const elNavPic = document.getElementById('navProfilePic');
+          const elNavName = document.getElementById('navFullName');
+          const elNavUsername = document.getElementById('navUsername');
+
+          if (elNavPic) elNavPic.src = pic;
+          if (elNavName) elNavName.textContent = fullName;
+          if (elNavUsername) elNavUsername.textContent = '@' + username;
         }
       }
 
-      if (activeUser && typeof activeUser === 'object') {
-        const fullName = activeUser.fullName || activeUser.name || activeUser.username || 'User';
-        const username = activeUser.username || 'user';
-        const pic = activeUser.profilePic || activeUser.avatarUrl || activeUser.photoURL || 'images/default-avatar.png';
+      // Run immediately
+      updateNavbarProfile();
 
-        const elNavPic = document.getElementById('navProfilePic');
-        const elNavName = document.getElementById('navFullName');
-        const elNavUsername = document.getElementById('navUsername');
-
-        if (elNavPic) elNavPic.src = pic;
-        if (elNavName) elNavName.textContent = fullName;
-        if (elNavUsername) elNavUsername.textContent = '@' + username;
-      }
-    }
-
-    // Run immediately
-    updateNavbarProfile();
-
-    // Re-check periodically or listen to storage events incase another tab/login changed it
-    window.addEventListener('storage', (event) => {
-      if (event.key === 'currentLoggedInUser' || event.key === 'portal_session') {
-        location.reload(); // Force refresh to load the new user's state completely
-      }
+      // Re-check periodically or listen to storage events incase another tab/login changed it
+      window.addEventListener('storage', (event) => {
+        if (event.key === 'currentLoggedInUser' || event.key === 'portal_session') {
+          location.reload(); // Force refresh to load the new user's state completely
+        }
+      });
     });
-  });
-</script>
+  </script>
 </body>
 </html>
