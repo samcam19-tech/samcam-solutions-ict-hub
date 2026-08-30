@@ -14,5 +14,6 @@ jobs:
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
-          npm --prefix functions install
+          npm install --prefix functions
           npx firebase-tools deploy --only functions --project samcam-system --token "$FIREBASE_TOKEN"
+        working-directory: ./samcam-solutions-ict-hub
