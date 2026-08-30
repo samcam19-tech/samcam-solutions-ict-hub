@@ -57,6 +57,7 @@ function initLiveTelemetryListener() {
 
         workstationsData = liveStations;
         renderWorkstations(workstationsData);
+        updateGlobalLockToggleButtonState();
     }, (error) => {
         console.error("Error reading workstation telemetry:", error);
     });
@@ -135,6 +136,27 @@ function renderWorkstations(stations) {
         const avgCpu = Math.round(stations.reduce((acc, s) => acc + parseInt(s.cpu || 0), 0) / stations.length);
         loadCounter.textContent = `${avgCpu}%`;
     }
+
+    updateGlobalLockToggleButtonState();
+}
+
+function areAllTerminalsLocked() {
+    if (!workstationsData || workstationsData.length === 0) return false;
+    return workstationsData.every(pc => pc.status === "locked");
+}
+
+function updateGlobalLockToggleButtonState() {
+    const lockAllBtn = document.getElementById("lockAllBtn");
+    if (!lockAllBtn) return;
+
+    const allLocked = areAllTerminalsLocked();
+    if (allLocked) {
+        lockAllBtn.innerHTML = `<i class="fa-solid fa-lock-open"></i> Unlock All Screens`;
+        lockAllBtn.style.background = "#10b981"; // Green color accent for unlocking action
+    } else {
+        lockAllBtn.innerHTML = `<i class="fa-solid fa-lock"></i> Lock All Screens`;
+        lockAllBtn.style.background = ""; // Reset or default theme background
+    }
 }
 
 function initEventListeners() {
@@ -168,26 +190,40 @@ function initEventListeners() {
         });
     }
 
-    // Fully Functional: Lock All Screens Action (Using Custom Dialog Modal)
+    // Fully Functional: Dynamic Global Lock / Unlock Action (Using Custom Dialog Modal)
     const lockAllBtn = document.getElementById("lockAllBtn");
     if (lockAllBtn) {
         lockAllBtn.onclick = () => {
             if (!window.db) return;
+            const allLocked = areAllTerminalsLocked();
+            const targetStatus = allLocked ? "active" : "locked";
+            const actionTitle = allLocked ? "Unlock All Terminals" : "Lock All Terminals";
+            const actionDesc = allLocked 
+                ? "Are you sure you want to lift the lock on all connected workstation screens across the lab?"
+                : "Are you sure you want to lock all connected workstation screens across the lab (including your test device)?";
+            const successMsg = allLocked 
+                ? "All workstation screens have been successfully unlocked." 
+                : "All workstation screens have been successfully locked.";
+            const errorMsg = allLocked ? "Failed to unlock all screens. Check console logs." : "Failed to lock all screens. Check console logs.";
+
             showCustomConfirm(
-                "Lock All Terminals",
-                "Are you sure you want to lock all connected workstation screens across the lab (including your test device)?",
+                actionTitle,
+                actionDesc,
                 async () => {
                     try {
                         const batch = window.db.batch();
                         workstationsData.forEach(pc => {
                             const ref = window.db.collection("workstation_telemetry").doc(pc.id);
-                            batch.update(ref, { status: "locked", activity: "Screen Locked by Instructor" });
+                            batch.update(ref, { 
+                                status: targetStatus, 
+                                activity: targetStatus === "locked" ? "Screen Locked by Instructor" : "Resumed Session" 
+                            });
                         });
                         await batch.commit();
-                        showCustomAlert("Success", "All workstation screens have been successfully locked.");
+                        showCustomAlert("Success", successMsg);
                     } catch (err) {
-                        console.error("Error locking all screens:", err);
-                        showCustomAlert("Error", "Failed to lock all screens. Check console logs.");
+                        console.error("Error updating all screens state:", err);
+                        showCustomAlert("Error", errorMsg);
                     }
                 }
             );
