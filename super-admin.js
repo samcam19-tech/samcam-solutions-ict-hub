@@ -1,3 +1,30 @@
+function getCurrentUserSession() {
+  try {
+    const cachedSession = sessionStorage.getItem("samcam_super_session");
+    if (cachedSession) {
+      const data = JSON.parse(cachedSession);
+      return {
+        name: data.fullName || "AKUGIZIBWE SAMUEL",
+        fullName: data.fullName || "AKUGIZIBWE SAMUEL",
+        username: data.username || "samcam",
+        email: data.email || "samuelakugizibwe23@gmail.com",
+        role: "super_admin"
+      };
+    }
+  } catch (e) {
+    console.warn("Failed to retrieve cached super admin session:", e);
+  }
+
+  // Fallback session object mapped to database profile defaults
+  return {
+    name: "AKUGIZIBWE SAMUEL",
+    fullName: "AKUGIZIBWE SAMUEL",
+    username: "samcam",
+    email: "samuelakugizibwe23@gmail.com",
+    role: "super_admin"
+  };
+}
+
 // Custom Modal Helper Utility (Corrected)
 function showCustomModal(title, message, type = "alert", inputPlaceholder = "") {
   return new Promise((resolve) => {
@@ -153,7 +180,16 @@ async function enforceFirestoreMasterKeyGate() {
       currentMasterKey = createdKey.trim();
       await showCustomModal("Setup Complete", "Master key saved to Firestore successfully!");
     } else {
-      currentMasterKey = docSnap.data().masterKey;
+      const data = docSnap.data();
+      currentMasterKey = data.masterKey;
+
+      // Cache the super admin profile details into sessionStorage for author tracking
+      sessionStorage.setItem("samcam_super_session", JSON.stringify({
+        fullName: data.fullName || "AKUGIZIBWE SAMUEL",
+        username: data.username || "samcam",
+        email: data.email || "samuelakugizibwe23@gmail.com",
+        role: "super_admin"
+      }));
     }
 
     const authenticatedKey = sessionStorage.getItem("samcam_super_auth");
@@ -198,7 +234,6 @@ async function enforceFirestoreMasterKeyGate() {
       </div>`;
   }
 }
-
 // Master initializer binding core modules and fully functional extended feature modules
 async function initializeSuperAdminPortal(configDocRef) {
   loadRegisteredSchools();
