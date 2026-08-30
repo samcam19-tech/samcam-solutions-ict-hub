@@ -143,6 +143,7 @@ function fetchResourcesFromFirestore() {
           accessType: data.accessType || 'free',  
           price: Number(data.price) || 0,         
           schoolId: resSchoolId || 'global',    
+          isGlobal: data.isGlobal === true, // <--- FIXED: Explicitly map isGlobal here
           fileUrl: data.fileUrl || '#',
           fileName: data.fileName || '',
           fileType: data.fileType || '',
@@ -165,6 +166,7 @@ function fetchResourcesFromFirestore() {
     fallbackToLocalData();
   });
 }
+
 function fallbackToLocalData() {
   const localData = localStorage.getItem('portal_resources');
   if (localData) {
