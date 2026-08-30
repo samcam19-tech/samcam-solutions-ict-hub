@@ -351,47 +351,185 @@ function createFeatureSection(titleText, elementId) {
   return wrapper;
 }
 
-// Feature 1: Global Announcement Broadcaster (Multi-Tenant & Schema-Aligned)
-function initGlobalAnnouncements() {
+// Feature 1: Global Announcement Broadcaster with Management (Edit, Delete & Publish)
+function initGlobalAnnuioncements() {
+  // Maintaining full UI layout structure with updated input field IDs for single-doc handling
   const container = document.getElementById("featureAnnouncements") || createFeatureSection("Global Announcement Broadcaster", "featureAnnouncements");
+  
   container.innerHTML = `
     <h3 class="feature-title">📢 Global Announcement Broadcaster</h3>
-    <div class="form-group" style="margin-bottom: 12px;">
-      <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Announcement Title</label>
-      <input type="text" id="globalAnnounceTitle" placeholder="e.g., 📢 New Notes Available on the Portal!" class="feature-input" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px;">
-    </div>
-    <div class="form-group" style="margin-bottom: 12px;">
-      <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Announcement Body / Message</label>
-      <textarea id="globalAnnounceText" placeholder="Type platform-wide broadcast message..." class="feature-textarea" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px; min-height: 80px;"></textarea>
-    </div>
-    <div class="form-row" style="display: flex; gap: 10px; margin-bottom: 12px;">
-      <div class="form-group" style="flex: 1;">
-        <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Priority Level</label>
-        <select id="announcePriority" class="feature-select" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px;">
-          <option value="Urgent">Urgent</option>
-          <option value="Normal" selected>Normal</option>
-          <option value="Low">Low</option>
-        </select>
+    
+    <!-- Form for Creating / Editing -->
+    <div id="announcementFormCard" style="background: var(--bg-main, #f8fafc); padding: 16px; border-radius: 8px; border: 1px solid var(--border, #e2e8f0); margin-bottom: 20px;">
+      <h4 id="announceFormHeading" style="font-size: 14px; font-weight: 600; margin-bottom: 12px;">Publish New Broadcast</h4>
+      <input type="hidden" id="editingAnnouncementDocId" value="">
+      
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Announcement Title</label>
+        <input type="text" id="globalAnnounceTitle" placeholder="e.g., 📢 New Notes Available on the Portal!" class="feature-input" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;">
       </div>
-      <div class="form-group" style="flex: 1;">
-        <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Target Audience</label>
-        <select id="announceTarget" class="feature-select" style="width: 100%; padding: 8px; border: 1px solid var(--border-color); border-radius: 6px;">
-          <option value="all">All Schools & Users</option>
-          <option value="teachers">Teachers Only</option>
-          <option value="students">Students Only</option>
-        </select>
+      
+      <div class="form-group" style="margin-bottom: 12px;">
+        <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Announcement Body / Message</label>
+        <textarea id="globalAnnounceText" placeholder="Type platform-wide broadcast message..." class="feature-textarea" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px; min-height: 80px;"></textarea>
+      </div>
+      
+      <div class="form-row" style="display: flex; gap: 10px; margin-bottom: 12px;">
+        <div class="form-group" style="flex: 1;">
+          <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Priority Level</label>
+          <select id="announcePriority" class="feature-select" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;">
+            <option value="Urgent">Urgent</option>
+            <option value="Normal" selected>Normal</option>
+            <option value="Low">Low</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex: 1;">
+          <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;">Target Audience</label>
+          <select id="announceTarget" class="feature-select" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;">
+            <option value="all">All Schools & Users</option>
+            <option value="teachers">Teachers Only</option>
+            <option value="students">Students Only</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="feature-controls-row" style="display: flex; gap: 10px;">
+        <button id="sendBroadcastBtn" class="btn-primary" style="flex: 1;"><i class="fa-solid fa-bullhorn"></i> Publish Global Broadcast</button>
+        <button id="cancelEditBroadcastBtn" class="btn-outline" style="display: none; flex: 0.4;">Cancel</button>
       </div>
     </div>
-    <div class="feature-controls-row">
-      <button id="sendBroadcastBtn" class="btn-primary"><i class="fa-solid fa-bullhorn"></i> Publish Broadcast to All Schools</button>
+
+    <!-- Active Broadcasts Management List -->
+    <div style="margin-top: 20px;">
+      <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 10px;">Active Global Broadcasts</h4>
+      <div id="activeBroadcastsList" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border, #e2e8f0); border-radius: 6px; padding: 10px; background: #fff;">
+        <p style="color: var(--text-muted, #64748b); font-size: 13px; text-align: center; padding: 15px;">Loading active broadcasts...</p>
+      </div>
     </div>
   `;
 
+  // Helper to reset form state
+  const resetForm = () => {
+    document.getElementById("editingAnnouncementDocId").value = "";
+    document.getElementById("globalAnnounceTitle").value = "";
+    document.getElementById("globalAnnounceText").value = "";
+    document.getElementById("announcePriority").value = "Normal";
+    document.getElementById("announceTarget").value = "all";
+    document.getElementById("announceFormHeading").innerText = "Publish New Broadcast";
+    document.getElementById("sendBroadcastBtn").innerHTML = `<i class="fa-solid fa-bullhorn"></i> Publish Global Broadcast`;
+    document.getElementById("cancelEditBroadcastBtn").style.display = "none";
+  };
+
+  document.getElementById("cancelEditBroadcastBtn").addEventListener("click", resetForm);
+
+  // Load and Render Existing Broadcasts for Management using schoolId == "all"
+  const loadActiveBroadcasts = async () => {
+    const listContainer = document.getElementById("activeBroadcastsList");
+    try {
+      const snapshot = await window.db.collection("announcements")
+        .where("schoolId", "==", "all")
+        .orderBy("createdAt", "desc")
+        .limit(50)
+        .get();
+      
+      if (snapshot.empty) {
+        listContainer.innerHTML = `<p style="color: var(--text-muted, #64748b); font-size: 13px; text-align: center; padding: 15px;">No active global broadcasts found.</p>`;
+        return;
+      }
+
+      let html = `<table class="data-table" style="width: 100%; font-size: 13px; border-collapse: collapse;">
+        <thead>
+          <tr style="border-bottom: 2px solid var(--border, #e2e8f0); text-align: left;">
+            <th style="padding: 8px;">Title / Message</th>
+            <th style="padding: 8px;">Priority</th>
+            <th style="padding: 8px;">Audience</th>
+            <th style="padding: 8px; text-align: right;">Actions</th>
+          </tr>
+        </thead>
+        <tbody>`;
+
+      snapshot.forEach(docSnap => {
+        const item = docSnap.data();
+        const docId = docSnap.id;
+        const safeTitle = item.title.replace(/"/g, '&quot;');
+        const safeBody = item.body.replace(/"/g, '&quot;');
+        
+        html += `
+          <tr style="border-bottom: 1px solid var(--border, #e2e8f0);">
+            <td style="padding: 8px;">
+              <strong>${item.title}</strong><br>
+              <span style="color: var(--text-muted, #64748b); font-size: 11px;">${item.body.substring(0, 50)}...</span>
+            </td>
+            <td style="padding: 8px;"><span style="padding: 2px 6px; border-radius: 4px; font-size: 11px; background: #e0f2fe; color: #0369a1;">${item.priority}</span></td>
+            <td style="padding: 8px; text-transform: capitalize;">${item.targetAudience}</td>
+            <td style="padding: 8px; text-align: right; white-space: nowrap;">
+              <button class="btn-outline edit-broadcast-btn" data-id="${docId}" data-title="${safeTitle}" data-body="${safeBody}" data-priority="${item.priority}" data-target="${item.targetAudience}" style="padding: 4px 8px; font-size: 11px; margin-right: 4px;"><i class="fa-solid fa-pen"></i> Edit</button>
+              <button class="btn-warning delete-broadcast-btn" data-id="${docId}" data-title="${safeTitle}" style="padding: 4px 8px; font-size: 11px; background: #ef4444; border: none; color: white;"><i class="fa-solid fa-trash"></i> Delete</button>
+            </td>
+          </tr>`;
+      });
+
+      html += `</tbody></table>`;
+      listContainer.innerHTML = html;
+
+      // Attach Event Listeners for Edit Action
+      document.querySelectorAll(".edit-broadcast-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.getElementById("globalAnnounceTitle").value = btn.getAttribute("data-title");
+          document.getElementById("globalAnnounceText").value = btn.getAttribute("data-body");
+          document.getElementById("announcePriority").value = btn.getAttribute("data-priority");
+          document.getElementById("announceTarget").value = btn.getAttribute("data-target");
+          
+          document.getElementById("editingAnnouncementDocId").value = btn.getAttribute("data-id");
+          document.getElementById("announceFormHeading").innerText = "Edit Global Broadcast";
+          document.getElementById("sendBroadcastBtn").innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Update Global Broadcast`;
+          document.getElementById("cancelEditBroadcastBtn").style.display = "block";
+          
+          document.getElementById("announcementFormCard").scrollIntoView({ behavior: 'smooth' });
+        });
+      });
+
+      // Attach Event Listeners for Delete Action
+      document.querySelectorAll(".delete-broadcast-btn").forEach(btn => {
+        btn.addEventListener("click", async () => {
+          const docId = btn.getAttribute("data-id");
+          const titleToDelete = btn.getAttribute("data-title");
+
+          const confirmDelete = confirm(`Are you sure you want to delete the global broadcast "${titleToDelete}"?`);
+          if (!confirmDelete) return;
+
+          try {
+            await window.db.collection("announcements").doc(docId).delete();
+
+            if (typeof logAuditAction === 'function') {
+              await logAuditAction("DELETE_GLOBAL_BROADCAST", `Deleted global announcement titled "${titleToDelete}".`);
+            }
+
+            await showCustomModal("Success", "Global broadcast successfully removed.");
+            loadActiveBroadcasts();
+            resetForm();
+          } catch (delErr) {
+            console.error("Error deleting global broadcast:", delErr);
+            await showCustomModal("Error", "Failed to delete broadcast: " + delErr.message);
+          }
+        });
+      });
+
+    } catch (err) {
+      console.error("Failed to load active broadcasts:", err);
+      listContainer.innerHTML = `<p style="color: #ef4444; font-size: 13px; text-align: center; padding: 15px;">Failed to load broadcasts list.</p>`;
+    }
+  };
+
+  loadActiveBroadcasts();
+
+  // Publish / Update Submission Handler using single document set/update
   document.getElementById("sendBroadcastBtn").addEventListener("click", async () => {
     const title = document.getElementById("globalAnnounceTitle").value.trim();
     const body = document.getElementById("globalAnnounceText").value.trim();
     const priority = document.getElementById("announcePriority").value;
     const target = document.getElementById("announceTarget").value;
+    const editingDocId = document.getElementById("editingAnnouncementDocId").value;
 
     if (!title || !body) {
       await showCustomModal("Validation Error", "Both announcement title and body message are required.");
@@ -400,39 +538,55 @@ function initGlobalAnnouncements() {
 
     const session = getCurrentUserSession();
     const authorName = session ? (session.name || session.fullName || session.username || 'System Administrator') : 'System Administrator';
-    const currentSchoolId = session ? (session.schoolId || session.schoolID || session.institutionId || 'stacon') : 'stacon';
 
     const submitBtn = document.getElementById("sendBroadcastBtn");
     submitBtn.disabled = true;
-    submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Broadcasting...`;
+    const isEditing = Boolean(editingDocId);
+    submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> ${isEditing ? 'Updating...' : 'Publishing...'}`;
 
     try {
-      // Matches Firestore schema structure observed in announcements collection
-      await window.db.collection("announcements").add({
-        title: title,
-        body: body,
-        author: authorName,
-        priority: priority,
-        targetAudience: target,
-        schoolId: currentSchoolId, // or 'all' if you want it universally visible to all institutions
-        createdAt: (typeof firebase !== 'undefined' && firebase.firestore) 
-                   ? firebase.firestore.FieldValue.serverTimestamp() 
-                   : new Date().toISOString()
-      });
+      const timestamp = (typeof firebase !== 'undefined' && firebase.firestore) 
+                       ? firebase.firestore.FieldValue.serverTimestamp() 
+                       : new Date().toISOString();
 
-      if (typeof logAuditAction === 'function') {
-        await logAuditAction("GLOBAL_BROADCAST", `Published global announcement titled "${title}" to target: ${target}`);
+      if (isEditing) {
+        await window.db.collection("announcements").doc(editingDocId).update({
+          title: title,
+          body: body,
+          priority: priority,
+          targetAudience: target,
+          author: authorName,
+          updatedAt: timestamp
+        });
+
+        if (typeof logAuditAction === 'function') {
+          await logAuditAction("UPDATE_GLOBAL_BROADCAST", `Updated global announcement titled "${title}".`);
+        }
+      } else {
+        await window.db.collection("announcements").add({
+          title: title,
+          body: body,
+          author: authorName,
+          priority: priority,
+          targetAudience: target,
+          schoolId: "all",
+          createdAt: timestamp
+        });
+
+        if (typeof logAuditAction === 'function') {
+          await logAuditAction("GLOBAL_BROADCAST", `Published global announcement titled "${title}".`);
+        }
       }
 
-      document.getElementById("globalAnnounceTitle").value = "";
-      document.getElementById("globalAnnounceText").value = "";
-      await showCustomModal("Success", "Global announcement published successfully across all school channels.");
+      resetForm();
+      loadActiveBroadcasts();
+      await showCustomModal("Success", `Global announcement successfully ${isEditing ? 'updated' : 'published'}!`);
     } catch (err) {
-      console.error("Failed to publish global broadcast:", err);
-      await showCustomModal("Error", "Failed to publish broadcast: " + err.message);
+      console.error("Failed to process global broadcast operation:", err);
+      await showCustomModal("Error", "Operation failed: " + err.message);
     } finally {
       submitBtn.disabled = false;
-      submitBtn.innerHTML = `<i class="fa-solid fa-bullhorn"></i> Publish Broadcast to All Schools`;
+      submitBtn.innerHTML = `<i class="fa-solid fa-bullhorn"></i> Publish Global Broadcast`;
     }
   });
 }
