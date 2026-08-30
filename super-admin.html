@@ -33,6 +33,7 @@
 
       <div class="admin-grid">
         
+        <!-- Register New School Panel -->
         <div class="panel-card">
           <h2>Register New School Instance</h2>
           <p class="panel-desc">Create a brand new tenant record in the global database.</p>
@@ -53,7 +54,33 @@
           </form>
         </div>
 
+        <!-- System Branding Configuration Panel (Added) -->
         <div class="panel-card">
+          <h2>System Branding Configuration</h2>
+          <p class="panel-desc">Manage platform-wide identity, names, slogans, and logo assets.</p>
+          <form id="systemBrandingForm">
+            <div class="form-group">
+              <label for="brandingSystemName">System Name:</label>
+              <input type="text" id="brandingSystemName" placeholder="SAMCAM SOLUTIONS ICT HUB" required />
+            </div>
+            <div class="form-group">
+              <label for="brandingSystemSlogan">System Slogan:</label>
+              <input type="text" id="brandingSystemSlogan" placeholder="Empowering Digital Education" />
+            </div>
+            <div class="form-group">
+              <label for="brandingSystemLogoUrl">Logo Image URL:</label>
+              <input type="url" id="brandingSystemLogoUrl" placeholder="https://example.com/logo.png" />
+            </div>
+            <div class="form-group">
+              <label for="brandingSystemLogoFile">Or Upload Logo File:</label>
+              <input type="file" id="brandingSystemLogoFile" accept="image/*" class="form-control" />
+            </div>
+            <button type="submit" class="btn-primary" style="margin-top: 15px;">Save Branding Settings</button>
+          </form>
+        </div>
+
+        <!-- Legacy Data Migration Utility Panel -->
+        <div class="panel-card" style="grid-column: 1 / -1;">
           <h2>Legacy Data Migration Utility</h2>
           <p class="panel-desc">Map existing root-level collections to a designated school instance.</p>
           <form id="migrationForm">
@@ -101,8 +128,8 @@
     </main>
   </div>
 
-<!-- Custom Modal Markup -->
-<div id="customModal" class="modal-overlay" style="display: none;">
+<!-- Custom Modal Markup (Managed via .modal-active class in CSS/JS) -->
+<div id="customModal" class="modal-overlay">
   <div class="modal-card">
     <h3 id="modalTitle">Notice</h3>
     <p id="modalMessage">Message content goes here...</p>
