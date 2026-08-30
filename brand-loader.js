@@ -1,3 +1,4 @@
+// brand-loader.js - Dynamic Global Branding Engine
 document.addEventListener("DOMContentLoaded", () => {
   const checkDbInterval = setInterval(async () => {
     if (window.db) {
