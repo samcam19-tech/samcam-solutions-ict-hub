@@ -152,10 +152,10 @@ font-weight:800;
 letter-spacing:-0.03em;
 color:var(--primary);
 }
-/*Interactive & Elevated Grid Layout*/
+/*Interactive & Elevated Grid Layout - Updated to 2 identical cards per row across 5 rows*/
 .admin-grid{
 display:grid;
-grid-template-columns:1fr 1fr;
+grid-template-columns:repeat(2,1fr);
 gap:28px;
 margin-bottom:32px;
 }
@@ -469,8 +469,8 @@ width:100%;
 }
 
 /* ==========================================================================
-   21ST CENTURY CHECKBOX GRID DESIGN EXTENSION (BENTO-STYLE PILLS)
-   ========================================================================== */
+    21ST CENTURY CHECKBOX GRID DESIGN EXTENSION (BENTO-STYLE PILLS)
+    ========================================================================== */
 .migration-collections-wrapper {
   background: var(--bg-surface-subtle);
   border: 1px solid var(--border-subtle);
@@ -569,7 +569,6 @@ width:100%;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 /*Isolated Grid for 2 Feature Cards in a Row*/
 .feature-cards-grid{
 display:grid;
