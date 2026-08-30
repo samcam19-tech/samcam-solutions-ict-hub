@@ -76,8 +76,11 @@ function renderWorkstations(stations) {
         let previewContent = "";
         if (pc.screenUrl) {
             previewContent = `
-                <div style="width: 100%; height: 110px; background: #000; border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center;">
+                <div class="thumbnail-container" style="width: 100%; height: 110px; background: #000; border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative;" title="Click to view full image">
                     <img src="${pc.screenUrl}" alt="Live Screen Preview" style="width: 100%; height: 100%; object-fit: cover;" />
+                    <div class="zoom-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s ease;">
+                        <i class="fa-solid fa-expand" style="color: #fff; font-size: 1.2rem;"></i>
+                    </div>
                 </div>
             `;
         } else {
@@ -103,6 +106,20 @@ function renderWorkstations(stations) {
                 <span>CPU: ${pc.cpu} | RAM: ${pc.ram}</span>
             </div>
         `;
+
+        // Add hover effect for zoom icon if thumbnail exists
+        if (pc.screenUrl) {
+            const thumbDiv = card.querySelector(".thumbnail-container");
+            const overlay = card.querySelector(".zoom-overlay");
+            thumbDiv.onmouseenter = () => overlay.style.opacity = "1";
+            thumbDiv.onmouseleave = () => overlay.style.opacity = "0";
+
+            // Click on thumbnail opens full image viewer directly
+            thumbDiv.onclick = (e) => {
+                e.stopPropagation(); // Prevent opening the node control modal
+                openFullImageViewer(pc.screenUrl, `Live Feed: ${pc.id} - ${pc.learner}`);
+            };
+        }
 
         card.addEventListener("click", () => openNodeModal(pc));
         grid.appendChild(card);
@@ -198,7 +215,7 @@ function openNodeModal(pc) {
 
     title.textContent = `Workstation Control: ${pc.id}`;
     body.innerHTML = `
-        ${pc.screenUrl ? `<div style="margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 1px solid #334155;"><img src="${pc.screenUrl}" alt="Enlarged Screen View" style="width: 100%; max-height: 250px; object-fit: cover; display: block;" /></div>` : '<div style="padding: 20px; text-align: center; background: rgba(0,0,0,0.2); border-radius: 6px; margin-bottom: 15px; color: var(--text-muted);">No live screen snapshot available yet</div>'}
+        ${pc.screenUrl ? `<div class="modal-img-container" style="margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 1px solid #334155; cursor: pointer; position: relative;" title="Click to view full image"><img src="${pc.screenUrl}" alt="Enlarged Screen View" style="width: 100%; max-height: 250px; object-fit: cover; display: block;" /><div style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.6); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem;"><i class="fa-solid fa-expand"></i> Click to Expand</div></div>` : '<div style="padding: 20px; text-align: center; background: rgba(0,0,0,0.2); border-radius: 6px; margin-bottom: 15px; color: var(--text-muted);">No live screen snapshot available yet</div>'}
         <p><strong>Assigned Learner:</strong> ${pc.learner}</p>
         <p><strong>IP Address:</strong> ${pc.ip}</p>
         <p><strong>Active Window Title:</strong> ${pc.activity}</p>
@@ -206,6 +223,16 @@ function openNodeModal(pc) {
         <p><strong>Hardware Resource Utilization:</strong> CPU: ${pc.cpu}, Memory: ${pc.ram}</p>
         <p style="margin-top: 10px; color: var(--success);"><i class="fa-solid fa-shield-check"></i> Live Firestore Feed Synchronized</p>
     `;
+
+    // Bind full screen zoom if image exists inside modal body
+    if (pc.screenUrl) {
+        const modalImgWrapper = body.querySelector(".modal-img-container");
+        if (modalImgWrapper) {
+            modalImgWrapper.onclick = () => {
+                openFullImageViewer(pc.screenUrl, `Live Feed: ${pc.id} - ${pc.learner}`);
+            };
+        }
+    }
 
     const nextStatus = pc.status === "locked" ? "active" : "locked";
     lockBtn.textContent = pc.status === "locked" ? "Unlock Terminal" : "Lock Terminal";
@@ -225,6 +252,42 @@ function openNodeModal(pc) {
     };
 
     modal.style.display = "flex";
+}
+
+// Full Image Lightbox Modal Viewer
+function openFullImageViewer(imageUrl, captionText) {
+    let viewerModal = document.getElementById("samcamFullImageViewer");
+    if (!viewerModal) {
+        viewerModal = document.createElement("div");
+        viewerModal.id = "samcamFullImageViewer";
+        viewerModal.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 20000; padding: 20px;";
+        document.body.appendChild(viewerModal);
+    }
+
+    viewerModal.innerHTML = `
+        <div style="position: relative; max-width: 90%; max-height: 85vh; display: flex; flex-direction: column; align-items: center;">
+            <div style="display: flex; justify-content: space-between; width: 100%; align-items: center; margin-bottom: 10px; color: #f8fafc;">
+                <span style="font-weight: 600; font-size: 1rem;"><i class="fa-solid fa-image"></i> ${captionText || "Full Screen Inspection"}</span>
+                <button id="closeFullImage" style="background: #ef4444; border: none; color: #fff; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center;"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div style="background: #0f172a; border: 1px solid #334155; border-radius: 8px; overflow: hidden; box-shadow: 0 15px 35px rgba(0,0,0,0.7); max-width: 100%; max-height: 75vh;">
+                <img src="${imageUrl}" alt="Expanded Live Snapshot" style="width: 100%; height: auto; max-height: 75vh; object-fit: contain; display: block;" />
+            </div>
+        </div>
+    `;
+
+    viewerModal.style.display = "flex";
+
+    // Close options
+    document.getElementById("closeFullImage").onclick = () => {
+        viewerModal.style.display = "none";
+    };
+
+    viewerModal.onclick = (e) => {
+        if (e.target === viewerModal) {
+            viewerModal.style.display = "none";
+        }
+    };
 }
 
 function closeModal() {
