@@ -45,27 +45,37 @@ window.initBandwidthAnalytics = function() {
 
 // Initialize Chart.js dynamic line graph inside the placeholder container
 function initBandwidthChart() {
-    const container = document.querySelector('#bandwidthAnalyticsView div[style*="Live Subnet Utilization"]');
-    // Alternatively look for container by text or direct structural selector
-    const targetBox = document.querySelector('#bandwidthAnalyticsView') ? document.querySelector('#bandwidthAnalyticsView').querySelectorAll('.card, div[style*="background: #ffffff"]')[4] || document.querySelector('#bandwidthAnalyticsView div.border-dashed, #bandwidthAnalyticsView div[style*="border"]') : null;
+    const cards = document.querySelectorAll('#bandwidthAnalyticsView > div, #bandwidthAnalyticsView .card, #bandwidthAnalyticsView div[style*="background: #ffffff"]');
+    // Target the bottom full-width container card (usually the 5th card or the one holding the subnet title)
+    let targetBox = null;
+    
+    document.querySelectorAll('#bandwidthAnalyticsView div').forEach(el => {
+        if (el.textContent && el.textContent.includes('Live Subnet Ingress') && !targetBox) {
+            targetBox = el.closest('div[style*="background: #ffffff"]') || el.parentElement;
+        }
+    });
 
+    if (!targetBox) {
+        const allCards = document.querySelectorAll('#bandwidthAnalyticsView > div');
+        targetBox = allCards[allCards.length - 1];
+    }
     if (!targetBox) return;
 
-    // Check if canvas already exists; if not, inject it cleanly over the placeholder state
-    let canvas = document.getElementById('bandwidthChartCanvas');
-    if (!canvas) {
+    // Inject canvas wrapper with explicit height and flex layout to force visibility
+    let wrapper = targetBox.querySelector('#chartWrapperContainer');
+    if (!wrapper) {
         targetBox.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
                 <span style="font-weight: 600; font-size: 0.95rem; color: #1e293b;"><i class="fa-solid fa-chart-line" style="color: #0284c7; margin-right: 6px;"></i> Live Subnet Ingress & Latency Telemetry</span>
                 <span style="font-size: 0.75rem; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 4px;">Port 8080 Active</span>
             </div>
-            <div style="position: relative; height: 240px; width: 100%;">
+            <div id="chartWrapperContainer" style="position: relative; height: 260px; width: 100%;">
                 <canvas id="bandwidthChartCanvas"></canvas>
             </div>
         `;
-        canvas = document.getElementById('bandwidthChartCanvas');
     }
 
+    const canvas = document.getElementById('bandwidthChartCanvas');
     if (canvas && typeof Chart !== 'undefined' && !bandwidthChartInstance) {
         const ctx = canvas.getContext('2d');
         bandwidthChartInstance = new Chart(ctx, {
@@ -77,7 +87,7 @@ function initBandwidthChart() {
                         label: 'Ingress (Mbps)',
                         data: [],
                         borderColor: '#0284c7',
-                        backgroundColor: 'rgba(2, 132, 199, 0.08kra)',
+                        backgroundColor: 'rgba(2, 132, 199, 0.08)',
                         borderWidth: 2,
                         tension: 0.3,
                         yAxisID: 'y',
