@@ -1664,20 +1664,18 @@ window.renderStudentModalTable = async function() {
   const paginatedStudents = filteredStudents.slice(startIndex, startIndex + itemsPerPage);
 
   if (paginatedStudents.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem; color:#64748b;"><i class="fa-solid fa-user-slash" style="font-size: 1.5rem; margin-bottom: 0.5rem; display:block;"></i>No matching students found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem; color:#64748b;"><i class="fa-solid fa-user-slash" style="font-size: 1.5rem; margin-bottom: 0.5rem; display:block;"></i>No matching students found.</td></tr>';
     if (typeof window.renderStudentPaginationControls === 'function') {
       window.renderStudentPaginationControls(0, 1);
     }
     return;
   }
 
-  tbody.innerHTML = paginatedStudents.map((s, index) => {
-    const absoluteIndex = startIndex + index + 1;
+  tbody.innerHTML = paginatedStudents.map((s) => {
     const identifier = s.schoolId || s.username || s.id;
     const isEditing = window.editingUsername === identifier;
     
     const checkColStyle = 'width: 40px; text-align: center; white-space: nowrap;';
-    const indexColStyle = 'width: 50px; text-align: center; white-space: nowrap;';
 
     if (isEditing) {
       return `
@@ -1707,7 +1705,6 @@ window.renderStudentModalTable = async function() {
     return `
       <tr>
         <td style="${checkColStyle}"><input type="checkbox" class="student-checkbox" value="${identifier}" onclick="updateStudentBulkDeleteState()" style="cursor: pointer; width: 15px; height: 15px; accent-color: #0ea5e9;"></td>
-        <td style="${indexColStyle}; color: #64748b; font-size: 0.8rem;">${absoluteIndex}</td>
         <td><strong>${escapeHtml(s.fullName || '')}</strong></td>
         <td><span style="background: #e0f2fe; color: #0369a1; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${escapeHtml(s.class || 'N/A')}</span></td>
         <td><code>${escapeHtml(identifier)}</code></td>
