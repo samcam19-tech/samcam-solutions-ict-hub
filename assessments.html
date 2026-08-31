@@ -587,21 +587,34 @@
     <p style="font-size: 0.85rem; color: #64748b; margin:0;">Download class registration records or manage individual student accounts.</p>
     
     <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; width:100%;">
-      <!-- Class Filter Dropdown for Export -->
-      <select id="exportClassSelect" style="padding: 0.45rem 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #f8fafc; color: #334155; cursor: pointer;">
-        <option value="">All Classes (Full Export)</option>
-        <option value="S1">S.1</option>
-        <option value="S2">S.2</option>
-        <option value="S3">S.3</option>
-        <option value="S4">S.4</option>
-        <option value="S5">S.5</option>
-        <option value="S6">S.6</option>
-      </select>
+  <!-- Class Filter Dropdown -->
+  <select id="exportClassSelect" style="padding: 0.45rem 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #f8fafc; color: #334155; cursor: pointer;">
+    <option value="">All Classes</option>
+    <option value="S1">S.1</option>
+    <option value="S2">S.2</option>
+    <option value="S3">S.3</option>
+    <option value="S4">S.4</option>
+    <option value="S5">S.5</option>
+    <option value="S6">S.6</option>
+  </select>
 
-      <button id="downloadCsvBtn" onclick="downloadStudentCSV()" class="btn-action btn-secondary"><i class="fa-solid fa-file-csv"></i> Download CSV</button>
-      <button id="openManageStudentsBtn" onclick="openManageStudentsModal()" class="btn-action btn-download" style="border:none;"><i class="fa-solid fa-user-gear"></i> Manage Registered Students</button>
-      <button id="openManageStaffBtn" class="btn-action" style="display:none; background:#7c3aed; border:none;"><i class="fa-solid fa-user-shield"></i> Manage Staff Accounts</button>
-    </div>
+  <!-- Clean Actions with Icon Before Label and No Background Fill -->
+  <button id="downloadCsvBtn" onclick="downloadStudentCSV()" class="btn-action" style="background: transparent; color: #0284c7; border: 1px solid #bae6fd; padding: 0.45rem 0.75rem; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;">
+    <i class="fa-solid fa-file-csv" style="color: #0284c7;"></i> Download CSV
+  </button>
+
+  <button id="downloadPdfBtn" onclick="downloadStudentPDF()" class="btn-action" style="background: transparent; color: #dc2626; border: 1px solid #fecaca; padding: 0.45rem 0.75rem; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;">
+    <i class="fa-solid fa-file-pdf" style="color: #dc2626;"></i> Download PDF
+  </button>
+
+  <button id="openManageStudentsBtn" onclick="openManageStudentsModal()" class="btn-action" style="background: transparent; color: #0ea5e9; border: 1px solid #bae6fd; padding: 0.45rem 0.75rem; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;">
+    <i class="fa-solid fa-user-gear" style="color: #0ea5e9;"></i> Manage Registered Students
+  </button>
+
+  <button id="openManageStaffBtn" class="btn-action" style="display:none; background: transparent; color: #7c3aed; border: 1px solid #e9d5ff; padding: 0.45rem 0.75rem; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;">
+    <i class="fa-solid fa-user-shield" style="color: #7c3aed;"></i> Manage Staff Accounts
+  </button>
+</div>
   </div>
 </div>
 
