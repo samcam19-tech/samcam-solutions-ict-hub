@@ -1,134 +1,106 @@
-// ==========================================
-// 2. firewall-policies.js
-// ==========================================
-// Manages lab network rules, website blocking/whitelisting, and security enforcement policies.
+// firewall-policies.js
+// Manages functional firewall access rules directly persisted and synced with Firestore.
 
-document.addEventListener("DOMContentLoaded", () => {
-    window.initFirewallPolicies = function() {
-        let firewallView = document.getElementById("firewallPoliciesView");
-        if (!firewallView) {
-            firewallView = document.createElement("div");
-            firewallView.id = "firewallPoliciesView";
-            firewallView.className = "dashboard-view-section";
-            firewallView.innerHTML = `
-                <div class="view-header" style="margin-bottom: 20px;">
-                    <h2 style="color: #f8fafc; font-size: 1.4rem;"><i class="fa-solid fa-shield-halved" style="color: #ef4444;"></i> Firewall & Lab Security Policies</h2>
-                    <p style="color: #94a3b8; font-size: 0.9rem;">Enforce URL filters, block distracting domains, and manage student internet access levels.</p>
-                </div>
+window.initFirewallPolicies = function() {
+    if (typeof firebase === 'undefined' || !firebase.apps.length) {
+        console.warn("Firebase not initialized for Firewall Policies.");
+        return;
+    }
 
-                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px;">
-                    <div style="background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155;">
-                        <h3 style="color: #f8fafc; font-size: 1.1rem; margin-bottom: 15px;"><i class="fa-solid fa-ban"></i> Restricted Domains & URL Blacklist</h3>
-                        <div style="display: flex; gap: 10px; margin-bottom: 15px;">
-                            <input type="text" id="newBlockedUrl" placeholder="e.g. socialmedia.com or gaming site" style="flex: 1; background: #0f172a; border: 1px solid #475569; color: #fff; padding: 10px; border-radius: 6px;" />
-                            <button id="addBlockRuleBtn" style="background: #ef4444; border: none; color: #fff; padding: 0 20px; border-radius: 6px; cursor: pointer; font-weight: 600;"><i class="fa-solid fa-plus"></i> Block Domain</button>
-                        </div>
-                        <div id="blockedDomainsList" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto;">
-                            <!-- Populated dynamically -->
-                        </div>
-                    </div>
+    const db = firebase.firestore();
 
-                    <div style="background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; display: flex; flex-direction: column; justify-content: space-between;">
-                        <div>
-                            <h3 style="color: #f8fafc; font-size: 1.1rem; margin-bottom: 15px;"><i class="fa-solid fa-sliders"></i> Global Security Preset</h3>
-                            <p style="color: #94a3b8; font-size: 0.85rem; margin-bottom: 20px;">Instantly switch lab-wide firewall restriction enforcement tiers.</p>
-                            
-                            <div style="display: flex; flex-direction: column; gap: 12px;">
-                                <label style="display: flex; align-items: center; gap: 10px; color: #f8fafc; cursor: pointer; background: #0f172a; padding: 10px; border-radius: 6px; border: 1px solid #334155;">
-                                    <input type="radio" name="firewallTier" value="strict" checked />
-                                    <div>
-                                        <strong style="display: block; font-size: 0.85rem;">Strict Exam Mode</strong>
-                                        <span style="font-size: 0.75rem; color: #94a3b8;">Blocks all external sites except approved portal</span>
-                                    </div>
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 10px; color: #f8fafc; cursor: pointer; background: #0f172a; padding: 10px; border-radius: 6px; border: 1px solid #334155;">
-                                    <input type="radio" name="firewallTier" value="guided" />
-                                    <div>
-                                        <strong style="display: block; font-size: 0.85rem;">Guided Research</strong>
-                                        <span style="font-size: 0.75rem; color: #94a3b8;">Allows educational search & docs, blocks social media</span>
-                                    </div>
-                                </label>
-                                <label style="display: flex; align-items: center; gap: 10px; color: #f8fafc; cursor: pointer; background: #0f172a; padding: 10px; border-radius: 6px; border: 1px solid #334155;">
-                                    <input type="radio" name="firewallTier" value="open" />
-                                    <div>
-                                        <strong style="display: block; font-size: 0.85rem;">Open Lab</strong>
-                                        <span style="font-size: 0.75rem; color: #94a3b8;">Standard unrestricted student access</span>
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-                        <button id="applyFirewallPreset" style="margin-top: 20px; background: #0ea5e9; border: none; color: #fff; padding: 12px; border-radius: 6px; font-weight: 600; cursor: pointer;">Apply Firewall Tier</button>
-                    </div>
-                </div>
-            `;
-            document.body.appendChild(firewallView);
+    // Real-time listener for firewall rules collection
+    db.collection("firewall_rules").orderBy("ruleId").onSnapshot((snapshot) => {
+        const tbody = document.querySelector('#firewallPoliciesView table tbody');
+        if (!tbody) return;
+
+        tbody.innerHTML = ''; // Clear existing DOM rows
+
+        if (snapshot.empty) {
+            // Seed initial rules if empty
+            seedInitialFirewallRules(db);
+            return;
         }
 
-        initFirewallListeners();
-    };
+        snapshot.forEach((doc) => {
+            const rule = doc.data();
+            appendRuleRowToDOM(tbody, doc.id, rule);
+        });
+    }, (error) => {
+        console.error("Error listening to firewall rules: ", error);
+    });
+};
 
-    function initFirewallListeners() {
-        const addBtn = document.getElementById("addBlockRuleBtn");
-        const input = document.getElementById("newBlockedUrl");
-        const listContainer = document.getElementById("blockedDomainsList");
+function seedInitialFirewallRules(db) {
+    const defaultRules = [
+        { ruleId: "RULE-101", subnet: "192.168.10.0/24", protocol: "TCP / 80, 443", action: "ALLOW", status: "Active" },
+        { ruleId: "RULE-102", subnet: "10.45.0.0/16 (Guest)", protocol: "UDP / 53, 67", action: "BLOCK", status: "Active" }
+    ];
 
-        // Default static/dynamic sample blacklisted items
-        let blockedDomains = ["discord.com", "facebook.com", "tiktok.com", "steamcommunity.com"];
+    defaultRules.forEach((rule) => {
+        db.collection("firewall_rules").add(rule).catchall = (err) => console.error(err);
+    });
+}
 
-        const renderBlacklist = () => {
-            if (!listContainer) return;
-            listContainer.innerHTML = "";
-            blockedDomains.forEach((domain, idx) => {
-                const row = document.createElement("div");
-                row.style.cssText = "display: flex; justify-content: space-between; align-items: center; background: #0f172a; padding: 10px 14px; border-radius: 6px; border: 1px solid #334155;";
-                row.innerHTML = `
-                    <span style="color: #f8fafc; font-size: 0.9rem;"><i class="fa-solid fa-globe" style="color: #ef4444; margin-right: 8px;"></i> ${domain}</span>
-                    <button class="remove-domain-btn" data-index="${idx}" style="background: transparent; border: none; color: #ef4444; cursor: pointer; font-size: 0.9rem;"><i class="fa-solid fa-trash"></i></button>
-                `;
-                listContainer.appendChild(row);
+window.openAddFirewallRuleModal = function() {
+    const targetSubnet = prompt("Enter Target Subnet or IP Address (e.g., 192.168.20.0/24):");
+    if (!targetSubnet) return;
+
+    const protocolPort = prompt("Enter Protocol / Port (e.g., TCP / 8080):", "TCP / 80, 443");
+    if (!protocolPort) return;
+
+    const action = prompt("Enter Rule Action (ALLOW or BLOCK):", "ALLOW").toUpperCase();
+    
+    if (action !== "ALLOW" && action !== "BLOCK") {
+        alert("Invalid action specified. Must be ALLOW or BLOCK.");
+        return;
+    }
+
+    if (typeof firebase !== 'undefined' && firebase.apps.length) {
+        const db = firebase.firestore();
+        const randomIdNum = Math.floor(103 + Math.random() * 900);
+        
+        db.collection("firewall_rules").add({
+            ruleId: `RULE-${randomIdNum}`,
+            subnet: targetSubnet,
+            protocol: protocolPort,
+            action: action,
+            status: "Active",
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }).then(() => {
+            console.log("Firewall rule successfully added to Firestore.");
+        }).catch((error) => {
+            alert("Error adding rule: " + error.message);
+        });
+    }
+};
+
+window.deleteFirewallRule = function(docId) {
+    if (confirm("Are you sure you want to revoke and delete this security rule?")) {
+        if (typeof firebase !== 'undefined' && firebase.apps.length) {
+            firebase.firestore().collection("firewall_rules").doc(docId).delete().then(() => {
+                console.log("Rule successfully revoked.");
+            }).catch((error) => {
+                alert("Error removing rule: " + error.message);
             });
-
-            // Bind remove buttons
-            document.querySelectorAll(".remove-domain-btn").forEach(btn => {
-                btn.onclick = (e) => {
-                    const index = e.currentTarget.dataset.index;
-                    blockedDomains.splice(index, 1);
-                    renderBlacklist();
-                };
-            });
-        };
-
-        if (addBtn && input) {
-            addBtn.onclick = () => {
-                const val = input.value.trim().toLowerCase();
-                if (val && !blockedDomains.includes(val)) {
-                    blockedDomains.push(val);
-                    input.value = "";
-                    renderBlacklist();
-                }
-            };
-        }
-
-        renderBlacklist();
-
-        const applyPresetBtn = document.getElementById("applyFirewallPreset");
-        if (applyPresetBtn) {
-            applyPresetBtn.onclick = async () => {
-                const selectedTier = document.querySelector('input[name="firewallTier"]:checked').value;
-                if (window.db) {
-                    try {
-                        await window.db.collection("lab_settings").doc("firewall").set({
-                            tier: selectedTier,
-                            blockedDomains: blockedDomains,
-                            updatedAt: new Date().toISOString()
-                        });
-                        alert(`Firewall Policy successfully updated to: ${selectedTier.toUpperCase()}`);
-                    } catch (err) {
-                        console.error("Error updating firewall policy:", err);
-                        alert("Failed to synchronize firewall settings to Firestore.");
-                    }
-                }
-            };
         }
     }
-});
+};
+
+function appendRuleRowToDOM(tbody, docId, rule) {
+    const actionBadgeStyle = rule.action === 'ALLOW' 
+        ? 'background: #dcfce7; color: #16a34a;' 
+        : 'background: #fee2e2; color: #dc2626;';
+
+    const newRow = document.createElement('tr');
+    newRow.style.borderBottom = '1px solid #f1f5f9;';
+    newRow.innerHTML = `
+        <td style="padding: 12px 16px;"><code>${rule.ruleId}</code></td>
+        <td style="padding: 12px 16px;">${rule.subnet}</td>
+        <td style="padding: 12px 16px;">${rule.protocol}</td>
+        <td style="padding: 12px 16px;"><span style="${actionBadgeStyle} font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 4px;">${rule.action}</span></td>
+        <td style="padding: 12px 16px;"><span style="color: #16a34a; font-weight: 600;">${rule.status || 'Active'}</span></td>
+        <td style="padding: 12px 16px; text-align: right;"><button onclick="deleteFirewallRule('${docId}')" style="background: none; border: none; color: #dc2626; cursor: pointer; font-weight: 600;">Revoke</button></td>
+    `;
+    tbody.appendChild(newRow);
+}
