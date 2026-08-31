@@ -7,6 +7,9 @@ window.initFirewallPolicies = function() {
         return;
     }
 
+    // Ensure custom modal structure exists in the DOM
+    ensureFirewallModalInDOM();
+
     const db = firebase.firestore();
 
     // Real-time listener for firewall rules collection
@@ -42,19 +45,72 @@ function seedInitialFirewallRules(db) {
     });
 }
 
+// Injects the custom modal HTML and CSS into the page dynamically if not already present
+function ensureFirewallModalInDOM() {
+    if (document.getElementById('samcamFirewallModal')) return;
+
+    const modalHTML = `
+    <div id="samcamFirewallModal" style="display: none; position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(2px);">
+        <div style="background: #ffffff; width: 100%; max-width: 480px; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04); overflow: hidden; animation: sfModalFadeIn 0.2s ease-out;">
+            <div style="background: #f8fafc; padding: 16px 20px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <h3 style="margin: 0; font-size: 1.1rem; color: #0f172a; font-weight: 600;">Add Security Rule</h3>
+                <button type="button" onclick="closeAddFirewallRuleModal()" style="background: none; border: none; font-size: 1.25rem; color: #64748b; cursor: pointer;">&times;</button>
+            </div>
+            <form id="samcamFirewallForm" onsubmit="submitFirewallRuleForm(event)" style="padding: 20px;">
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Target Service, Subnet, or Category</label>
+                    <input type="text" id="fwTargetInput" required placeholder="e.g., youtube.com, media, sports, .exe, or 10.212.202.0/24" style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box; outline: none; transition: border-color 0.15s;" onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='#cbd5e1'">
+                    <small style="display: block; color: #64748b; font-size: 0.75rem; margin-top: 4px;">Tip: Use keywords like <code>media</code> for audio/video, <code>sports</code> for sports sites, or <code>.exe</code> for downloads.</small>
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Protocol / Filter Type</label>
+                    <input type="text" id="fwProtocolInput" required value="HTTPS / App & Media Filter" style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box; outline: none;" onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='#cbd5e1'">
+                </div>
+                <div style="margin-bottom: 20px;">
+                    <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Rule Action</label>
+                    <select id="fwActionInput" style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; background: #fff; box-sizing: border-box; outline: none;">
+                        <option value="BLOCK">BLOCK (Deny Traffic)</option>
+                        <option value="ALLOW">ALLOW (Permit Traffic)</option>
+                    </select>
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                    <button type="button" onclick="closeAddFirewallRuleModal()" style="padding: 9px 16px; background: #f1f5f9; color: #475569; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.875rem;">Cancel</button>
+                    <button type="submit" style="padding: 9px 18px; background: #2563eb; color: #ffffff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 0.875rem;">Save Rule</button>
+                </div>
+            </form>
+        </div>
+    </div>`;
+
+    const div = document.createElement('div');
+    div.innerHTML = modalHTML;
+    document.body.appendChild(div);
+}
+
 window.openAddFirewallRuleModal = function() {
-    const targetService = prompt("Enter Target Software/Service or Subnet (e.g., youtube.com, discord.com, or 192.168.10.0/24):");
-    if (!targetService) return;
-
-    const protocolPort = prompt("Enter Protocol / Port or Filter Type (e.g., TCP / 80,443 or Application Layer):", "HTTPS / App Filter");
-    if (!protocolPort) return;
-
-    const action = prompt("Enter Rule Action (ALLOW or BLOCK):", "BLOCK").toUpperCase();
-    
-    if (action !== "ALLOW" && action !== "BLOCK") {
-        alert("Invalid action specified. Must be ALLOW or BLOCK.");
-        return;
+    ensureFirewallModalInDOM();
+    const modal = document.getElementById('samcamFirewallModal');
+    if (modal) {
+        document.getElementById('fwTargetInput').value = '';
+        modal.style.display = 'flex';
+        document.getElementById('fwTargetInput').focus();
     }
+};
+
+window.closeAddFirewallRuleModal = function() {
+    const modal = document.getElementById('samcamFirewallModal');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+};
+
+window.submitFirewallRuleForm = function(event) {
+    event.preventDefault();
+    
+    const targetService = document.getElementById('fwTargetInput').value.trim();
+    const protocolPort = document.getElementById('fwProtocolInput').value.trim();
+    const action = document.getElementById('fwActionInput').value;
+
+    if (!targetService) return;
 
     if (typeof firebase !== 'undefined' && firebase.apps.length) {
         const db = firebase.firestore();
@@ -69,6 +125,7 @@ window.openAddFirewallRuleModal = function() {
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => {
             console.log("Service/Firewall rule successfully added to Firestore.");
+            closeAddFirewallRuleModal();
         }).catch((error) => {
             alert("Error adding rule: " + error.message);
         });
