@@ -3479,7 +3479,7 @@ window.getStudentSubmissionCardHTML = function(sub, assessmentId) {
    STUDENT PORTAL: VIEW OWN GRADES & FEEDBACK MODULE
    ========================================================================== */
 window.renderStudentGrades = async function(currentStudentIdentifier) {
-  const container = document.getElementById('submissionsContainer');
+  const container = document.getElementById('studentGradesContainer');
   if (!container) return;
 
   const currentUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser'));
@@ -3517,7 +3517,7 @@ window.renderStudentGrades = async function(currentStudentIdentifier) {
   }
 
   if (submissions.length === 0) {
-    container.innerHTML = '<p style="color:#64748b; font-size:0.85rem; text-align:center; padding:1rem;">No submissions found for your profile.</p>';
+    container.innerHTML = '<p style="color:#64748b; font-size:0.85rem;">No submissions found for your profile.</p>';
     return;
   }
 
@@ -3525,8 +3525,8 @@ window.renderStudentGrades = async function(currentStudentIdentifier) {
     <div style="background:#fff; border:1px solid #e2e8f0; border-radius:8px; padding:1rem; margin-bottom:0.75rem; box-shadow:0 1px 3px rgba(0,0,0,0.05);">
       <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.5rem;">
         <div>
-          <strong style="color:#1e293b; font-size:0.95rem;">${sub.testTitle || 'Assignment Submission'}</strong><br>
-          <span style="color:#64748b; font-size:0.8rem;">File: <em>${sub.fileName || 'Uploaded Document'}</em></span>
+          <strong style="color:#1e293b; font-size:0.95rem;">${sub.testTitle}</strong><br>
+          <span style="color:#64748b; font-size:0.8rem;">File: <em>${sub.fileName}</em></span>
         </div>
         <div>
           ${sub.grade 
