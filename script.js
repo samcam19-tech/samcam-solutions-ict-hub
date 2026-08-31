@@ -1683,7 +1683,6 @@ window.renderStudentModalTable = async function() {
       return `
         <tr>
           <td style="${checkColStyle}"><input type="checkbox" disabled style="opacity: 0.4;"></td>
-          <td style="${indexColStyle}; color: #64748b;">${absoluteIndex}</td>
           <td><input type="text" id="editFullName" value="${escapeHtml(s.fullName || '')}" style="width:100%; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px;"></td>
           <td>
             <select id="editClass" style="width:100%; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px;">
