@@ -1174,20 +1174,26 @@ window.handleBulkImport = function() {
 };
 
 // ==========================================================================
-// 1. SAAS-GRADE STUDENT CSV EXPORT (WITH CLASS FILTERING & CUSTOM MODAL FEEDBACK)
+// 1. SAAS-GRADE STUDENT CSV EXPORT (WITH SCHOOL NAME, TITLE CASE & SORTING)
 // ==========================================================================
 window.downloadStudentCSV = async function() {
   const classSelect = document.getElementById('exportClassSelect');
   const selectedClass = classSelect ? classSelect.value.trim() : '';
 
   let students = [];
+  let fetchedSchoolName = null;
+  let targetSchoolId = null;
+
+  if (window.currentUser) {
+    targetSchoolId = window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId || null;
+  }
+
   if (window.db) {
     try {
-      const activeSchoolId = window.currentUser ? (window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId) : null;
       let query = window.db.collection('users').where('role', '==', 'Student');
       
-      if (activeSchoolId) {
-        query = query.where('schoolId', '==', activeSchoolId);
+      if (targetSchoolId) {
+        query = query.where('schoolId', '==', targetSchoolId);
       }
       if (selectedClass) {
         query = query.where('class', '==', selectedClass);
@@ -1195,6 +1201,15 @@ window.downloadStudentCSV = async function() {
 
       const snap = await query.get();
       snap.forEach(doc => students.push(doc.data()));
+
+      // Fetch official school name from Firestore 'schools' collection
+      if (targetSchoolId) {
+        const schoolDoc = await window.db.collection('schools').doc(targetSchoolId).get();
+        if (schoolDoc.exists) {
+          const schoolData = schoolDoc.data();
+          fetchedSchoolName = schoolData.schoolName || schoolData.name;
+        }
+      }
     } catch (err) {
       console.warn('Fallback to local storage:', err);
     }
@@ -1202,15 +1217,21 @@ window.downloadStudentCSV = async function() {
 
   if (students.length === 0) {
     const users = JSON.parse(localStorage.getItem('portal_users')) || [];
-    const activeSchoolId = window.currentUser ? (window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId) : null;
     
     students = users.filter(u => {
       const isStudent = u.role === 'Student';
-      const matchesSchool = !activeSchoolId || (u.schoolId || '').toLowerCase() === activeSchoolId.toLowerCase();
+      const matchesSchool = !targetSchoolId || (u.schoolId || '').toLowerCase() === targetSchoolId.toLowerCase();
       const matchesClass = !selectedClass || (u.class || '').toUpperCase() === selectedClass.toUpperCase();
       return isStudent && matchesSchool && matchesClass;
     });
   }
+
+  // Fallback school name lookup
+  if (!fetchedSchoolName && window.currentUser) {
+    fetchedSchoolName = window.currentUser.schoolName || window.currentUser.institutionName;
+  }
+
+  const finalSchoolName = fetchedSchoolName || (targetSchoolId ? targetSchoolId.toUpperCase() : 'Academic Institution');
 
   if (students.length === 0) {
     showCustomModal({
@@ -1221,9 +1242,35 @@ window.downloadStudentCSV = async function() {
     return;
   }
 
-  let csvContent = "data:text/csv;charset=utf-8,Full Name,Class,School ID,Username,Password\n";
+  // Helper function to capitalize each word in names
+  function formatTitleCase(str) {
+    if (!str) return 'N/A';
+    return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  }
+
+  // Sort students: By Class first (if whole school), then Alphabetically by Full Name
+  students.sort((a, b) => {
+    const classA = (a.class || '').toLowerCase();
+    const classB = (b.class || '').toLowerCase();
+    
+    if (!selectedClass && classA !== classB) {
+      return classA.localeCompare(classB, undefined, { numeric: true, sensitivity: 'base' });
+    }
+    
+    const nameA = (a.fullName || a.name || '').toLowerCase();
+    const nameB = (b.fullName || b.name || '').toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
+
+  // Build CSV content with School Name header row
+  let csvContent = `data:text/csv;charset=utf-8,`;
+  csvContent += `"${finalSchoolName.replace(/"/g, '""')}"\n`;
+  csvContent += `${selectedClass ? 'Class: ' + selectedClass : 'Complete School Student Credentials Report'}\n`;
+  csvContent += `Full Name,Class,School ID,Username,Password\n`;
+
   students.forEach(s => {
-    csvContent += `"${s.fullName || ''}","${s.class || ''}","${s.schoolId || ''}","${s.username || ''}","${s.password || ''}"\n`;
+    const formattedName = formatTitleCase(s.fullName || s.name);
+    csvContent += `"${formattedName}","${s.class || ''}","${s.schoolId || targetSchoolId || ''}","${s.username || ''}","${s.password || ''}"\n`;
   });
 
   const encodedUri = encodeURI(csvContent);
@@ -1237,27 +1284,34 @@ window.downloadStudentCSV = async function() {
 
   showCustomModal({
     title: "Export Successful",
-    message: `Successfully downloaded CSV credentials for ${students.length} student(s)${selectedClass ? ' in ' + selectedClass : ''}.`,
+    message: `Successfully downloaded sorted CSV credentials for ${students.length} student(s)${selectedClass ? ' in ' + selectedClass : ''}.`,
     type: "success"
   });
 };
 
-
 // ==========================================================================
-// 2. SAAS-GRADE STUDENT PDF EXPORT (WITH CLASS FILTERING & CLEAN PRINT WINDOW)
+// SAAS-GRADE STUDENT PDF EXPORT (WITH FIRESTORE SCHOOL NAME & LOGO LOOKUP)
 // ==========================================================================
 window.downloadStudentPDF = async function() {
   const classSelect = document.getElementById('exportClassSelect');
   const selectedClass = classSelect ? classSelect.value.trim() : '';
 
   let students = [];
+  let fetchedSchoolName = null;
+  let fetchedSchoolLogo = null;
+  let targetSchoolId = null;
+
+  // Determine target school ID from current user context
+  if (window.currentUser) {
+    targetSchoolId = window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId || null;
+  }
+
   if (window.db) {
     try {
-      const activeSchoolId = window.currentUser ? (window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId) : null;
       let query = window.db.collection('users').where('role', '==', 'Student');
       
-      if (activeSchoolId) {
-        query = query.where('schoolId', '==', activeSchoolId);
+      if (targetSchoolId) {
+        query = query.where('schoolId', '==', targetSchoolId);
       }
       if (selectedClass) {
         query = query.where('class', '==', selectedClass);
@@ -1265,22 +1319,43 @@ window.downloadStudentPDF = async function() {
 
       const snap = await query.get();
       snap.forEach(doc => students.push(doc.data()));
+
+      // Fetch official school details directly from the 'schools' document (matching your Firestore schema)
+      if (targetSchoolId) {
+        const schoolDoc = await window.db.collection('schools').doc(targetSchoolId).get();
+        if (schoolDoc.exists) {
+          const schoolData = schoolDoc.data();
+          fetchedSchoolName = schoolData.schoolName || schoolData.name; // Matches your "schoolName" field
+          fetchedSchoolLogo = schoolData.logoUrl || schoolData.logo;     // Matches your "logoUrl" field
+        }
+      }
     } catch (err) {
-      console.warn('Fallback to local storage:', err);
+      console.warn('Fallback to local storage for PDF export:', err);
     }
   }
 
+  // Fallback to localStorage if Firestore failed or returned empty
   if (students.length === 0) {
     const users = JSON.parse(localStorage.getItem('portal_users')) || [];
-    const activeSchoolId = window.currentUser ? (window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId) : null;
     
     students = users.filter(u => {
       const isStudent = u.role === 'Student';
-      const matchesSchool = !activeSchoolId || (u.schoolId || '').toLowerCase() === activeSchoolId.toLowerCase();
+      const matchesSchool = !targetSchoolId || (u.schoolId || '').toLowerCase() === targetSchoolId.toLowerCase();
       const matchesClass = !selectedClass || (u.class || '').toUpperCase() === selectedClass.toUpperCase();
       return isStudent && matchesSchool && matchesClass;
     });
   }
+
+  // Fallback lookups from user profile if needed
+  if (!fetchedSchoolName && window.currentUser) {
+    fetchedSchoolName = window.currentUser.schoolName || window.currentUser.institutionName;
+  }
+  if (!fetchedSchoolLogo && window.currentUser) {
+    fetchedSchoolLogo = window.currentUser.logoUrl || window.currentUser.schoolLogo;
+  }
+
+  const finalSchoolName = fetchedSchoolName || (targetSchoolId ? targetSchoolId.toUpperCase() : 'Academic Institution');
+  const finalSchoolLogo = fetchedSchoolLogo || '';
 
   if (students.length === 0) {
     showCustomModal({
@@ -1291,27 +1366,33 @@ window.downloadStudentPDF = async function() {
     return;
   }
 
-  // Build a clean, professional print document structure for PDF saving
+  // Helper function to capitalize each word in full names (e.g., "ahabwe bruce" -> "Ahabwe Bruce")
+  function formatTitleCase(str) {
+    if (!str) return 'N/A';
+    return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  }
+
+  // Open print/PDF window
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     alert('Please allow popups for this website to download PDF credentials.');
     return;
   }
 
-  const schoolName = window.currentUser && window.currentUser.schoolName ? window.currentUser.schoolName : 'Academic Institution';
-  const reportTitle = selectedClass ? `Student Credentials Report - Class ${selectedClass}` : 'Complete Student Credentials Report';
+  const reportTitle = selectedClass ? `Student Credentials Report — Class ${selectedClass}` : 'Complete Student Credentials Report';
   const currentDate = new Date().toLocaleDateString();
 
   let rowsHTML = '';
   students.forEach((s, index) => {
+    const formattedName = formatTitleCase(s.fullName || s.name);
     rowsHTML += `
       <tr>
-        <td style="text-align:center; padding: 8px; border-bottom: 1px solid #e2e8f0;">${index + 1}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-weight: 500;">${s.fullName || 'N/A'}</td>
-        <td style="text-align:center; padding: 8px; border-bottom: 1px solid #e2e8f0;">${s.class || 'N/A'}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-family: monospace;">${s.schoolId || 'N/A'}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-family: monospace; color: #0284c7;">${s.username || 'N/A'}</td>
-        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-family: monospace; color: #dc2626;">${s.password || 'N/A'}</td>
+        <td class="center">${index + 1}</td>
+        <td><strong>${formattedName}</strong></td>
+        <td class="center">${s.class || 'N/A'}</td>
+        <td class="code">${s.schoolId || targetSchoolId || 'N/A'}</td>
+        <td class="code user">${s.username || 'N/A'}</td>
+        <td class="code pass">${s.password || 'N/A'}</td>
       </tr>
     `;
   });
@@ -1320,16 +1401,74 @@ window.downloadStudentPDF = async function() {
     <!DOCTYPE html>
     <html>
     <head>
+      <meta charset="utf-8">
       <title>${reportTitle}</title>
       <style>
-        body { font-family: Arial, sans-serif; color: #1e293b; margin: 2rem; }
-        .header { text-align: center; margin-bottom: 2rem; border-bottom: 2px solid #cbd5e1; padding-bottom: 1rem; }
-        .header h2 { margin: 0 0 5px 0; color: #0f172a; }
-        .header p { margin: 0; color: #64748b; font-size: 0.9rem; }
-        table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.85rem; }
-        th { background: #f1f5f9; color: #334155; padding: 10px; border-bottom: 2px solid #cbd5e1; text-align: left; }
+        @page { size: A4; margin: 15mm; }
+        body { 
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+          color: #1e293b; 
+          margin: 0; 
+          padding: 0;
+          background: #ffffff;
+        }
+        .header { 
+          text-align: center; 
+          margin-bottom: 20px; 
+          border-bottom: 2px solid #e2e8f0; 
+          padding-bottom: 12px; 
+        }
+        .logo-container {
+          margin-bottom: 8px;
+        }
+        .logo-container img {
+          max-height: 60px;
+          max-width: 180px;
+          object-fit: contain;
+        }
+        .header h2 { margin: 0 0 4px 0; color: #0f172a; font-size: 20px; letter-spacing: -0.02em; text-transform: uppercase; }
+        .header p { margin: 2px 0; color: #64748b; font-size: 12px; }
+        
+        /* Autofit Table with Modern SaaS Styling & Crisp Borders */
+        table { 
+          width: 100%; 
+          border-collapse: collapse; 
+          table-layout: auto; 
+          font-size: 11px; 
+        }
+        th, td { 
+          padding: 8px 10px; 
+          border: 1px solid #cbd5e1; 
+          text-align: left; 
+          vertical-align: middle;
+        }
+        th { 
+          background: #f1f5f9; 
+          color: #334155; 
+          font-weight: 600; 
+          text-transform: uppercase; 
+          font-size: 10px;
+          letter-spacing: 0.05em;
+        }
         th.center, td.center { text-align: center; }
-        .footer { margin-top: 2rem; text-align: right; font-size: 0.75rem; color: #94a3b8; }
+        
+        /* Alternating Row Colors */
+        tbody tr:nth-child(even) { background-color: #f8fafc; }
+        tbody tr:hover { background-color: #f1f5f9; }
+
+        .code { font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; font-size: 11px; }
+        .user { color: #0284c7; font-weight: 500; }
+        .pass { color: #dc2626; font-weight: 500; }
+
+        .footer { 
+          margin-top: 20px; 
+          display: flex; 
+          justify-content: space-between; 
+          font-size: 10px; 
+          color: #94a3b8; 
+          border-top: 1px solid #e2e8f0;
+          padding-top: 8px;
+        }
         @media print {
           button.no-print { display: none; }
         }
@@ -1337,30 +1476,35 @@ window.downloadStudentPDF = async function() {
     </head>
     <body>
       <div class="header">
-        <h2>${schoolName}</h2>
+        ${finalSchoolLogo ? `<div class="logo-container"><img src="${finalSchoolLogo}" alt="School Logo"></div>` : ''}
+        <h2>${finalSchoolName}</h2>
         <p><strong>${reportTitle}</strong></p>
-        <p>Generated on: ${currentDate} | Total Records: ${students.length}</p>
+        <p>Generated on: ${currentDate} &bull; Total Records: ${students.length}</p>
       </div>
+
       <table>
         <thead>
           <tr>
-            <th class="center" style="width: 50px;">#</th>
+            <th class="center" style="width: 40px;">#</th>
             <th>Full Name</th>
-            <th class="center" style="width: 80px;">Class</th>
-            <th>School ID</th>
-            <th>Username</th>
-            <th>Password</th>
+            <th class="center" style="width: 60px;">Class</th>
+            <th style="width: 90px;">School ID</th>
+            <th style="width: 120px;">Username</th>
+            <th style="width: 120px;">Password</th>
           </tr>
         </thead>
         <tbody>
           ${rowsHTML}
         </tbody>
       </table>
+
       <div class="footer">
-        <p>SAMCAM Solutions ICT Hub - Secure Portal Credentials System</p>
+        <span>SAMCAM Solutions ICT Hub — Secure Credentials System</span>
+        <span>Page 1 of 1</span>
       </div>
-      <div style="text-align: center; margin-top: 2rem;">
-        <button class="no-print" onclick="window.print();" style="padding: 10px 20px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Print / Save as PDF</button>
+
+      <div style="text-align: center; margin-top: 20px;">
+        <button class="no-print" onclick="window.print();" style="padding: 10px 24px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">Print / Save as PDF</button>
       </div>
     </body>
     </html>
@@ -1372,11 +1516,10 @@ window.downloadStudentPDF = async function() {
 
   showCustomModal({
     title: "PDF Ready",
-    message: `Successfully prepared PDF credentials report for ${students.length} student(s).`,
+    message: `Successfully prepared professional PDF report for ${students.length} student(s) at ${finalSchoolName}.`,
     type: "success"
   });
 };
-
 
 // ==========================================================================
 // 3. CLEAN EVENT BINDINGS (PREVENTS DOUBLE-CLICK / MULTI-DOWNLOAD ISSUES)
