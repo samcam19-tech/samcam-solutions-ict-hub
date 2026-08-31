@@ -59,12 +59,42 @@ function ensureFirewallModalInDOM() {
             <form id="samcamFirewallForm" onsubmit="submitFirewallRuleForm(event)" style="padding: 20px;">
                 <div style="margin-bottom: 16px;">
                     <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Workstation Subnet / IP Scope</label>
-                    <input type="text" id="fwSubnetScopeInput" required placeholder="e.g., 10.212.202.0/24" style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box; outline: none; transition: border-color 0.15s;" onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='#cbd5e1'">
+                    <select id="fwSubnetScopeInput" required style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; background: #fff; box-sizing: border-box; outline: none;" onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='#cbd5e1'">
+                        <option value="" disabled selected>-- Select Subnet Scope --</option>
+                        <option value="Global (All Subnets)">Global (All Subnets / Workstations)</option>
+                        <optgroup label="Common Lab Subnets">
+                            <option value="10.212.202.0/24">10.212.202.0/24 (Main Computer Lab)</option>
+                            <option value="192.168.10.0/24">192.168.10.0/24 (Admin & Staff Network)</option>
+                            <option value="192.168.20.0/24">192.168.20.0/24 (Student Library Terminals)</option>
+                            <option value="172.16.50.0/24">172.16.50.0/24 (Examination Hall Scope)</option>
+                        </optgroup>
+                    </select>
                 </div>
                 <div style="margin-bottom: 16px;">
                     <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Target Domain, App, or Category</label>
-                    <input type="text" id="fwContentTargetInput" required placeholder="e.g., youtube.com, media, sports, .exe" style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box; outline: none;" onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='#cbd5e1'">
-                    <small style="display: block; color: #64748b; font-size: 0.75rem; margin-top: 4px;">Tip: Use keywords like <code>media</code> for audio/video, <code>sports</code> for sports sites, or explicit domains.</small>
+                    <select id="fwContentTargetInput" required style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; background: #fff; box-sizing: border-box; outline: none;" onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='#cbd5e1'">
+                        <option value="" disabled selected>-- Select Website, App, or Category Filter --</option>
+                        <optgroup label="Popular Sites & Media">
+                            <option value="youtube.com">youtube.com (Video Streaming)</option>
+                        </optgroup>
+                        <optgroup label="Sports Categories & Leagues">
+                            <option value="sports">sports (General Sports Sites)</option>
+                            <option value="premierleague">premierleague (EPL & Football Trackers)</option>
+                        </optgroup>
+                        <optgroup label="Social Media & Communication">
+                            <option value="social">social (TikTok, Instagram, X/Twitter, Snapchat)</option>
+                        </optgroup>
+                        <optgroup label="Gaming & Esports">
+                            <option value="gaming">gaming (Roblox, CrazyGames, Poki, Twitch)</option>
+                        </optgroup>
+                        <optgroup label="Entertainment & Streaming">
+                            <option value="streaming">streaming (Netflix, Reddit, Imgur)</option>
+                        </optgroup>
+                        <optgroup label="Music & Audio">
+                            <option value="music">music (Spotify, SoundCloud, Audiomack)</option>
+                        </optgroup>
+                    </select>
+                    <small style="display: block; color: #64748b; font-size: 0.75rem; margin-top: 4px;">Select a specific domain or category macro to automatically build network blocking rules.</small>
                 </div>
                 <div style="margin-bottom: 16px;">
                     <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Protocol / Filter Type</label>
