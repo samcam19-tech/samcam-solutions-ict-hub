@@ -637,27 +637,28 @@
     </div>
   </div>
 
-  <!-- MODAL 2: MANAGE REGISTERED STUDENTS WITH PAGINATION & ELLIPSIS -->
+<!-- MODAL 2: MANAGE REGISTERED STUDENTS WITH PAGINATION & ELLIPSIS -->
   <div id="manageStudentsModal" class="manage-students-modal-overlay" style="display:none;">
     <div class="manage-students-modal-card">
       <button type="button" id="closeManageStudentsModalBtn" class="modal-close-btn" aria-label="Close modal"><i class="fa-solid fa-xmark"></i></button>
       <h3 style="margin-bottom:1.25rem;"><i class="fa-solid fa-users-gear"></i> Manage Registered Students</h3>
       
-      <div class="modal-top-bar">
+      <div class="modal-top-bar" style="display: flex; gap: 0.5rem; align-items: center; margin-bottom: 1rem;">
         <input type="text" id="studentSearchInput" placeholder="Search by name, class, or username..." style="padding: 0.5rem; flex: 1; min-width: 200px; border: 1px solid #cbd5e1; border-radius: 6px;">
+        <button type="button" id="studentBulkDeleteBtn" onclick="deleteSelectedStudents()" class="btn-action btn-danger" style="display: none; align-items: center; gap: 0.4rem;"><i class="fa-solid fa-trash-can"></i> Delete Selected</button>
         <button type="button" id="deleteAllStudentsBtn" class="btn-action btn-danger"><i class="fa-solid fa-trash-can"></i> Delete All Students</button>
       </div>
 
       <div style="overflow-x: auto; width: 100%;">
-        <table class="student-table">
+        <table class="student-table" style="width: 100%; border-collapse: collapse;">
           <thead>
             <tr>
-              <th>#</th>
+              <th style="width: 45px; text-align: center;"><input type="checkbox" id="selectAllStudentsMaster" onclick="toggleSelectAllStudents(this)" style="cursor: pointer; width: 15px; height: 15px; accent-color: #0ea5e9;"></th>
               <th>Full Name</th>
               <th>Class</th>
               <th>Username</th>
               <th>Password</th>
-              <th>Actions</th>
+              <th style="text-align: center;">Actions</th>
             </tr>
           </thead>
           <tbody id="studentModalTableBody"></tbody>
