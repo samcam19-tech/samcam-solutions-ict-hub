@@ -36,8 +36,8 @@ window.initFirewallPolicies = function() {
 
 function seedInitialFirewallRules(db) {
     const defaultRules = [
-        { ruleId: "RULE-101", subnet: "192.168.10.0/24", protocol: "TCP / 80, 443", action: "ALLOW", status: "Active" },
-        { ruleId: "RULE-380", subnet: "youtube.com", protocol: "HTTPS / App Filter", action: "BLOCK", status: "Active" }
+        { ruleId: "RULE-101", subnetScope: "192.168.10.0/24", contentTarget: "TCP / 80, 443", protocol: "TCP / Port", action: "ALLOW", status: "Active" },
+        { ruleId: "RULE-380", subnetScope: "10.212.202.0/24", contentTarget: "youtube.com", protocol: "HTTPS / App Filter", action: "BLOCK", status: "Active" }
     ];
 
     defaultRules.forEach((rule) => {
@@ -58,9 +58,13 @@ function ensureFirewallModalInDOM() {
             </div>
             <form id="samcamFirewallForm" onsubmit="submitFirewallRuleForm(event)" style="padding: 20px;">
                 <div style="margin-bottom: 16px;">
-                    <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Target Service, Subnet, or Category</label>
-                    <input type="text" id="fwTargetInput" required placeholder="e.g., youtube.com, media, sports, .exe, or 10.212.202.0/24" style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box; outline: none; transition: border-color 0.15s;" onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='#cbd5e1'">
-                    <small style="display: block; color: #64748b; font-size: 0.75rem; margin-top: 4px;">Tip: Use keywords like <code>media</code> for audio/video, <code>sports</code> for sports sites, or <code>.exe</code> for downloads.</small>
+                    <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Workstation Subnet / IP Scope</label>
+                    <input type="text" id="fwSubnetScopeInput" required placeholder="e.g., 10.212.202.0/24" style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box; outline: none; transition: border-color 0.15s;" onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='#cbd5e1'">
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Target Domain, App, or Category</label>
+                    <input type="text" id="fwContentTargetInput" required placeholder="e.g., youtube.com, media, sports, .exe" style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; box-sizing: border-box; outline: none;" onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='#cbd5e1'">
+                    <small style="display: block; color: #64748b; font-size: 0.75rem; margin-top: 4px;">Tip: Use keywords like <code>media</code> for audio/video, <code>sports</code> for sports sites, or explicit domains.</small>
                 </div>
                 <div style="margin-bottom: 16px;">
                     <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Protocol / Filter Type</label>
@@ -90,9 +94,10 @@ window.openAddFirewallRuleModal = function() {
     ensureFirewallModalInDOM();
     const modal = document.getElementById('samcamFirewallModal');
     if (modal) {
-        document.getElementById('fwTargetInput').value = '';
+        document.getElementById('fwSubnetScopeInput').value = '';
+        document.getElementById('fwContentTargetInput').value = '';
         modal.style.display = 'flex';
-        document.getElementById('fwTargetInput').focus();
+        document.getElementById('fwSubnetScopeInput').focus();
     }
 };
 
@@ -106,11 +111,12 @@ window.closeAddFirewallRuleModal = function() {
 window.submitFirewallRuleForm = function(event) {
     event.preventDefault();
     
-    const targetService = document.getElementById('fwTargetInput').value.trim();
+    const subnetScope = document.getElementById('fwSubnetScopeInput').value.trim();
+    const contentTarget = document.getElementById('fwContentTargetInput').value.trim();
     const protocolPort = document.getElementById('fwProtocolInput').value.trim();
     const action = document.getElementById('fwActionInput').value;
 
-    if (!targetService) return;
+    if (!subnetScope || !contentTarget) return;
 
     if (typeof firebase !== 'undefined' && firebase.apps.length) {
         const db = firebase.firestore();
@@ -118,7 +124,8 @@ window.submitFirewallRuleForm = function(event) {
         
         db.collection("firewall_rules").add({
             ruleId: `RULE-${randomIdNum}`,
-            subnet: targetService,
+            subnetScope: subnetScope,
+            contentTarget: contentTarget,
             protocol: protocolPort,
             action: action,
             status: "Active",
@@ -149,11 +156,15 @@ function appendRuleRowToDOM(tbody, docId, rule) {
         ? 'background: #dcfce7; color: #16a34a;' 
         : 'background: #fee2e2; color: #dc2626;';
 
+    // Fallback support if legacy single-string `subnet` fields still exist
+    const displaySubnet = rule.subnetScope || rule.subnet || "Global";
+    const displayTarget = rule.contentTarget || "";
+
     const newRow = document.createElement('tr');
     newRow.style.borderBottom = '1px solid #f1f5f9;';
     newRow.innerHTML = `
         <td style="padding: 12px 16px;"><code>${rule.ruleId}</code></td>
-        <td style="padding: 12px 16px;">${rule.subnet}</td>
+        <td style="padding: 12px 16px;"><strong>${displaySubnet}</strong><br><span style="color: #64748b; font-size: 0.8rem;">Target: ${displayTarget}</span></td>
         <td style="padding: 12px 16px;">${rule.protocol}</td>
         <td style="padding: 12px 16px;"><span style="${actionBadgeStyle} font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 4px;">${rule.action}</span></td>
         <td style="padding: 12px 16px;"><span style="color: #16a34a; font-weight: 600;">${rule.status || 'Active'}</span></td>
