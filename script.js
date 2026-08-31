@@ -1416,8 +1416,12 @@ window.downloadStudentPDF = async function() {
           font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
           color: #1e293b; 
           margin: 0; 
-          padding: 0;
+          padding: 20px 0;
           background: #ffffff;
+        }
+        .page-wrapper {
+          width: 70%;
+          margin: 0 auto;
         }
         .header { 
           text-align: center; 
@@ -1483,34 +1487,36 @@ window.downloadStudentPDF = async function() {
       </style>
     </head>
     <body>
-      <div class="header">
-        ${finalSchoolLogo ? `<div class="logo-container"><img src="${finalSchoolLogo}" alt="School Logo"></div>` : ''}
-        <h2>${finalSchoolName}</h2>
-        <p><strong>${reportTitle}</strong></p>
-        <p>Generated on: ${currentDate} &bull; Total Records: ${students.length}</p>
-      </div>
+      <div class="page-wrapper">
+        <div class="header">
+          ${finalSchoolLogo ? `<div class="logo-container"><img src="${finalSchoolLogo}" alt="School Logo"></div>` : ''}
+          <h2>${finalSchoolName}</h2>
+          <p><strong>${reportTitle}</strong></p>
+          <p>Generated on: ${currentDate} &bull; Total Records: ${students.length}</p>
+        </div>
 
-      <table>
-        <thead>
-          <tr>
-            <th class="center" style="width: 50px;">#</th>
-            <th>Full Name</th>
-            <th style="width: 160px;">Username</th>
-            <th style="width: 160px;">Password</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rowsHTML}
-        </tbody>
-      </table>
+        <table>
+          <thead>
+            <tr>
+              <th class="center" style="width: 40px;">#</th>
+              <th>Full Name</th>
+              <th style="width: 140px;">Username</th>
+              <th style="width: 140px;">Password</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHTML}
+          </tbody>
+        </table>
 
-      <div class="footer">
-        <span>SAMCAM Solutions ICT Hub — Secure Credentials System</span>
-        <span>Page 1 of 1</span>
-      </div>
+        <div class="footer">
+          <span>SAMCAM Solutions ICT Hub — Secure Credentials System</span>
+          <span>Page 1 of 1</span>
+        </div>
 
-      <div style="text-align: center; margin-top: 20px;">
-        <button class="no-print" onclick="window.print();" style="padding: 10px 24px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">Print / Save as PDF</button>
+        <div style="text-align: center; margin-top: 20px;">
+          <button class="no-print" onclick="window.print();" style="padding: 10px 24px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">Print / Save as PDF</button>
+        </div>
       </div>
     </body>
     </html>
