@@ -1174,17 +1174,25 @@ window.handleBulkImport = function() {
 };
 
 // ==========================================================================
-// 1. SAAS-GRADE STUDENT CSV EXPORT (WITH CUSTOM MODAL FEEDBACK)
+// 1. SAAS-GRADE STUDENT CSV EXPORT (WITH CLASS FILTERING & CUSTOM MODAL FEEDBACK)
 // ==========================================================================
 window.downloadStudentCSV = async function() {
+  const classSelect = document.getElementById('exportClassSelect');
+  const selectedClass = classSelect ? classSelect.value.trim() : '';
+
   let students = [];
   if (window.db) {
     try {
       const activeSchoolId = window.currentUser ? (window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId) : null;
       let query = window.db.collection('users').where('role', '==', 'Student');
+      
       if (activeSchoolId) {
         query = query.where('schoolId', '==', activeSchoolId);
       }
+      if (selectedClass) {
+        query = query.where('class', '==', selectedClass);
+      }
+
       const snap = await query.get();
       snap.forEach(doc => students.push(doc.data()));
     } catch (err) {
@@ -1194,13 +1202,20 @@ window.downloadStudentCSV = async function() {
 
   if (students.length === 0) {
     const users = JSON.parse(localStorage.getItem('portal_users')) || [];
-    students = users.filter(u => u.role === 'Student');
+    const activeSchoolId = window.currentUser ? (window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId) : null;
+    
+    students = users.filter(u => {
+      const isStudent = u.role === 'Student';
+      const matchesSchool = !activeSchoolId || (u.schoolId || '').toLowerCase() === activeSchoolId.toLowerCase();
+      const matchesClass = !selectedClass || (u.class || '').toUpperCase() === selectedClass.toUpperCase();
+      return isStudent && matchesSchool && matchesClass;
+    });
   }
 
   if (students.length === 0) {
     showCustomModal({
       title: "No Data Available",
-      message: "No registered students found to export.",
+      message: selectedClass ? `No registered students found for class ${selectedClass}.` : "No registered students found to export.",
       type: "info"
     });
     return;
@@ -1214,14 +1229,15 @@ window.downloadStudentCSV = async function() {
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `Registered_Students_Credentials_${new Date().toISOString().slice(0,10)}.csv`);
+  const fileLabel = selectedClass ? `Class_${selectedClass}_Credentials` : 'Registered_Students_Credentials';
+  link.setAttribute("download", `${fileLabel}_${new Date().toISOString().slice(0,10)}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
 
   showCustomModal({
     title: "Export Successful",
-    message: `Successfully downloaded credentials for ${students.length} student(s).`,
+    message: `Successfully downloaded credentials for ${students.length} student(s)${selectedClass ? ' in ' + selectedClass : ''}.`,
     type: "success"
   });
 };
