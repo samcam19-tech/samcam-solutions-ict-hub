@@ -1345,13 +1345,14 @@ window.renderStudentModalTable = async function() {
     const identifier = s.schoolId || s.username || s.id;
     const isEditing = window.editingUsername === identifier;
     
-    const indexColStyle = 'width: 40px; text-align: center; white-space: nowrap;';
+    const checkColStyle = 'width: 40px; text-align: center; white-space: nowrap;';
+    const indexColStyle = 'width: 50px; text-align: center; white-space: nowrap;';
 
     if (isEditing) {
       return `
         <tr>
-          <td style="${indexColStyle}">-</td>
-          <td style="${indexColStyle}">${absoluteIndex}</td>
+          <td style="${checkColStyle}"><input type="checkbox" disabled style="opacity: 0.4;"></td>
+          <td style="${indexColStyle}; color: #64748b;">${absoluteIndex}</td>
           <td><input type="text" id="editFullName" value="${escapeHtml(s.fullName || '')}" style="width:100%; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px;"></td>
           <td>
             <select id="editClass" style="width:100%; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px;">
@@ -1365,7 +1366,7 @@ window.renderStudentModalTable = async function() {
           </td>
           <td><input type="text" id="editSchoolId" value="${escapeHtml(identifier)}" style="width:100%; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px;"></td>
           <td><input type="text" id="editPassword" value="${escapeHtml(s.password || '')}" style="width:100%; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px;"></td>
-          <td style="display:flex; gap:0.35rem; align-items:center;">
+          <td style="display:flex; gap:0.35rem; align-items:center; justify-content:center;">
             <button onclick="saveStudentEdit('${escapeHtml(identifier)}')" title="Save Changes" style="width: 30px; height: 30px; background: #f0fdf4; color: #16a34a; border: none; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-check" style="font-size: 0.8rem;"></i></button>
             <button onclick="cancelStudentEdit()" title="Cancel" style="width: 30px; height: 30px; background: #f1f5f9; color: #64748b; border: none; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-xmark" style="font-size: 0.8rem;"></i></button>
           </td>
@@ -1375,13 +1376,13 @@ window.renderStudentModalTable = async function() {
 
     return `
       <tr>
-        <td style="${indexColStyle}"><input type="checkbox" class="student-checkbox" value="${identifier}" onclick="updateStudentBulkDeleteState()" style="cursor: pointer; width: 15px; height: 15px; accent-color: #0ea5e9;"></td>
+        <td style="${checkColStyle}"><input type="checkbox" class="student-checkbox" value="${identifier}" onclick="updateStudentBulkDeleteState()" style="cursor: pointer; width: 15px; height: 15px; accent-color: #0ea5e9;"></td>
         <td style="${indexColStyle}; color: #64748b; font-size: 0.8rem;">${absoluteIndex}</td>
         <td><strong>${escapeHtml(s.fullName || '')}</strong></td>
         <td><span style="background: #e0f2fe; color: #0369a1; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${escapeHtml(s.class || 'N/A')}</span></td>
         <td><code>${escapeHtml(identifier)}</code></td>
         <td><code>${escapeHtml(s.password || '')}</code></td>
-        <td style="display:flex; gap:0.35rem; align-items:center;">
+        <td style="display:flex; gap:0.35rem; align-items:center; justify-content:center;">
           <button onclick="enableStudentEdit('${escapeHtml(identifier)}')" title="Edit Student" style="width: 30px; height: 30px; background: #eff6ff; color: #2563eb; border: none; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-pen-to-square" style="font-size: 0.8rem;"></i></button>
           <button onclick="deleteStudent('${escapeHtml(identifier)}')" title="Delete Student" style="width: 30px; height: 30px; background: #fef2f2; color: #dc2626; border: none; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-trash-can" style="font-size: 0.8rem;"></i></button>
         </td>
