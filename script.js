@@ -2837,9 +2837,10 @@ window.saveSubmissionGrade = async function(e) {
 
 window.renderSubmissions = async function() {
   const container = document.getElementById('submissionsContainer');
+  const paginationContainer = document.getElementById('submissionsPagination');
   if (!container) return;
 
-  const currentUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser'));
+  const currentUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser') || '{}');
   const activeSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || window.currentSchoolId) : null;
 
   let submissions = [];
@@ -2865,33 +2866,179 @@ window.renderSubmissions = async function() {
   }
 
   if (submissions.length === 0) {
-    container.innerHTML = '<p style="color:#64748b; font-size:0.85rem;">No student work submitted yet.</p>';
+    container.innerHTML = `
+      <div style="text-align: center; padding: 3rem 1.5rem; color: #64748b;">
+        <i class="fa-solid fa-folder-open" style="font-size: 2.2rem; margin-bottom: 0.75rem; color: #cbd5e1;"></i>
+        <p style="font-size: 0.9rem; font-weight: 500; margin: 0;">No student work submitted yet.</p>
+      </div>
+    `;
+    if (paginationContainer) paginationContainer.style.display = 'none';
     return;
   }
 
   submissions.sort((a, b) => new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0));
 
-  container.innerHTML = submissions.map(sub => {
-    const studentIdentifier = sub.schoolId || sub.studentUsername || sub.studentName;
-    return `
-    <div class="sub-item" style="display:flex; justify-content:space-between; align-items:center; padding:0.75rem; border-bottom:1px solid #e2e8f0; gap: 1rem;">
-      <div style="flex: 1; min-width: 0;">
-        <strong>${sub.studentName}</strong> <small style="color:#64748b;">(${studentIdentifier})</small> <small style="color:#2563eb;">(${sub.studentClass})</small><br>
-        <span style="color:#64748b; font-size:0.85rem; word-break: break-word;">${sub.testTitle} - <em>${sub.fileName}</em></span>
-        ${sub.grade ? `<br><span style="color:#16a34a; font-size:0.80rem; font-weight:600;"><i class="fa-solid fa-award"></i> Grade: ${sub.grade}</span>` : ''}
+  let html = `
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; border-top-left-radius: 8px; border-top-right-radius: 8px; font-size: 0.85rem; color: #475569;">
+      <div style="display: flex; align-items: center; gap: 0.75rem;">
+        <input type="checkbox" id="selectAllSubmissions" onclick="toggleSelectAllSubmissions(this)" style="cursor: pointer; width: 16px; height: 16px; accent-color: #0ea5e9;" title="Select All">
+        <span style="font-weight: 600; color: #1e293b;">Select All (${submissions.length})</span>
       </div>
-      <div style="display:flex; gap:0.4rem; align-items:center; flex-shrink: 0;">
-        <a href="${sub.fileUrl}" download="${sub.fileName || 'submission'}" target="_blank" rel="noopener noreferrer" class="btn-action btn-download" style="padding:0.4rem 0.75rem; font-size:0.8rem; white-space: nowrap;">
-          <i class="fa-solid fa-download"></i> Get File
+      <div>
+        <button type="button" id="bulkDeleteBtn" onclick="deleteSelectedSubmissions()" style="display: none; align-items: center; gap: 0.4rem; background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+          <i class="fa-solid fa-trash-can"></i> Delete Selected
+        </button>
+      </div>
+    </div>
+    <div style="background: #ffffff; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; overflow: hidden;">
+  `;
+
+  html += submissions.map(sub => {
+    const studentIdentifier = sub.schoolId || sub.studentUsername || sub.studentName || 'N/A';
+    const formattedDate = sub.submittedAt ? new Date(sub.submittedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
+    
+    return `
+    <div class="sub-item" data-id="${sub.id}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 1rem; border-bottom: 1px solid #f1f5f9; gap: 1rem; transition: background 0.15s;">
+      <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 0;">
+        <input type="checkbox" class="submission-checkbox" value="${sub.id}" onclick="updateBulkDeleteState()" style="cursor: pointer; width: 16px; height: 16px; accent-color: #0ea5e9; flex-shrink: 0;">
+        <div style="min-width: 0;">
+          <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.2rem;">
+            <strong style="color: #0f172a; font-size: 0.9rem;">${escapeHtml(sub.studentName || 'Unnamed Student')}</strong> 
+            <span style="background: #e0f2fe; color: #0369a1; font-size: 0.7rem; padding: 1px 6px; border-radius: 4px; font-weight: 600;">${escapeHtml(sub.studentClass || 'N/A')}</span>
+            <span style="color: #64748b; font-size: 0.75rem;">(${escapeHtml(studentIdentifier)})</span>
+            ${sub.grade ? `<span style="background: #dcfce7; color: #166534; font-size: 0.7rem; padding: 1px 6px; border-radius: 4px; font-weight: 600;"><i class="fa-solid fa-award"></i> Grade: ${escapeHtml(sub.grade)}</span>` : ''}
+          </div>
+          <div style="color: #475569; font-size: 0.82rem; word-break: break-word; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+            <span><i class="fa-solid fa-file-lines" style="color: #0ea5e9;"></i> ${escapeHtml(sub.testTitle || 'Assignment')} - <em>${escapeHtml(sub.fileName || 'file')}</em></span>
+            ${formattedDate ? `<span style="color: #94a3b8; font-size: 0.75rem;"><i class="fa-regular fa-clock"></i> ${formattedDate}</span>` : ''}
+          </div>
+        </div>
+      </div>
+      
+      <div style="display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0;">
+        <a href="${sub.fileUrl || '#'}" download="${escapeHtml(sub.fileName || 'submission')}" target="_blank" rel="noopener noreferrer" title="Download File" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #0284c7; border-radius: 6px; text-decoration: none; transition: background 0.2s;">
+          <i class="fa-solid fa-download" style="font-size: 0.85rem;"></i>
         </a>
-        <button type="button" onclick="openGradingModal('${sub.id}')" class="btn-action btn-edit" style="padding:0.4rem 0.75rem; font-size:0.8rem; white-space: nowrap;">
-          <i class="fa-solid fa-star"></i> Grade
+        <button type="button" onclick="openGradingModal('${sub.id}')" title="Grade Submission" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #f0fdf4; color: #16a34a; border: none; border-radius: 6px; cursor: pointer; transition: background 0.2s;">
+          <i class="fa-solid fa-star" style="font-size: 0.85rem;"></i>
+        </button>
+        <button type="button" onclick="deleteSingleSubmission('${sub.id}')" title="Delete Submission" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #fef2f2; color: #dc2626; border: none; border-radius: 6px; cursor: pointer; transition: background 0.2s;">
+          <i class="fa-solid fa-trash-can" style="font-size: 0.85rem;"></i>
         </button>
       </div>
     </div>
   `;
   }).join('');
+
+  html += `</div>`;
+  container.innerHTML = html;
+  if (paginationContainer) paginationContainer.style.display = 'flex';
 };
+
+window.toggleSelectAllSubmissions = function(source) {
+  const checkboxes = document.querySelectorAll('.submission-checkbox');
+  checkboxes.forEach(cb => cb.checked = source.checked);
+  window.updateBulkDeleteState();
+};
+
+window.updateBulkDeleteState = function() {
+  const checkboxes = document.querySelectorAll('.submission-checkbox:checked');
+  const bulkBtn = document.getElementById('bulkDeleteBtn');
+  const selectAllMaster = document.getElementById('selectAllSubmissions');
+  const allCheckboxes = document.querySelectorAll('.submission-checkbox');
+  
+  if (bulkBtn) {
+    if (checkboxes.length > 0) {
+      bulkBtn.style.display = 'inline-flex';
+      bulkBtn.innerHTML = `<i class="fa-solid fa-trash-can"></i> Delete (${checkboxes.length})`;
+    } else {
+      bulkBtn.style.display = 'none';
+    }
+  }
+
+  if (selectAllMaster && allCheckboxes.length > 0) {
+    selectAllMaster.checked = checkboxes.length === allCheckboxes.length;
+    selectAllMaster.indeterminate = checkboxes.length > 0 && checkboxes.length < allCheckboxes.length;
+  }
+};
+
+window.deleteSingleSubmission = function(id) {
+  showCustomModal({
+    title: 'Confirm Deletion',
+    message: "Are you sure you want to delete this learner's submission?",
+    type: 'confirm',
+    showCancel: true,
+    onConfirm: async () => {
+      try {
+        if (window.db) {
+          await window.db.collection('submissions').doc(id).delete();
+        }
+        let localSubs = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+        localSubs = localSubs.filter(s => s.id !== id);
+        localStorage.setItem('portal_submissions', JSON.stringify(localSubs));
+
+        showCustomModal({
+          title: 'Success',
+          message: 'Submission deleted successfully.',
+          type: 'success'
+        });
+        window.renderSubmissions();
+      } catch (err) {
+        console.error("Error deleting submission:", err);
+        showCustomModal({
+          title: 'Error',
+          message: 'Failed to delete submission.',
+          type: 'error'
+        });
+      }
+    }
+  });
+};
+
+window.deleteSelectedSubmissions = function() {
+  const checkedBoxes = document.querySelectorAll('.submission-checkbox:checked');
+  if (checkedBoxes.length === 0) return;
+
+  showCustomModal({
+    title: 'Confirm Bulk Deletion',
+    message: `Are you sure you want to delete ${checkedBoxes.length} selected submission(s)?`,
+    type: 'confirm',
+    showCancel: true,
+    onConfirm: async () => {
+      const idsToDelete = Array.from(checkedBoxes).map(cb => cb.value);
+
+      try {
+        if (window.db) {
+          const batch = window.db.batch();
+          idsToDelete.forEach(id => {
+            const ref = window.db.collection('submissions').doc(id);
+            batch.delete(ref);
+          });
+          await batch.commit();
+        }
+
+        let localSubs = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+        localSubs = localSubs.filter(s => !idsToDelete.includes(s.id));
+        localStorage.setItem('portal_submissions', JSON.stringify(localSubs));
+
+        showCustomModal({
+          title: 'Success',
+          message: `${idsToDelete.length} submissions deleted successfully.`,
+          type: 'success'
+        });
+        window.renderSubmissions();
+      } catch (err) {
+        console.error("Error performing bulk deletion:", err);
+        showCustomModal({
+          title: 'Error',
+          message: 'Failed to delete selected submissions.',
+          type: 'error'
+        });
+      }
+    }
+  });
+};
+
 
 /* ==========================================================================
    STUDENT SUBMISSION LOCK & CARD VIEW HELPERS (30-Min Lock & Grades)
