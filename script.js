@@ -1290,7 +1290,7 @@ window.downloadStudentCSV = async function() {
 };
 
 // ==========================================================================
-// SAAS-GRADE STUDENT PDF EXPORT (WITH FIRESTORE SCHOOL NAME & LOGO LOOKUP)
+// SAAS-GRADE STUDENT PDF EXPORT (OPTIMIZED NAME SPACE & CLEAN HEADERS)
 // ==========================================================================
 window.downloadStudentPDF = async function() {
   const classSelect = document.getElementById('exportClassSelect');
@@ -1301,7 +1301,6 @@ window.downloadStudentPDF = async function() {
   let fetchedSchoolLogo = null;
   let targetSchoolId = null;
 
-  // Determine target school ID from current user context
   if (window.currentUser) {
     targetSchoolId = window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId || null;
   }
@@ -1320,13 +1319,12 @@ window.downloadStudentPDF = async function() {
       const snap = await query.get();
       snap.forEach(doc => students.push(doc.data()));
 
-      // Fetch official school details directly from the 'schools' document (matching your Firestore schema)
       if (targetSchoolId) {
         const schoolDoc = await window.db.collection('schools').doc(targetSchoolId).get();
         if (schoolDoc.exists) {
           const schoolData = schoolDoc.data();
-          fetchedSchoolName = schoolData.schoolName || schoolData.name; // Matches your "schoolName" field
-          fetchedSchoolLogo = schoolData.logoUrl || schoolData.logo;     // Matches your "logoUrl" field
+          fetchedSchoolName = schoolData.schoolName || schoolData.name;
+          fetchedSchoolLogo = schoolData.logoUrl || schoolData.logo;
         }
       }
     } catch (err) {
@@ -1334,7 +1332,6 @@ window.downloadStudentPDF = async function() {
     }
   }
 
-  // Fallback to localStorage if Firestore failed or returned empty
   if (students.length === 0) {
     const users = JSON.parse(localStorage.getItem('portal_users')) || [];
     
@@ -1346,7 +1343,6 @@ window.downloadStudentPDF = async function() {
     });
   }
 
-  // Fallback lookups from user profile if needed
   if (!fetchedSchoolName && window.currentUser) {
     fetchedSchoolName = window.currentUser.schoolName || window.currentUser.institutionName;
   }
@@ -1366,20 +1362,33 @@ window.downloadStudentPDF = async function() {
     return;
   }
 
-  // Helper function to capitalize each word in full names (e.g., "ahabwe bruce" -> "Ahabwe Bruce")
+  // Helper function to capitalize each word in full names
   function formatTitleCase(str) {
     if (!str) return 'N/A';
     return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   }
 
-  // Open print/PDF window
+  // Sort students: By Class first (if whole school), then Alphabetically by Full Name
+  students.sort((a, b) => {
+    const classA = (a.class || '').toLowerCase();
+    const classB = (b.class || '').toLowerCase();
+    
+    if (!selectedClass && classA !== classB) {
+      return classA.localeCompare(classB, undefined, { numeric: true, sensitivity: 'base' });
+    }
+    
+    const nameA = (a.fullName || a.name || '').toLowerCase();
+    const nameB = (b.fullName || b.name || '').toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
+
   const printWindow = window.open('', '_blank');
   if (!printWindow) {
     alert('Please allow popups for this website to download PDF credentials.');
     return;
   }
 
-  const reportTitle = selectedClass ? `Student Credentials Report — Class ${selectedClass}` : 'Complete Student Credentials Report';
+  const reportTitle = selectedClass ? `Student Credentials Report — Class ${selectedClass}` : 'Complete School Student Credentials Report';
   const currentDate = new Date().toLocaleDateString();
 
   let rowsHTML = '';
@@ -1388,9 +1397,7 @@ window.downloadStudentPDF = async function() {
     rowsHTML += `
       <tr>
         <td class="center">${index + 1}</td>
-        <td><strong>${formattedName}</strong></td>
-        <td class="center">${s.class || 'N/A'}</td>
-        <td class="code">${s.schoolId || targetSchoolId || 'N/A'}</td>
+        <td class="nowrap"><strong>${formattedName}</strong></td>
         <td class="code user">${s.username || 'N/A'}</td>
         <td class="code pass">${s.password || 'N/A'}</td>
       </tr>
@@ -1429,7 +1436,7 @@ window.downloadStudentPDF = async function() {
         .header h2 { margin: 0 0 4px 0; color: #0f172a; font-size: 20px; letter-spacing: -0.02em; text-transform: uppercase; }
         .header p { margin: 2px 0; color: #64748b; font-size: 12px; }
         
-        /* Autofit Table with Modern SaaS Styling & Crisp Borders */
+        /* Optimized Autofit Table with Full Space for Names */
         table { 
           width: 100%; 
           border-collapse: collapse; 
@@ -1437,7 +1444,7 @@ window.downloadStudentPDF = async function() {
           font-size: 11px; 
         }
         th, td { 
-          padding: 8px 10px; 
+          padding: 8px 12px; 
           border: 1px solid #cbd5e1; 
           text-align: left; 
           vertical-align: middle;
@@ -1451,6 +1458,7 @@ window.downloadStudentPDF = async function() {
           letter-spacing: 0.05em;
         }
         th.center, td.center { text-align: center; }
+        td.nowrap { white-space: nowrap; }
         
         /* Alternating Row Colors */
         tbody tr:nth-child(even) { background-color: #f8fafc; }
@@ -1485,12 +1493,10 @@ window.downloadStudentPDF = async function() {
       <table>
         <thead>
           <tr>
-            <th class="center" style="width: 40px;">#</th>
+            <th class="center" style="width: 50px;">#</th>
             <th>Full Name</th>
-            <th class="center" style="width: 60px;">Class</th>
-            <th style="width: 90px;">School ID</th>
-            <th style="width: 120px;">Username</th>
-            <th style="width: 120px;">Password</th>
+            <th style="width: 160px;">Username</th>
+            <th style="width: 160px;">Password</th>
           </tr>
         </thead>
         <tbody>
