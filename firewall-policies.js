@@ -34,22 +34,22 @@ window.initFirewallPolicies = function() {
 function seedInitialFirewallRules(db) {
     const defaultRules = [
         { ruleId: "RULE-101", subnet: "192.168.10.0/24", protocol: "TCP / 80, 443", action: "ALLOW", status: "Active" },
-        { ruleId: "RULE-102", subnet: "10.45.0.0/16 (Guest)", protocol: "UDP / 53, 67", action: "BLOCK", status: "Active" }
+        { ruleId: "RULE-380", subnet: "youtube.com", protocol: "HTTPS / App Filter", action: "BLOCK", status: "Active" }
     ];
 
     defaultRules.forEach((rule) => {
-        db.collection("firewall_rules").add(rule).catchall = (err) => console.error(err);
+        db.collection("firewall_rules").add(rule).catch((err) => console.error(err));
     });
 }
 
 window.openAddFirewallRuleModal = function() {
-    const targetSubnet = prompt("Enter Target Subnet or IP Address (e.g., 192.168.20.0/24):");
-    if (!targetSubnet) return;
+    const targetService = prompt("Enter Target Software/Service or Subnet (e.g., youtube.com, discord.com, or 192.168.10.0/24):");
+    if (!targetService) return;
 
-    const protocolPort = prompt("Enter Protocol / Port (e.g., TCP / 8080):", "TCP / 80, 443");
+    const protocolPort = prompt("Enter Protocol / Port or Filter Type (e.g., TCP / 80,443 or Application Layer):", "HTTPS / App Filter");
     if (!protocolPort) return;
 
-    const action = prompt("Enter Rule Action (ALLOW or BLOCK):", "ALLOW").toUpperCase();
+    const action = prompt("Enter Rule Action (ALLOW or BLOCK):", "BLOCK").toUpperCase();
     
     if (action !== "ALLOW" && action !== "BLOCK") {
         alert("Invalid action specified. Must be ALLOW or BLOCK.");
@@ -62,13 +62,13 @@ window.openAddFirewallRuleModal = function() {
         
         db.collection("firewall_rules").add({
             ruleId: `RULE-${randomIdNum}`,
-            subnet: targetSubnet,
+            subnet: targetService,
             protocol: protocolPort,
             action: action,
             status: "Active",
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => {
-            console.log("Firewall rule successfully added to Firestore.");
+            console.log("Service/Firewall rule successfully added to Firestore.");
         }).catch((error) => {
             alert("Error adding rule: " + error.message);
         });
