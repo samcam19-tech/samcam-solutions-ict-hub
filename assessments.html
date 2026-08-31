@@ -598,22 +598,21 @@
     <option value="S6">S.6</option>
   </select>
 
-  <!-- Clean Actions with Icon Before Label and No Background Fill -->
-  <button id="downloadCsvBtn" onclick="downloadStudentCSV()" class="btn-action" style="background: transparent; color: #0284c7; border: 1px solid #bae6fd; padding: 0.45rem 0.75rem; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;">
-    <i class="fa-solid fa-file-csv" style="color: #0284c7;"></i> Download CSV
-  </button>
+  <button id="downloadCsvBtn" onclick="downloadStudentCSV()" class="btn-action btn-csv">
+        <i class="fa-solid fa-file-csv"></i> Download CSV
+      </button>
 
-  <button id="downloadPdfBtn" onclick="downloadStudentPDF()" class="btn-action" style="background: transparent; color: #dc2626; border: 1px solid #fecaca; padding: 0.45rem 0.75rem; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;">
-    <i class="fa-solid fa-file-pdf" style="color: #dc2626;"></i> Download PDF
-  </button>
+      <button id="downloadPdfBtn" onclick="downloadStudentPDF()" class="btn-action btn-pdf">
+        <i class="fa-solid fa-file-pdf"></i> Download PDF
+      </button>
 
-  <button id="openManageStudentsBtn" onclick="openManageStudentsModal()" class="btn-action" style="background: transparent; color: #0ea5e9; border: 1px solid #bae6fd; padding: 0.45rem 0.75rem; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;">
-    <i class="fa-solid fa-user-gear" style="color: #0ea5e9;"></i> Manage Registered Students
-  </button>
+      <button id="openManageStudentsBtn" onclick="openManageStudentsModal()" class="btn-action btn-students">
+        <i class="fa-solid fa-user-gear"></i> Manage Registered Students
+      </button>
 
-  <button id="openManageStaffBtn" class="btn-action" style="display:none; background: transparent; color: #7c3aed; border: 1px solid #e9d5ff; padding: 0.45rem 0.75rem; border-radius: 6px; font-size: 0.85rem; font-weight: 500; cursor: pointer; display: inline-flex; align-items: center; gap: 0.4rem;">
-    <i class="fa-solid fa-user-shield" style="color: #7c3aed;"></i> Manage Staff Accounts
-  </button>
+      <button id="openManageStaffBtn" class="btn-action btn-staff" style="display:none;">
+        <i class="fa-solid fa-user-shield"></i> Manage Staff Accounts
+      </button>
 </div>
   </div>
 </div>
