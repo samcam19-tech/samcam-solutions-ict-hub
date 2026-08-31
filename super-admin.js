@@ -1354,7 +1354,7 @@ function initBackupGenerator() {
       
       if (result.success && Array.isArray(result.collections)) {
         const excluded = typeof EXCLUDED_COLLECTIONS !== 'undefined' ? EXCLUDED_COLLECTIONS : [];
-        return result.collections.filter(col => !excluded.includes(col));
+        return result.collections.filter(col => typeof col === 'string' && !excluded.includes(col));
       }
     } catch (err) {
       console.warn("Could not fetch collections dynamically from Cloud Function, falling back to defaults:", err);
@@ -1400,7 +1400,8 @@ function initBackupGenerator() {
         const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
         const downloadAnchor = document.createElement('a');
         downloadAnchor.setAttribute("href", dataStr);
-        downloadAnchor.setAttribute("download", `samcam_enterprise_backup_${new Date().toISOString().slice(0,10)}.json`);
+        const dateSlice = String(new Date().toISOString()).slice(0, 10);
+        downloadAnchor.setAttribute("download", `samcam_enterprise_backup_${dateSlice}.json`);
         document.body.appendChild(downloadAnchor);
         downloadAnchor.click();
         downloadAnchor.remove();
@@ -1437,7 +1438,8 @@ function initBackupGenerator() {
     restoreInput.addEventListener("change", (event) => {
       const file = event.target.files[0];
       if (file && restoreBtn) {
-        restoreBtn.innerHTML = `<i class="fa-solid fa-file-arrow-up"></i> Process Recovery (${file.name.slice(0, 15)}...)`;
+        const fileNameSafe = String(file.name || '').slice(0, 15);
+        restoreBtn.innerHTML = `<i class="fa-solid fa-file-arrow-up"></i> Process Recovery (${fileNameSafe}...)`;
       }
     });
   }
@@ -1514,13 +1516,14 @@ function initBackupGenerator() {
             let operationCounter = 0;
 
             for (const docObj of documents) {
+              if (!docObj || typeof docObj !== 'object') continue;
               const docId = docObj.id;
               if (!docId) continue;
 
               const docData = { ...docObj };
               delete docData.id;
 
-              const docRef = window.db.collection(colName).doc(docId);
+              const docRef = window.db.collection(colName).doc(String(docId));
               batch.set(docRef, docData, { merge: true });
               
               operationCounter++;
@@ -1562,7 +1565,7 @@ function initBackupGenerator() {
 
 async function checkAndTriggerAutomatedDailyBackup() {
   const lastBackupKey = "samcam_last_auto_backup_date";
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = String(new Date().toISOString()).slice(0, 10);
   const lastBackupDate = localStorage.getItem(lastBackupKey);
 
   // Check if it's a new day
@@ -1610,13 +1613,11 @@ async function checkAndTriggerAutomatedDailyBackup() {
           const jsonString = JSON.stringify(backupData, null, 2);
           const blob = new Blob([jsonString], { type: "application/json" });
 
-          // Always use a fixed filename ("latest_backup.json") so new uploads automatically overwrite the old one
           const storageRef = window.storage.ref();
           const backupFileRef = storageRef.child('automated_backups/latest_backup.json');
           
           await backupFileRef.put(blob);
 
-          // Mark today as backed up
           localStorage.setItem(lastBackupKey, todayStr);
 
           if (typeof logAuditAction === 'function') {
