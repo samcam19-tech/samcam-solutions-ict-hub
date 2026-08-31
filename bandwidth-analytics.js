@@ -2,11 +2,16 @@
 // BANDWIDTH-ANALYTICS.JS - 2026 ENTERPRISE SaaS STANDARD
 // ==========================================
 
+let bandwidthChartInstance = null;
+
 window.initBandwidthAnalytics = function() {
     if (typeof firebase === 'undefined' || !firebase.apps.length) {
         console.warn("Firebase not initialized for Bandwidth Analytics.");
         return;
     }
+
+    // Initialize Chart.js instance on the dashboard container if available
+    initBandwidthChart();
 
     const db = firebase.firestore();
     
@@ -16,6 +21,7 @@ window.initBandwidthAnalytics = function() {
             if (doc.exists) {
                 const data = doc.data();
                 updateBandwidthDOM(data);
+                updateBandwidthChart(data.history);
             } else {
                 // Initialize default metrics document if missing
                 const initialData = {
@@ -24,7 +30,11 @@ window.initBandwidthAnalytics = function() {
                     latency: "4.2 ms",
                     dropRate: "0.01 %",
                     ingressTrend: "Initialized baseline",
-                    egressTrend: "Stable load"
+                    egressTrend: "Stable load",
+                    latencyTrend: "Optimal performance",
+                    history: [
+                        { timestamp: new Date().toISOString(), ingressVal: 842.6, latencyVal: 4.2 }
+                    ]
                 };
                 db.collection("network_telemetry").doc("bandwidth_stats").set(initialData);
             }
@@ -32,6 +42,113 @@ window.initBandwidthAnalytics = function() {
             console.error("Error fetching bandwidth telemetry: ", error);
         });
 };
+
+// Initialize Chart.js dynamic line graph inside the placeholder container
+function initBandwidthChart() {
+    const container = document.querySelector('#bandwidthAnalyticsView div[style*="Live Subnet Utilization"]');
+    // Alternatively look for container by text or direct structural selector
+    const targetBox = document.querySelector('#bandwidthAnalyticsView') ? document.querySelector('#bandwidthAnalyticsView').querySelectorAll('.card, div[style*="background: #ffffff"]')[4] || document.querySelector('#bandwidthAnalyticsView div.border-dashed, #bandwidthAnalyticsView div[style*="border"]') : null;
+
+    if (!targetBox) return;
+
+    // Check if canvas already exists; if not, inject it cleanly over the placeholder state
+    let canvas = document.getElementById('bandwidthChartCanvas');
+    if (!canvas) {
+        targetBox.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <span style="font-weight: 600; font-size: 0.95rem; color: #1e293b;"><i class="fa-solid fa-chart-line" style="color: #0284c7; margin-right: 6px;"></i> Live Subnet Ingress & Latency Telemetry</span>
+                <span style="font-size: 0.75rem; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 4px;">Port 8080 Active</span>
+            </div>
+            <div style="position: relative; height: 240px; width: 100%;">
+                <canvas id="bandwidthChartCanvas"></canvas>
+            </div>
+        `;
+        canvas = document.getElementById('bandwidthChartCanvas');
+    }
+
+    if (canvas && typeof Chart !== 'undefined' && !bandwidthChartInstance) {
+        const ctx = canvas.getContext('2d');
+        bandwidthChartInstance = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [
+                    {
+                        label: 'Ingress (Mbps)',
+                        data: [],
+                        borderColor: '#0284c7',
+                        backgroundColor: 'rgba(2, 132, 199, 0.08kra)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        yAxisID: 'y',
+                        fill: true
+                    },
+                    {
+                        label: 'Latency (ms)',
+                        data: [],
+                        borderColor: '#059669',
+                        backgroundColor: 'transparent',
+                        borderWidth: 2,
+                        borderDash: [4, 4],
+                        tension: 0.3,
+                        yAxisID: 'y1'
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                scales: {
+                    x: {
+                        grid: { display: false },
+                        ticks: { font: { size: 10 }, color: '#64748b', maxTicksLimit: 6 }
+                    },
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'left',
+                        grid: { color: '#f1f5f9' },
+                        ticks: { font: { size: 10 }, color: '#0284c7' }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                        grid: { drawOnChartArea: false },
+                        ticks: { font: { size: 10 }, color: '#059669' }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top',
+                        labels: { boxWidth: 12, font: { size: 11 }, color: '#334155' }
+                    }
+                }
+            }
+        });
+    }
+}
+
+// Update Chart.js datasets with incoming historical telemetry array
+function updateBandwidthChart(historyArray) {
+    if (!bandwidthChartInstance || !Array.isArray(historyArray) || historyArray.length === 0) return;
+
+    // Keep the last 15 data points to maintain clean UI flow
+    const recentData = historyArray.slice(-15);
+
+    bandwidthChartInstance.data.labels = recentData.map(item => {
+        const date = new Date(item.timestamp);
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    });
+    bandwidthChartInstance.data.datasets[0].data = recentData.map(item => item.ingressVal);
+    bandwidthChartInstance.data.datasets[1].data = recentData.map(item => item.latencyVal);
+    
+    bandwidthChartInstance.update('none');
+}
 
 // Helper function: Enterprise retry mechanism with exponential backoff & jitter
 async function fetchWithRetry(url, options = {}, retries = 3, backoff = 1000) {
@@ -98,7 +215,7 @@ window.refreshBandwidthMetrics = function() {
                 const actualIngress = (calculatedBps / 1_000_000).toFixed(1) + " Mbps";
                 const actualEgress = ((calculatedBps * 0.38) / 1_000_000).toFixed(1) + " Mbps";
                 
-                // Dynamically evaluate latency status description (replacing misleading "optimal performance" for high lag)
+                // Dynamically evaluate latency status description
                 const rawLatencyMs = Math.round(endTime - startTime);
                 const actualLatency = rawLatencyMs + " ms";
                 const latencyStatus = rawLatencyMs > 1000 ? "Scenic Route (High Lag)" : "Optimal performance";
@@ -150,7 +267,7 @@ function updateBandwidthDOM(data) {
 
         if (data.latency) cards[2].querySelector('div:nth-child(2)').innerHTML = `${data.latency.split(' ')[0]} <span style="font-size: 0.9rem; font-weight: 500; color: #059669;">ms</span>`;
         
-        // Dynamically update the latency status description tag instead of hardcoding "Optimal performance"
+        // Dynamically update the latency status description tag
         if (cards[2].querySelector('div:nth-child(3)')) {
             const rawLat = parseFloat(data.latency) || 0;
             const badgeText = rawLat > 1000 ? "Scenic Route (High Lag)" : "Optimal performance";
