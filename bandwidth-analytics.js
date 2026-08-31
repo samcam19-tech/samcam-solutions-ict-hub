@@ -97,7 +97,12 @@ window.refreshBandwidthMetrics = function() {
                 const calculatedBps = fileSizeBits / durationSeconds;
                 const actualIngress = (calculatedBps / 1_000_000).toFixed(1) + " Mbps";
                 const actualEgress = ((calculatedBps * 0.38) / 1_000_000).toFixed(1) + " Mbps";
-                const actualLatency = Math.round(endTime - startTime) + " ms";
+                
+                // Dynamically evaluate latency status description (replacing misleading "optimal performance" for high lag)
+                const rawLatencyMs = Math.round(endTime - startTime);
+                const actualLatency = rawLatencyMs + " ms";
+                const latencyStatus = rawLatencyMs > 1000 ? "Scenic Route (High Lag)" : "Optimal performance";
+                
                 const timestamp = new Date().toISOString();
 
                 // Push enterprise metrics + historical array logging for charting to Firestore
@@ -107,6 +112,7 @@ window.refreshBandwidthMetrics = function() {
                     latency: actualLatency,
                     dropRate: calculatedDropRate,
                     ingressTrend: `Multi-probe ping (${durationSeconds.toFixed(2)}s)`,
+                    latencyTrend: latencyStatus,
                     history: firebase.firestore.FieldValue.arrayUnion({
                         timestamp: timestamp,
                         ingressVal: parseFloat(actualIngress),
@@ -143,6 +149,16 @@ function updateBandwidthDOM(data) {
         if (data.egressTrend) cards[1].querySelector('div:nth-child(3)').innerHTML = `<i class="fa-solid fa-arrow-trend-up"></i> ${data.egressTrend}`;
 
         if (data.latency) cards[2].querySelector('div:nth-child(2)').innerHTML = `${data.latency.split(' ')[0]} <span style="font-size: 0.9rem; font-weight: 500; color: #059669;">ms</span>`;
+        
+        // Dynamically update the latency status description tag instead of hardcoding "Optimal performance"
+        if (cards[2].querySelector('div:nth-child(3)')) {
+            const rawLat = parseFloat(data.latency) || 0;
+            const badgeText = rawLat > 1000 ? "Scenic Route (High Lag)" : "Optimal performance";
+            const badgeColor = rawLat > 1000 ? "#d97706" : "#059669";
+            const iconClass = rawLat > 1000 ? "fa-triangle-exclamation" : "fa-circle-check";
+            cards[2].querySelector('div:nth-child(3)').innerHTML = `<i class="fa-solid ${iconClass}" style="color: ${badgeColor};"></i> <span style="color: ${badgeColor};">${badgeText}</span>`;
+        }
+
         if (data.dropRate) cards[3].querySelector('div:nth-child(2)').innerHTML = `${data.dropRate.split(' ')[0]} <span style="font-size: 0.9rem; font-weight: 500; color: #dc2626;">%</span>`;
     }
 }
