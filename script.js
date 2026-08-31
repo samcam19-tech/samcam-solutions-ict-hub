@@ -1237,10 +1237,176 @@ window.downloadStudentCSV = async function() {
 
   showCustomModal({
     title: "Export Successful",
-    message: `Successfully downloaded credentials for ${students.length} student(s)${selectedClass ? ' in ' + selectedClass : ''}.`,
+    message: `Successfully downloaded CSV credentials for ${students.length} student(s)${selectedClass ? ' in ' + selectedClass : ''}.`,
     type: "success"
   });
 };
+
+
+// ==========================================================================
+// 2. SAAS-GRADE STUDENT PDF EXPORT (WITH CLASS FILTERING & CLEAN PRINT WINDOW)
+// ==========================================================================
+window.downloadStudentPDF = async function() {
+  const classSelect = document.getElementById('exportClassSelect');
+  const selectedClass = classSelect ? classSelect.value.trim() : '';
+
+  let students = [];
+  if (window.db) {
+    try {
+      const activeSchoolId = window.currentUser ? (window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId) : null;
+      let query = window.db.collection('users').where('role', '==', 'Student');
+      
+      if (activeSchoolId) {
+        query = query.where('schoolId', '==', activeSchoolId);
+      }
+      if (selectedClass) {
+        query = query.where('class', '==', selectedClass);
+      }
+
+      const snap = await query.get();
+      snap.forEach(doc => students.push(doc.data()));
+    } catch (err) {
+      console.warn('Fallback to local storage:', err);
+    }
+  }
+
+  if (students.length === 0) {
+    const users = JSON.parse(localStorage.getItem('portal_users')) || [];
+    const activeSchoolId = window.currentUser ? (window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId) : null;
+    
+    students = users.filter(u => {
+      const isStudent = u.role === 'Student';
+      const matchesSchool = !activeSchoolId || (u.schoolId || '').toLowerCase() === activeSchoolId.toLowerCase();
+      const matchesClass = !selectedClass || (u.class || '').toUpperCase() === selectedClass.toUpperCase();
+      return isStudent && matchesSchool && matchesClass;
+    });
+  }
+
+  if (students.length === 0) {
+    showCustomModal({
+      title: "No Data Available",
+      message: selectedClass ? `No registered students found for class ${selectedClass}.` : "No registered students found to export.",
+      type: "info"
+    });
+    return;
+  }
+
+  // Build a clean, professional print document structure for PDF saving
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('Please allow popups for this website to download PDF credentials.');
+    return;
+  }
+
+  const schoolName = window.currentUser && window.currentUser.schoolName ? window.currentUser.schoolName : 'Academic Institution';
+  const reportTitle = selectedClass ? `Student Credentials Report - Class ${selectedClass}` : 'Complete Student Credentials Report';
+  const currentDate = new Date().toLocaleDateString();
+
+  let rowsHTML = '';
+  students.forEach((s, index) => {
+    rowsHTML += `
+      <tr>
+        <td style="text-align:center; padding: 8px; border-bottom: 1px solid #e2e8f0;">${index + 1}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-weight: 500;">${s.fullName || 'N/A'}</td>
+        <td style="text-align:center; padding: 8px; border-bottom: 1px solid #e2e8f0;">${s.class || 'N/A'}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-family: monospace;">${s.schoolId || 'N/A'}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-family: monospace; color: #0284c7;">${s.username || 'N/A'}</td>
+        <td style="padding: 8px; border-bottom: 1px solid #e2e8f0; font-family: monospace; color: #dc2626;">${s.password || 'N/A'}</td>
+      </tr>
+    `;
+  });
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>${reportTitle}</title>
+      <style>
+        body { font-family: Arial, sans-serif; color: #1e293b; margin: 2rem; }
+        .header { text-align: center; margin-bottom: 2rem; border-bottom: 2px solid #cbd5e1; padding-bottom: 1rem; }
+        .header h2 { margin: 0 0 5px 0; color: #0f172a; }
+        .header p { margin: 0; color: #64748b; font-size: 0.9rem; }
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; font-size: 0.85rem; }
+        th { background: #f1f5f9; color: #334155; padding: 10px; border-bottom: 2px solid #cbd5e1; text-align: left; }
+        th.center, td.center { text-align: center; }
+        .footer { margin-top: 2rem; text-align: right; font-size: 0.75rem; color: #94a3b8; }
+        @media print {
+          button.no-print { display: none; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h2>${schoolName}</h2>
+        <p><strong>${reportTitle}</strong></p>
+        <p>Generated on: ${currentDate} | Total Records: ${students.length}</p>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th class="center" style="width: 50px;">#</th>
+            <th>Full Name</th>
+            <th class="center" style="width: 80px;">Class</th>
+            <th>School ID</th>
+            <th>Username</th>
+            <th>Password</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHTML}
+        </tbody>
+      </table>
+      <div class="footer">
+        <p>SAMCAM Solutions ICT Hub - Secure Portal Credentials System</p>
+      </div>
+      <div style="text-align: center; margin-top: 2rem;">
+        <button class="no-print" onclick="window.print();" style="padding: 10px 20px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">Print / Save as PDF</button>
+      </div>
+    </body>
+    </html>
+  `;
+
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+  printWindow.focus();
+
+  showCustomModal({
+    title: "PDF Ready",
+    message: `Successfully prepared PDF credentials report for ${students.length} student(s).`,
+    type: "success"
+  });
+};
+
+
+// ==========================================================================
+// 3. CLEAN EVENT BINDINGS (PREVENTS DOUBLE-CLICK / MULTI-DOWNLOAD ISSUES)
+// ==========================================================================
+function initCredentialsControls() {
+  const csvBtn = document.getElementById('downloadCsvBtn');
+  if (csvBtn) {
+    csvBtn.replaceWith(csvBtn.cloneNode(true));
+    document.getElementById('downloadCsvBtn').addEventListener('click', window.downloadStudentCSV);
+  }
+
+  const pdfBtn = document.getElementById('downloadPdfBtn');
+  if (pdfBtn) {
+    pdfBtn.replaceWith(pdfBtn.cloneNode(true));
+    document.getElementById('downloadPdfBtn').addEventListener('click', window.downloadStudentPDF);
+  }
+
+  const manageStudentsBtn = document.getElementById('openManageStudentsBtn');
+  if (manageStudentsBtn && typeof openManageStudentsModal === 'function') {
+    manageStudentsBtn.replaceWith(manageStudentsBtn.cloneNode(true));
+    document.getElementById('openManageStudentsBtn').addEventListener('click', openManageStudentsModal);
+  }
+}
+
+// Auto-initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initCredentialsControls);
+} else {
+  initCredentialsControls();
+}
 
 // ==========================================================================
 // 2. MODAL MANAGEMENT & BULK ACTIONS
