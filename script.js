@@ -1173,6 +1173,9 @@ window.handleBulkImport = function() {
   reader.readAsArrayBuffer(fileInput.files[0]);
 };
 
+// ==========================================================================
+// 1. SAAS-GRADE STUDENT CSV EXPORT (WITH CUSTOM MODAL FEEDBACK)
+// ==========================================================================
 window.downloadStudentCSV = async function() {
   let students = [];
   if (window.db) {
@@ -1196,7 +1199,7 @@ window.downloadStudentCSV = async function() {
 
   if (students.length === 0) {
     showCustomModal({
-      title: "No Data",
+      title: "No Data Available",
       message: "No registered students found to export.",
       type: "info"
     });
@@ -1205,20 +1208,26 @@ window.downloadStudentCSV = async function() {
 
   let csvContent = "data:text/csv;charset=utf-8,Full Name,Class,School ID,Username,Password\n";
   students.forEach(s => {
-    csvContent += `"${s.fullName}","${s.class}","${s.schoolId || ''}","${s.username || ''}","${s.password}"\n`;
+    csvContent += `"${s.fullName || ''}","${s.class || ''}","${s.schoolId || ''}","${s.username || ''}","${s.password || ''}"\n`;
   });
 
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
-  link.setAttribute("download", "Registered_Students_Credentials.csv");
+  link.setAttribute("download", `Registered_Students_Credentials_${new Date().toISOString().slice(0,10)}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+
+  showCustomModal({
+    title: "Export Successful",
+    message: `Successfully downloaded credentials for ${students.length} student(s).`,
+    type: "success"
+  });
 };
 
 // ==========================================================================
-// 3. STUDENT MANAGEMENT MODAL & PAGINATION WITH ELLIPSIS (SCOPED WITH SCHOOL ID)
+// 2. MODAL MANAGEMENT & BULK ACTIONS
 // ==========================================================================
 window.openManageStudentsModal = function() {
   const modal = document.getElementById('manageStudentsModal');
@@ -1227,8 +1236,8 @@ window.openManageStudentsModal = function() {
   } else {
     console.error("Element #manageStudentsModal not found in DOM.");
   }
-  editingUsername = null;
-  currentStudentSubmissionsPage = 1;
+  window.editingUsername = null;
+  window.currentStudentSubmissionsPage = 1;
   renderStudentModalTable();
 };
 
@@ -1237,17 +1246,47 @@ window.closeManageStudentsModal = function() {
   if (modal) {
     modal.style.display = 'none';
   }
-  editingUsername = null;
+  window.editingUsername = null;
 };
 
 window.openStudentModal = window.openManageStudentsModal;
 window.closeStudentModal = window.closeManageStudentsModal;
 
 window.changeStudentPage = function(newPage) {
-  currentStudentSubmissionsPage = newPage;
+  window.currentStudentSubmissionsPage = newPage;
   renderStudentModalTable();
 };
 
+window.toggleSelectAllStudents = function(source) {
+  const checkboxes = document.querySelectorAll('.student-checkbox');
+  checkboxes.forEach(cb => cb.checked = source.checked);
+  window.updateStudentBulkDeleteState();
+};
+
+window.updateStudentBulkDeleteState = function() {
+  const checkboxes = document.querySelectorAll('.student-checkbox:checked');
+  const bulkBtn = document.getElementById('studentBulkDeleteBtn');
+  const selectAllMaster = document.getElementById('selectAllStudentsMaster');
+  const allCheckboxes = document.querySelectorAll('.student-checkbox');
+  
+  if (bulkBtn) {
+    if (checkboxes.length > 0) {
+      bulkBtn.style.display = 'inline-flex';
+      bulkBtn.innerHTML = `<i class="fa-solid fa-trash-can"></i> Delete (${checkboxes.length})`;
+    } else {
+      bulkBtn.style.display = 'none';
+    }
+  }
+
+  if (selectAllMaster && allCheckboxes.length > 0) {
+    selectAllMaster.checked = checkboxes.length === allCheckboxes.length;
+    selectAllMaster.indeterminate = checkboxes.length > 0 && checkboxes.length < allCheckboxes.length;
+  }
+};
+
+// ==========================================================================
+// 3. ENHANCED SAAS RENDER TABLE WITH BULK SELECT & MICRO-ICONS
+// ==========================================================================
 window.renderStudentModalTable = async function() {
   const tbody = document.getElementById('studentModalTableBody');
   const searchInput = document.getElementById('studentSearchInput');
@@ -1284,34 +1323,38 @@ window.renderStudentModalTable = async function() {
   ));
 
   const totalItems = filteredStudents.length;
-  const totalPages = Math.ceil(totalItems / ITEMS_PER_PAGE) || 1;
-  if (currentStudentSubmissionsPage > totalPages) currentStudentSubmissionsPage = totalPages;
-  if (currentStudentSubmissionsPage < 1) currentStudentSubmissionsPage = 1;
+  const itemsPerPage = window.ITEMS_PER_PAGE || 10;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  
+  if (window.currentStudentSubmissionsPage > totalPages) window.currentStudentSubmissionsPage = totalPages;
+  if (window.currentStudentSubmissionsPage < 1) window.currentStudentSubmissionsPage = 1;
 
-  const startIndex = (currentStudentSubmissionsPage - 1) * ITEMS_PER_PAGE;
-  const paginatedStudents = filteredStudents.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  const startIndex = (window.currentStudentSubmissionsPage - 1) * itemsPerPage;
+  const paginatedStudents = filteredStudents.slice(startIndex, startIndex + itemsPerPage);
 
   if (paginatedStudents.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#64748b;">No matching students found.</td></tr>';
-    renderStudentPaginationControls(0, 1);
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem; color:#64748b;"><i class="fa-solid fa-user-slash" style="font-size: 1.5rem; margin-bottom: 0.5rem; display:block;"></i>No matching students found.</td></tr>';
+    if (typeof window.renderStudentPaginationControls === 'function') {
+      window.renderStudentPaginationControls(0, 1);
+    }
     return;
   }
 
   tbody.innerHTML = paginatedStudents.map((s, index) => {
     const absoluteIndex = startIndex + index + 1;
-    const identifier = s.schoolId || s.username || '';
-    const isEditing = editingUsername === identifier;
+    const identifier = s.schoolId || s.username || s.id;
+    const isEditing = window.editingUsername === identifier;
     
-    // Fixed narrow width style for the # column to prevent stretching
-    const indexColStyle = 'width: 50px; text-align: center; white-space: nowrap;';
+    const indexColStyle = 'width: 40px; text-align: center; white-space: nowrap;';
 
     if (isEditing) {
       return `
         <tr>
+          <td style="${indexColStyle}">-</td>
           <td style="${indexColStyle}">${absoluteIndex}</td>
-          <td><input type="text" id="editFullName" value="${escapeHtml(s.fullName || '')}"></td>
+          <td><input type="text" id="editFullName" value="${escapeHtml(s.fullName || '')}" style="width:100%; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px;"></td>
           <td>
-            <select id="editClass">
+            <select id="editClass" style="width:100%; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px;">
               <option value="S1" ${s.class === 'S1' ? 'selected' : ''}>S.1</option>
               <option value="S2" ${s.class === 'S2' ? 'selected' : ''}>S.2</option>
               <option value="S3" ${s.class === 'S3' ? 'selected' : ''}>S.3</option>
@@ -1320,11 +1363,11 @@ window.renderStudentModalTable = async function() {
               <option value="S6" ${s.class === 'S6' ? 'selected' : ''}>S.6</option>
             </select>
           </td>
-          <td><input type="text" id="editSchoolId" value="${escapeHtml(identifier)}"></td>
-          <td><input type="text" id="editPassword" value="${escapeHtml(s.password || '')}"></td>
-          <td style="display:flex; gap:0.4rem;">
-            <button onclick="saveStudentEdit('${escapeHtml(identifier)}')" class="btn-action btn-upload"><i class="fa-solid fa-check"></i></button>
-            <button onclick="cancelStudentEdit()" class="btn-action btn-secondary"><i class="fa-solid fa-xmark"></i></button>
+          <td><input type="text" id="editSchoolId" value="${escapeHtml(identifier)}" style="width:100%; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px;"></td>
+          <td><input type="text" id="editPassword" value="${escapeHtml(s.password || '')}" style="width:100%; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px;"></td>
+          <td style="display:flex; gap:0.35rem; align-items:center;">
+            <button onclick="saveStudentEdit('${escapeHtml(identifier)}')" title="Save Changes" style="width: 30px; height: 30px; background: #f0fdf4; color: #16a34a; border: none; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-check" style="font-size: 0.8rem;"></i></button>
+            <button onclick="cancelStudentEdit()" title="Cancel" style="width: 30px; height: 30px; background: #f1f5f9; color: #64748b; border: none; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-xmark" style="font-size: 0.8rem;"></i></button>
           </td>
         </tr>
       `;
@@ -1332,20 +1375,23 @@ window.renderStudentModalTable = async function() {
 
     return `
       <tr>
-        <td style="${indexColStyle}">${absoluteIndex}</td>
+        <td style="${indexColStyle}"><input type="checkbox" class="student-checkbox" value="${identifier}" onclick="updateStudentBulkDeleteState()" style="cursor: pointer; width: 15px; height: 15px; accent-color: #0ea5e9;"></td>
+        <td style="${indexColStyle}; color: #64748b; font-size: 0.8rem;">${absoluteIndex}</td>
         <td><strong>${escapeHtml(s.fullName || '')}</strong></td>
-        <td>${escapeHtml(s.class || '')}</td>
+        <td><span style="background: #e0f2fe; color: #0369a1; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${escapeHtml(s.class || 'N/A')}</span></td>
         <td><code>${escapeHtml(identifier)}</code></td>
         <td><code>${escapeHtml(s.password || '')}</code></td>
-        <td style="display:flex; gap:0.4rem;">
-          <button onclick="enableStudentEdit('${escapeHtml(identifier)}')" class="btn-action btn-edit"><i class="fa-solid fa-pen-to-square"></i></button>
-          <button onclick="deleteStudent('${escapeHtml(identifier)}')" class="btn-action btn-danger"><i class="fa-solid fa-trash"></i></button>
+        <td style="display:flex; gap:0.35rem; align-items:center;">
+          <button onclick="enableStudentEdit('${escapeHtml(identifier)}')" title="Edit Student" style="width: 30px; height: 30px; background: #eff6ff; color: #2563eb; border: none; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-pen-to-square" style="font-size: 0.8rem;"></i></button>
+          <button onclick="deleteStudent('${escapeHtml(identifier)}')" title="Delete Student" style="width: 30px; height: 30px; background: #fef2f2; color: #dc2626; border: none; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-trash-can" style="font-size: 0.8rem;"></i></button>
         </td>
       </tr>
     `;
   }).join('');
 
-  renderStudentPaginationControls(totalPages, currentStudentSubmissionsPage);
+  if (typeof window.renderStudentPaginationControls === 'function') {
+    window.renderStudentPaginationControls(totalPages, window.currentStudentSubmissionsPage);
+  }
 };
 
 // Advanced Pagination with Ellipsis (...) generator targeting #studentTablePagination
