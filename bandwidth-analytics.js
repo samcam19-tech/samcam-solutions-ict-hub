@@ -1,5 +1,5 @@
 // ==========================================
-// BANDWIDTH-ANALYTICS.JS - REAL PING-BASED TELEMETRY
+// BANDWIDTH-ANALYTICS.JS - 2026 ENTERPRISE SaaS STANDARD
 // ==========================================
 
 window.initBandwidthAnalytics = function() {
@@ -33,42 +33,82 @@ window.initBandwidthAnalytics = function() {
         });
 };
 
+// Helper function: Enterprise retry mechanism with exponential backoff & jitter
+async function fetchWithRetry(url, options = {}, retries = 3, backoff = 1000) {
+    try {
+        const response = await fetch(url, options);
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        return response;
+    } catch (error) {
+        if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, backoff + Math.random() * 200));
+            return fetchWithRetry(url, options, retries - 1, backoff * 2);
+        }
+        throw error;
+    }
+}
+
+// Helper function: Multi-probe client-side packet loss/drop estimation
+async function measurePacketLoss() {
+    const totalProbes = 5;
+    let successfulProbes = 0;
+    
+    const promises = Array.from({ length: totalProbes }).map(async () => {
+        try {
+            const probeUrl = `https://firebasestorage.googleapis.com/v0/b/samcam-system.firebasestorage.app/o/ping_test.txt?alt=media&t=${Date.now()}-${Math.random()}`;
+            const res = await fetch(probeUrl, { cache: 'no-store' });
+            if (res.ok) successfulProbes++;
+        } catch (e) {}
+    });
+
+    await Promise.all(promises);
+    const dropRatePercent = (((totalProbes - successfulProbes) / totalProbes) * 100).toFixed(2) + " %";
+    return dropRatePercent;
+}
+
 window.refreshBandwidthMetrics = function() {
     const refreshBtn = document.querySelector('#bandwidthAnalyticsView .btn-primary');
     if (!refreshBtn) return;
 
     const originalHTML = refreshBtn.innerHTML;
-    refreshBtn.innerHTML = '<i class="fa-solid fa-rotate fa-spin"></i> Testing Speed...';
+    refreshBtn.innerHTML = '<i class="fa-solid fa-rotate fa-spin"></i> Analyzing Network...';
 
     if (typeof firebase !== 'undefined' && firebase.apps.length) {
         const db = firebase.firestore();
         const startTime = performance.now();
         
-        // Fetch actual ping test file from Firebase Storage with cache-buster timestamp
         const testFileUrl = `https://firebasestorage.googleapis.com/v0/b/samcam-system.firebasestorage.app/o/ping_test.txt?alt=media&t=${Date.now()}`;
 
-        fetch(testFileUrl, { cache: 'no-store' })
-            .then(response => {
-                if (!response.ok) throw new Error("Network ping failed");
-                return response.blob();
-            })
-            .then(blob => {
+        // Execute robust fetch with retry backing, alongside concurrent multi-probe packet drop analysis
+        Promise.all([
+            fetchWithRetry(testFileUrl, { cache: 'no-store' }),
+            measurePacketLoss()
+        ])
+            .then(async ([response, calculatedDropRate]) => {
+                const blob = await response.blob();
                 const endTime = performance.now();
                 const durationSeconds = (endTime - startTime) / 1000;
-                const fileSizeBits = blob.size * 8; // File size in bits
+                const fileSizeBits = blob.size * 8;
 
-                // Calculate actual throughput
+                // Throughput calculations
                 const calculatedBps = fileSizeBits / (durationSeconds > 0 ? durationSeconds : 0.001);
                 const actualIngress = (calculatedBps / 1_000_000).toFixed(1) + " Mbps";
                 const actualEgress = ((calculatedBps * 0.38) / 1_000_000).toFixed(1) + " Mbps";
                 const actualLatency = Math.round(endTime - startTime) + " ms";
+                const timestamp = new Date().toISOString();
 
-                // Push actual measured metrics to Firestore
+                // Push enterprise metrics + historical array logging for charting to Firestore
                 return db.collection("network_telemetry").doc("bandwidth_stats").update({
                     ingress: actualIngress,
                     egress: actualEgress,
                     latency: actualLatency,
-                    ingressTrend: `Live ping (${durationSeconds.toFixed(2)}s)`
+                    dropRate: calculatedDropRate,
+                    ingressTrend: `Multi-probe ping (${durationSeconds.toFixed(2)}s)`,
+                    history: firebase.firestore.FieldValue.arrayUnion({
+                        timestamp: timestamp,
+                        ingressVal: parseFloat(actualIngress),
+                        latencyVal: parseFloat(actualLatency)
+                    })
                 });
             })
             .then(() => {
@@ -77,7 +117,7 @@ window.refreshBandwidthMetrics = function() {
                 }, 600);
             })
             .catch((err) => {
-                console.error("Failed to measure real telemetry metrics:", err);
+                console.error("Failed to execute enterprise telemetry probe:", err);
                 refreshBtn.innerHTML = originalHTML;
             });
     } else {
