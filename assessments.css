@@ -33,7 +33,7 @@
 
     .test-actions { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; }
     .btn-action {
-      padding: 0.45rem 0.75rem;
+      padding: 0.4rem 0.6rem;
       border-radius: 6px;
       text-decoration: none;
       font-size: 0.85rem;
@@ -45,37 +45,21 @@
       background: transparent;
       border: none;
       box-sizing: border-box;
-      transition: background 0.2s ease;
+      transition: background 0.15s ease;
     }
     
-    .btn-action.btn-csv {
-      color: #0284c7;
-    }
-    .btn-action.btn-csv:hover {
-      background: #f0f9ff;
-    }
+    .btn-action.btn-csv { color: #0284c7; }
+    .btn-action.btn-csv:hover { background: #f0f9ff; }
     
-    .btn-action.btn-pdf {
-      color: #dc2626;
-    }
-    .btn-action.btn-pdf:hover {
-      background: #fef2f2;
-    }
+    .btn-action.btn-pdf { color: #dc2626; }
+    .btn-action.btn-pdf:hover { background: #fef2f2; }
     
-    .btn-action.btn-students {
-      color: #0ea5e9;
-    }
-    .btn-action.btn-students:hover {
-      background: #f0fdf4;
-    }
+    .btn-action.btn-students { color: #0ea5e9; }
+    .btn-action.btn-students:hover { background: #f0fdf4; }
     
-    .btn-action.btn-staff {
-      color: #7c3aed;
-    }
-    .btn-action.btn-staff:hover {
-      background: #faf5ff;
-    }
-.btn-download { background: #0284c7; color: white; }
+    .btn-action.btn-staff { color: #7c3aed; }
+    .btn-action.btn-staff:hover { background: #faf5ff; }
+    .btn-download { background: #0284c7; color: white; }
     .btn-upload { background: #16a34a; color: white; }
     .btn-disabled { background: #94a3b8; color: white; cursor: not-allowed; }
     .btn-secondary { background: #475569; color: white; }
