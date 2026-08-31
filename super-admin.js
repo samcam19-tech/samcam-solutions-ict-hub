@@ -109,7 +109,7 @@ document.addEventListener("DOMContentLoaded", () => {
           <span style="display: block; font-size: 0.75rem; color: #64748b; font-weight: 600;">Signed in as</span>
           <span style="display: block; font-size: 0.85rem; color: #1e293b; font-weight: bold;">${currentAdmin.fullName}</span>
         </div>
-        <a href="#lab-network" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #334155; text-decoration: none; font-size: 0.85rem;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+        <a href="network-manager.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #334155; text-decoration: none; font-size: 0.85rem;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
           <i class="fa-solid fa-network-wired" style="color: #0284c7; width: 16px;"></i> Lab Network Management
         </a>
         <a href="#deep-stuff" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #334155; text-decoration: none; font-size: 0.85rem;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
