@@ -3264,7 +3264,10 @@ window.renderSubmissions = async function() {
         <input type="checkbox" id="selectAllSubmissions" onclick="toggleSelectAllSubmissions(this)" style="cursor: pointer; width: 16px; height: 16px; accent-color: #0ea5e9;" title="Select All">
         <span style="font-weight: 600; color: #1e293b;">Select All (${submissions.length})</span>
       </div>
-      <div>
+      <div style="display: flex; gap: 0.5rem; align-items: center;">
+        <button type="button" id="bulkDownloadBtn" onclick="downloadAllStudentSubmissions()" style="display: flex; align-items: center; gap: 0.4rem; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+          <i class="fa-solid fa-file-zipper"></i> Download All as ZIP
+        </button>
         <button type="button" id="bulkDeleteBtn" onclick="deleteSelectedSubmissions()" style="display: none; align-items: center; gap: 0.4rem; background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
           <i class="fa-solid fa-trash-can"></i> Delete Selected
         </button>
@@ -3280,7 +3283,7 @@ window.renderSubmissions = async function() {
     return `
     <div class="sub-item" data-id="${sub.id}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 1rem; border-bottom: 1px solid #f1f5f9; gap: 1rem; transition: background 0.15s;">
       <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 0;">
-        <input type="checkbox" class="submission-checkbox" value="${sub.id}" onclick="updateBulkDeleteState()" style="cursor: pointer; width: 16px; height: 16px; accent-color: #0ea5e9; flex-shrink: 0;">
+        <input type="checkbox" class="submission-checkbox" value="${sub.id}" data-url="${escapeHtml(sub.fileUrl || '')}" data-name="${escapeHtml(sub.studentName || 'Student')}_${escapeHtml(sub.fileName || 'submission')}" onclick="updateBulkDeleteState()" style="cursor: pointer; width: 16px; height: 16px; accent-color: #0ea5e9; flex-shrink: 0;">
         <div style="min-width: 0;">
           <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.2rem;">
             <strong style="color: #0f172a; font-size: 0.9rem;">${escapeHtml(sub.studentName || 'Unnamed Student')}</strong> 
@@ -3313,6 +3316,95 @@ window.renderSubmissions = async function() {
   html += `</div>`;
   container.innerHTML = html;
   if (paginationContainer) paginationContainer.style.display = 'flex';
+};
+
+// Companion function using your exact showCustomModal implementation
+window.downloadAllStudentSubmissions = async function() {
+  if (!window.JSZip) {
+    showCustomModal({
+      title: "Library Error",
+      message: "JSZip library is not loaded.",
+      type: "error"
+    });
+    return;
+  }
+
+  const checkboxes = document.querySelectorAll('.submission-checkbox:checked');
+  const targetCheckboxes = checkboxes.length > 0 ? checkboxes : document.querySelectorAll('.submission-checkbox');
+
+  if (targetCheckboxes.length === 0) {
+    showCustomModal({
+      title: "No Submissions",
+      message: "No submissions available to download.",
+      type: "warning"
+    });
+    return;
+  }
+
+  const zip = new JSZip();
+  const folder = zip.folder("Student_Submissions_Batch");
+  
+  const btn = document.getElementById('bulkDownloadBtn');
+  const originalText = btn ? btn.innerHTML : '';
+  if (btn) {
+    btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Packaging...`;
+    btn.disabled = true;
+  }
+
+  let successCount = 0;
+
+  for (const cb of targetCheckboxes) {
+    const fileUrl = cb.getAttribute('data-url');
+    const fileName = cb.getAttribute('data-name');
+    
+    if (fileUrl && fileUrl !== '#') {
+      try {
+        const response = await fetch(fileUrl);
+        const blob = await response.blob();
+        const safeName = fileName.replace(/[/\\?%*:|"<>]/g, '-');
+        folder.file(safeName, blob);
+        successCount++;
+      } catch (err) {
+        console.error(`Failed to download file: ${fileName}`, err);
+      }
+    }
+  }
+
+  if (successCount === 0) {
+    showCustomModal({
+      title: "Download Failed",
+      message: "Could not fetch any files for packaging.",
+      type: "error"
+    });
+    if (btn) {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+    }
+    return;
+  }
+
+  const content = await zip.generateAsync({ type: "blob" });
+  const blobUrl = URL.createObjectURL(content);
+  
+  const link = document.createElement('a');
+  link.href = blobUrl;
+  link.download = `Student_Submissions_${Date.now()}.zip`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+
+  if (btn) {
+    btn.innerHTML = originalText;
+    btn.disabled = false;
+  }
+
+  showCustomModal({
+    title: "Success",
+    message: `Successfully packaged and downloaded ${successCount} student submission(s) into a ZIP archive.`,
+    type: "success"
+  });
 };
 
 window.toggleSelectAllSubmissions = function(source) {
