@@ -74,6 +74,9 @@ function ensureFirewallModalInDOM() {
                     <label style="display: block; font-size: 0.875rem; font-weight: 600; color: #334155; margin-bottom: 6px;">Target Domain, App, or Category</label>
                     <select id="fwContentTargetInput" required style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; background: #fff; box-sizing: border-box; outline: none;" onfocus="this.style.borderColor='#2563eb'" onblur="this.style.borderColor='#cbd5e1'">
                         <option value="" disabled selected>-- Select Website, App, or Category Filter --</option>
+                        <optgroup label="Executable Files & Downloads">
+                            <option value="executables">executables (.exe, .msi, .bat, .cmd, .scr, .pif, .jar)</option>
+                        </optgroup>
                         <optgroup label="Popular Sites & Media">
                             <option value="youtube.com">youtube.com (Video Streaming)</option>
                         </optgroup>
