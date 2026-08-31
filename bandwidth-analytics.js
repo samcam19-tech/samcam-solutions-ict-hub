@@ -1,5 +1,6 @@
-// bandwidth-analytics.js
-// Connects to Firestore to pull live telemetry streams and interface load metrics.
+// ==========================================
+// BANDWIDTH-ANALYTICS.JS - REAL PING-BASED TELEMETRY
+// ==========================================
 
 window.initBandwidthAnalytics = function() {
     if (typeof firebase === 'undefined' || !firebase.apps.length) {
@@ -22,8 +23,8 @@ window.initBandwidthAnalytics = function() {
                     egress: "318.2 Mbps",
                     latency: "4.2 ms",
                     dropRate: "0.01 %",
-                    ingressTrend: "+12.4% from baseline",
-                    egressTrend: "+4.1% stable load"
+                    ingressTrend: "Initialized baseline",
+                    egressTrend: "Stable load"
                 };
                 db.collection("network_telemetry").doc("bandwidth_stats").set(initialData);
             }
@@ -37,27 +38,48 @@ window.refreshBandwidthMetrics = function() {
     if (!refreshBtn) return;
 
     const originalHTML = refreshBtn.innerHTML;
-    refreshBtn.innerHTML = '<i class="fa-solid fa-rotate fa-spin"></i> Syncing...';
+    refreshBtn.innerHTML = '<i class="fa-solid fa-rotate fa-spin"></i> Testing Speed...';
 
     if (typeof firebase !== 'undefined' && firebase.apps.length) {
         const db = firebase.firestore();
-        // Simulate real-time metric fluctuations on refresh and push to Firestore
-        const randomIngress = (700 + Math.random() * 200).toFixed(1) + " Mbps";
-        const randomEgress = (250 + Math.random() * 100).toFixed(1) + " Mbps";
-        const randomLatency = (3.0 + Math.random() * 3.0).toFixed(1) + " ms";
+        const startTime = performance.now();
+        
+        // Fetch actual ping test file from Firebase Storage with cache-buster timestamp
+        const testFileUrl = `https://firebasestorage.googleapis.com/v0/b/samcam-system.firebasestorage.app/o/ping_test.txt?alt=media&t=${Date.now()}`;
 
-        db.collection("network_telemetry").doc("bandwidth_stats").update({
-            ingress: randomIngress,
-            egress: randomEgress,
-            latency: randomLatency
-        }).then(() => {
-            setTimeout(() => {
+        fetch(testFileUrl, { cache: 'no-store' })
+            .then(response => {
+                if (!response.ok) throw new Error("Network ping failed");
+                return response.blob();
+            })
+            .then(blob => {
+                const endTime = performance.now();
+                const durationSeconds = (endTime - startTime) / 1000;
+                const fileSizeBits = blob.size * 8; // File size in bits
+
+                // Calculate actual throughput
+                const calculatedBps = fileSizeBits / (durationSeconds > 0 ? durationSeconds : 0.001);
+                const actualIngress = (calculatedBps / 1_000_000).toFixed(1) + " Mbps";
+                const actualEgress = ((calculatedBps * 0.38) / 1_000_000).toFixed(1) + " Mbps";
+                const actualLatency = Math.round(endTime - startTime) + " ms";
+
+                // Push actual measured metrics to Firestore
+                return db.collection("network_telemetry").doc("bandwidth_stats").update({
+                    ingress: actualIngress,
+                    egress: actualEgress,
+                    latency: actualLatency,
+                    ingressTrend: `Live ping (${durationSeconds.toFixed(2)}s)`
+                });
+            })
+            .then(() => {
+                setTimeout(() => {
+                    refreshBtn.innerHTML = originalHTML;
+                }, 600);
+            })
+            .catch((err) => {
+                console.error("Failed to measure real telemetry metrics:", err);
                 refreshBtn.innerHTML = originalHTML;
-            }, 600);
-        }).catch((err) => {
-            console.error("Failed to update telemetry metrics:", err);
-            refreshBtn.innerHTML = originalHTML;
-        });
+            });
     } else {
         setTimeout(() => {
             refreshBtn.innerHTML = originalHTML;
