@@ -582,41 +582,44 @@
       <!-- TEACHER REPORTS & SUBMISSIONS -->
       <div id="teacherReports" style="display:none;" class="portal-grid">
         <div class="card-box">
-  <div style="display:flex; flex-direction:column; gap:0.8rem; align-items:flex-start;">
-    <h3 style="margin:0;"><i class="fa-solid fa-users"></i> Credentials Control Panel</h3>
-    <p style="font-size: 0.85rem; color: #64748b; margin:0;">Download class registration records or manage individual student accounts.</p>
-    
-    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center; width:100%;">
-  <!-- Class Filter Dropdown -->
-  <select id="exportClassSelect" style="padding: 0.45rem 0.6rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #f8fafc; color: #334155; cursor: pointer;">
-    <option value="">All Classes</option>
-    <option value="S1">S.1</option>
-    <option value="S2">S.2</option>
-    <option value="S3">S.3</option>
-    <option value="S4">S.4</option>
-    <option value="S5">S.5</option>
-    <option value="S6">S.6</option>
-  </select>
-
-  <button id="downloadCsvBtn" onclick="downloadStudentCSV()" class="btn-action btn-csv">
-        <i class="fa-solid fa-file-csv"></i> Download CSV
-      </button>
-
-      <button id="downloadPdfBtn" onclick="downloadStudentPDF()" class="btn-action btn-pdf">
-        <i class="fa-solid fa-file-pdf"></i> Download PDF
-      </button>
-
-      <button id="openManageStudentsBtn" onclick="openManageStudentsModal()" class="btn-action btn-students">
-        <i class="fa-solid fa-user-gear"></i> Manage Registered Students
-      </button>
-
-      <button id="openManageStaffBtn" class="btn-action btn-staff" style="display:none;">
-        <i class="fa-solid fa-user-shield"></i> Manage Staff Accounts
-      </button>
-</div>
-  </div>
-</div>
-
+          <div style="display:flex; flex-direction:column; gap:0.8rem; align-items:flex-start; width:100%;">
+            <h3 style="margin:0;"><i class="fa-solid fa-users"></i> Credentials Control Panel</h3>
+            <p style="font-size: 0.85rem; color: #64748b; margin:0;">Download class registration records or manage individual student accounts.</p>
+            
+            <!-- Full-Width Modern SaaS Class Select Input -->
+            <select id="exportClassSelect" style="width: 100%; padding: 0.6rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 0.85rem; background: #f8fafc; color: #334155; cursor: pointer; outline: none; box-sizing: border-box;">
+              <option value="">All Classes (Full Export)</option>
+              <option value="S1">S.1</option>
+              <option value="S2">S.2</option>
+              <option value="S3">S.3</option>
+              <option value="S4">S.4</option>
+              <option value="S5">S.5</option>
+              <option value="S6">S.6</option>
+            </select>
+        
+            <!-- Action Buttons Group (All on One Line) -->
+            <div style="display:flex; gap:0.4rem; flex-wrap:wrap; align-items:center; width:100%;">
+              <button id="downloadCsvBtn" onclick="downloadStudentCSV()" class="btn-action btn-csv">
+                <i class="fa-solid fa-file-csv"></i> Download CSV
+              </button>
+        
+              <!-- Visual Separator for Export Actions -->
+              <span style="color: #cbd5e1; font-weight: 300; margin: 0 0.2rem;">|</span>
+        
+              <button id="downloadPdfBtn" onclick="downloadStudentPDF()" class="btn-action btn-pdf">
+                <i class="fa-solid fa-file-pdf"></i> Download PDF
+              </button>
+        
+              <button id="openManageStudentsBtn" onclick="openManageStudentsModal()" class="btn-action btn-students">
+                <i class="fa-solid fa-user-gear"></i> Manage Students
+              </button>
+        
+              <button id="openManageStaffBtn" class="btn-action btn-staff" style="display:none;">
+                <i class="fa-solid fa-user-shield"></i> Manage Staff
+              </button>
+            </div>
+          </div>
+        </div>
         <div class="card-box">
           <h3><i class="fa-solid fa-folder-closed"></i> Student Submissions</h3>
           <div id="submissionsContainer"></div>
