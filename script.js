@@ -2008,10 +2008,26 @@ async function renderAssessments() {
   const container = document.getElementById('assessmentsContainer');
   if (!container) return;
 
-  // Ensure the container itself expands to a spacious layout (e.g., ~80% width, centered)
-  container.style.width = '100%';
-  container.style.maxWidth = '1100px'; // Adjust this max-width or set to '80%' / '100%' based on your preference
-  container.style.margin = '0 auto';
+  const isStudent = currentUser && currentUser.role === 'Student';
+
+  // Make the container and its parent wrapper stretch to full width for students, removing the narrow boxed card layout and white space on the right
+  if (isStudent) {
+    container.style.width = '100%';
+    container.style.maxWidth = '100%';
+    container.style.margin = '0';
+    if (container.parentElement) {
+      container.parentElement.style.width = '100%';
+      container.parentElement.style.maxWidth = '100%';
+      container.parentElement.style.background = 'transparent';
+      container.parentElement.style.border = 'none';
+      container.parentElement.style.boxShadow = 'none';
+      container.parentElement.style.padding = '0';
+    }
+  } else {
+    container.style.width = '';
+    container.style.maxWidth = '';
+    container.style.margin = '';
+  }
 
   const activeSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || window.currentSchoolId) : null;
 
@@ -2043,7 +2059,7 @@ async function renderAssessments() {
 
   let assessments = resources.filter(r => r.category === "Question Paper");
   
-  if (currentUser && currentUser.role === 'Student') {
+  if (isStudent) {
     assessments = assessments.filter(a => a.class === currentUser.class);
   } else if (selectedClassFilter && selectedClassFilter !== 'ALL') {
     assessments = assessments.filter(a => a.class === selectedClassFilter);
@@ -2063,7 +2079,7 @@ async function renderAssessments() {
     const isExpired = now > deadlineDate;
     
     const currentStudentId = currentUser ? (currentUser.schoolId || currentUser.username) : null;
-    const studentSub = (currentUser && currentUser.role === 'Student') 
+    const studentSub = isStudent 
       ? submissions.find(s => String(s.testId) === String(a.id) && (String(s.schoolId || s.studentId || s.username || '').toLowerCase() === String(currentStudentId || '').toLowerCase() || s.studentName === currentUser.fullName)) 
       : null;
     
@@ -2072,7 +2088,7 @@ async function renderAssessments() {
     let actionHTML = '';
     
     // Student Actions (Strictly icon-only with tooltips)
-    if (currentUser && currentUser.role === 'Student') {
+    if (isStudent) {
         if (studentSub) {
             actionHTML = `
               <span style="color:#16a34a; font-size:0.85rem; font-weight:600; display:inline-flex; align-items:center; gap:0.35rem;">
@@ -2105,9 +2121,9 @@ async function renderAssessments() {
             }
         }
     } 
-    // Teacher / Admin Actions
+    // Teacher / Admin Actions (Strictly icon-only with tooltips)
     else if (currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin' || currentUser.role === 'Administrator')) {
-        actionHtml = `
+        actionHTML = `
             <div style="display:flex; gap:0.35rem; align-items:center;">
               <button type="button" onclick="openEditAssessmentModal('${a.id}')" class="btn-action btn-icon-only btn-edit" title="Edit Assessment"><i class="fa-solid fa-pen-to-square"></i></button>
               <button type="button" onclick="handleDeleteAssessment('${a.id}')" class="btn-action btn-icon-only btn-danger" title="Delete Assessment"><i class="fa-solid fa-trash-can"></i></button>
