@@ -16,9 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
     initEventListeners();
 });
 
-const MASTER_KEY_SECRET = "SAMCAM-NETOPS-2026";
-
-window.verifyMasterKey = function() {
+window.verifyMasterKey = async function() {
   const inputEl = document.getElementById('masterKeyInput');
   const errEl = document.getElementById('masterKeyError');
   const gateEl = document.getElementById('masterKeyGate');
@@ -27,13 +25,47 @@ window.verifyMasterKey = function() {
   if (!inputEl) return;
   const enteredKey = inputEl.value.trim();
 
-  if (enteredKey === MASTER_KEY_SECRET) {
-    if (gateEl) gateEl.style.display = 'none';
-    if (appEl) appEl.style.display = 'flex';
-    localStorage.setItem('netops_master_auth', 'true');
-  } else {
+  if (!enteredKey) {
     if (errEl) {
-      errEl.textContent = 'Invalid Master Key! Access Denied.';
+      errEl.textContent = 'Please enter the master key.';
+      errEl.style.display = 'block';
+    }
+    return;
+  }
+
+  try {
+    if (!window.db) {
+      throw new Error("Firestore database instance not found.");
+    }
+
+    const configDocRef = window.db.collection("system_config").doc("super_admin_settings");
+    const docSnap = await configDocRef.get();
+
+    if (!docSnap.exists) {
+      if (errEl) {
+        errEl.textContent = 'Master key configuration not found in Firestore.';
+        errEl.style.display = 'block';
+      }
+      return;
+    }
+
+    const data = docSnap.data();
+    const currentMasterKey = data.masterKey;
+
+    if (currentMasterKey && enteredKey === currentMasterKey.trim()) {
+      if (gateEl) gateEl.style.display = 'none';
+      if (appEl) appEl.style.display = 'flex';
+      localStorage.setItem('netops_master_auth', 'true');
+    } else {
+      if (errEl) {
+        errEl.textContent = 'Invalid Master Key! Access Denied.';
+        errEl.style.display = 'block';
+      }
+    }
+  } catch (err) {
+    console.error("Error verifying master key from Firestore:", err);
+    if (errEl) {
+      errEl.textContent = 'Database connection error during verification.';
       errEl.style.display = 'block';
     }
   }
