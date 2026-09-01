@@ -2010,21 +2010,11 @@ async function renderAssessments() {
 
   const isStudent = currentUser && currentUser.role === 'Student';
 
-  // Toggle visibility of the class filter element based on user role (hidden for students, visible for teachers/admins)
-  const classFilterEl = document.getElementById('filterAssessmentClass') || document.getElementById('assessmentClassFilter');
-  if (classFilterEl && classFilterEl.parentElement) {
-    classFilterEl.parentElement.style.display = isStudent ? 'none' : '';
-  }
-
-  // Configure container to use a 3-column grid layout for students, expanding full width and removing white space
+  // Make the container and its parent wrapper stretch to full width for students, removing the narrow boxed card layout and white space on the right
   if (isStudent) {
     container.style.width = '100%';
     container.style.maxWidth = '100%';
     container.style.margin = '0';
-    container.style.display = 'grid';
-    container.style.gridTemplateColumns = 'repeat(3, 1fr)';
-    container.style.gap = '1rem';
-    
     if (container.parentElement) {
       container.parentElement.style.width = '100%';
       container.parentElement.style.maxWidth = '100%';
@@ -2037,17 +2027,6 @@ async function renderAssessments() {
     container.style.width = '';
     container.style.maxWidth = '';
     container.style.margin = '';
-    container.style.display = '';
-    container.style.gridTemplateColumns = '';
-    container.style.gap = '';
-    if (container.parentElement) {
-      container.parentElement.style.width = '';
-      container.parentElement.style.maxWidth = '';
-      container.parentElement.style.background = '';
-      container.parentElement.style.border = '';
-      container.parentElement.style.boxShadow = '';
-      container.parentElement.style.padding = '';
-    }
   }
 
   const activeSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || window.currentSchoolId) : null;
@@ -2075,6 +2054,7 @@ async function renderAssessments() {
   const submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
   const now = new Date();
 
+  let classFilterEl = document.getElementById('assessmentClassFilter');
   let selectedClassFilter = classFilterEl ? classFilterEl.value : 'ALL';
 
   let assessments = resources.filter(r => r.category === "Question Paper");
@@ -2152,7 +2132,7 @@ async function renderAssessments() {
     }
 
     return `
-      <div class="test-card" data-assessment-id="${a.id}" style="width: 100%; margin-bottom: 0;">
+      <div class="test-card" data-assessment-id="${a.id}" style="width: 100%; margin-bottom: 1rem;">
         <div class="test-header">
           <span class="test-title">${escapeHtml(a.title)} <small style="color:#64748b;">(${escapeHtml(a.class)})</small></span>
           <span class="deadline-badge ${isExpired ? 'deadline-expired' : 'deadline-active'}" data-deadline="${a.deadline}">
