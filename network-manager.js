@@ -127,7 +127,17 @@ function renderWorkstations(stations) {
                 <span>Learner: <strong>${pc.learner}</strong></span>
                 <span>CPU: ${pc.cpu} | RAM: ${pc.ram}</span>
             </div>
+            <div class="ws-inline-actions" style="padding: 0 8px 8px 8px; display: flex; gap: 6px;">
+                <button class="btn-assign-learner" data-id="${pc.id}" data-current="${pc.learner}" style="flex: 1; padding: 4px 8px; font-size: 0.75rem; background: #0ea5e9; border: none; color: #fff; border-radius: 4px; cursor: pointer;"><i class="fa-solid fa-user-pen"></i> Assign Name</button>
+            </div>
         `;
+
+        // Bind quick assign learner button inside card
+        const assignBtn = card.querySelector(".btn-assign-learner");
+        assignBtn.onclick = (e) => {
+            e.stopPropagation();
+            openAssignLearnerModal(pc.id, pc.learner);
+        };
 
         // Add hover effect for zoom icon if thumbnail exists
         if (pc.screenUrl) {
@@ -230,6 +240,22 @@ function initEventListeners() {
         });
     }
 
+    // Add Assign Learner Header Action if container exists or create toolbar hook
+    const dashboardHeaderActions = document.querySelector(".dashboard-actions") || document.querySelector("header") || document.body;
+    let assignGlobalBtn = document.getElementById("assignGlobalLearnerBtn");
+    if (!assignGlobalBtn && dashboardHeaderActions) {
+        assignGlobalBtn = document.createElement("button");
+        assignGlobalBtn.id = "assignGlobalLearnerBtn";
+        assignGlobalBtn.innerHTML = `<i class="fa-solid fa-user-gear"></i> Manage Node Learners`;
+        assignGlobalBtn.style.cssText = "padding: 8px 14px; background: #3b82f6; border: none; color: #fff; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 6px;";
+        assignGlobalBtn.onclick = () => openBatchAssignModal();
+        // Append near lock buttons if found
+        const lockAllBtnRef = document.getElementById("lockAllBtn");
+        if (lockAllBtnRef && lockAllBtnRef.parentNode) {
+            lockAllBtnRef.parentNode.insertBefore(assignGlobalBtn, lockAllBtnRef.nextSibling);
+        }
+    }
+
     if (quickToggleLockBtn) {
         quickToggleLockBtn.onclick = async () => {
             if (!targetWorkstationSelect) return;
@@ -329,13 +355,24 @@ function openNodeModal(pc) {
     title.textContent = `Workstation Control: ${pc.id}`;
     body.innerHTML = `
         ${pc.screenUrl ? `<div class="modal-img-container" style="margin-bottom: 15px; border-radius: 8px; overflow: hidden; border: 1px solid #334155; cursor: pointer; position: relative;" title="Click to view full image"><img src="${pc.screenUrl}" alt="Enlarged Screen View" style="width: 100%; max-height: 250px; object-fit: cover; display: block;" /><div style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.6); color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 0.75rem;"><i class="fa-solid fa-expand"></i> Click to Expand</div></div>` : '<div style="padding: 20px; text-align: center; background: rgba(0,0,0,0.2); border-radius: 6px; margin-bottom: 15px; color: var(--text-muted);">No live screen snapshot available yet</div>'}
-        <p><strong>Assigned Learner:</strong> ${pc.learner}</p>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <p style="margin: 0;"><strong>Assigned Learner:</strong> <span id="modalLearnerNameText">${pc.learner}</span></p>
+            <button id="modalChangeLearnerBtn" style="padding: 4px 10px; background: #0ea5e9; border: none; color: #fff; border-radius: 4px; font-size: 0.75rem; cursor: pointer;"><i class="fa-solid fa-pen"></i> Edit Name</button>
+        </div>
         <p><strong>IP Address:</strong> ${pc.ip}</p>
         <p><strong>Active Window Title:</strong> ${pc.activity}</p>
         <p><strong>Target URL:</strong> <a href="${pc.fullUrl}" target="_blank" style="color: var(--primary);">${pc.fullUrl}</a></p>
         <p><strong>Hardware Resource Utilization:</strong> CPU: ${pc.cpu}, Memory: ${pc.ram}</p>
         <p style="margin-top: 10px; color: var(--success);"><i class="fa-solid fa-shield-check"></i> Live Firestore Feed Synchronized</p>
     `;
+
+    // Bind Edit Name inside Node Modal
+    const editLearnerBtn = body.querySelector("#modalChangeLearnerBtn");
+    if (editLearnerBtn) {
+        editLearnerBtn.onclick = () => {
+            openAssignLearnerModal(pc.id, pc.learner);
+        };
+    }
 
     // Bind full screen zoom if image exists inside modal body
     if (pc.screenUrl) {
@@ -365,6 +402,156 @@ function openNodeModal(pc) {
     };
 
     modal.style.display = "flex";
+}
+
+// Dedicated Modal to Assign/Update Learner Name on a Station
+function openAssignLearnerModal(workstationId, currentLearnerName) {
+    let assignModal = document.getElementById("samcamAssignLearnerModal");
+    if (!assignModal) {
+        assignModal = document.createElement("div");
+        assignModal.id = "samcamAssignLearnerModal";
+        assignModal.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center; z-index: 25000;";
+        document.body.appendChild(assignModal);
+    }
+
+    assignModal.innerHTML = `
+        <div style="background: #1e293b; padding: 25px; border-radius: 10px; width: 420px; border: 1px solid #334155; color: #f8fafc; box-shadow: 0 15px 30px rgba(0,0,0,0.6);">
+            <h3 style="margin-top: 0; margin-bottom: 10px; color: #38bdf8; font-size: 1.1rem;"><i class="fa-solid fa-user-pen"></i> Assign Learner to Node</h3>
+            <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 15px;">Set or update the student name seated at workstation <strong>${workstationId}</strong>.</p>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="display: block; font-size: 0.8rem; color: #cbd5e1; margin-bottom: 6px;">Learner Full Name / ID:</label>
+                <input type="text" id="newLearnerNameInput" value="${currentLearnerName === 'Active Session Learner' || currentLearnerName === 'Waiting for telemetry...' ? '' : currentLearnerName}" placeholder="e.g., Mugisha John (S.5 ICT)" style="width: 100%; background: #0f172a; border: 1px solid #475569; color: #fff; padding: 10px; border-radius: 6px; font-size: 0.9rem;" />
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button id="cancelAssignBtn" style="padding: 8px 16px; background: #475569; border: none; color: #fff; border-radius: 6px; cursor: pointer;">Cancel</button>
+                <button id="saveAssignBtn" style="padding: 8px 16px; background: #0ea5e9; border: none; color: #fff; border-radius: 6px; cursor: pointer; font-weight: 600;">Save Assignment</button>
+            </div>
+        </div>
+    `;
+
+    assignModal.style.display = "flex";
+    const nameInput = document.getElementById("newLearnerNameInput");
+    nameInput.focus();
+    nameInput.select();
+
+    document.getElementById("cancelAssignBtn").onclick = () => {
+        assignModal.style.display = "none";
+    };
+
+    document.getElementById("saveAssignBtn").onclick = async () => {
+        const newName = nameInput.value.trim();
+        if (!newName) {
+            showCustomAlert("Validation Error", "Learner name cannot be empty.");
+            return;
+        }
+
+        if (!window.db) {
+            showCustomAlert("Error", "Firestore database instance not found.");
+            return;
+        }
+
+        try {
+            await window.db.collection("workstation_telemetry").doc(workstationId).update({
+                learner: newName
+            });
+            assignModal.style.display = "none";
+            showCustomAlert("Success", `Assigned "${newName}" to workstation ${workstationId} successfully.`);
+        } catch (err) {
+            console.error("Error updating assigned learner:", err);
+            showCustomAlert("Error", "Failed to save learner name. Check console logs.");
+        }
+    };
+
+    assignModal.onclick = (e) => {
+        if (e.target === assignModal) {
+            assignModal.style.display = "none";
+        }
+    };
+}
+
+// Batch Manage / View All Connected Nodes Modal
+function openBatchAssignModal() {
+    let batchModal = document.getElementById("samcamBatchAssignModal");
+    if (!batchModal) {
+        batchModal = document.createElement("div");
+        batchModal.id = "samcamBatchAssignModal";
+        batchModal.style.cssText = "position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 25000; padding: 20px;";
+        document.body.appendChild(batchModal);
+    }
+
+    let rowsHtml = workstationsData.map(pc => `
+        <tr style="border-bottom: 1px solid #334155;">
+            <td style="padding: 10px; font-weight: 600; color: #38bdf8;">${pc.id}</td>
+            <td style="padding: 10px; color: #94a3b8; font-size: 0.85rem;">${pc.ip}</td>
+            <td style="padding: 10px;">
+                <input type="text" data-station-id="${pc.id}" value="${pc.learner === 'Active Session Learner' || pc.learner === 'Waiting for telemetry...' ? '' : pc.learner}" placeholder="Enter learner name..." style="width: 100%; background: #0f172a; border: 1px solid #475569; color: #fff; padding: 6px 10px; border-radius: 4px; font-size: 0.85rem;" />
+            </td>
+        </tr>
+    `).join('');
+
+    batchModal.innerHTML = `
+        <div style="background: #1e293b; padding: 25px; border-radius: 10px; width: 650px; max-height: 85vh; display: flex; flex-direction: column; border: 1px solid #334155; color: #f8fafc; box-shadow: 0 15px 35px rgba(0,0,0,0.7);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                <h3 style="margin: 0; color: #38bdf8; font-size: 1.1rem;"><i class="fa-solid fa-network-wired"></i> Connected Nodes & Seating Registry</h3>
+                <button id="closeBatchModal" style="background: #ef4444; border: none; color: #fff; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <p style="font-size: 0.85rem; color: #94a3b8; margin-bottom: 15px;">Review all currently active network nodes and assign learners across the computer lab in bulk.</p>
+            
+            <div style="overflow-y: auto; max-height: 50vh; border: 1px solid #334155; border-radius: 6px; margin-bottom: 15px;">
+                <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                    <thead>
+                        <tr style="background: #0f172a; color: #cbd5e1; font-size: 0.8rem; border-bottom: 1px solid #334155;">
+                            <th style="padding: 10px;">Workstation ID</th>
+                            <th style="padding: 10px;">IP Address</th>
+                            <th style="padding: 10px;">Assigned Learner Name</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                <button id="cancelBatchBtn" style="padding: 8px 16px; background: #475569; border: none; color: #fff; border-radius: 6px; cursor: pointer;">Close</button>
+                <button id="saveBatchBtn" style="padding: 8px 20px; background: #10b981; border: none; color: #fff; border-radius: 6px; cursor: pointer; font-weight: 600;">Save All Changes</button>
+            </div>
+        </div>
+    `;
+
+    batchModal.style.display = "flex";
+
+    const closeModalAction = () => { batchModal.style.display = "none"; };
+    document.getElementById("closeBatchModal").onclick = closeModalAction;
+    document.getElementById("cancelBatchBtn").onclick = closeModalAction;
+
+    document.getElementById("saveBatchBtn").onclick = async () => {
+        if (!window.db) return;
+        const inputs = batchModal.querySelectorAll("input[data-station-id]");
+        
+        try {
+            const batch = window.db.batch();
+            inputs.forEach(input => {
+                const stationId = input.getAttribute("data-station-id");
+                const nameVal = input.value.trim() || "Active Session Learner";
+                const ref = window.db.collection("workstation_telemetry").doc(stationId);
+                batch.update(ref, { learner: nameVal });
+            });
+
+            await batch.commit();
+            batchModal.style.display = "none";
+            showCustomAlert("Registry Updated", "All workstation learner assignments have been updated successfully.");
+        } catch (err) {
+            console.error("Batch assignment failed:", err);
+            showCustomAlert("Error", "Failed to update node registry. Check console logs.");
+        }
+    };
+
+    batchModal.onclick = (e) => {
+        if (e.target === batchModal) batchModal.style.display = "none";
+    };
 }
 
 // Full Image Lightbox Modal Viewer
