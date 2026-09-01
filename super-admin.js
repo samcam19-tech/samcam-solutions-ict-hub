@@ -183,7 +183,8 @@ async function enforceFirestoreMasterKeyGate() {
           "Initialize Super Admin Key",
           "Create your secure master secret key (at least 6 characters):",
           "prompt",
-          "Enter new master key..."
+          "Enter new master key...",
+          "password"
         );
 
         if (createdKey === null) {
@@ -235,7 +236,8 @@ async function enforceFirestoreMasterKeyGate() {
         "Restricted Master Access",
         "Enter your Super Admin master key to access the control panel:",
         "prompt",
-        "Enter master key..."
+        "Enter master key...",
+        "password"
       );
 
       if (enteredKey && currentMasterKey && enteredKey.trim() === currentMasterKey.trim()) {
