@@ -321,10 +321,10 @@ window.executeLogin = async function() {
 
   if (!userEl || !passEl) return;
 
-  const schoolIdInput = userEl.value.trim().toUpperCase();
+  const usernameInput = userEl.value.trim();
   const p = passEl.value.trim();
 
-  if (!schoolIdInput || !p) {
+  if (!usernameInput || !p) {
     showToast('Please fill in both fields.', 'error');
     if (errEl) {
       errEl.textContent = 'Please fill in both fields.';
@@ -334,23 +334,24 @@ window.executeLogin = async function() {
   }
 
   let foundUser = null;
-  let failureReason = 'SCHOOL_ID_NOT_FOUND';
+  let failureReason = 'USERNAME_NOT_FOUND';
 
-  // 1. Primary Auth: Firebase Firestore querying by schoolId field
+  // 1. Primary Auth: Firebase Firestore querying by username field or direct document ID match
   if (window.db) {
     try {
-      const snapQuery = await window.db.collection('users').where('schoolId', '==', schoolIdInput).limit(1).get();
+      // Query by 'username' field
+      const snapQuery = await window.db.collection('users').where('username', '==', usernameInput).limit(1).get();
       if (!snapQuery.empty) {
         const snapDoc = snapQuery.docs[0];
         const userData = snapDoc.data();
         if (userData.password === p) {
           foundUser = {
             id: snapDoc.id,
-            schoolId: userData.schoolId || schoolIdInput,
-            username: userData.schoolId || schoolIdInput,
-            name: userData.fullName || userData.name || schoolIdInput,
+            username: userData.username || usernameInput,
+            name: userData.fullName || userData.name || usernameInput,
             role: userData.role || 'Student',
             userClass: userData.class || userData.userClass || '',
+            schoolId: userData.schoolId || '',
             profilePic: userData.profilePic || '',
             ...userData
           };
@@ -358,23 +359,43 @@ window.executeLogin = async function() {
           failureReason = 'INVALID_PASSWORD';
         }
       } else {
-        // Fallback document lookup by direct ID if schoolId matches document ID
-        const docSnap = await window.db.collection('users').doc(schoolIdInput.toLowerCase()).get();
+        // Fallback document lookup by direct document ID (matching username like 'bonitah')
+        const docSnap = await window.db.collection('users').doc(usernameInput).get();
         if (docSnap.exists) {
           const userData = docSnap.data();
           if (userData.password === p) {
             foundUser = {
               id: docSnap.id,
-              schoolId: userData.schoolId || schoolIdInput,
-              username: userData.schoolId || schoolIdInput,
-              name: userData.fullName || userData.name || schoolIdInput,
+              username: userData.username || usernameInput,
+              name: userData.fullName || userData.name || usernameInput,
               role: userData.role || 'Student',
               userClass: userData.class || userData.userClass || '',
+              schoolId: userData.schoolId || '',
               profilePic: userData.profilePic || '',
               ...userData
             };
           } else {
             failureReason = 'INVALID_PASSWORD';
+          }
+        } else {
+          // Lowercase document lookup fallback
+          const docSnapLower = await window.db.collection('users').doc(usernameInput.toLowerCase()).get();
+          if (docSnapLower.exists) {
+            const userData = docSnapLower.data();
+            if (userData.password === p) {
+              foundUser = {
+                id: docSnapLower.id,
+                username: userData.username || usernameInput,
+                name: userData.fullName || userData.name || usernameInput,
+                role: userData.role || 'Student',
+                userClass: userData.class || userData.userClass || '',
+                schoolId: userData.schoolId || '',
+                profilePic: userData.profilePic || '',
+                ...userData
+              };
+            } else {
+              failureReason = 'INVALID_PASSWORD';
+            }
           }
         }
       }
@@ -383,23 +404,23 @@ window.executeLogin = async function() {
     }
   }
 
-  // 2. Offline Fallback: LocalStorage users matching schoolId
+  // 2. Offline Fallback: LocalStorage users matching username
   if (!foundUser) {
     try {
       const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
       const match = localUsers.find(
-        acc => (acc.schoolId || '').toUpperCase() === schoolIdInput || (acc.username || '').toUpperCase() === schoolIdInput
+        acc => (acc.username || '').toLowerCase() === usernameInput.toLowerCase()
       );
       
       if (match) {
         if (match.password === p) {
           foundUser = {
-            id: match.id || match.username || schoolIdInput,
-            schoolId: match.schoolId || schoolIdInput,
-            username: match.schoolId || match.username || schoolIdInput,
-            name: match.fullName || match.name || match.username || schoolIdInput,
+            id: match.id || match.username || usernameInput,
+            username: match.username || usernameInput,
+            name: match.fullName || match.name || match.username || usernameInput,
             role: match.role || 'Student',
             userClass: match.class || match.userClass || '',
+            schoolId: match.schoolId || '',
             profilePic: match.profilePic || '',
             ...match
           };
@@ -412,11 +433,11 @@ window.executeLogin = async function() {
     }
   }
 
-  // 3. Complete Login & Record Audit Trail (Awaited fully before moving views)
+  // 3. Complete Login & Record Audit Trail
   if (foundUser) {
-    await logAuthenticationAttempt('SUCCESS', foundUser.schoolId, '—');
+    await logAuthenticationAttempt('SUCCESS', foundUser.username, '—');
 
-    showToast(`Welcome back, ${foundUser.name || foundUser.schoolId}!`, 'success');
+    showToast(`Welcome back, ${foundUser.name || foundUser.username}!`, 'success');
     if (errEl) errEl.style.display = 'none';
 
     const currentDeviceSessionId = 'sess_' + Math.random().toString(36).substring(2) + Date.now();
@@ -424,7 +445,7 @@ window.executeLogin = async function() {
 
     if (window.db) {
       try {
-        const userDocId = foundUser.id || foundUser.schoolId.toLowerCase();
+        const userDocId = foundUser.id || foundUser.username.toLowerCase();
         await window.db.collection('users').doc(userDocId).set({
           activeSessionId: currentDeviceSessionId
         }, { merge: true });
@@ -434,7 +455,7 @@ window.executeLogin = async function() {
     }
 
     if (rememberCheck && rememberCheck.checked) {
-      localStorage.setItem('portal_remembered_user', schoolIdInput);
+      localStorage.setItem('portal_remembered_user', usernameInput);
       localStorage.setItem('portal_remembered_pass', p);
     } else {
       localStorage.removeItem('portal_remembered_user');
@@ -460,13 +481,11 @@ window.executeLogin = async function() {
 
     navigateToView('dashboard', true);
   } else {
-    // Await failed audit log to ensure it commits before UI updates/errors display
-    await logAuthenticationAttempt('FAILED', schoolIdInput, failureReason);
+    await logAuthenticationAttempt('FAILED', usernameInput, failureReason);
 
-    // Provide precise error feedback using failureReason via toasts
     const errorMessage = failureReason === 'INVALID_PASSWORD' 
       ? 'Incorrect password! Please try again.' 
-      : 'School ID not found!';
+      : 'Username not found!';
 
     showToast(errorMessage, 'error');
 
