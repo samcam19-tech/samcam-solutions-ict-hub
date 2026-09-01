@@ -49,10 +49,8 @@ window.verifyMasterKey = async function() {
 };
 
 window.logoutDeepStaff = function() {
-    // 1. Clear session and local storage security tokens
     sessionStorage.removeItem('samcam_super_admin_verified');
 
-    // 2. Hide the application layout and reveal the master key gate overlay immediately
     const gateEl = document.getElementById('masterKeyGate');
     const appEl = document.getElementById('deepStaffApp');
     const inputEl = document.getElementById('masterKeyInput');
@@ -61,7 +59,6 @@ window.logoutDeepStaff = function() {
     if (appEl) appEl.style.display = 'none';
     if (gateEl) gateEl.style.display = 'flex';
 
-    // 3. Reset inputs and error states, then auto-focus the input field
     if (inputEl) {
         inputEl.value = '';
         inputEl.focus();
@@ -90,9 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const terminalStream = document.getElementById('terminalLogStream');
     const runStressTestBtn = document.getElementById('runStressTestBtn');
     const stressTestResult = document.getElementById('stressTestResult');
-    const streamStatus = document.getElementById('streamStatus');
 
-    // Helper to log messages to the UI live telemetry box
     function appendTerminalLog(type, message) {
         if (!terminalStream) return;
         const div = document.createElement('div');
@@ -101,6 +96,27 @@ document.addEventListener('DOMContentLoaded', () => {
         div.innerHTML = `<span class="timestamp">[${timeStr}]</span> ${message}`;
         terminalStream.appendChild(div);
         terminalStream.scrollTop = terminalStream.scrollHeight;
+    }
+
+    // --- INJECT DYNAMIC MODAL CONTAINER INTO DOM ---
+    if (!document.getElementById('dynamicEditModal')) {
+        const modalHtml = `
+            <div id="dynamicEditModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+                <div style="background:var(--bg-card, #1e222d); border:1px solid var(--border-color, #2a2f3d); border-radius:12px; width:90%; max-width:600px; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+                    <div style="padding:16px 20px; border-bottom:1px solid var(--border-color, #2a2f3d); display:flex; justify-content:space-between; align-items:center;">
+                        <h3 id="modalDocTitle" style="margin:0; font-size:16px; color:var(--text-main, #fff);">Edit Document</h3>
+                        <button id="closeModalBtn" style="background:none; border:none; color:var(--text-secondary, #94a3b8); cursor:pointer; font-size:18px;"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div id="modalFormBody" style="padding:20px; overflow-y:auto; flex:1;">
+                        <!-- Dynamic fields will be injected here -->
+                    </div>
+                    <div style="padding:16px 20px; border-top:1px solid var(--border-color, #2a2f3d); display:flex; justify-content:flex-end; gap:10px;">
+                        <button id="cancelModalBtn" class="btn btn-outline" style="padding:8px 16px;">Cancel</button>
+                        <button id="saveModalBtn" class="btn btn-primary" style="padding:8px 16px;"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+                    </div>
+                </div>
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
     }
 
     // --- 1. DYNAMIC FIRESTORE DOCUMENT EXPLORER WITH PAGINATION ---
@@ -112,7 +128,6 @@ document.addEventListener('DOMContentLoaded', () => {
             let allDocuments = [];
             let pageToken = '';
             
-            // Loop through pages using pagination tokens until all records are fetched
             do {
                 let url = `${FIRESTORE_BASE_URL}/${collectionName}?pageSize=300`;
                 if (pageToken) {
@@ -132,7 +147,6 @@ document.addEventListener('DOMContentLoaded', () => {
             } while (pageToken);
 
             const documents = allDocuments;
-            
             tableBody.innerHTML = '';
             
             if (documents.length === 0) {
@@ -156,9 +170,20 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td><strong>${entityName}</strong></td>
                     <td>${statusSummary}</td>
                     <td>${updateTime}</td>
-                    <td><button class="btn btn-sm btn-outline inspect-doc" data-collection="${collectionName}" data-id="${docId}"><i class="fa-solid fa-code"></i> Inspect JSON</button></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline inspect-doc" data-collection="${collectionName}" data-id="${docId}"><i class="fa-solid fa-code"></i> Inspect</button>
+                        <button class="btn btn-sm btn-primary edit-doc" data-collection="${collectionName}" data-id="${docId}" style="margin-left: 5px;"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                    </td>
                 `;
                 tableBody.appendChild(tr);
+            });
+
+            document.querySelectorAll('.edit-doc').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const col = e.currentTarget.getAttribute('data-collection');
+                    const id = e.currentTarget.getAttribute('data-id');
+                    openDynamicEditModal(col, id);
+                });
             });
 
             appendTerminalLog('success', `Successfully fetched all ${documents.length} records from [${collectionName}].`);
@@ -170,7 +195,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Helper to recursively parse Firestore REST API field values and format them cleanly
     function parseFirestoreValue(valueObj) {
         if (!valueObj) return "";
         if (valueObj.stringValue !== undefined) return valueObj.stringValue;
@@ -179,7 +203,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (valueObj.doubleValue !== undefined) return valueObj.doubleValue;
         if (valueObj.timestampValue !== undefined) return new Date(valueObj.timestampValue).toLocaleString();
         
-        // Handle Maps (nested objects)
         if (valueObj.mapValue && valueObj.mapValue.fields) {
             let mapResult = {};
             for (const [k, v] of Object.entries(valueObj.mapValue.fields)) {
@@ -188,7 +211,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return JSON.stringify(mapResult);
         }
         
-        // Handle Arrays
         if (valueObj.arrayValue && valueObj.arrayValue.values) {
             return valueObj.arrayValue.values.map(v => parseFirestoreValue(v)).join(', ');
         }
@@ -196,7 +218,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return JSON.stringify(valueObj);
     }
 
-    // Helper to format field values nicely for the summary column displaying every property explicitly
     function parseFieldSummary(fields) {
         let summaries = [];
         for (const [key, valueObj] of Object.entries(fields)) {
@@ -204,6 +225,168 @@ document.addEventListener('DOMContentLoaded', () => {
             summaries.push(`<strong>${key}</strong>: ${val}`);
         }
         return summaries.join(' | ') || "No field metadata";
+    }
+
+    // --- FULLY DYNAMIC MODAL FORM GENERATOR & PATCH HANDLER ---
+    async function openDynamicEditModal(collectionName, docId) {
+        const modal = document.getElementById('dynamicEditModal');
+        const formBody = document.getElementById('modalFormBody');
+        const titleEl = document.getElementById('modalDocTitle');
+        const saveBtn = document.getElementById('saveModalBtn');
+        const cancelBtn = document.getElementById('cancelModalBtn');
+        const closeBtn = document.getElementById('closeModalBtn');
+
+        if (!modal || !formBody) return;
+
+        formBody.innerHTML = `<div style="text-align:center; color:var(--text-secondary);"><i class="fa-solid fa-spinner fa-spin"></i> Inspecting schema fields...</div>`;
+        modal.style.display = 'flex';
+        titleEl.textContent = `Edit Document: ${docId} (${collectionName})`;
+
+        try {
+            const docUrl = `${FIRESTORE_BASE_URL}/${collectionName}/${docId}`;
+            const res = await fetch(docUrl);
+            if (!res.ok) throw new Error("Failed to fetch document fields.");
+            
+            const docData = await res.json();
+            const fields = docData.fields || {};
+
+            formBody.innerHTML = '';
+            let fieldMetadata = {}; // Store original types to properly format REST payload
+
+            if (Object.keys(fields).length === 0) {
+                formBody.innerHTML = `<p style="color:var(--text-secondary);">This document contains no editable fields.</p>`;
+                return;
+            }
+
+            for (const [key, valObj] of Object.entries(fields)) {
+                let inputType = 'text';
+                let rawVal = '';
+                let typeKey = 'stringValue';
+
+                if (valObj.stringValue !== undefined) {
+                    inputType = 'text';
+                    rawVal = valObj.stringValue;
+                    typeKey = 'stringValue';
+                } else if (valObj.integerValue !== undefined) {
+                    inputType = 'number';
+                    rawVal = valObj.integerValue;
+                    typeKey = 'integerValue';
+                } else if (valObj.doubleValue !== undefined) {
+                    inputType = 'number';
+                    rawVal = valObj.doubleValue;
+                    typeKey = 'doubleValue';
+                } else if (valObj.booleanValue !== undefined) {
+                    inputType = 'checkbox';
+                    rawVal = valObj.booleanValue;
+                    typeKey = 'booleanValue';
+                } else {
+                    // For Maps or Arrays, display as editable JSON string
+                    inputType = 'textarea';
+                    rawVal = parseFirestoreValue(valObj);
+                    typeKey = 'jsonString';
+                }
+
+                fieldMetadata[key] = typeKey;
+
+                const fieldGroup = document.createElement('div');
+                fieldGroup.style.marginBottom = '15px';
+                
+                if (inputType === 'checkbox') {
+                    fieldGroup.innerHTML = `
+                        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; color:var(--text-main);">
+                            <input type="checkbox" id="field_${key}" data-key="${key}" data-type="${typeKey}" ${rawVal ? 'checked' : ''} style="width:18px; height:18px;">
+                            <strong>${key}</strong> <span style="font-size:11px; color:var(--text-secondary);">(boolean)</span>
+                        </label>`;
+                } else if (inputType === 'textarea') {
+                    fieldGroup.innerHTML = `
+                        <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--text-main);"><strong>${key}</strong> <span style="font-size:11px; color:var(--text-secondary);">(Complex Object/JSON)</span></label>
+                        <textarea id="field_${key}" data-key="${key}" data-type="${typeKey}" rows="3" style="width:100%; background:var(--bg-input, #12151c); color:#fff; border:1px solid var(--border-color); border-radius:6px; padding:8px; font-family:monospace; font-size:12px;">${rawVal}</textarea>`;
+                } else {
+                    fieldGroup.innerHTML = `
+                        <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--text-main);"><strong>${key}</strong> <span style="font-size:11px; color:var(--text-secondary);">(${typeKey})</span></label>
+                        <input type="${inputType}" id="field_${key}" data-key="${key}" data-type="${typeKey}" value="${rawVal}" style="width:100%; background:var(--bg-input, #12151c); color:#fff; border:1px solid var(--border-color); border-radius:6px; padding:8px; font-size:13px;">`;
+                }
+                formBody.appendChild(fieldGroup);
+            }
+
+            // Save click handler
+            const handleSave = async () => {
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+
+                try {
+                    let updatedFields = {};
+                    let fieldPaths = [];
+
+                    for (const key of Object.keys(fields)) {
+                        const inputEl = document.getElementById(`field_${key}`);
+                        if (!inputEl) continue;
+
+                        fieldPaths.push(`updateMask.fieldPaths=${encodeURIComponent(key)}`);
+                        const tKey = fieldMetadata[key];
+
+                        if (tKey === 'booleanValue') {
+                            updatedFields[key] = { booleanValue: inputEl.checked };
+                        } else if (tKey === 'integerValue') {
+                            updatedFields[key] = { integerValue: parseInt(inputEl.value) || 0 };
+                        } else if (tKey === 'doubleValue') {
+                            updatedFields[key] = { doubleValue: parseFloat(inputEl.value) || 0.0 };
+                        } else if (tKey === 'jsonString') {
+                            try {
+                                const parsedJson = JSON.parse(inputEl.value);
+                                // Re-wrap map/array or treat as string if parse fails
+                                updatedFields[key] = typeof parsedJson === 'object' ? parseBackToFirestore(parsedJson) : { stringValue: inputEl.value };
+                            } catch {
+                                updatedFields[key] = { stringValue: inputEl.value };
+                            }
+                        } else {
+                            updatedFields[key] = { stringValue: inputEl.value };
+                        }
+                    }
+
+                    const patchUrl = `${docUrl}?${fieldPaths.join('&')}`;
+                    const updateRes = await fetch(patchUrl, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ fields: updatedFields })
+                    });
+
+                    if (!updateRes.ok) throw new Error(`Firestore update error: ${updateRes.status}`);
+
+                    appendTerminalLog('success', `Document [${docId}] successfully updated via dynamic form.`);
+                    modal.style.display = 'none';
+                    if (collectionSelect) fetchCollectionData(collectionSelect.value);
+
+                } catch (err) {
+                    console.error("Save error:", err);
+                    alert(`Failed to save changes: ${err.message}`);
+                    appendTerminalLog('error', `Failed to update [${docId}]: ${err.message}`);
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`;
+                }
+            };
+
+            // Remove previous event listeners to prevent duplicates
+            saveBtn.onclick = handleSave;
+            closeBtn.onclick = () => modal.style.display = 'none';
+            cancelBtn.onclick = () => modal.style.display = 'none';
+
+        } catch (err) {
+            console.error("Modal load error:", err);
+            formBody.innerHTML = `<p style="color:var(--danger);">Failed to load document structure: ${err.message}</p>`;
+        }
+    }
+
+    // Helper to format regular JS objects back into Firestore REST API map value structures if needed
+    function parseBackToFirestore(obj) {
+        let mapFields = {};
+        for (const [k, v] of Object.entries(obj)) {
+            if (typeof v === 'boolean') mapFields[k] = { booleanValue: v };
+            else if (typeof v === 'number') mapFields[k] = { doubleValue: v };
+            else mapFields[k] = { stringValue: String(v) };
+        }
+        return { mapValue: { fields: mapFields } };
     }
 
     if (collectionSelect) {
@@ -218,13 +401,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Initial load
     if (collectionSelect) {
         fetchCollectionData(collectionSelect.value);
     }
 
 
-    // --- 2. GLOBAL EMERGENCY OVERRIDE (REAL BACKEND WRITE) ---
+    // --- 2. GLOBAL EMERGENCY OVERRIDE ---
     if (globalUnlockBtn) {
         globalUnlockBtn.addEventListener('click', async () => {
             const confirmed = confirm("CRITICAL WARNING: This will execute a batch state update forcing all terminal nodes to 'active' status. Proceed?");
@@ -276,7 +458,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 
-    // --- 3. LIVE FEATURE FLAGS (SYNCED TO STORAGE) ---
+    // --- 3. LIVE FEATURE FLAGS ---
     const flagLockdown = document.getElementById('flagLockdown');
     const flagBurst = document.getElementById('flagBurst');
 
