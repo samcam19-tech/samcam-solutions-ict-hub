@@ -2004,6 +2004,7 @@ window.filterAssessmentsByClass = function() {
 };
 
 // 1. Render Assessments (Async fetch from Firestore filtered by active schoolId with LocalStorage fallback)
+// 1. Render Assessments (Async fetch from Firestore filtered by active schoolId with LocalStorage fallback)
 async function renderAssessments() {
   const container = document.getElementById('assessmentsContainer');
   if (!container) return;
@@ -2066,7 +2067,7 @@ async function renderAssessments() {
 
     let actionHTML = '';
     
-    // Student Actions (Clean, compact icon-only buttons with titles/tooltips)
+    // Student Actions (Strictly icon-only with tooltips)
     if (currentUser && currentUser.role === 'Student') {
         if (studentSub) {
             actionHTML = `
@@ -2100,7 +2101,7 @@ async function renderAssessments() {
             }
         }
     } 
-    // Teacher / Admin Actions (Clean, compact icon-only buttons with tooltips)
+    // Teacher / Admin Actions (Strictly icon-only with tooltips)
     else if (currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin' || currentUser.role === 'Administrator')) {
         actionHTML = `
             <div style="display:flex; gap:0.35rem; align-items:center;">
@@ -2120,7 +2121,7 @@ async function renderAssessments() {
         </div>
         <p style="font-size:0.85rem; color:#475569; margin:0.5rem 0 1rem 0; line-height:1.5;">${escapeHtml(a.description || 'No instructions provided.')}</p>
         <div class="test-actions" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; border-top:1px solid #f1f5f9; padding-top:0.75rem;">
-          <a href="${a.fileUrl}" download class="btn-action btn-download" title="Download Paper"><i class="fa-solid fa-file-arrow-down"></i> <span class="btn-label-responsive">Download Paper</span></a>
+          <a href="${a.fileUrl}" download class="btn-action btn-icon-only btn-download" title="Download Paper"><i class="fa-solid fa-file-arrow-down"></i></a>
           <div style="display:flex; align-items:center; gap:0.5rem;">
             ${actionHTML}
           </div>
