@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deep Stuff | SAMCAM Solution ICT Hub</title>
+    <link rel="stylesheet" href="deep-staff.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="saas-body">
+
+    <!-- Top Navigation Bar -->
+    <header class="saas-header">
+        <div class="header-left">
+            <div class="brand-logo dynamic-system-logo">
+                <i class="fa-solid fa-layer-group"></i>
+            </div>
+            <div>
+                <span class="hub-title dynamic-system-name">SAMCAM SOLUTION ICT HUB</span>
+                <span class="hub-subtitle dynamic-system-slogan">Enterprise Super Admin // Deep Diagnostics</span>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="admin-badge">
+                <i class="fa-solid fa-shield-halved"></i> AKUGIZIBWE SAMUEL
+            </div>
+            <a href="dashboard.html" class="nav-back-btn">
+                <i class="fa-solid fa-arrow-left"></i> Dashboard
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Container -->
+    <main class="dashboard-grid">
+
+        <!-- SECTION 1: Emergency Global Controls -->
+        <section class="saas-card emergency-card">
+            <div class="card-header">
+                <h2><i class="fa-solid fa-triangle-exclamation text-danger"></i> Global Emergency Override</h2>
+                <span class="badge badge-danger">Live Control</span>
+            </div>
+            <p class="card-desc">Instantly override all active school terminals network-wide. Use only during systemic failures or emergency exam halts.</p>
+            <div class="emergency-actions">
+                <button id="globalUnlockBtn" class="btn btn-danger-glow">
+                    <i class="fa-solid fa-unlock-keyhole"></i> EMERGENCY UNLOCK ALL TERMINALS
+                </button>
+                <button id="purgeTelemetryBtn" class="btn btn-secondary">
+                    <i class="fa-solid fa-broom"></i> Purge Stale Telemetry States
+                </button>
+            </div>
+            <div id="emergencyStatusLog" class="status-feed-box hidden"></div>
+        </section>
+
+        <!-- SECTION 2: Firestore Document Explorer -->
+        <section class="saas-card span-2">
+            <div class="card-header">
+                <h2><i class="fa-solid fa-database"></i> Real-Time Firestore Document Explorer</h2>
+                <div class="card-tools">
+                    <select id="collectionSelect" class="saas-select">
+                        <option value="schools">schools (Tenant Records)</option>
+                        <option value="terminal_states">terminal_states (Live Sessions)</option>
+                        <option value="global_logs">global_audit_logs</option>
+                    </select>
+                    <button id="refreshDocsBtn" class="btn btn-sm btn-outline"><i class="fa-solid fa-rotate"></i> Refresh</button>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="saas-table" id="firestoreTable">
+                    <thead>
+                        <tr>
+                            <th>Document ID</th>
+                            <th>Target Entity</th>
+                            <th>Status / Payload Summary</th>
+                            <th>Last Modified</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="firestoreTableBody">
+                        <!-- Dynamically populated rows -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- SECTION 3: Live System Error Stream -->
+        <section class="saas-card">
+            <div class="card-header">
+                <h2><i class="fa-solid fa-terminal"></i> Client & Extension Telemetry Log</h2>
+                <span class="badge badge-success" id="streamStatus">Streaming Active</span>
+            </div>
+            <p class="card-desc">Live background script exceptions and Firebase polling failures across client instances.</p>
+            <div class="terminal-container" id="terminalLogStream">
+                <div class="log-entry info"><span class="timestamp">[10:14:02]</span> System initialized across tenant nodes.</div>
+                <div class="log-entry success"><span class="timestamp">[10:14:15]</span> Firestore handshake stable.</div>
+            </div>
+        </section>
+
+        <!-- SECTION 4: Feature Flags & Stress Testing -->
+        <section class="saas-card">
+            <div class="card-header">
+                <h2><i class="fa-solid fa-flask"></i> Feature Flags & Diagnostics</h2>
+            </div>
+            <div class="flag-list">
+                <div class="flag-item">
+                    <div class="flag-info">
+                        <strong>Strict Window Lockdown V2</strong>
+                        <span>Enforce aggressive OS focus grab routines</span>
+                    </div>
+                    <label class="saas-switch">
+                        <input type="checkbox" id="flagLockdown" checked>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="flag-item">
+                    <div class="flag-info">
+                        <strong>Telemetry Burst Mode</strong>
+                        <span>High-frequency state synchronization (2s interval)</span>
+                    </div>
+                    <label class="saas-switch">
+                        <input type="checkbox" id="flagBurst">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+            <div class="stress-test-panel">
+                <h4>Load Simulation Console</h4>
+                <button id="runStressTestBtn" class="btn btn-primary btn-block">
+                    <i class="fa-solid fa-gauge-high"></i> Simulate 50 Concurrent Student Check-ins
+                </button>
+                <div id="stressTestResult" class="stress-metrics hidden">
+                    <span>Processed: <strong>50/50</strong></span>
+                    <span>Avg Time: <strong>18ms</strong></span>
+                    <span class="text-success">Status: Optimal</span>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Firebase SDKs (Compat Versions) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+    <!-- Application Scripts -->
+    <script src="brand-loader.js"></script>
+    <script src="firebase-config.js"></script>
+    <script src="deep-staff.js"></script>
+</body>
+</html>
