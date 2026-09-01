@@ -185,7 +185,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     <td><strong>${entityName}</strong></td>
                     <td>${statusSummary}</td>
                     <td>${updateTime}</td>
-                    // Replace the actions <td> block in your fetchCollectionData render loop with this:
                     <td style="white-space: nowrap;">
                         <div style="display: flex; gap: 6px; align-items: center;">
                             <button class="btn btn-sm btn-outline inspect-doc" data-collection="${collectionName}" data-id="${docId}"><i class="fa-solid fa-code"></i> Inspect</button>
