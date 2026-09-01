@@ -98,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
         terminalStream.scrollTop = terminalStream.scrollHeight;
     }
 
-    // --- INJECT DYNAMIC MODAL CONTAINER INTO DOM ---
+    // --- INJECT DYNAMIC MODAL CONTAINER & BULK ACTION CONTROLS INTO DOM ---
     if (!document.getElementById('dynamicEditModal')) {
         const modalHtml = `
             <div id="dynamicEditModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
@@ -107,9 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <h3 id="modalDocTitle" style="margin:0; font-size:16px; color:var(--text-main, #fff);">Edit Document</h3>
                         <button id="closeModalBtn" style="background:none; border:none; color:var(--text-secondary, #94a3b8); cursor:pointer; font-size:18px;"><i class="fa-solid fa-xmark"></i></button>
                     </div>
-                    <div id="modalFormBody" style="padding:20px; overflow-y:auto; flex:1;">
-                        <!-- Dynamic fields will be injected here -->
-                    </div>
+                    <div id="modalFormBody" style="padding:20px; overflow-y:auto; flex:1;"></div>
                     <div style="padding:16px 20px; border-top:1px solid var(--border-color, #2a2f3d); display:flex; justify-content:flex-end; gap:10px;">
                         <button id="cancelModalBtn" class="btn btn-outline" style="padding:8px 16px;">Cancel</button>
                         <button id="saveModalBtn" class="btn btn-primary" style="padding:8px 16px;"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
@@ -117,6 +115,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>`;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    // Inject Bulk Operations Panel above or near the table container if not present
+    const tableContainer = document.querySelector('.table-container') || tableBody?.parentElement;
+    if (tableContainer && !document.getElementById('bulkActionsCard')) {
+        const bulkCardHtml = `
+            <div id="bulkActionsCard" style="background:var(--bg-card, #1e222d); border:1px solid var(--border-color, #2a2f3d); border-radius:10px; padding:15px 20px; margin-bottom:20px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:15px;">
+                <div>
+                    <h4 style="margin:0 0 5px 0; color:var(--text-main, #fff); font-size:15px;"><i class="fa-solid fa-wand-magic-sparkles"></i> Bulk User Data Operations</h4>
+                    <p style="margin:0; font-size:12px; color:var(--text-secondary, #94a3b8);">Target collection: <code>users</code> (Auto-applies across all pagination pages)</p>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button id="bulkCapitalizeBtn" class="btn btn-sm btn-outline" style="border-color:var(--primary); color:var(--primary);"><i class="fa-solid fa-font"></i> Capitalize All Full Names</button>
+                    <button id="bulkPasswordResetBtn" class="btn btn-sm btn-primary" style="background:var(--danger, #ef4444); border-color:var(--danger);"><i class="fa-solid fa-key"></i> Reset All Passwords Securely</button>
+                </div>
+            </div>`;
+        tableContainer.insertAdjacentHTML('beforebegin', bulkCardHtml);
     }
 
     // --- 1. DYNAMIC FIRESTORE DOCUMENT EXPLORER WITH PAGINATION ---
@@ -227,7 +242,162 @@ document.addEventListener('DOMContentLoaded', () => {
         return summaries.join(' | ') || "No field metadata";
     }
 
-    // --- FULLY DYNAMIC MODAL FORM GENERATOR & PATCH HANDLER ---
+    // --- BULK ACTION 1: CAPITALIZE ALL USER FULL NAMES ---
+    const bulkCapitalizeBtn = document.getElementById('bulkCapitalizeBtn');
+    if (bulkCapitalizeBtn) {
+        bulkCapitalizeBtn.addEventListener('click', async () => {
+            const confirmed = confirm("Are you sure you want to format all 'fullName' entries in the 'users' collection to begin with capital letters?");
+            if (!confirmed) return;
+
+            bulkCapitalizeBtn.disabled = true;
+            bulkCapitalizeBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Processing Names...`;
+            appendTerminalLog('info', `Starting bulk capitalization task for collection [users]...`);
+
+            try {
+                let allUsers = [];
+                let pageToken = '';
+                do {
+                    let url = `${FIRESTORE_BASE_URL}/users?pageSize=300`;
+                    if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error(`Failed to fetch users page: ${res.status}`);
+                    const data = await res.json();
+                    if (data.documents) allUsers = allUsers.concat(data.documents);
+                    pageToken = data.nextPageToken;
+                } while (pageToken);
+
+                let updatedCount = 0;
+                for (const doc of allUsers) {
+                    const fields = doc.fields || {};
+                    const currentName = fields.fullName?.stringValue;
+                    if (!currentName) continue;
+
+                    // Title Case formatter: ensures each word starts with an uppercase letter
+                    const capitalized = currentName.toLowerCase().replace(/(^\w{1})|(\s+\w{1})/g, match => match.toUpperCase());
+
+                    if (capitalized !== currentName) {
+                        const patchUrl = `https://firestore.googleapis.com/v1/${doc.name}?updateMask.fieldPaths=fullName`;
+                        const patchRes = await fetch(patchUrl, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ fields: { fullName: { stringValue: capitalized } } })
+                        });
+                        if (patchRes.ok) updatedCount++;
+                    }
+                }
+
+                appendTerminalLog('success', `Bulk capitalization completed successfully. Updated ${updatedCount} user records.`);
+                alert(`Successfully updated ${updatedCount} user names to start with capital letters.`);
+                if (collectionSelect && collectionSelect.value === 'users') fetchCollectionData('users');
+
+            } catch (err) {
+                console.error("Bulk Capitalization Error:", err);
+                appendTerminalLog('error', `Bulk capitalization failed: ${err.message}`);
+                alert(`Error: ${err.message}`);
+            } finally {
+                bulkCapitalizeBtn.disabled = false;
+                bulkCapitalizeBtn.innerHTML = `<i class="fa-solid fa-font"></i> Capitalize All Full Names`;
+            }
+        });
+    }
+
+    // --- BULK ACTION 2: SECURE RANDOM PASSWORD RESET FOR ALL USERS ---
+    const bulkPasswordResetBtn = document.getElementById('bulkPasswordResetBtn');
+    if (bulkPasswordResetBtn) {
+        bulkPasswordResetBtn.addEventListener('click', async () => {
+            const confirmed = confirm("CRITICAL SECURITY WARNING: This will instantly overwrite passwords for ALL users in the database with newly generated strong random passwords. Proceed?");
+            if (!confirmed) return;
+
+            bulkPasswordResetBtn.disabled = true;
+            bulkPasswordResetBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Generating & Updating Passwords...`;
+            appendTerminalLog('info', `Starting bulk password rotation task for collection [users]...`);
+
+            try {
+                let allUsers = [];
+                let pageToken = '';
+                do {
+                    let url = `${FIRESTORE_BASE_URL}/users?pageSize=300`;
+                    if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error(`Failed to fetch users page: ${res.status}`);
+                    const data = await res.json();
+                    if (data.documents) allUsers = allUsers.concat(data.documents);
+                    pageToken = data.nextPageToken;
+                } while (pageToken);
+
+                let credentialsLog = "ID/Email,FullName,NewPassword\n";
+                let resetCount = 0;
+
+                // Generator function meeting criteria: >=8 chars, uppercase, lowercase, numbers, special characters
+                function generateSecurePassword() {
+                    const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                    const lower = "abcdefghijklmnopqrstuvwxyz";
+                    const nums = "0123456789";
+                    const specials = "!@#$%^&*()_+-=[]{}|;:,.<>?";
+                    
+                    let pwd = [
+                        upper[Math.floor(Math.random() * upper.length)],
+                        lower[Math.floor(Math.random() * lower.length)],
+                        nums[Math.floor(Math.random() * nums.length)],
+                        specials[Math.floor(Math.random() * specials.length)]
+                    ];
+                    
+                    const all = upper + lower + nums + specials;
+                    for (let i = pwd.length; i < 10; i++) {
+                        pwd.push(all[Math.floor(Math.random() * all.length)]);
+                    }
+                    return pwd.sort(() => Math.random() - 0.5).join('');
+                }
+
+                for (const doc of allUsers) {
+                    const docPathParts = doc.name.split('/');
+                    const docId = docPathParts[docPathParts.length - 1];
+                    const fields = doc.fields || {};
+                    const fullName = fields.fullName?.stringValue || "Unknown User";
+                    const email = fields.email?.stringValue || docId;
+
+                    const newPassword = generateSecurePassword();
+
+                    // Send PATCH request updating the 'password' field (adjust field name if your database uses 'pass' or 'userPassword')
+                    const patchUrl = `https://firestore.googleapis.com/v1/${doc.name}?updateMask.fieldPaths=password`;
+                    const patchRes = await fetch(patchUrl, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ fields: { password: { stringValue: newPassword } } })
+                    });
+
+                    if (patchRes.ok) {
+                        resetCount++;
+                        credentialsLog += `"${email}","${fullName}","${newPassword}"\n`;
+                    }
+                }
+
+                // Trigger automatic text/CSV download file containing the new credentials for administrator records
+                const blob = new Blob([credentialsLog], { type: 'text/csv;charset=utf-8;' });
+                const urlObj = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = urlObj;
+                a.download = `Password_Reset_Report_${new Date().toISOString().slice(0,10)}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+
+                appendTerminalLog('success', `Bulk password reset completed. Successfully rotated credentials for ${resetCount} users. CSV downloaded.`);
+                alert(`Successfully generated and applied new strong passwords for ${resetCount} users. A secure CSV audit file containing the credentials has been downloaded to your device.`);
+                if (collectionSelect && collectionSelect.value === 'users') fetchCollectionData('users');
+
+            } catch (err) {
+                console.error("Bulk Password Reset Error:", err);
+                appendTerminalLog('error', `Bulk password reset failed: ${err.message}`);
+                alert(`Error: ${err.message}`);
+            } finally {
+                bulkPasswordResetBtn.disabled = false;
+                bulkPasswordResetBtn.innerHTML = `<i class="fa-solid fa-key"></i> Reset All Passwords Securely`;
+            }
+        });
+    }
+
+    // --- DYNAMIC MODAL FORM GENERATOR & PATCH HANDLER ---
     async function openDynamicEditModal(collectionName, docId) {
         const modal = document.getElementById('dynamicEditModal');
         const formBody = document.getElementById('modalFormBody');
@@ -251,7 +421,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const fields = docData.fields || {};
 
             formBody.innerHTML = '';
-            let fieldMetadata = {}; // Store original types to properly format REST payload
+            let fieldMetadata = {};
 
             if (Object.keys(fields).length === 0) {
                 formBody.innerHTML = `<p style="color:var(--text-secondary);">This document contains no editable fields.</p>`;
@@ -280,7 +450,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     rawVal = valObj.booleanValue;
                     typeKey = 'booleanValue';
                 } else {
-                    // For Maps or Arrays, display as editable JSON string
                     inputType = 'textarea';
                     rawVal = parseFirestoreValue(valObj);
                     typeKey = 'jsonString';
@@ -309,7 +478,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 formBody.appendChild(fieldGroup);
             }
 
-            // Save click handler
             const handleSave = async () => {
                 saveBtn.disabled = true;
                 saveBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
@@ -334,7 +502,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         } else if (tKey === 'jsonString') {
                             try {
                                 const parsedJson = JSON.parse(inputEl.value);
-                                // Re-wrap map/array or treat as string if parse fails
                                 updatedFields[key] = typeof parsedJson === 'object' ? parseBackToFirestore(parsedJson) : { stringValue: inputEl.value };
                             } catch {
                                 updatedFields[key] = { stringValue: inputEl.value };
@@ -367,7 +534,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             };
 
-            // Remove previous event listeners to prevent duplicates
             saveBtn.onclick = handleSave;
             closeBtn.onclick = () => modal.style.display = 'none';
             cancelBtn.onclick = () => modal.style.display = 'none';
@@ -378,7 +544,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Helper to format regular JS objects back into Firestore REST API map value structures if needed
     function parseBackToFirestore(obj) {
         let mapFields = {};
         for (const [k, v] of Object.entries(obj)) {
@@ -404,7 +569,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (collectionSelect) {
         fetchCollectionData(collectionSelect.value);
     }
-
 
     // --- 2. GLOBAL EMERGENCY OVERRIDE ---
     if (globalUnlockBtn) {
@@ -457,7 +621,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-
     // --- 3. LIVE FEATURE FLAGS ---
     const flagLockdown = document.getElementById('flagLockdown');
     const flagBurst = document.getElementById('flagBurst');
@@ -490,7 +653,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
 
     // --- 4. REAL CONCURRENT LOAD STRESS TEST ---
     if (runStressTestBtn) {
