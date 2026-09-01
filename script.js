@@ -529,7 +529,7 @@ window.handleLogout = function() {
   }
 
   // 5. Use replace() instead of href to prevent the back button from returning to the dashboard
-  window.location.replace('assessment.html'); // Replace with your actual login page filename
+  window.location.replace('assessments.html'); // Replace with your actual login page filename
 };
 
 /* ==========================================================================
@@ -2920,6 +2920,7 @@ function verifyPassword(userData, inputPassword, showErrorCallback) {
     showErrorCallback("Invalid password.");
   }
 }
+
 // ==========================================================================
 // ACCOUNT SETTINGS & UPDATE LOGIC (SCOPED WITH TENANT ISOLATION)
 // ==========================================================================
