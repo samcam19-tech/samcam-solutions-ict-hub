@@ -218,53 +218,64 @@ async function fetchCollectionData(collectionName) {
     }
 }
 
+// --- BULLETPROOF COLLECTION LOADER WITH FULL DIAGNOSTICS ---
 async function loadCollectionDropdowns() {
+    console.log("-> Starting loadCollectionDropdowns()...");
     const collectionSelect = document.getElementById('collectionSelect');
     const stressSelect = document.getElementById('stressCollectionSelect');
     
+    if (!collectionSelect) {
+        console.error("-> CRITICAL: element with id 'collectionSelect' not found in DOM!");
+        return;
+    }
+
     try {
+        console.log("-> Fetching collections from Cloud Function...");
         const response = await fetch('https://us-central1-samcam-system.cloudfunctions.net/listCollections');
-        const result = await response.json();
         
-        // Match the exact response parsing logic used in your working backup generator
-        let collections = [];
-        if (result.success && Array.isArray(result.collections)) {
-            const excluded = typeof EXCLUDED_COLLECTIONS !== 'undefined' ? EXCLUDED_COLLECTIONS : [];
-            collections = result.collections.filter(col => typeof col === 'string' && !excluded.includes(col));
-        } else if (Array.isArray(result)) {
-            collections = result;
-        }
+        console.log("-> Response received. Status:", response.status);
+        const data = await response.json();
+        console.log("-> Parsed JSON data:", data);
+
+        // Extract collections array safely from any response format
+        const collections = Array.isArray(data) ? data : (data.collections || data.data || []);
+        console.log("-> Extracted collections array:", collections);
 
         if (collections.length > 0) {
             const optionsHtml = collections.map(col => `<option value="${col}">${col}</option>`).join('');
             
-            if (collectionSelect) {
-                collectionSelect.innerHTML = optionsHtml;
-                fetchCollectionData(collections[0]);
-            }
+            collectionSelect.innerHTML = optionsHtml;
             if (stressSelect) {
                 stressSelect.innerHTML = optionsHtml;
             }
+            
+            console.log("-> Dropdowns populated successfully. Triggering initial fetch for:", collections[0]);
+            fetchCollectionData(collections[0]);
         } else {
-            if (collectionSelect) collectionSelect.innerHTML = '<option value="">No collections found</option>';
+            console.warn("-> API returned zero collections.");
+            collectionSelect.innerHTML = '<option value="">No collections found</option>';
         }
     } catch (err) {
-        console.error("Failed to load collection list:", err);
-        // Fallback matching your backup generator behavior if network fails
-        const fallbackCollections = ['users', 'quizzes', 'submissions', 'announcements', 'schools', 'e_library_resources', 'forum_threads', 'blogs'];
-        if (collectionSelect) {
-            collectionSelect.innerHTML = fallbackCollections.map(col => `<option value="${col}">${col}</option>`).join('');
-            fetchCollectionData(fallbackCollections[0]);
-        }
+        console.error("-> FAILED in loadCollectionDropdowns:", err);
+        collectionSelect.innerHTML = '<option value="">Error loading collections</option>';
+        
+        // Fallback hardcoded list so your UI never breaks if the network/CORS blocks it
+        const fallback = ['users', 'quizzes', 'submissions', 'announcements', 'schools', 'e_library_resources', 'forum_threads', 'blogs'];
+        console.log("-> Applying emergency fallback collections:", fallback);
+        collectionSelect.innerHTML = fallback.map(col => `<option value="${col}">${col}</option>`).join('');
+        fetchCollectionData(fallback[0]);
     }
 }
-// --- 3. EXECUTION ON DOM LOAD ---
+
+// Ensure it fires reliably on DOM load
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("-> DOM fully loaded. Initializing dropdown loader...");
     loadCollectionDropdowns();
 
     const collectionSelect = document.getElementById('collectionSelect');
     if (collectionSelect) {
         collectionSelect.addEventListener('change', (e) => {
+            console.log("-> Dropdown changed to:", e.target.value);
             fetchCollectionData(e.target.value);
         });
     }
