@@ -11,15 +11,7 @@
     <link rel="stylesheet" href="network-manager.css">
 </head>
 <body>
-    <!-- Security Loader / Auth Gate Overlay -->
-    <div id="authGateLoader" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0f172a; z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #fff; font-family: sans-serif;">
-        <i class="fa-solid fa-shield-halved fa-spin" style="font-size: 3rem; color: #0ea5e9; margin-bottom: 20px;"></i>
-        <h2 style="margin: 0 0 8px 0; font-size: 1.25rem;">Authenticating Master Key Gate...</h2>
-        <p style="margin: 0; color: #94a3b8; font-size: 0.85rem;">Verifying administrative credentials for Samcam NetOps...</p>
-    </div>
-
-    <!-- App Wrapper (Initially hidden until authenticated) -->
-    <div class="app-layout" id="networkManagerApp" style="display: none;">
+    <div class="app-layout">
         <!-- Sidebar Navigation -->
         <aside class="sidebar">
             <div class="sidebar-brand">
@@ -47,7 +39,7 @@
                     </div>
                     <div class="net-stats-summary">
                         <div class="stat-pill"><i class="fa-solid fa-users"></i> Online: <strong id="onlineCount">24</strong></div>
-                        <div class="stat-pill"><i class="fa-solid fa-gauge-high"></i> Load: <strong id="globalLoadCount">18%</strong></div>
+                        <div class="stat-pill"><i class="fa-solid fa-gauge-high"></i> Load: <strong id="networkLoad">18%</strong></div>
                     </div>
                 </header>
 
