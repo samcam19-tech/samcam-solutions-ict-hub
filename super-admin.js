@@ -394,7 +394,7 @@ function renderAccessDeniedFallback(reasonTitle, reasonMessage) {
             padding: 12px 24px; background: #4f46e5; color: white; border: none; border-radius: 12px;
             font-weight: 600; font-size: 14px; cursor: pointer; transition: background 0.2s; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
           ">Try Again</button>
-          <button onclick="window.location.href='/'" style="
+          <button onclick="window.location.href='https://www.google.com'" style="
             padding: 12px 24px; background: rgba(255, 255, 255, 0.08); color: #f8fafc; border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; transition: background 0.2s;
           ">Return Home</button>
