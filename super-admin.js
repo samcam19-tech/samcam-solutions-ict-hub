@@ -150,7 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
           "confirm"
         );
 
-        if (confirmLogout) {
+       if (confirmLogout) {
           sessionStorage.removeItem("samcam_super_auth");
           sessionStorage.removeItem("samcam_super_session");
           
@@ -158,7 +158,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (wrapper) wrapper.style.display = 'none';
 
           await showCustomModal("Logged Out", "Your session has been terminated securely.");
-          window.location.reload();
+          await enforceFirestoreMasterKeyGate();
         }
       });
     }
