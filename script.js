@@ -2843,72 +2843,136 @@ function checkUserSession() {
     }
 }
 
-function handleLogin(e) {
-  e.preventDefault();
+// Floating Toast Notification Helper
+function showToast(message, type = 'error') {
+  let toastContainer = document.getElementById('toastContainer');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.id = 'toastContainer';
+    toastContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;';
+    document.body.appendChild(toastContainer);
+  }
+
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    background: ${type === 'error' ? '#e74c3c' : '#2ecc71'};
+    color: white;
+    padding: 12px 20px;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    font-family: inherit;
+    font-size: 14px;
+    pointer-events: auto;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    opacity: 0;
+    transform: translateY(-10px);
+  `;
+  toast.textContent = message;
+  toastContainer.appendChild(toast);
+
+  requestAnimationFrame(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0)';
+  });
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-10px)';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
+
+// Updated Modern handleLogin Function with Toast Alerts
+async function handleLogin(e) {
+  if (e && typeof e.preventDefault === 'function') {
+    e.preventDefault();
+  }
+  
   const user = document.getElementById('loginUsername').value.trim();
   const pass = document.getElementById('loginPassword').value.trim();
-  
-  // Optional active school scope input if available on login form, or fallback
   const schoolIdInput = document.getElementById('loginSchoolId');
   const specifiedSchoolId = schoolIdInput ? schoolIdInput.value.trim() : null;
 
-  // Basic authentication setup mock for admin
-  if (user === "admin" && pass === "admin123") {
-    const adminUser = { username: "admin", schoolId: specifiedSchoolId || "admin", fullName: "Administrator", role: "teacher" };
-    localStorage.setItem('portal_session', JSON.stringify(adminUser));
-    localStorage.setItem('currentLoggedInUser', JSON.stringify(adminUser));
-    checkUserSession();
-  } else {
-    // Query users or students collection supporting multi-tenant isolation by schoolId if provided
-    let query = db.collection("students").where("password", "==", pass);
+  if (!user || !pass) {
+    showToast("Please provide both your username and password.", "error");
+    return;
+  }
+
+  // Modern administrative override bypass
+  if (user.toLowerCase() === "admin") {
+    if (pass === "admin123") {
+      const adminUser = { 
+        username: "admin", 
+        schoolId: specifiedSchoolId || "admin", 
+        fullName: "System Administrator", 
+        role: "teacher" 
+      };
+      localStorage.setItem('portal_session', JSON.stringify(adminUser));
+      localStorage.setItem('currentLoggedInUser', JSON.stringify(adminUser));
+      
+      showToast("Admin session initialized successfully.", "success");
+      setTimeout(() => {
+        if (typeof checkUserSession === 'function') checkUserSession();
+      }, 600);
+    } else {
+      showToast("Invalid administrative password.", "error");
+    }
+    return;
+  }
+
+  try {
+    let matchedUser = null;
+
+    // Primary query targeting the unified 'users' collection
+    let queryRef = db.collection("users").where("password", "==", pass);
     if (specifiedSchoolId) {
-      query = query.where("schoolId", "==", specifiedSchoolId);
+      queryRef = queryRef.where("schoolId", "==", specifiedSchoolId);
     }
 
-    query.get().then((snapshot) => {
-      let matchedDoc = null;
-      snapshot.forEach(doc => {
-        const data = doc.data();
-        if ((data.schoolId || '').toLowerCase() === user.toLowerCase() || (data.username || '').toLowerCase() === user.toLowerCase()) {
-          matchedDoc = data;
-        }
-      });
-
-      if (matchedDoc) {
-        const sessionUser = { ...matchedDoc, role: matchedDoc.role || 'student' };
-        localStorage.setItem('portal_session', JSON.stringify(sessionUser));
-        localStorage.setItem('currentLoggedInUser', JSON.stringify(sessionUser));
-        checkUserSession();
-      } else {
-        // Fallback query matching username or schoolId directly
-        db.collection("students").where("schoolId", "==", user).where("password", "==", pass).get().then((schoolSnap) => {
-          if (!schoolSnap.empty) {
-            const studentData = schoolSnap.docs[0].data();
-            const sessionUser = { ...studentData, role: studentData.role || 'student' };
-            localStorage.setItem('portal_session', JSON.stringify(sessionUser));
-            localStorage.setItem('currentLoggedInUser', JSON.stringify(sessionUser));
-            checkUserSession();
-          } else {
-            db.collection("students").where("username", "==", user).where("password", "==", pass).get().then((userSnap) => {
-              if (!userSnap.empty) {
-                const studentData = userSnap.docs[0].data();
-                const sessionUser = { ...studentData, role: studentData.role || 'student' };
-                localStorage.setItem('portal_session', JSON.stringify(sessionUser));
-                localStorage.setItem('currentLoggedInUser', JSON.stringify(sessionUser));
-                checkUserSession();
-              } else {
-                const errEl = document.getElementById('loginError');
-                if (errEl) errEl.style.display = 'block';
-              }
-            });
-          }
-        });
+    const snapshot = await queryRef.get();
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      if ((data.schoolId || '').toLowerCase() === user.toLowerCase() || (data.username || '').toLowerCase() === user.toLowerCase()) {
+        matchedUser = data;
       }
-    }).catch(err => {
-      console.error("Login query error:", err);
-      const errEl = document.getElementById('loginError');
-      if (errEl) errEl.style.display = 'block';
     });
+
+    // Fallback lookups if primary match misses
+    if (!matchedUser) {
+      const schoolSnap = await db.collection("users").where("schoolId", "==", user).where("password", "==", pass).get();
+      if (!schoolSnap.empty) {
+        matchedUser = schoolSnap.docs[0].data();
+      } else {
+        const userSnap = await db.collection("users").where("username", "==", user).where("password", "==", pass).get();
+        if (!userSnap.empty) {
+          matchedUser = userSnap.docs[0].data();
+        }
+      }
+    }
+
+    // Session commitment or toast warning
+    if (matchedUser) {
+      const sessionUser = { 
+        ...matchedUser, 
+        role: matchedUser.role || 'student' 
+      };
+      localStorage.setItem('portal_session', JSON.stringify(sessionUser));
+      localStorage.setItem('currentLoggedInUser', JSON.stringify(sessionUser));
+      
+      showToast(`Welcome back, ${matchedUser.fullName || matchedUser.username}!`, "success");
+
+      setTimeout(() => {
+        if (typeof checkUserSession === 'function') {
+          checkUserSession();
+        }
+      }, 800);
+    } else {
+      showToast("Invalid username, school ID, or password.", "error");
+    }
+
+  } catch (err) {
+    console.error("Secure authentication sequence error:", err);
+    showToast("A network or system error occurred. Please check your connection.", "error");
   }
 }
 
