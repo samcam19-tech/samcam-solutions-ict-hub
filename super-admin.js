@@ -26,8 +26,7 @@ function getCurrentUserSession() {
   };
 }
 
-// Custom Modal Helper Utility (Corrected)
-function showCustomModal(title, message, type = "alert", inputPlaceholder = "") {
+function showCustomModal(title, message, type = "alert", inputPlaceholder = "", inputType = "text") {
   return new Promise((resolve) => {
     const modal = document.getElementById("customModal");
     const titleEl = document.getElementById("modalTitle");
@@ -53,9 +52,10 @@ function showCustomModal(title, message, type = "alert", inputPlaceholder = "") 
       inputContainer.classList.add("modal-hidden");
     } else if (type === "prompt") {
       cancelBtn.classList.remove("modal-hidden");
-      inputContainer.classList.remove("modal-hidden"); // Ensures input field is shown
+      inputContainer.classList.remove("modal-hidden");
       inputField.placeholder = inputPlaceholder;
-      inputField.type = inputPlaceholder.toLowerCase().includes("key") || inputPlaceholder.toLowerCase().includes("password") ? "password" : "text";
+      // Explicitly sets the type using the parameter, falling back safely to "text"
+      inputField.type = inputType;
     } else {
       cancelBtn.classList.add("modal-hidden");
       inputContainer.classList.add("modal-hidden");
