@@ -2843,71 +2843,74 @@ function checkUserSession() {
     }
 }
 
-window.handleLogin = function(e) {
-  if (e && typeof e.preventDefault === 'function') {
-    e.preventDefault();
-  }
-
-  const userEl = document.getElementById('loginUsername');
-  const passEl = document.getElementById('loginPassword');
-  const errEl = document.getElementById('loginError');
-
-  const user = userEl ? userEl.value.trim() : '';
-  const pass = passEl ? passEl.value.trim() : '';
+function handleLogin(e) {
+  e.preventDefault();
+  const user = document.getElementById('loginUsername').value.trim();
+  const pass = document.getElementById('loginPassword').value.trim();
   
+  // Optional active school scope input if available on login form, or fallback
   const schoolIdInput = document.getElementById('loginSchoolId');
   const specifiedSchoolId = schoolIdInput ? schoolIdInput.value.trim() : null;
 
-  // Helper function to show errors cleanly
-  const showError = (message) => {
-    if (errEl) {
-      errEl.textContent = message;
-      errEl.style.display = 'block';
+  // Basic authentication setup mock for admin
+  if (user === "admin" && pass === "admin123") {
+    const adminUser = { username: "admin", schoolId: specifiedSchoolId || "admin", fullName: "Administrator", role: "teacher" };
+    localStorage.setItem('portal_session', JSON.stringify(adminUser));
+    localStorage.setItem('currentLoggedInUser', JSON.stringify(adminUser));
+    checkUserSession();
+  } else {
+    // Query users or students collection supporting multi-tenant isolation by schoolId if provided
+    let query = db.collection("students").where("password", "==", pass);
+    if (specifiedSchoolId) {
+      query = query.where("schoolId", "==", specifiedSchoolId);
     }
-  };
 
-  if (errEl) errEl.style.display = 'none';
+    query.get().then((snapshot) => {
+      let matchedDoc = null;
+      snapshot.forEach(doc => {
+        const data = doc.data();
+        if ((data.schoolId || '').toLowerCase() === user.toLowerCase() || (data.username || '').toLowerCase() === user.toLowerCase()) {
+          matchedDoc = data;
+        }
+      });
 
-  // Basic admin check
-  if (user === "admin") {
-    if (pass === "admin123") {
-      const adminUser = { username: "admin", schoolId: specifiedSchoolId || "admin", fullName: "Administrator", role: "teacher" };
-      localStorage.setItem('portal_session', JSON.stringify(adminUser));
-      localStorage.setItem('currentLoggedInUser', JSON.stringify(adminUser));
-      if (typeof checkUserSession === 'function') checkUserSession();
-    } else {
-      showError("Invalid password for admin.");
-    }
-    return;
-  }
-
-  // 1. Check if the username or schoolId exists first
-  db.collection("students")
-    .where("schoolId", "==", user)
-    .get()
-    .then((schoolSnap) => {
-      if (!schoolSnap.empty) {
-        verifyPassword(schoolSnap.docs[0].data(), pass, showError);
+      if (matchedDoc) {
+        const sessionUser = { ...matchedDoc, role: matchedDoc.role || 'student' };
+        localStorage.setItem('portal_session', JSON.stringify(sessionUser));
+        localStorage.setItem('currentLoggedInUser', JSON.stringify(sessionUser));
+        checkUserSession();
       } else {
-        // Fallback check by username field
-        db.collection("students")
-          .where("username", "==", user)
-          .get()
-          .then((userSnap) => {
-            if (!userSnap.empty) {
-              verifyPassword(userSnap.docs[0].data(), pass, showError);
-            } else {
-              // Neither schoolId nor username matched
-              showError("Invalid username or school ID.");
-            }
-          });
+        // Fallback query matching username or schoolId directly
+        db.collection("students").where("schoolId", "==", user).where("password", "==", pass).get().then((schoolSnap) => {
+          if (!schoolSnap.empty) {
+            const studentData = schoolSnap.docs[0].data();
+            const sessionUser = { ...studentData, role: studentData.role || 'student' };
+            localStorage.setItem('portal_session', JSON.stringify(sessionUser));
+            localStorage.setItem('currentLoggedInUser', JSON.stringify(sessionUser));
+            checkUserSession();
+          } else {
+            db.collection("students").where("username", "==", user).where("password", "==", pass).get().then((userSnap) => {
+              if (!userSnap.empty) {
+                const studentData = userSnap.docs[0].data();
+                const sessionUser = { ...studentData, role: studentData.role || 'student' };
+                localStorage.setItem('portal_session', JSON.stringify(sessionUser));
+                localStorage.setItem('currentLoggedInUser', JSON.stringify(sessionUser));
+                checkUserSession();
+              } else {
+                const errEl = document.getElementById('loginError');
+                if (errEl) errEl.style.display = 'block';
+              }
+            });
+          }
+        });
       }
-    })
-    .catch(err => {
-      console.error("Login lookup error:", err);
-      showError("An error occurred during login. Please try again.");
+    }).catch(err => {
+      console.error("Login query error:", err);
+      const errEl = document.getElementById('loginError');
+      if (errEl) errEl.style.display = 'block';
     });
-};
+  }
+}
 
 // Helper function to check password once user identity is confirmed
 function verifyPassword(userData, inputPassword, showErrorCallback) {
