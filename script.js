@@ -274,6 +274,45 @@ async function logAuthenticationAttempt(status, schoolId, failureReason = '—')
   return firestoreSuccess;
 }
 
+// Floating Toast Notification Helper (if not already defined globally)
+function showToast(message, type = 'error') {
+  let toastContainer = document.getElementById('toastContainer');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.id = 'toastContainer';
+    toastContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;';
+    document.body.appendChild(toastContainer);
+  }
+
+  const toast = document.createElement('div');
+  toast.style.cssText = `
+    background: ${type === 'error' ? '#e74c3c' : '#2ecc71'};
+    color: white;
+    padding: 12px 20px;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    font-family: inherit;
+    font-size: 14px;
+    pointer-events: auto;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+    opacity: 0;
+    transform: translateY(-10px);
+  `;
+  toast.textContent = message;
+  toastContainer.appendChild(toast);
+
+  requestAnimationFrame(() => {
+    toast.style.opacity = '1';
+    toast.style.transform = 'translateY(0)';
+  });
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateY(-10px)';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
+
 window.executeLogin = async function() {
   const userEl = document.getElementById('loginUsername');
   const passEl = document.getElementById('loginPassword');
@@ -286,6 +325,7 @@ window.executeLogin = async function() {
   const p = passEl.value.trim();
 
   if (!schoolIdInput || !p) {
+    showToast('Please fill in both fields.', 'error');
     if (errEl) {
       errEl.textContent = 'Please fill in both fields.';
       errEl.style.display = 'block';
@@ -376,6 +416,7 @@ window.executeLogin = async function() {
   if (foundUser) {
     await logAuthenticationAttempt('SUCCESS', foundUser.schoolId, '—');
 
+    showToast(`Welcome back, ${foundUser.name || foundUser.schoolId}!`, 'success');
     if (errEl) errEl.style.display = 'none';
 
     const currentDeviceSessionId = 'sess_' + Math.random().toString(36).substring(2) + Date.now();
@@ -422,8 +463,15 @@ window.executeLogin = async function() {
     // Await failed audit log to ensure it commits before UI updates/errors display
     await logAuthenticationAttempt('FAILED', schoolIdInput, failureReason);
 
+    // Provide precise error feedback using failureReason via toasts
+    const errorMessage = failureReason === 'INVALID_PASSWORD' 
+      ? 'Incorrect password! Please try again.' 
+      : 'School ID not found!';
+
+    showToast(errorMessage, 'error');
+
     if (errEl) {
-      errEl.textContent = 'Invalid School ID or password!';
+      errEl.textContent = errorMessage;
       errEl.style.display = 'block';
     }
   }
@@ -2882,97 +2930,16 @@ function showToast(message, type = 'error') {
   }, 4000);
 }
 
-// Updated Modern handleLogin Function with Toast Alerts
-async function handleLogin(e) {
+function handleLogin(e) {
   if (e && typeof e.preventDefault === 'function') {
     e.preventDefault();
   }
   
-  const user = document.getElementById('loginUsername').value.trim();
-  const pass = document.getElementById('loginPassword').value.trim();
-  const schoolIdInput = document.getElementById('loginSchoolId');
-  const specifiedSchoolId = schoolIdInput ? schoolIdInput.value.trim() : null;
-
-  if (!user || !pass) {
-    showToast("Please provide both your username and password.", "error");
-    return;
-  }
-
-  // Modern administrative override bypass
-  if (user.toLowerCase() === "admin") {
-    if (pass === "admin123") {
-      const adminUser = { 
-        username: "admin", 
-        schoolId: specifiedSchoolId || "admin", 
-        fullName: "System Administrator", 
-        role: "teacher" 
-      };
-      localStorage.setItem('portal_session', JSON.stringify(adminUser));
-      localStorage.setItem('currentLoggedInUser', JSON.stringify(adminUser));
-      
-      showToast("Admin session initialized successfully.", "success");
-      setTimeout(() => {
-        if (typeof checkUserSession === 'function') checkUserSession();
-      }, 600);
-    } else {
-      showToast("Invalid administrative password.", "error");
-    }
-    return;
-  }
-
-  try {
-    let matchedUser = null;
-
-    // Primary query targeting the unified 'users' collection
-    let queryRef = db.collection("users").where("password", "==", pass);
-    if (specifiedSchoolId) {
-      queryRef = queryRef.where("schoolId", "==", specifiedSchoolId);
-    }
-
-    const snapshot = await queryRef.get();
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      if ((data.schoolId || '').toLowerCase() === user.toLowerCase() || (data.username || '').toLowerCase() === user.toLowerCase()) {
-        matchedUser = data;
-      }
-    });
-
-    // Fallback lookups if primary match misses
-    if (!matchedUser) {
-      const schoolSnap = await db.collection("users").where("schoolId", "==", user).where("password", "==", pass).get();
-      if (!schoolSnap.empty) {
-        matchedUser = schoolSnap.docs[0].data();
-      } else {
-        const userSnap = await db.collection("users").where("username", "==", user).where("password", "==", pass).get();
-        if (!userSnap.empty) {
-          matchedUser = userSnap.docs[0].data();
-        }
-      }
-    }
-
-    // Session commitment or toast warning
-    if (matchedUser) {
-      const sessionUser = { 
-        ...matchedUser, 
-        role: matchedUser.role || 'student' 
-      };
-      localStorage.setItem('portal_session', JSON.stringify(sessionUser));
-      localStorage.setItem('currentLoggedInUser', JSON.stringify(sessionUser));
-      
-      showToast(`Welcome back, ${matchedUser.fullName || matchedUser.username}!`, "success");
-
-      setTimeout(() => {
-        if (typeof checkUserSession === 'function') {
-          checkUserSession();
-        }
-      }, 800);
-    } else {
-      showToast("Invalid username, school ID, or password.", "error");
-    }
-
-  } catch (err) {
-    console.error("Secure authentication sequence error:", err);
-    showToast("A network or system error occurred. Please check your connection.", "error");
+  // Directly invoke your robust execution engine
+  if (typeof window.executeLogin === 'function') {
+    window.executeLogin();
+  } else {
+    console.error("executeLogin routine is not defined.");
   }
 }
 
