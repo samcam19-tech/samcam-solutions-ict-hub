@@ -265,7 +265,142 @@ function showModernMasterModal({ title, message, placeholder, isPassword = true,
   });
 }
 
-// Handles Firestore-backed Super Admin Key setup, authentication gate, and advanced feature hooks with 21st-century modals
+// Self-contained 21st-century modern modal generator with inline CSS and animations
+function showModernMasterModal({ title, message, placeholder, isPassword = true, showCancel = true }) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('modernMasterModalOverlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'modernMasterModalOverlay';
+    overlay.style.cssText = `
+      position: fixed; inset: 0; z-index: 100000;
+      background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(8px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px; animation: fadeInModal 0.25s ease-out forwards;
+    `;
+
+    overlay.innerHTML = `
+      <div style="
+        background: #ffffff; width: 100%; max-width: 440px; border-radius: 20px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden;
+        font-family: system-ui, -apple-system, sans-serif;
+        transform: translateY(0); animation: scaleUpModal 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      ">
+        <div style="background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%); padding: 24px; color: white; display: flex; align-items: center; gap: 16px;">
+          <div style="background: rgba(255, 255, 255, 0.2); padding: 12px; border-radius: 14px; display: flex; align-items: center; justify-content: center;">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4v-3.254a6 6 0 1115-1.127z"></path></svg>
+          </div>
+          <div>
+            <h3 style="margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em;">${title}</h3>
+            <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.85;">Secure Control Panel Gate</p>
+          </div>
+        </div>
+        <div style="padding: 24px;">
+          <p style="margin: 0 0 16px 0; font-size: 14px; color: #475569; line-height: 1.5;">${message}</p>
+          ${placeholder !== undefined ? `
+            <div style="position: relative; margin-bottom: 20px;">
+              <input type="${isPassword ? 'password' : 'text'}" id="modernModalInput" placeholder="${placeholder}" style="
+                width: 100%; padding: 12px 16px; font-size: 15px; border: 2px solid #e2e8f0; border-radius: 12px;
+                outline: none; transition: all 0.2s; box-sizing: border-box; background: #f8fafc; color: #1e293b;
+              ">
+            </div>
+          ` : ''}
+          <div style="display: flex; gap: 12px; justify-content: flex-end;">
+            ${showCancel ? `
+              <button id="modernModalCancel" style="
+                padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 14px;
+                background: #f1f5f9; color: #475569; border: none; cursor: pointer; transition: background 0.2s;
+              ">Cancel</button>
+            ` : ''}
+            <button id="modernModalConfirm" style="
+              padding: 10px 20px; border-radius: 10px; font-weight: 600; font-size: 14px;
+              background: #4f46e5; color: white; border: none; cursor: pointer; transition: background 0.2s;
+              box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+            ">Continue</button>
+          </div>
+        </div>
+      </div>
+      <style>
+        @keyframes fadeInModal { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleUpModal { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+        #modernModalInput:focus { border-color: #4f46e5 !important; background: #fff !important; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); }
+        #modernModalConfirm:hover { background: #4338ca !important; }
+        #modernModalCancel:hover { background: #e2e8f0 !important; }
+      </style>
+    `;
+
+    document.body.appendChild(overlay);
+
+    const inputEl = document.getElementById('modernModalInput');
+    if (inputEl) {
+      inputEl.focus();
+      inputEl.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          document.getElementById('modernModalConfirm').click();
+        }
+      });
+    }
+
+    const closeOverlay = (val) => {
+      overlay.style.opacity = '0';
+      setTimeout(() => overlay.remove(), 250);
+      resolve(val);
+    };
+
+    document.getElementById('modernModalConfirm').addEventListener('click', () => {
+      const val = inputEl ? inputEl.value : true;
+      closeOverlay(val);
+    });
+
+    const cancelBtn = document.getElementById('modernModalCancel');
+    if (cancelBtn) {
+      cancelBtn.addEventListener('click', () => {
+        closeOverlay(placeholder !== undefined ? null : false);
+      });
+    }
+  });
+}
+
+// Renders a high-end 21st-century fallback security screen when access is denied or cancelled
+function renderAccessDeniedFallback(reasonTitle, reasonMessage) {
+  document.body.innerHTML = `
+    <div style="
+      position: fixed; inset: 0; background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      display: flex; align-items: center; justify-content: center; padding: 20px;
+      font-family: system-ui, -apple-system, sans-serif; color: #f8fafc; z-index: 999999;
+    ">
+      <div style="
+        background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1);
+        max-width: 480px; width: 100%; padding: 40px; border-radius: 24px; text-align: center;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+      ">
+        <div style="
+          background: rgba(239, 68, 68, 0.15); color: #ef4444; width: 64px; height: 64px; border-radius: 20px;
+          display: flex; align-items: center; justify-content: center; margin: 0 auto 24px auto;
+        ">
+          <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+          </svg>
+        </div>
+        <h1 style="margin: 0 0 12px 0; font-size: 24px; font-weight: 800; letter-spacing: -0.02em; color: #ffffff;">${reasonTitle}</h1>
+        <p style="margin: 0 0 32px 0; font-size: 15px; color: #94a3b8; line-height: 1.6;">${reasonMessage}</p>
+        <div style="display: flex; gap: 12px; justify-content: center;">
+          <button onclick="window.location.reload()" style="
+            padding: 12px 24px; background: #4f46e5; color: white; border: none; border-radius: 12px;
+            font-weight: 600; font-size: 14px; cursor: pointer; transition: background 0.2s; box-shadow: 0 4px 14px rgba(79, 70, 229, 0.4);
+          ">Try Again</button>
+          <button onclick="window.location.href='/'" style="
+            padding: 12px 24px; background: rgba(255, 255, 255, 0.08); color: #f8fafc; border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px; font-weight: 600; font-size: 14px; cursor: pointer; transition: background 0.2s;
+          ">Return Home</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Handles Firestore-backed Super Admin Key setup, authentication gate, and advanced feature hooks with fallback routing
 async function enforceFirestoreMasterKeyGate() {
   const configDocRef = window.db.collection("system_config").doc("super_admin_settings");
 
@@ -284,12 +419,7 @@ async function enforceFirestoreMasterKeyGate() {
         });
 
         if (createdKey === null) {
-          await showModernMasterModal({
-            title: "Access Cancelled",
-            message: "Master key setup is required to proceed.",
-            showCancel: false
-          });
-          document.body.innerHTML = `<div class="fatal-error-container"><div><h2 class="error-heading">Access Cancelled</h2><p class="error-text">Master key setup is required.</p></div></div>`;
+          renderAccessDeniedFallback("Setup Cancelled", "Master key configuration is required to secure the administrative control panel.");
           return;
         }
         if (createdKey.trim().length < 6) {
@@ -338,44 +468,29 @@ async function enforceFirestoreMasterKeyGate() {
       return;
     }
 
-    let authorized = false;
-    while (!authorized) {
-      const enteredKey = await showModernMasterModal({
-        title: "Restricted Master Access",
-        message: "Enter your Super Admin master key to access the control panel:",
-        placeholder: "Enter master key...",
-        isPassword: true
-      });
+    // Prompt user for the master key with a single strict attempt or cancellation check
+    const enteredKey = await showModernMasterModal({
+      title: "Restricted Master Access",
+      message: "Enter your Super Admin master key to access the control panel:",
+      placeholder: "Enter master key...",
+      isPassword: true
+    });
 
-      if (enteredKey && currentMasterKey && enteredKey.trim() === currentMasterKey.trim()) {
-        sessionStorage.setItem("samcam_super_auth", currentMasterKey.trim());
-        authorized = true;
-      } else if (enteredKey === null) {
-        await showModernMasterModal({
-          title: "Access Denied",
-          message: "Authentication required to access the dashboard.",
-          showCancel: false
-        });
-        document.body.innerHTML = `<div class="fatal-error-container"><div><h2 class="error-heading">Access Denied</h2><p class="error-text">Authentication required.</p></div></div>`;
-        return;
-      } else {
-        await showModernMasterModal({
-          title: "Access Denied",
-          message: "Incorrect master admin key provided.",
-          showCancel: false
-        });
-      }
+    if (enteredKey === null) {
+      renderAccessDeniedFallback("Access Cancelled", "Authentication was cancelled. Secure entry to the control panel is restricted.");
+      return;
     }
 
-    await initializeSuperAdminPortal(configDocRef);
+    if (enteredKey && currentMasterKey && enteredKey.trim() === currentMasterKey.trim()) {
+      sessionStorage.setItem("samcam_super_auth", currentMasterKey.trim());
+      await initializeSuperAdminPortal(configDocRef);
+    } else {
+      renderAccessDeniedFallback("Authentication Failed", "The master key provided was incorrect. Access to this sector has been blocked.");
+    }
 
   } catch (error) {
     console.error("FATAL MASTER KEY GATE ERROR:", error);
-    await showModernMasterModal({
-      title: "Connection Error",
-      message: "Failed to verify configuration against Firestore.",
-      showCancel: false
-    });
+    renderAccessDeniedFallback("Connection Error", "Failed to verify configuration against Firestore database.");
   }
 }
 
