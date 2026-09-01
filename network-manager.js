@@ -828,3 +828,32 @@ async function broadcastPromptToClass(type, content) {
         alert("Failed to send broadcast. Check console for details.");
     }
 }
+
+window.logoutNetOps = function() {
+  // 1. Clear all session and local storage security tokens
+  localStorage.removeItem('netops_master_auth');
+  sessionStorage.removeItem('samcam_super_auth');
+  sessionStorage.removeItem('samcam_super_2fa');
+  sessionStorage.removeItem('samcam_super_session');
+
+  // 2. Hide the application layout and reveal the master key gate overlay immediately
+  const gateEl = document.getElementById('masterKeyGate');
+  const appEl = document.getElementById('networkManagerApp');
+  const inputEl = document.getElementById('masterKeyInput');
+  const errEl = document.getElementById('masterKeyError');
+
+  if (appEl) appEl.style.display = 'none';
+  if (gateEl) gateEl.style.display = 'flex';
+
+  // 3. Reset inputs and error states, then auto-focus the input field
+  if (inputEl) {
+    inputEl.value = '';
+    inputEl.focus();
+  }
+  if (errEl) {
+    errEl.textContent = '';
+    errEl.style.display = 'none';
+  }
+
+  console.log("Logged out successfully. Returned to Master Key entry gate.");
+};
