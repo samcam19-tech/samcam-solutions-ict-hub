@@ -103,19 +103,35 @@ document.addEventListener('DOMContentLoaded', () => {
         terminalStream.scrollTop = terminalStream.scrollHeight;
     }
 
-    // --- 1. DYNAMIC FIRESTORE DOCUMENT EXPLORER ---
+    // --- 1. DYNAMIC FIRESTORE DOCUMENT EXPLORER WITH PAGINATION ---
     async function fetchCollectionData(collectionName) {
         if (!tableBody) return;
-        tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);"><i class="fa-solid fa-spinner fa-spin"></i> Querying live Firestore documents...</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);"><i class="fa-solid fa-spinner fa-spin"></i> Querying live Firestore documents across all pages...</td></tr>`;
         
         try {
-            const response = await fetch(`${FIRESTORE_BASE_URL}/${collectionName}`);
-            if (!response.ok) {
-                throw new Error(`Firestore HTTP error! Status: ${response.status}`);
-            }
+            let allDocuments = [];
+            let pageToken = '';
             
-            const data = await response.json();
-            const documents = data.documents || [];
+            // Loop through pages using pagination tokens until all records are fetched
+            do {
+                let url = `${FIRESTORE_BASE_URL}/${collectionName}?pageSize=300`;
+                if (pageToken) {
+                    url += `&pageToken=${encodeURIComponent(pageToken)}`;
+                }
+                
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Firestore HTTP error! Status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                if (data.documents) {
+                    allDocuments = allDocuments.concat(data.documents);
+                }
+                pageToken = data.nextPageToken;
+            } while (pageToken);
+
+            const documents = allDocuments;
             
             tableBody.innerHTML = '';
             
@@ -145,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tableBody.appendChild(tr);
             });
 
-            appendTerminalLog('success', `Successfully fetched ${documents.length} records from [${collectionName}].`);
+            appendTerminalLog('success', `Successfully fetched all ${documents.length} records from [${collectionName}].`);
 
         } catch (error) {
             console.error("Firestore Fetch Error:", error);
