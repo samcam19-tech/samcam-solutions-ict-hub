@@ -218,7 +218,6 @@ async function fetchCollectionData(collectionName) {
     }
 }
 
-// --- 2. INITIALIZE COLLECTION DROPDOWN FROM CLOUD FUNCTION ---
 async function loadCollectionDropdowns() {
     const collectionSelect = document.getElementById('collectionSelect');
     const stressSelect = document.getElementById('stressCollectionSelect');
@@ -227,12 +226,15 @@ async function loadCollectionDropdowns() {
         const response = await fetch('https://us-central1-samcam-system.cloudfunctions.net/listCollections');
         const data = await response.json();
 
-        if (data.success && data.collections && data.collections.length > 0) {
-            const optionsHtml = data.collections.map(col => `<option value="${col}">${col}</option>`).join('');
+        // Support both { success: true, collections: [...] } and direct array responses [...]
+        const collections = Array.isArray(data) ? data : (data.collections || data.data || []);
+
+        if (collections.length > 0) {
+            const optionsHtml = collections.map(col => `<option value="${col}">${col}</option>`).join('');
             
             if (collectionSelect) {
                 collectionSelect.innerHTML = optionsHtml;
-                fetchCollectionData(data.collections[0]);
+                fetchCollectionData(collections[0]);
             }
             if (stressSelect) {
                 stressSelect.innerHTML = optionsHtml;
