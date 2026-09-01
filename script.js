@@ -2912,17 +2912,6 @@ function handleLogin(e) {
   }
 }
 
-// Helper function to check password once user identity is confirmed
-function verifyPassword(userData, inputPassword, showErrorCallback) {
-  if (userData.password === inputPassword) {
-    const sessionUser = { ...userData, role: userData.role || 'student' };
-    localStorage.setItem('portal_session', JSON.stringify(sessionUser));
-    localStorage.setItem('currentLoggedInUser', JSON.stringify(sessionUser));
-    if (typeof checkUserSession === 'function') checkUserSession();
-  } else {
-    showErrorCallback("Invalid password.");
-  }
-}
 
 // ==========================================================================
 // ACCOUNT SETTINGS & UPDATE LOGIC (SCOPED WITH TENANT ISOLATION)
