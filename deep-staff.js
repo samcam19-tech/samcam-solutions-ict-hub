@@ -154,14 +154,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Helper to format field values nicely for the summary column
+    // Helper to recursively parse Firestore REST API field values and format them cleanly
+    function parseFirestoreValue(valueObj) {
+        if (!valueObj) return "";
+        if (valueObj.stringValue !== undefined) return valueObj.stringValue;
+        if (valueObj.booleanValue !== undefined) return valueObj.booleanValue ? 'true' : 'false';
+        if (valueObj.integerValue !== undefined) return valueObj.integerValue;
+        if (valueObj.doubleValue !== undefined) return valueObj.doubleValue;
+        if (valueObj.timestampValue !== undefined) return new Date(valueObj.timestampValue).toLocaleString();
+        
+        // Handle Maps (nested objects)
+        if (valueObj.mapValue && valueObj.mapValue.fields) {
+            let mapResult = {};
+            for (const [k, v] of Object.entries(valueObj.mapValue.fields)) {
+                mapResult[k] = parseFirestoreValue(v);
+            }
+            return JSON.stringify(mapResult);
+        }
+        
+        // Handle Arrays
+        if (valueObj.arrayValue && valueObj.arrayValue.values) {
+            return valueObj.arrayValue.values.map(v => parseFirestoreValue(v)).join(', ');
+        }
+        
+        return JSON.stringify(valueObj);
+    }
+
+    // Helper to format field values nicely for the summary column displaying every property explicitly
     function parseFieldSummary(fields) {
         let summaries = [];
         for (const [key, valueObj] of Object.entries(fields)) {
-            let val = valueObj.stringValue || valueObj.booleanValue || valueObj.integerValue || JSON.stringify(valueObj);
-            summaries.push(`${key}: ${val}`);
+            let val = parseFirestoreValue(valueObj);
+            summaries.push(`<strong>${key}</strong>: ${val}`);
         }
-        return summaries.slice(0, 2).join(' | ') || "No field metadata";
+        return summaries.join(' | ') || "No field metadata";
     }
 
     if (collectionSelect) {
