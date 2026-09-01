@@ -2004,10 +2004,14 @@ window.filterAssessmentsByClass = function() {
 };
 
 // 1. Render Assessments (Async fetch from Firestore filtered by active schoolId with LocalStorage fallback)
-// 1. Render Assessments (Async fetch from Firestore filtered by active schoolId with LocalStorage fallback)
 async function renderAssessments() {
   const container = document.getElementById('assessmentsContainer');
   if (!container) return;
+
+  // Ensure the container itself expands to a spacious layout (e.g., ~80% width, centered)
+  container.style.width = '100%';
+  container.style.maxWidth = '1100px'; // Adjust this max-width or set to '80%' / '100%' based on your preference
+  container.style.margin = '0 auto';
 
   const activeSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || window.currentSchoolId) : null;
 
@@ -2101,9 +2105,9 @@ async function renderAssessments() {
             }
         }
     } 
-    // Teacher / Admin Actions (Strictly icon-only with tooltips)
+    // Teacher / Admin Actions
     else if (currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin' || currentUser.role === 'Administrator')) {
-        actionHTML = `
+        actionHtml = `
             <div style="display:flex; gap:0.35rem; align-items:center;">
               <button type="button" onclick="openEditAssessmentModal('${a.id}')" class="btn-action btn-icon-only btn-edit" title="Edit Assessment"><i class="fa-solid fa-pen-to-square"></i></button>
               <button type="button" onclick="handleDeleteAssessment('${a.id}')" class="btn-action btn-icon-only btn-danger" title="Delete Assessment"><i class="fa-solid fa-trash-can"></i></button>
@@ -2112,7 +2116,7 @@ async function renderAssessments() {
     }
 
     return `
-      <div class="test-card" data-assessment-id="${a.id}">
+      <div class="test-card" data-assessment-id="${a.id}" style="width: 100%; margin-bottom: 1rem;">
         <div class="test-header">
           <span class="test-title">${escapeHtml(a.title)} <small style="color:#64748b;">(${escapeHtml(a.class)})</small></span>
           <span class="deadline-badge ${isExpired ? 'deadline-expired' : 'deadline-active'}" data-deadline="${a.deadline}">
@@ -2130,6 +2134,7 @@ async function renderAssessments() {
     `;
   }).join('');
 }
+
 // 2. Open Edit Modal
 function openEditAssessmentModal(assessmentId) {
   const resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
