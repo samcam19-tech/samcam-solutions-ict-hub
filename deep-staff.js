@@ -146,34 +146,25 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 1. DYNAMIC FIRESTORE DOCUMENT EXPLORER WITH PAGINATION ---
+   // --- 1. DYNAMIC FIRESTORE DOCUMENT EXPLORER WITH PAGINATION ---
     async function fetchCollectionData(collectionName) {
         if (!tableBody) return;
-        tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);"><i class="fa-solid fa-spinner fa-spin"></i> Querying live Firestore documents across all pages...</td></tr>`;
+        tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);"><i class="fa-solid fa-spinner fa-spin"></i> Querying live Firestore documents...</td></tr>`;
         
         try {
-            let allDocuments = [];
-            let pageToken = '';
+            // Use the Firebase SDK compat layer to bypass browser CORS blocks
+            const snapshot = await firebase.firestore().collection(collectionName).get();
+            const documents = [];
             
-            do {
-                let url = `${FIRESTORE_BASE_URL}/${collectionName}?pageSize=300`;
-                if (pageToken) {
-                    url += `&pageToken=${encodeURIComponent(pageToken)}`;
-                }
-                
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`Firestore HTTP error! Status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                if (data.documents) {
-                    allDocuments = allDocuments.concat(data.documents);
-                }
-                pageToken = data.nextPageToken;
-            } while (pageToken);
+            snapshot.forEach(doc => {
+                documents.push({
+                    id: doc.id,
+                    name: `projects/databases/documents/collections/${collectionName}/documents/${doc.id}`,
+                    fields: convertFirestoreDataToRESTFormat(doc.data()),
+                    updateTime: doc.metadata.hasPendingWrites ? new Date().toISOString() : new Date().toISOString() // Fallback timestamp
+                });
+            });
 
-            const documents = allDocuments;
             tableBody.innerHTML = '';
             
             if (documents.length === 0) {
@@ -183,9 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             documents.forEach(doc => {
-                const docPathParts = doc.name.split('/');
-                const docId = docPathParts[docPathParts.length - 1];
-                
+                const docId = doc.id;
                 const fields = doc.fields || {};
                 let entityName = fields.schoolName?.stringValue || fields.terminalId?.stringValue || fields.adminUser?.stringValue || fields.fullName?.stringValue || "N/A";
                 let statusSummary = parseFieldSummary(fields);
@@ -222,6 +211,23 @@ document.addEventListener('DOMContentLoaded', () => {
             tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger);">Failed to connect to Firestore backend. Check console logs.</td></tr>`;
             appendTerminalLog('error', `Firestore query failed for [${collectionName}]: ${error.message}`);
         }
+    }
+
+    // Helper to map native Firebase SDK data structure to your existing view field layout
+    function convertFirestoreDataToRESTFormat(data) {
+        const fields = {};
+        for (const [key, value] of Object.entries(data || {})) {
+            if (typeof value === 'string') {
+                fields[key] = { stringValue: value };
+            } else if (typeof value === 'number') {
+                fields[key] = { doubleValue: value };
+            } else if (typeof value === 'boolean') {
+                fields[key] = { booleanValue: value };
+            } else {
+                fields[key] = { stringValue: JSON.stringify(value) };
+            }
+        }
+        return fields;
     }
 
     function parseFirestoreValue(valueObj) {
