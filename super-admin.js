@@ -338,12 +338,39 @@ async function enforceFirestoreMasterKeyGate() {
         }
       }
 
-      // Generate a dynamic 6-digit verification code on fresh setup
-      const generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
+      // Prompt user to manually set a 6-digit numeric 2FA code (strictly numbers, no sequential values like 123456)
+      let createdCode = "";
+      const isSequential = (str) => {
+        const seqs = ["012345", "123456", "234567", "345678", "456789", "654321", "543210", "111111", "222222", "333333", "444444", "555555", "666666", "777777", "888888", "999999", "000000"];
+        return seqs.includes(str) || /^(?:012|123|234|345|456|567|678|789|987|876|765|654|543|432|321|210)/.test(str);
+      };
+
+      while (!createdCode || createdCode.trim().length !== 6 || !/^\d+$/.test(createdCode.trim()) || isSequential(createdCode.trim())) {
+        createdCode = await showModernMasterModal({
+          title: "Initialize 2FA Security Code",
+          message: "Create a 6-digit numeric 2FA code (strictly numbers, no sequences like 123456):",
+          placeholder: "Enter 6-digit numeric code...",
+          isPassword: true
+        });
+
+        if (createdCode === null) {
+          renderAccessDeniedFallback("Setup Cancelled", "2FA security code configuration is required.");
+          return;
+        }
+        
+        const trimmed = createdCode.trim();
+        if (trimmed.length !== 6 || !/^\d+$/.test(trimmed) || isSequential(trimmed)) {
+          await showModernMasterModal({
+            title: "Invalid 2FA Code",
+            message: "Must be exactly 6 numeric digits and cannot be a simple sequence or repeating pattern.",
+            showCancel: false
+          });
+        }
+      }
 
       await configDocRef.set({
         masterKey: createdKey.trim(),
-        dynamicCode: generatedCode,
+        dynamicCode: createdCode.trim(),
         maintenanceMode: false,
         systemName: "SAMCAM SOLUTIONS ICT HUB",
         systemSlogan: "Empowering Digital Education",
@@ -356,19 +383,54 @@ async function enforceFirestoreMasterKeyGate() {
       });
 
       currentMasterKey = createdKey.trim();
-      currentDynamicCode = generatedCode;
+      currentDynamicCode = createdCode.trim();
 
-      // Show the generated dynamic code to the admin during initial setup
       await showModernMasterModal({
-        title: "2FA Dynamic Code Generated",
-        message: `Save your secondary 2FA security code for future logins: [ ${generatedCode} ]`,
+        title: "Setup Complete",
+        message: "Master key and custom 2FA security code saved to Firestore successfully!",
         showCancel: false,
         placeholder: undefined
       });
     } else {
       const data = docSnap.data();
       currentMasterKey = data.masterKey;
-      currentDynamicCode = data.dynamicCode || "123456";
+      
+      // If document exists without 2FA, force the user to define one now
+      if (!data.dynamicCode) {
+        let migrantCode = "";
+        const isSequential = (str) => {
+          const seqs = ["012345", "123456", "234567", "345678", "456789", "654321", "543210", "111111", "222222", "333333", "444444", "555555", "666666", "777777", "888888", "999999", "000000"];
+          return seqs.includes(str) || /^(?:012|123|234|345|456|567|678|789|987|876|765|654|543|432|321|210)/.test(str);
+        };
+
+        while (!migrantCode || migrantCode.trim().length !== 6 || !/^\d+$/.test(migrantCode.trim()) || isSequential(migrantCode.trim())) {
+          migrantCode = await showModernMasterModal({
+            title: "Set Up 2FA Security Code",
+            message: "Define your 6-digit numeric 2FA code (strictly numbers, no sequences like 123456):",
+            placeholder: "Enter 6-digit numeric code...",
+            isPassword: true
+          });
+
+          if (migrantCode === null) {
+            renderAccessDeniedFallback("Setup Cancelled", "2FA security code configuration is required.");
+            return;
+          }
+
+          const trimmed = migrantCode.trim();
+          if (trimmed.length !== 6 || !/^\d+$/.test(trimmed) || isSequential(trimmed)) {
+            await showModernMasterModal({
+              title: "Invalid 2FA Code",
+              message: "Must be exactly 6 numeric digits and cannot be a simple sequence or repeating pattern.",
+              showCancel: false
+            });
+          }
+        }
+
+        currentDynamicCode = migrantCode.trim();
+        await configDocRef.update({ dynamicCode: currentDynamicCode });
+      } else {
+        currentDynamicCode = data.dynamicCode;
+      }
 
       sessionStorage.setItem("samcam_super_session", JSON.stringify({
         fullName: data.fullName || "AKUGIZIBWE SAMUEL",
@@ -405,10 +467,10 @@ async function enforceFirestoreMasterKeyGate() {
       return;
     }
 
-    // Phase 2: Prompt user for the Dynamic 2FA Verification Code
+    // Phase 2: Prompt user for the Dynamic 2FA Verification Code fetched from database
     const enteredCode = await showModernMasterModal({
       title: "2FA Dynamic Verification",
-      message: "Enter your 6-digit dynamic security verification code:",
+      message: "Enter your 6-digit numeric security verification code:",
       placeholder: "Enter 6-digit code...",
       isPassword: true
     });
@@ -431,7 +493,6 @@ async function enforceFirestoreMasterKeyGate() {
     renderAccessDeniedFallback("Connection Error", "Failed to verify configuration against Firestore database.");
   }
 }
-
 async function initializeSuperAdminPortal(configDocRef) {
   const wrapper = document.getElementById('secureAdminWrapper');
   if (wrapper) wrapper.style.display = 'block';
