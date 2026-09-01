@@ -16,6 +16,38 @@ document.addEventListener("DOMContentLoaded", () => {
     initEventListeners();
 });
 
+const MASTER_KEY_SECRET = "SAMCAM-NETOPS-2026";
+
+window.verifyMasterKey = function() {
+  const inputEl = document.getElementById('masterKeyInput');
+  const errEl = document.getElementById('masterKeyError');
+  const gateEl = document.getElementById('masterKeyGate');
+  const appEl = document.getElementById('networkManagerApp');
+
+  if (!inputEl) return;
+  const enteredKey = inputEl.value.trim();
+
+  if (enteredKey === MASTER_KEY_SECRET) {
+    if (gateEl) gateEl.style.display = 'none';
+    if (appEl) appEl.style.display = 'flex';
+    localStorage.setItem('netops_master_auth', 'true');
+  } else {
+    if (errEl) {
+      errEl.textContent = 'Invalid Master Key! Access Denied.';
+      errEl.style.display = 'block';
+    }
+  }
+};
+
+document.addEventListener('DOMContentLoaded', () => {
+  if (localStorage.getItem('netops_master_auth') === 'true') {
+    const gateEl = document.getElementById('masterKeyGate');
+    const appEl = document.getElementById('networkManagerApp');
+    if (gateEl) gateEl.style.display = 'none';
+    if (appEl) appEl.style.display = 'flex';
+  }
+});
+
 // Real-time listener pulling directly from workstation_telemetry collection
 function initLiveTelemetryListener() {
     window.db.collection("workstation_telemetry").onSnapshot((snapshot) => {
