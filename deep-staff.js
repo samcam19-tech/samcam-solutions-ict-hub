@@ -674,30 +674,34 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-// --- 4. REAL CONCURRENT LOAD STRESS TEST ---
+// --- 4. DYNAMIC CONCURRENT LOAD STRESS TEST ---
     if (runStressTestBtn) {
         runStressTestBtn.addEventListener('click', async () => {
-            const concurrentCount = 200;
-            runStressTestBtn.disabled = true;
-            runStressTestBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Running ${concurrentCount} Concurrent Pings...`;
+            const stressCountInput = document.getElementById('stressCountInput');
+            const stressCollectionSelect = document.getElementById('stressCollectionSelect');
             
-            appendTerminalLog('info', `Initiating real stress simulation: firing ${concurrentCount} concurrent requests...`);
+            const concurrentCount = parseInt(stressCountInput?.value) || 200;
+            const targetCollection = stressCollectionSelect?.value || 'checkins';
+
+            runStressTestBtn.disabled = true;
+            runStressTestBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Running ${concurrentCount} Pings on [${targetCollection}]...`;
+            
+            appendTerminalLog('info', `Initiating real stress simulation: firing ${concurrentCount} concurrent requests to [${targetCollection}]...`);
             const startTime = performance.now();
 
             try {
-                // Generate 50 actual concurrent requests (mixed or write simulation)
                 const testBatch = Array.from({ length: concurrentCount }, (_, index) => {
-                    const studentId = `SIM_STU_${Math.floor(1000 + Math.random() * 9000)}_${index}`;
+                    const uniqueId = `SIM_${targetCollection.toUpperCase()}_${Math.floor(1000 + Math.random() * 9000)}_${index}`;
                     const payload = {
                         fields: {
-                            studentId: { stringValue: studentId },
+                            simulationId: { stringValue: uniqueId },
                             status: { stringValue: "stress_test_active" },
+                            targetCollection: { stringValue: targetCollection },
                             timestamp: { timestampValue: new Date().toISOString() }
                         }
                     };
 
-                    // Firing a POST request to create test check-ins dynamically
-                    return fetch(`${FIRESTORE_BASE_URL}/checkins?documentId=${studentId}`, {
+                    return fetch(`${FIRESTORE_BASE_URL}/${targetCollection}?documentId=${uniqueId}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(payload)
@@ -709,7 +713,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 results.forEach(res => {
                     if (res.status === 'fulfilled' && (res.value.ok || res.value.status === 409)) {
-                        // Count 409 (already exists) as handled/successful throughput as well
                         successCount++;
                     }
                 });
@@ -722,7 +725,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     stressTestResult.innerHTML = `<span>Processed: <strong>${successCount}/${concurrentCount}</strong></span><span>Latency: <strong>${duration}ms</strong></span><span class="text-success">Status: Optimal</span>`;
                 }
                 
-                appendTerminalLog('success', `Stress simulation passed: ${successCount}/${concurrentCount} operations resolved in ${duration}ms.`);
+                appendTerminalLog('success', `Stress simulation passed: ${successCount}/${concurrentCount} operations on [${targetCollection}] resolved in ${duration}ms.`);
 
             } catch (err) {
                 console.error("Stress Test Error:", err);
@@ -732,8 +735,64 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } finally {
                 runStressTestBtn.disabled = false;
-                runStressTestBtn.innerHTML = `<i class="fa-solid fa-gauge-high"></i> Simulate 50 Concurrent Student Check-ins`;
+                runStressTestBtn.innerHTML = `<i class="fa-solid fa-gauge-high"></i> Run Concurrent Load Simulation`;
             }
         });
     }
-     });
+
+// --- DYNAMICALLY POPULATE ALL COLLECTION DROPDOWNS ---
+async function initializeCollectionDropdowns() {
+    const dropdownSelectors = ['#collectionSelect', '#stressCollectionSelect'];
+    const dropdowns = dropdownSelectors.map(selector => document.querySelector(selector)).filter(Boolean);
+
+    if (dropdowns.length === 0) return;
+
+    // Set initial loading state on dropdowns
+    dropdowns.forEach(select => {
+        select.innerHTML = `<option value="">Loading collections...</option>`;
+        select.disabled = true;
+    });
+
+    try {
+        const response = await fetch('https://us-central1-samcam-system.cloudfunctions.net/listCollections');
+        const result = await response.json();
+        
+        if (!result.success) throw new Error(result.error);
+        const collectionsList = result.collections || [];
+
+        // Define optional exclusions if needed (e.g., system metadata collections)
+        const EXCLUDED_COLLECTIONS = ['system_config'];
+        const validCollections = collectionsList.filter(col => !EXCLUDED_COLLECTIONS.includes(col));
+
+        // Populate each select element
+        dropdowns.forEach(select => {
+            select.innerHTML = '';
+            validCollections.forEach(col => {
+                const option = document.createElement('option');
+                option.value = col;
+                // Format display name nicely (e.g., 'user_profiles' -> 'User Profiles')
+                option.textContent = col
+                    .replace(/[_-]+/g, " ")
+                    .toLowerCase()
+                    .replace(/(^\w|\s\w)/g, match => match.toUpperCase());
+                
+                select.appendChild(option);
+            });
+            select.disabled = false;
+        });
+
+        // Trigger initial data load for the main table using the first selected collection
+        const mainSelect = document.getElementById('collectionSelect');
+        if (mainSelect && mainSelect.value && typeof fetchCollectionData === 'function') {
+            fetchCollectionData(mainSelect.value);
+        }
+
+        console.log(`Successfully populated dropdowns with ${validCollections.length} collections.`);
+
+    } catch (err) {
+        console.error("Failed to load collections dynamically:", err);
+        dropdowns.forEach(select => {
+            select.innerHTML = `<option value="">Error loading collections</option>`;
+        });
+    }
+}
