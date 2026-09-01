@@ -223,7 +223,8 @@ async function loadCollectionDropdowns() {
     const stressSelect = document.getElementById('stressCollectionSelect');
     
     try {
-        const response = await fetch('https://us-central1-samcam-system.cloudfunctions.net/listCollections');
+        // Updated to match your exact Cloud Run service URL
+        const response = await fetch('https://listcollections-74940789582.us-central1.run.app');
         const data = await response.json();
 
         // Support both { success: true, collections: [...] } and direct array responses [...]
