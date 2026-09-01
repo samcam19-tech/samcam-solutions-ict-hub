@@ -495,6 +495,9 @@ async function enforceFirestoreMasterKeyGate() {
 }
 
 async function initializeSuperAdminPortal(configDocRef) {
+  const wrapper = document.getElementById('secureAdminWrapper');
+  if (wrapper) wrapper.style.display = 'block';
+
   loadRegisteredSchools();
   setupAdminActions();
   loadMigrationCollectionsCheckboxes();
