@@ -5,15 +5,34 @@
 let workstationsData = [];
 
 document.addEventListener("DOMContentLoaded", () => {
-    // Wait for window.db to be initialized by firebase-config.js
-    const checkDbInterval = setInterval(() => {
-        if (window.db) {
-            clearInterval(checkDbInterval);
-            initLiveTelemetryListener();
+    // 1. Enforce Master Key Access Gate immediately on page load
+    const checkAuthInterval = setInterval(() => {
+        if (sessionStorage.getItem("samcam_super_auth") || sessionStorage.getItem("samcam_super_session") || sessionStorage.getItem("samcam_super_admin_authenticated") || localStorage.getItem("samcam_super_admin_authenticated")) {
+            clearInterval(checkAuthInterval);
+            
+            // Unlock app wrapper and hide the security loader once authenticated
+            const appWrapper = document.getElementById("networkManagerApp") || document.getElementById("secureAdminWrapper");
+            const loader = document.getElementById("authGateLoader");
+            if (appWrapper) appWrapper.style.display = "block";
+            if (loader) loader.style.display = "none";
+
+            // 2. Wait for window.db to be initialized by firebase-config.js
+            const checkDbInterval = setInterval(() => {
+                if (window.db) {
+                    clearInterval(checkDbInterval);
+                    initLiveTelemetryListener();
+                }
+            }, 50);
+
+            initEventListeners();
+        } else {
+            // Unauthorized: Lock down and redirect back to login gateway
+            clearInterval(checkAuthInterval);
+            console.warn("Unauthorized access attempt detected. Redirecting to login gateway...");
+            alert("Access Denied: Master Key Authentication Required.");
+            window.location.href = "index.html";
         }
     }, 50);
-
-    initEventListeners();
 });
 
 // Real-time listener pulling directly from workstation_telemetry collection
