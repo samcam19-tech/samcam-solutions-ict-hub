@@ -171,104 +171,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }, 50);
 
-
-// Self-contained 21st-century modern modal generator with inline CSS and animations
-function showModernMasterModal({ title, message, placeholder, isPassword = true, showCancel = true }) {
-  return new Promise((resolve) => {
-    const existing = document.getElementById('modernMasterModalOverlay');
-    if (existing) existing.remove();
-
-    const overlay = document.createElement('div');
-    overlay.id = 'modernMasterModalOverlay';
-    overlay.style.cssText = `
-      position: fixed; inset: 0; z-index: 100000;
-      background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(8px);
-      display: flex; align-items: center; justify-content: center;
-      padding: 20px; animation: fadeInModal 0.25s ease-out forwards;
-    `;
-
-    overlay.innerHTML = `
-      <div style="
-        background: #ffffff; width: 100%; max-width: 440px; border-radius: 20px;
-        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); overflow: hidden;
-        font-family: system-ui, -apple-system, sans-serif;
-        transform: translateY(0); animation: scaleUpModal 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-      ">
-        <div style="background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%); padding: 24px; color: white; display: flex; align-items: center; gap: 16px;">
-          <div style="background: rgba(255, 255, 255, 0.2); padding: 12px; border-radius: 14px; display: flex; align-items: center; justify-content: center;">
-            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4v-3.254a6 6 0 1115-1.127z"></path></svg>
-          </div>
-          <div>
-            <h3 style="margin: 0; font-size: 18px; font-weight: 700; letter-spacing: -0.01em;">${title}</h3>
-            <p style="margin: 4px 0 0 0; font-size: 13px; opacity: 0.85;">Secure Control Panel Gate</p>
-          </div>
-        </div>
-        <div style="padding: 24px;">
-          <p style="margin: 0 0 16px 0; font-size: 14px; color: #475569; line-height: 1.5;">${message}</p>
-          ${placeholder !== undefined ? `
-            <div style="position: relative; margin-bottom: 20px;">
-              <input type="${isPassword ? 'password' : 'text'}" id="modernModalInput" placeholder="${placeholder}" style="
-                width: 100%; padding: 12px 16px; font-size: 15px; border: 2px solid #e2e8f0; border-radius: 12px;
-                outline: none; transition: all 0.2s; box-sizing: border-box; background: #f8fafc; color: #1e293b;
-              ">
-            </div>
-          ` : ''}
-          <div style="display: flex; gap: 12px; justify-content: flex-end;">
-            ${showCancel ? `
-              <button id="modernModalCancel" style="
-                padding: 10px 18px; border-radius: 10px; font-weight: 600; font-size: 14px;
-                background: #f1f5f9; color: #475569; border: none; cursor: pointer; transition: background 0.2s;
-              ">Cancel</button>
-            ` : ''}
-            <button id="modernModalConfirm" style="
-              padding: 10px 20px; border-radius: 10px; font-weight: 600; font-size: 14px;
-              background: #4f46e5; color: white; border: none; cursor: pointer; transition: background 0.2s;
-              box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
-            ">Continue</button>
-          </div>
-        </div>
-      </div>
-      <style>
-        @keyframes fadeInModal { from { opacity: 0; } to { opacity: 1; } }
-        @keyframes scaleUpModal { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
-        #modernModalInput:focus { border-color: #4f46e5 !important; background: #fff !important; box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1); }
-        #modernModalConfirm:hover { background: #4338ca !important; }
-        #modernModalCancel:hover { background: #e2e8f0 !important; }
-      </style>
-    `;
-
-    document.body.appendChild(overlay);
-
-    const inputEl = document.getElementById('modernModalInput');
-    if (inputEl) {
-      inputEl.focus();
-      inputEl.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          document.getElementById('modernModalConfirm').click();
-        }
-      });
-    }
-
-    const closeOverlay = (val) => {
-      overlay.style.opacity = '0';
-      setTimeout(() => overlay.remove(), 250);
-      resolve(val);
-    };
-
-    document.getElementById('modernModalConfirm').addEventListener('click', () => {
-      const val = inputEl ? inputEl.value : true;
-      closeOverlay(val);
-    });
-
-    const cancelBtn = document.getElementById('modernModalCancel');
-    if (cancelBtn) {
-      cancelBtn.addEventListener('click', () => {
-        closeOverlay(placeholder !== undefined ? null : false);
-      });
-    }
-  });
-}
-
 // Self-contained 21st-century modern modal generator with inline CSS and animations
 function showModernMasterModal({ title, message, placeholder, isPassword = true, showCancel = true }) {
   return new Promise((resolve) => {
@@ -411,6 +313,7 @@ async function enforceFirestoreMasterKeyGate() {
   try {
     const docSnap = await configDocRef.get();
     let currentMasterKey = "";
+    let currentDynamicCode = "";
 
     if (!docSnap.exists) {
       let createdKey = "";
@@ -435,8 +338,12 @@ async function enforceFirestoreMasterKeyGate() {
         }
       }
 
+      // Generate a dynamic 6-digit verification code on fresh setup
+      const generatedCode = Math.floor(100000 + Math.random() * 900000).toString();
+
       await configDocRef.set({
         masterKey: createdKey.trim(),
+        dynamicCode: generatedCode,
         maintenanceMode: false,
         systemName: "SAMCAM SOLUTIONS ICT HUB",
         systemSlogan: "Empowering Digital Education",
@@ -449,14 +356,19 @@ async function enforceFirestoreMasterKeyGate() {
       });
 
       currentMasterKey = createdKey.trim();
+      currentDynamicCode = generatedCode;
+
+      // Show the generated dynamic code to the admin during initial setup
       await showModernMasterModal({
-        title: "Setup Complete",
-        message: "Master key saved to Firestore successfully!",
-        showCancel: false
+        title: "2FA Dynamic Code Generated",
+        message: `Save your secondary 2FA security code for future logins: [ ${generatedCode} ]`,
+        showCancel: false,
+        placeholder: undefined
       });
     } else {
       const data = docSnap.data();
       currentMasterKey = data.masterKey;
+      currentDynamicCode = data.dynamicCode || "123456";
 
       sessionStorage.setItem("samcam_super_session", JSON.stringify({
         fullName: data.fullName || "AKUGIZIBWE SAMUEL",
@@ -467,12 +379,15 @@ async function enforceFirestoreMasterKeyGate() {
     }
 
     const authenticatedKey = sessionStorage.getItem("samcam_super_auth");
-    if (authenticatedKey && currentMasterKey && authenticatedKey.trim() === currentMasterKey.trim()) {
+    const authenticated2FA = sessionStorage.getItem("samcam_super_2fa");
+    
+    if (authenticatedKey && authenticated2FA && currentMasterKey && currentDynamicCode && 
+        authenticatedKey.trim() === currentMasterKey.trim() && authenticated2FA.trim() === currentDynamicCode.trim()) {
       await initializeSuperAdminPortal(configDocRef);
       return;
     }
 
-    // Prompt user for the master key with a single strict attempt or cancellation check
+    // Phase 1: Prompt user for the master key
     const enteredKey = await showModernMasterModal({
       title: "Restricted Master Access",
       message: "Enter your Super Admin master key to access the control panel:",
@@ -485,11 +400,30 @@ async function enforceFirestoreMasterKeyGate() {
       return;
     }
 
-    if (enteredKey && currentMasterKey && enteredKey.trim() === currentMasterKey.trim()) {
+    if (!enteredKey || enteredKey.trim() !== currentMasterKey.trim()) {
+      renderAccessDeniedFallback("Authentication Failed", "The master key provided was incorrect. Access to this sector has been blocked.");
+      return;
+    }
+
+    // Phase 2: Prompt user for the Dynamic 2FA Verification Code
+    const enteredCode = await showModernMasterModal({
+      title: "2FA Dynamic Verification",
+      message: "Enter your 6-digit dynamic security verification code:",
+      placeholder: "Enter 6-digit code...",
+      isPassword: true
+    });
+
+    if (enteredCode === null) {
+      renderAccessDeniedFallback("2FA Cancelled", "Dynamic verification was cancelled. Access to the control panel is restricted.");
+      return;
+    }
+
+    if (enteredCode && enteredCode.trim() === currentDynamicCode.trim()) {
       sessionStorage.setItem("samcam_super_auth", currentMasterKey.trim());
+      sessionStorage.setItem("samcam_super_2fa", currentDynamicCode.trim());
       await initializeSuperAdminPortal(configDocRef);
     } else {
-      renderAccessDeniedFallback("Authentication Failed", "The master key provided was incorrect. Access to this sector has been blocked.");
+      renderAccessDeniedFallback("2FA Verification Failed", "The dynamic security code provided was incorrect. Access has been blocked.");
     }
 
   } catch (error) {
