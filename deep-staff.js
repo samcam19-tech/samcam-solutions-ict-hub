@@ -1,4 +1,152 @@
-// --- 1. DYNAMIC FIRESTORE DOCUMENT EXPLORER WITH PAGINATION ---
+// --- MAIN APP INITIALIZATION ---
+document.addEventListener('DOMContentLoaded', () => {
+    
+    // --- FIREBASE CONFIGURATION & CONSTANTS ---
+    const PROJECT_ID = "samcam-system";
+    const FIRESTORE_BASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+
+    const globalUnlockBtn = document.getElementById('globalUnlockBtn');
+    const emergencyStatusLog = document.getElementById('emergencyStatusLog');
+    const collectionSelect = document.getElementById('collectionSelect');
+    const refreshDocsBtn = document.getElementById('refreshDocsBtn');
+    const tableBody = document.getElementById('firestoreTableBody');
+    const terminalStream = document.getElementById('terminalLogStream');
+    const runStressTestBtn = document.getElementById('runStressTestBtn');
+    const stressTestResult = document.getElementById('stressTestResult');
+
+    // --- TERMINAL LOGGER HELPER ---
+    function appendTerminalLog(type, message) {
+        if (!terminalStream) return;
+        const div = document.createElement('div');
+        div.className = `log-entry ${type}`;
+        const timeStr = new Date().toTimeString().split(' ')[0];
+        div.innerHTML = `<span class="timestamp">[${timeStr}]</span> ${message}`;
+        terminalStream.appendChild(div);
+        terminalStream.scrollTop = terminalStream.scrollHeight;
+    }
+
+    // --- DATA PARSING & FORMATTING HELPERS ---
+    function convertFirestoreDataToRESTFormat(data) {
+        const fields = {};
+        for (const [key, value] of Object.entries(data || {})) {
+            if (typeof value === 'string') {
+                fields[key] = { stringValue: value };
+            } else if (typeof value === 'number') {
+                fields[key] = { doubleValue: value };
+            } else if (typeof value === 'boolean') {
+                fields[key] = { booleanValue: value };
+            } else {
+                fields[key] = { stringValue: JSON.stringify(value) };
+            }
+        }
+        return fields;
+    }
+
+    function parseFirestoreValue(valueObj) {
+        if (!valueObj) return "";
+        if (valueObj.stringValue !== undefined) return valueObj.stringValue;
+        if (valueObj.booleanValue !== undefined) return valueObj.booleanValue ? 'true' : 'false';
+        if (valueObj.integerValue !== undefined) return valueObj.integerValue;
+        if (valueObj.doubleValue !== undefined) return valueObj.doubleValue;
+        if (valueObj.timestampValue !== undefined) return new Date(valueObj.timestampValue).toLocaleString();
+        
+        if (valueObj.mapValue && valueObj.mapValue.fields) {
+            let mapResult = {};
+            for (const [k, v] of Object.entries(valueObj.mapValue.fields)) {
+                mapResult[k] = parseFirestoreValue(v);
+            }
+            return JSON.stringify(mapResult);
+        }
+        
+        if (valueObj.arrayValue && valueObj.arrayValue.values) {
+            return valueObj.arrayValue.values.map(v => parseFirestoreValue(v)).join(', ');
+        }
+        
+        return JSON.stringify(valueObj);
+    }
+
+    function parseFieldSummary(fields) {
+        let summaries = [];
+        for (const [key, valueObj] of Object.entries(fields)) {
+            let val = parseFirestoreValue(valueObj);
+            summaries.push(`<strong>${key}</strong>: ${val}`);
+        }
+        return summaries.join(' | ') || "No field metadata";
+    }
+
+    // --- MASTER KEY GATE & SESSION HANDLERS ---
+    (function checkMasterKeySession() {
+        if (sessionStorage.getItem('samcam_super_admin_verified') === 'true') {
+            const gate = document.getElementById('masterKeyGate');
+            const app = document.getElementById('deepStaffApp');
+            if (gate) gate.style.display = 'none';
+            if (app) app.style.display = 'block';
+        }
+    })();
+
+    window.verifyMasterKey = async function() {
+        const inputField = document.getElementById('masterKeyInput');
+        const errorDiv = document.getElementById('masterKeyError');
+        if (!inputField || !errorDiv) return;
+
+        const inputVal = inputField.value.trim();
+        errorDiv.style.display = 'none';
+
+        try {
+            const response = await fetch(`https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/system_config/super_admin_settings`);
+            
+            if (!response.ok) {
+                throw new Error(`Failed to fetch super admin settings: ${response.status}`);
+            }
+
+            const data = await response.json();
+            const validKey = data.fields?.masterKey?.stringValue;
+
+            if (!validKey) {
+                throw new Error("Master key configuration missing in Firestore.");
+            }
+
+            if (inputVal === validKey) {
+                sessionStorage.setItem('samcam_super_admin_verified', 'true');
+                const gate = document.getElementById('masterKeyGate');
+                const app = document.getElementById('deepStaffApp');
+                if (gate) gate.style.display = 'none';
+                if (app) app.style.display = 'block';
+            } else {
+                errorDiv.style.display = 'block';
+                errorDiv.textContent = "Invalid Master Key. Access denied.";
+            }
+        } catch (error) {
+            console.error("Master key verification error:", error);
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = "Authentication error. Check connection or Firestore rules.";
+        }
+    };
+
+    window.logoutDeepStaff = function() {
+        sessionStorage.removeItem('samcam_super_admin_verified');
+
+        const gateEl = document.getElementById('masterKeyGate');
+        const appEl = document.getElementById('deepStaffApp');
+        const inputEl = document.getElementById('masterKeyInput');
+        const errEl = document.getElementById('masterKeyError');
+
+        if (appEl) appEl.style.display = 'none';
+        if (gateEl) gateEl.style.display = 'flex';
+
+        if (inputEl) {
+            inputEl.value = '';
+            inputEl.focus();
+        }
+        if (errEl) {
+            errEl.textContent = '';
+            errEl.style.display = 'none';
+        }
+
+        console.log("Logged out successfully. Returned to Master Key entry gate.");
+    };
+
+    // --- DYNAMIC FIRESTORE DOCUMENT EXPLORER ---
     async function fetchCollectionData(collectionName) {
         if (!collectionName || typeof collectionName !== 'string' || !collectionName.trim() || collectionName.includes('Loading')) {
             console.warn("fetchCollectionData aborted: Invalid or uninitialized collection name.");
@@ -71,105 +219,6 @@
             appendTerminalLog('error', `Firestore query failed for [${collectionName}]: ${error.message}`);
         }
     }
-// --- MASTER KEY GATE & SESSION HANDLERS ---
-(function checkMasterKeySession() {
-    if (sessionStorage.getItem('samcam_super_admin_verified') === 'true') {
-        const gate = document.getElementById('masterKeyGate');
-        const app = document.getElementById('deepStaffApp');
-        if (gate) gate.style.display = 'none';
-        if (app) app.style.display = 'block';
-    }
-})();
-
-window.verifyMasterKey = async function() {
-    const inputField = document.getElementById('masterKeyInput');
-    const errorDiv = document.getElementById('masterKeyError');
-    if (!inputField || !errorDiv) return;
-
-    const inputVal = inputField.value.trim();
-    errorDiv.style.display = 'none';
-
-    try {
-        const PROJECT_ID = "samcam-system";
-        const response = await fetch(`https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/system_config/super_admin_settings`);
-        
-        if (!response.ok) {
-            throw new Error(`Failed to fetch super admin settings: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const validKey = data.fields?.masterKey?.stringValue;
-
-        if (!validKey) {
-            throw new Error("Master key configuration missing in Firestore.");
-        }
-
-        if (inputVal === validKey) {
-            sessionStorage.setItem('samcam_super_admin_verified', 'true');
-            const gate = document.getElementById('masterKeyGate');
-            const app = document.getElementById('deepStaffApp');
-            if (gate) gate.style.display = 'none';
-            if (app) app.style.display = 'block';
-        } else {
-            errorDiv.style.display = 'block';
-            errorDiv.textContent = "Invalid Master Key. Access denied.";
-        }
-    } catch (error) {
-        console.error("Master key verification error:", error);
-        errorDiv.style.display = 'block';
-        errorDiv.textContent = "Authentication error. Check connection or Firestore rules.";
-    }
-};
-
-window.logoutDeepStaff = function() {
-    sessionStorage.removeItem('samcam_super_admin_verified');
-
-    const gateEl = document.getElementById('masterKeyGate');
-    const appEl = document.getElementById('deepStaffApp');
-    const inputEl = document.getElementById('masterKeyInput');
-    const errEl = document.getElementById('masterKeyError');
-
-    if (appEl) appEl.style.display = 'none';
-    if (gateEl) gateEl.style.display = 'flex';
-
-    if (inputEl) {
-        inputEl.value = '';
-        inputEl.focus();
-    }
-    if (errEl) {
-        errEl.textContent = '';
-        errEl.style.display = 'none';
-    }
-
-    console.log("Logged out successfully. Returned to Master Key entry gate.");
-};
-
-
-// --- MAIN APP INITIALIZATION ---
-document.addEventListener('DOMContentLoaded', () => {
-    
-    // --- FIREBASE CONFIGURATION & CONSTANTS ---
-    const PROJECT_ID = "samcam-system";
-    const FIRESTORE_BASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
-
-    const globalUnlockBtn = document.getElementById('globalUnlockBtn');
-    const emergencyStatusLog = document.getElementById('emergencyStatusLog');
-    const collectionSelect = document.getElementById('collectionSelect');
-    const refreshDocsBtn = document.getElementById('refreshDocsBtn');
-    const tableBody = document.getElementById('firestoreTableBody');
-    const terminalStream = document.getElementById('terminalLogStream');
-    const runStressTestBtn = document.getElementById('runStressTestBtn');
-    const stressTestResult = document.getElementById('stressTestResult');
-
-    function appendTerminalLog(type, message) {
-        if (!terminalStream) return;
-        const div = document.createElement('div');
-        div.className = `log-entry ${type}`;
-        const timeStr = new Date().toTimeString().split(' ')[0];
-        div.innerHTML = `<span class="timestamp">[${timeStr}]</span> ${message}`;
-        terminalStream.appendChild(div);
-        terminalStream.scrollTop = terminalStream.scrollHeight;
-    }
 
     // --- INJECT DYNAMIC MODAL CONTAINER & BULK ACTION CONTROLS INTO DOM ---
     if (!document.getElementById('dynamicEditModal')) {
@@ -190,7 +239,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     }
 
-    // Inject Bulk Operations Panel above or near the table container if not present, with conditional display based on selection
     const tableContainer = document.querySelector('.table-container') || tableBody?.parentElement;
     if (tableContainer && !document.getElementById('bulkActionsCard')) {
         const isUsersSelected = collectionSelect && collectionSelect.value === 'users';
@@ -220,7 +268,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     } 
 
-    // --- BULLETPROOF COLLECTION LOADER WITH FULL DIAGNOSTICS ---
+    // --- BULLETPROOF COLLECTION LOADER ---
     async function loadCollectionDropdowns() {
         console.log("-> Starting loadCollectionDropdowns()...");
         const colSelect = document.getElementById('collectionSelect');
@@ -235,90 +283,27 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log("-> Fetching collections from Cloud Function...");
             const response = await fetch('https://us-central1-samcam-system.cloudfunctions.net/listCollections');
             
-            console.log("-> Response received. Status:", response.status);
             const data = await response.json();
-            console.log("-> Parsed JSON data:", data);
-
             const collections = Array.isArray(data) ? data : (data.collections || data.data || []);
-            console.log("-> Extracted collections array:", collections);
 
             if (collections.length > 0) {
                 const optionsHtml = collections.map(col => `<option value="${col}">${col}</option>`).join('');
-                
                 colSelect.innerHTML = optionsHtml;
-                if (stressSelect) {
-                    stressSelect.innerHTML = optionsHtml;
-                }
+                if (stressSelect) stressSelect.innerHTML = optionsHtml;
                 
-                console.log("-> Dropdowns populated successfully. Triggering initial fetch for:", collections[0]);
                 fetchCollectionData(collections[0]);
             } else {
-                console.warn("-> API returned zero collections.");
                 colSelect.innerHTML = '<option value="">No collections found</option>';
             }
         } catch (err) {
             console.error("-> FAILED in loadCollectionDropdowns:", err);
-            
-            // Fallback hardcoded list so your UI never breaks if the network/CORS blocks it
             const fallback = ['users', 'quizzes', 'submissions', 'announcements', 'schools', 'e_library_resources', 'forum_threads', 'blogs'];
-            console.log("-> Applying emergency fallback collections:", fallback);
             colSelect.innerHTML = fallback.map(col => `<option value="${col}">${col}</option>`).join('');
             fetchCollectionData(fallback[0]);
         }
     }
 
-    // Initialize Dropdowns on DOM load
-    console.log("-> DOM fully loaded. Initializing dropdown loader...");
     loadCollectionDropdowns();
-    
-    // Helper to map native Firebase SDK data structure to your existing view field layout
-    function convertFirestoreDataToRESTFormat(data) {
-        const fields = {};
-        for (const [key, value] of Object.entries(data || {})) {
-            if (typeof value === 'string') {
-                fields[key] = { stringValue: value };
-            } else if (typeof value === 'number') {
-                fields[key] = { doubleValue: value };
-            } else if (typeof value === 'boolean') {
-                fields[key] = { booleanValue: value };
-            } else {
-                fields[key] = { stringValue: JSON.stringify(value) };
-            }
-        }
-        return fields;
-    }
-
-    function parseFirestoreValue(valueObj) {
-        if (!valueObj) return "";
-        if (valueObj.stringValue !== undefined) return valueObj.stringValue;
-        if (valueObj.booleanValue !== undefined) return valueObj.booleanValue ? 'true' : 'false';
-        if (valueObj.integerValue !== undefined) return valueObj.integerValue;
-        if (valueObj.doubleValue !== undefined) return valueObj.doubleValue;
-        if (valueObj.timestampValue !== undefined) return new Date(valueObj.timestampValue).toLocaleString();
-        
-        if (valueObj.mapValue && valueObj.mapValue.fields) {
-            let mapResult = {};
-            for (const [k, v] of Object.entries(valueObj.mapValue.fields)) {
-                mapResult[k] = parseFirestoreValue(v);
-            }
-            return JSON.stringify(mapResult);
-        }
-        
-        if (valueObj.arrayValue && valueObj.arrayValue.values) {
-            return valueObj.arrayValue.values.map(v => parseFirestoreValue(v)).join(', ');
-        }
-        
-        return JSON.stringify(valueObj);
-    }
-
-    function parseFieldSummary(fields) {
-        let summaries = [];
-        for (const [key, valueObj] of Object.entries(fields)) {
-            let val = parseFirestoreValue(valueObj);
-            summaries.push(`<strong>${key}</strong>: ${val}`);
-        }
-        return summaries.join(' | ') || "No field metadata";
-    }
 
     // --- BULK ACTION 1: CAPITALIZE ALL USER FULL NAMES ---
     const bulkCapitalizeBtn = document.getElementById('bulkCapitalizeBtn');
@@ -350,7 +335,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     const currentName = fields.fullName?.stringValue;
                     if (!currentName) continue;
 
-                    // Title Case formatter: ensures each word starts with an uppercase letter
                     const capitalized = currentName
                         .toLowerCase()
                         .split(' ')
@@ -411,7 +395,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 let credentialsLog = "ID/Email,FullName,NewPassword\n";
                 let resetCount = 0;
 
-                // Generator function meeting criteria: >=8 chars, uppercase, lowercase, numbers, special characters
                 function generateSecurePassword() {
                     const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
                     const lower = "abcdefghijklmnopqrstuvwxyz";
