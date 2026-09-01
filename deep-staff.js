@@ -223,12 +223,17 @@ async function loadCollectionDropdowns() {
     const stressSelect = document.getElementById('stressCollectionSelect');
     
     try {
-        // Updated to match your exact Cloud Run service URL
-        const response = await fetch('https://listcollections-74940789582.us-central1.run.app');
-        const data = await response.json();
-
-        // Support both { success: true, collections: [...] } and direct array responses [...]
-        const collections = Array.isArray(data) ? data : (data.collections || data.data || []);
+        const response = await fetch('https://us-central1-samcam-system.cloudfunctions.net/listCollections');
+        const result = await response.json();
+        
+        // Match the exact response parsing logic used in your working backup generator
+        let collections = [];
+        if (result.success && Array.isArray(result.collections)) {
+            const excluded = typeof EXCLUDED_COLLECTIONS !== 'undefined' ? EXCLUDED_COLLECTIONS : [];
+            collections = result.collections.filter(col => typeof col === 'string' && !excluded.includes(col));
+        } else if (Array.isArray(result)) {
+            collections = result;
+        }
 
         if (collections.length > 0) {
             const optionsHtml = collections.map(col => `<option value="${col}">${col}</option>`).join('');
@@ -245,10 +250,14 @@ async function loadCollectionDropdowns() {
         }
     } catch (err) {
         console.error("Failed to load collection list:", err);
-        if (collectionSelect) collectionSelect.innerHTML = '<option value="">Error loading collections</option>';
+        // Fallback matching your backup generator behavior if network fails
+        const fallbackCollections = ['users', 'quizzes', 'submissions', 'announcements', 'schools', 'e_library_resources', 'forum_threads', 'blogs'];
+        if (collectionSelect) {
+            collectionSelect.innerHTML = fallbackCollections.map(col => `<option value="${col}">${col}</option>`).join('');
+            fetchCollectionData(fallbackCollections[0]);
+        }
     }
 }
-
 // --- 3. EXECUTION ON DOM LOAD ---
 document.addEventListener('DOMContentLoaded', () => {
     loadCollectionDropdowns();
