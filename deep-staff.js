@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <p style="margin:0; font-size:12px; color:var(--text-secondary, #94a3b8);">Target collection: <code>users</code> (Auto-applies across all pagination pages)</p>
                 </div>
                 <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                    <button id="bulkCapitalizeBtn" class="btn btn-sm btn-outline" style="border-color:var(--primary); color:var(--primary);"><i class="fa-solid fa-font"></i> Capitalize All Full Names</button>
+                   <button id="bulkCapitalizeBtn" class="btn btn-sm btn-primary" style="background:var(--primary, #3b82f6); border-color:var(--primary); color:#ffffff;"><i class="fa-solid fa-font"></i> Capitalize All Full Names</button>
                     <button id="bulkPasswordResetBtn" class="btn btn-sm btn-primary" style="background:var(--danger, #ef4444); border-color:var(--danger);"><i class="fa-solid fa-key"></i> Reset All Passwords Securely</button>
                 </div>
             </div>`;
