@@ -801,7 +801,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-    });
 
 // --- DYNAMICALLY POPULATE ALL COLLECTION DROPDOWNS ---
 async function initializeCollectionDropdowns() {
