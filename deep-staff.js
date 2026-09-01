@@ -809,3 +809,38 @@ async function initializeCollectionDropdowns() {
         });
     }
 }
+
+// --- INITIALIZE COLLECTION DROPDOWN FROM CLOUD FUNCTION ---
+async function loadCollectionDropdowns() {
+    const collectionSelect = document.getElementById('collectionSelect');
+    const stressSelect = document.getElementById('stressCollectionSelect');
+    
+    try {
+        // Replace with your actual deployed listCollections Cloud Function URL
+        const response = await fetch('https://us-central1-samcam-system.cloudfunctions.net/listCollections');
+        const data = await response.json();
+
+        if (data.success && data.collections && data.collections.length > 0) {
+            const optionsHtml = data.collections.map(col => `<option value="${col}">${col}</option>`).join('');
+            
+            if (collectionSelect) {
+                collectionSelect.innerHTML = optionsHtml;
+                // Automatically fetch data for the first collection
+                fetchCollectionData(data.collections[0]);
+            }
+            if (stressSelect) {
+                stressSelect.innerHTML = optionsHtml;
+            }
+        } else {
+            if (collectionSelect) collectionSelect.innerHTML = '<option value="">No collections found</option>';
+        }
+    } catch (err) {
+        console.error("Failed to load collection list:", err);
+        if (collectionSelect) collectionSelect.innerHTML = '<option value="">Error loading collections</option>';
+    }
+}
+
+// Call this on window load or app initialization
+document.addEventListener('DOMContentLoaded', () => {
+    loadCollectionDropdowns();
+});
