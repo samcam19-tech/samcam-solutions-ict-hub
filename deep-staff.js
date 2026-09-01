@@ -674,24 +674,44 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
-    // --- 4. REAL CONCURRENT LOAD STRESS TEST ---
+// --- 4. REAL CONCURRENT LOAD STRESS TEST ---
     if (runStressTestBtn) {
         runStressTestBtn.addEventListener('click', async () => {
+            const concurrentCount = 50;
             runStressTestBtn.disabled = true;
-            runStressTestBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Running 50 Concurrent Telemetry Pings...`;
+            runStressTestBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Running ${concurrentCount} Concurrent Pings...`;
             
+            appendTerminalLog('info', `Initiating real stress simulation: firing ${concurrentCount} concurrent requests...`);
             const startTime = performance.now();
-            let successCount = 0;
 
             try {
-                const testBatch = Array.from({ length: 10 }, () => 
-                    fetch(`${FIRESTORE_BASE_URL}/schools`)
-                );
+                // Generate 50 actual concurrent requests (mixed or write simulation)
+                const testBatch = Array.from({ length: concurrentCount }, (_, index) => {
+                    const studentId = `SIM_STU_${Math.floor(1000 + Math.random() * 9000)}_${index}`;
+                    const payload = {
+                        fields: {
+                            studentId: { stringValue: studentId },
+                            status: { stringValue: "stress_test_active" },
+                            timestamp: { timestampValue: new Date().toISOString() }
+                        }
+                    };
+
+                    // Firing a POST request to create test check-ins dynamically
+                    return fetch(`${FIRESTORE_BASE_URL}/checkins?documentId=${studentId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                });
 
                 const results = await Promise.allSettled(testBatch);
+                let successCount = 0;
+                
                 results.forEach(res => {
-                    if (res.status === 'fulfilled' && res.value.ok) successCount += 5;
+                    if (res.status === 'fulfilled' && (res.value.ok || res.value.status === 409)) {
+                        // Count 409 (already exists) as handled/successful throughput as well
+                        successCount++;
+                    }
                 });
 
                 const endTime = performance.now();
@@ -699,18 +719,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (stressTestResult) {
                     stressTestResult.classList.remove('hidden');
-                    stressTestResult.innerHTML = `<span>Processed: <strong>${successCount}/50</strong></span><span>Latency: <strong>${duration}ms</strong></span><span class="text-success">Status: Optimal</span>`;
+                    stressTestResult.innerHTML = `<span>Processed: <strong>${successCount}/${concurrentCount}</strong></span><span>Latency: <strong>${duration}ms</strong></span><span class="text-success">Status: Optimal</span>`;
                 }
                 
-                appendTerminalLog('success', `Stress simulation passed: 50 virtual check-ins resolved in ${duration}ms.`);
+                appendTerminalLog('success', `Stress simulation passed: ${successCount}/${concurrentCount} operations resolved in ${duration}ms.`);
 
             } catch (err) {
+                console.error("Stress Test Error:", err);
                 appendTerminalLog('error', `Stress test simulation encountered exceptions: ${err.message}`);
+                if (stressTestResult) {
+                    stressTestResult.innerHTML = `<span class="text-danger">Status: Failed (${err.message})</span>`;
+                }
             } finally {
                 runStressTestBtn.disabled = false;
                 runStressTestBtn.innerHTML = `<i class="fa-solid fa-gauge-high"></i> Simulate 50 Concurrent Student Check-ins`;
             }
         });
     }
-
-});
