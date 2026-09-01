@@ -273,7 +273,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!currentName) continue;
 
                     // Title Case formatter: ensures each word starts with an uppercase letter
-                    const capitalized = currentName.toLowerCase().replace(/(^\w{1})|(\s+\w{1})/g, match => match.toUpperCase());
+                    const capitalized = currentName
+                        .toLowerCase()
+                        .split(' ')
+                        .filter(word => word.length > 0)
+                        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                        .join(' ');
 
                     if (capitalized !== currentName) {
                         const patchUrl = `https://firestore.googleapis.com/v1/${doc.name}?updateMask.fieldPaths=fullName`;
