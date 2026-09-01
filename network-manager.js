@@ -313,13 +313,14 @@ function initEventListeners() {
         assignGlobalBtn.innerHTML = `<i class="fa-solid fa-user-gear"></i> Manage Node Learners`;
         assignGlobalBtn.style.cssText = "padding: 8px 14px; background: #3b82f6; border: none; color: #fff; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; margin-left: 10px; display: inline-flex; align-items: center; gap: 6px;";
         assignGlobalBtn.onclick = () => openBatchAssignModal();
-        // Append near lock buttons if found
+        
         const lockAllBtnRef = document.getElementById("lockAllBtn");
         if (lockAllBtnRef && lockAllBtnRef.parentNode) {
             lockAllBtnRef.parentNode.insertBefore(assignGlobalBtn, lockAllBtnRef.nextSibling);
         }
     }
 
+    // Single Workstation Full-Screen Lock & Interception Trigger
     if (quickToggleLockBtn) {
         quickToggleLockBtn.onclick = async () => {
             if (!targetWorkstationSelect) return;
@@ -336,9 +337,11 @@ function initEventListeners() {
             try {
                 await window.db.collection("workstation_telemetry").doc(targetPc.id).update({
                     status: nextStatus,
-                    activity: nextStatus === "locked" ? "Screen Locked by Instructor" : "Resumed Session"
+                    activity: nextStatus === "locked" ? "Screen Locked by Instructor (Anti-Escape Active)" : "Resumed Session",
+                    lockMode: nextStatus === "locked" ? "strict_fullscreen" : "none",
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                showCustomAlert("Status Updated", `Workstation ${targetPc.id} has been successfully ${nextStatus === "locked" ? "locked" : "unlocked"}.`);
+                showCustomAlert("Status Updated", `Workstation ${targetPc.id} has been successfully ${nextStatus === "locked" ? "locked with full-screen interception" : "unlocked"}.`);
             } catch (err) {
                 console.error("Error toggling single workstation state:", err);
                 showCustomAlert("Error", "Failed to update workstation status. Check console logs.");
@@ -349,7 +352,6 @@ function initEventListeners() {
     const closeModalBtn = document.getElementById("closeModalBtn");
     if (closeModalBtn) closeModalBtn.onclick = closeModal;
 
-    // Close modal when clicking outside content wrapper
     const modal = document.getElementById("nodeModal");
     if (modal) {
         modal.addEventListener("click", (e) => {
@@ -357,20 +359,20 @@ function initEventListeners() {
         });
     }
 
-    // Fully Functional: Dynamic Global Lock / Unlock Action (Using Custom Dialog Modal)
+    // Global Lab-Wide Full-Screen Lock / Unlock Action
     const lockAllBtn = document.getElementById("lockAllBtn");
     if (lockAllBtn) {
         lockAllBtn.onclick = () => {
             if (!window.db) return;
             const allLocked = areAllTerminalsLocked();
             const targetStatus = allLocked ? "active" : "locked";
-            const actionTitle = allLocked ? "Unlock All Terminals" : "Lock All Terminals";
+            const actionTitle = allLocked ? "Unlock All Terminals" : "Lock All Terminals (Strict Interception)";
             const actionDesc = allLocked 
                 ? "Are you sure you want to lift the lock on all connected workstation screens across the lab?"
-                : "Are you sure you want to lock all connected workstation screens across the lab (including your test device)?";
+                : "Are you sure you want to deploy full-screen lockdown and key-interception across all connected workstations?";
             const successMsg = allLocked 
                 ? "All workstation screens have been successfully unlocked." 
-                : "All workstation screens have been successfully locked.";
+                : "All workstation screens have been locked with full interception enabled.";
             const errorMsg = allLocked ? "Failed to unlock all screens. Check console logs." : "Failed to lock all screens. Check console logs.";
 
             showCustomConfirm(
@@ -383,7 +385,9 @@ function initEventListeners() {
                             const ref = window.db.collection("workstation_telemetry").doc(pc.id);
                             batch.update(ref, { 
                                 status: targetStatus, 
-                                activity: targetStatus === "locked" ? "Screen Locked by Instructor" : "Resumed Session" 
+                                activity: targetStatus === "locked" ? "Screen Locked by Instructor (Anti-Escape Active)" : "Resumed Session",
+                                lockMode: targetStatus === "locked" ? "strict_fullscreen" : "none",
+                                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                             });
                         });
                         await batch.commit();
@@ -397,7 +401,6 @@ function initEventListeners() {
         };
     }
 
-    // Fully Functional: Push Prompt / Broadcast Modal Action
     const pushPromptBtn = document.getElementById("pushPromptBtn") || document.querySelector("button[onclick*='Push'], .btn-primary");
     if (pushPromptBtn && !pushPromptBtn.id) pushPromptBtn.id = "pushPromptBtn";
 
