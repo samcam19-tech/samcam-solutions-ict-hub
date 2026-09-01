@@ -677,7 +677,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- 4. REAL CONCURRENT LOAD STRESS TEST ---
     if (runStressTestBtn) {
         runStressTestBtn.addEventListener('click', async () => {
-            const concurrentCount = 50;
+            const concurrentCount = 200;
             runStressTestBtn.disabled = true;
             runStressTestBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Running ${concurrentCount} Concurrent Pings...`;
             
