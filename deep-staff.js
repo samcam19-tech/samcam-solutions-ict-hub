@@ -138,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- COLLECTION SELECT CHANGE HANDLER ---
     if (collectionSelect) {
         collectionSelect.addEventListener('change', (e) => {
+            console.log("-> Dropdown changed to:", e.target.value);
             const bulkCard = document.getElementById('bulkActionsCard');
             if (bulkCard) {
                 bulkCard.style.display = e.target.value === 'users' ? 'flex' : 'none';
@@ -146,140 +147,130 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-  // --- 1. DYNAMIC FIRESTORE DOCUMENT EXPLORER WITH PAGINATION ---
-async function fetchCollectionData(collectionName) {
-    if (!collectionName || typeof collectionName !== 'string' || !collectionName.trim() || collectionName.includes('Loading')) {
-        console.warn("fetchCollectionData aborted: Invalid or uninitialized collection name.");
-        return;
-    }
-
-    const tableBody = document.getElementById('firestoreTableBody');
-    if (!tableBody) return;
-    tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);"><i class="fa-solid fa-spinner fa-spin"></i> Querying live Firestore documents...</td></tr>`;
-    
-    try {
-        const snapshot = await firebase.firestore().collection(collectionName.trim()).get();
-        const documents = [];
-        
-        snapshot.forEach(doc => {
-            documents.push({
-                id: doc.id,
-                name: `projects/databases/documents/collections/${collectionName}/documents/${doc.id}`,
-                fields: convertFirestoreDataToRESTFormat(doc.data()),
-                updateTime: doc.metadata.hasPendingWrites ? new Date().toISOString() : new Date().toISOString()
-            });
-        });
-
-        tableBody.innerHTML = '';
-        
-        if (documents.length === 0) {
-            tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);">No documents found in [${collectionName}].</td></tr>`;
-            appendTerminalLog('info', `Collection [${collectionName}] returned 0 documents.`);
+    // --- 1. DYNAMIC FIRESTORE DOCUMENT EXPLORER WITH PAGINATION ---
+    async function fetchCollectionData(collectionName) {
+        if (!collectionName || typeof collectionName !== 'string' || !collectionName.trim() || collectionName.includes('Loading')) {
+            console.warn("fetchCollectionData aborted: Invalid or uninitialized collection name.");
             return;
         }
 
-        documents.forEach(doc => {
-            const docId = doc.id;
-            const fields = doc.fields || {};
-            let entityName = fields.schoolName?.stringValue || fields.terminalId?.stringValue || fields.adminUser?.stringValue || fields.fullName?.stringValue || "N/A";
-            let statusSummary = parseFieldSummary(fields);
-            let updateTime = doc.updateTime ? new Date(doc.updateTime).toLocaleString() : "Unknown";
-
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><code>${docId}</code></td>
-                <td><strong>${entityName}</strong></td>
-                <td>${statusSummary}</td>
-                <td>${updateTime}</td>
-                <td style="white-space: nowrap;">
-                    <div style="display: flex; gap: 6px; align-items: center;">
-                        <button class="btn btn-sm btn-outline inspect-doc" data-collection="${collectionName}" data-id="${docId}"><i class="fa-solid fa-code"></i> Inspect</button>
-                        <button class="btn btn-sm btn-primary edit-doc" data-collection="${collectionName}" data-id="${docId}"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                    </div>
-                </td>
-            `;
-            tableBody.appendChild(tr);
-        });
-
-        document.querySelectorAll('.edit-doc').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const col = e.currentTarget.getAttribute('data-collection');
-                const id = e.currentTarget.getAttribute('data-id');
-                openDynamicEditModal(col, id);
+        const tableBodyEl = document.getElementById('firestoreTableBody');
+        if (!tableBodyEl) return;
+        tableBodyEl.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);"><i class="fa-solid fa-spinner fa-spin"></i> Querying live Firestore documents...</td></tr>`;
+        
+        try {
+            const snapshot = await firebase.firestore().collection(collectionName.trim()).get();
+            const documents = [];
+            
+            snapshot.forEach(doc => {
+                documents.push({
+                    id: doc.id,
+                    name: `projects/databases/documents/collections/${collectionName}/documents/${doc.id}`,
+                    fields: convertFirestoreDataToRESTFormat(doc.data()),
+                    updateTime: doc.metadata.hasPendingWrites ? new Date().toISOString() : new Date().toISOString()
+                });
             });
-        });
 
-        appendTerminalLog('success', `Successfully fetched all ${documents.length} records from [${collectionName}].`);
-
-    } catch (error) {
-        console.error("Firestore Fetch Error:", error);
-        tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger);">Failed to connect to Firestore backend. Check console logs.</td></tr>`;
-        appendTerminalLog('error', `Firestore query failed for [${collectionName}]: ${error.message}`);
-    }
-}
-
-// --- BULLETPROOF COLLECTION LOADER WITH FULL DIAGNOSTICS ---
-async function loadCollectionDropdowns() {
-    console.log("-> Starting loadCollectionDropdowns()...");
-    const collectionSelect = document.getElementById('collectionSelect');
-    const stressSelect = document.getElementById('stressCollectionSelect');
-    
-    if (!collectionSelect) {
-        console.error("-> CRITICAL: element with id 'collectionSelect' not found in DOM!");
-        return;
-    }
-
-    try {
-        console.log("-> Fetching collections from Cloud Function...");
-        const response = await fetch('https://us-central1-samcam-system.cloudfunctions.net/listCollections');
-        
-        console.log("-> Response received. Status:", response.status);
-        const data = await response.json();
-        console.log("-> Parsed JSON data:", data);
-
-        // Extract collections array safely from any response format
-        const collections = Array.isArray(data) ? data : (data.collections || data.data || []);
-        console.log("-> Extracted collections array:", collections);
-
-        if (collections.length > 0) {
-            const optionsHtml = collections.map(col => `<option value="${col}">${col}</option>`).join('');
+            tableBodyEl.innerHTML = '';
             
-            collectionSelect.innerHTML = optionsHtml;
-            if (stressSelect) {
-                stressSelect.innerHTML = optionsHtml;
+            if (documents.length === 0) {
+                tableBodyEl.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);">No documents found in [${collectionName}].</td></tr>`;
+                appendTerminalLog('info', `Collection [${collectionName}] returned 0 documents.`);
+                return;
             }
-            
-            console.log("-> Dropdowns populated successfully. Triggering initial fetch for:", collections[0]);
-            fetchCollectionData(collections[0]);
-        } else {
-            console.warn("-> API returned zero collections.");
-            collectionSelect.innerHTML = '<option value="">No collections found</option>';
-        }
-    } catch (err) {
-        console.error("-> FAILED in loadCollectionDropdowns:", err);
-        collectionSelect.innerHTML = '<option value="">Error loading collections</option>';
-        
-        // Fallback hardcoded list so your UI never breaks if the network/CORS blocks it
-        const fallback = ['users', 'quizzes', 'submissions', 'announcements', 'schools', 'e_library_resources', 'forum_threads', 'blogs'];
-        console.log("-> Applying emergency fallback collections:", fallback);
-        collectionSelect.innerHTML = fallback.map(col => `<option value="${col}">${col}</option>`).join('');
-        fetchCollectionData(fallback[0]);
-    }
-}
 
-// Ensure it fires reliably on DOM load
-document.addEventListener('DOMContentLoaded', () => {
+            documents.forEach(doc => {
+                const docId = doc.id;
+                const fields = doc.fields || {};
+                let entityName = fields.schoolName?.stringValue || fields.terminalId?.stringValue || fields.adminUser?.stringValue || fields.fullName?.stringValue || "N/A";
+                let statusSummary = parseFieldSummary(fields);
+                let updateTime = doc.updateTime ? new Date(doc.updateTime).toLocaleString() : "Unknown";
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><code>${docId}</code></td>
+                    <td><strong>${entityName}</strong></td>
+                    <td>${statusSummary}</td>
+                    <td>${updateTime}</td>
+                    <td style="white-space: nowrap;">
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <button class="btn btn-sm btn-outline inspect-doc" data-collection="${collectionName}" data-id="${docId}"><i class="fa-solid fa-code"></i> Inspect</button>
+                            <button class="btn btn-sm btn-primary edit-doc" data-collection="${collectionName}" data-id="${docId}"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                        </div>
+                    </td>
+                `;
+                tableBodyEl.appendChild(tr);
+            });
+
+            document.querySelectorAll('.edit-doc').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const col = e.currentTarget.getAttribute('data-collection');
+                    const id = e.currentTarget.getAttribute('data-id');
+                    if (typeof openDynamicEditModal === 'function') {
+                        openDynamicEditModal(col, id);
+                    }
+                });
+            });
+
+            appendTerminalLog('success', `Successfully fetched all ${documents.length} records from [${collectionName}].`);
+
+        } catch (error) {
+            console.error("Firestore Fetch Error:", error);
+            tableBodyEl.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger);">Failed to connect to Firestore backend. Check console logs.</td></tr>`;
+            appendTerminalLog('error', `Firestore query failed for [${collectionName}]: ${error.message}`);
+        }
+    }
+
+    // --- BULLETPROOF COLLECTION LOADER WITH FULL DIAGNOSTICS ---
+    async function loadCollectionDropdowns() {
+        console.log("-> Starting loadCollectionDropdowns()...");
+        const colSelect = document.getElementById('collectionSelect');
+        const stressSelect = document.getElementById('stressCollectionSelect');
+        
+        if (!colSelect) {
+            console.error("-> CRITICAL: element with id 'collectionSelect' not found in DOM!");
+            return;
+        }
+
+        try {
+            console.log("-> Fetching collections from Cloud Function...");
+            const response = await fetch('https://us-central1-samcam-system.cloudfunctions.net/listCollections');
+            
+            console.log("-> Response received. Status:", response.status);
+            const data = await response.json();
+            console.log("-> Parsed JSON data:", data);
+
+            const collections = Array.isArray(data) ? data : (data.collections || data.data || []);
+            console.log("-> Extracted collections array:", collections);
+
+            if (collections.length > 0) {
+                const optionsHtml = collections.map(col => `<option value="${col}">${col}</option>`).join('');
+                
+                colSelect.innerHTML = optionsHtml;
+                if (stressSelect) {
+                    stressSelect.innerHTML = optionsHtml;
+                }
+                
+                console.log("-> Dropdowns populated successfully. Triggering initial fetch for:", collections[0]);
+                fetchCollectionData(collections[0]);
+            } else {
+                console.warn("-> API returned zero collections.");
+                colSelect.innerHTML = '<option value="">No collections found</option>';
+            }
+        } catch (err) {
+            console.error("-> FAILED in loadCollectionDropdowns:", err);
+            
+            // Fallback hardcoded list so your UI never breaks if the network/CORS blocks it
+            const fallback = ['users', 'quizzes', 'submissions', 'announcements', 'schools', 'e_library_resources', 'forum_threads', 'blogs'];
+            console.log("-> Applying emergency fallback collections:", fallback);
+            colSelect.innerHTML = fallback.map(col => `<option value="${col}">${col}</option>`).join('');
+            fetchCollectionData(fallback[0]);
+        }
+    }
+
+    // Initialize Dropdowns on DOM load
     console.log("-> DOM fully loaded. Initializing dropdown loader...");
     loadCollectionDropdowns();
-
-    const collectionSelect = document.getElementById('collectionSelect');
-    if (collectionSelect) {
-        collectionSelect.addEventListener('change', (e) => {
-            console.log("-> Dropdown changed to:", e.target.value);
-            fetchCollectionData(e.target.value);
-        });
-    }
-});
     
     // Helper to map native Firebase SDK data structure to your existing view field layout
     function convertFirestoreDataToRESTFormat(data) {
@@ -451,7 +442,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const newPassword = generateSecurePassword();
 
-                    // Send PATCH request updating the 'password' field (adjust field name if your database uses 'pass' or 'userPassword')
                     const patchUrl = `https://firestore.googleapis.com/v1/${doc.name}?updateMask.fieldPaths=password`;
                     const patchRes = await fetch(patchUrl, {
                         method: 'PATCH',
@@ -465,7 +455,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
-                // Trigger automatic text/CSV download file containing the new credentials for administrator records
                 const blob = new Blob([credentialsLog], { type: 'text/csv;charset=utf-8;' });
                 const urlObj = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -489,8 +478,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
-
+});
 
     // --- DYNAMIC MODAL FORM GENERATOR & PATCH HANDLER ---
     async function openDynamicEditModal(collectionName, docId) {
