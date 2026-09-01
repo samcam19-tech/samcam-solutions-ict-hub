@@ -146,14 +146,20 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-   // --- 1. DYNAMIC FIRESTORE DOCUMENT EXPLORER WITH PAGINATION ---
+  // --- 1. DYNAMIC FIRESTORE DOCUMENT EXPLORER WITH PAGINATION ---
     async function fetchCollectionData(collectionName) {
+        // Guard clause: completely abort if collectionName is missing, empty, or still loading
+        if (!collectionName || typeof collectionName !== 'string' || !collectionName.trim() || collectionName.includes('Loading')) {
+            console.warn("fetchCollectionData aborted: Invalid or uninitialized collection name.");
+            return;
+        }
+
         if (!tableBody) return;
         tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);"><i class="fa-solid fa-spinner fa-spin"></i> Querying live Firestore documents...</td></tr>`;
         
         try {
             // Use the Firebase SDK compat layer to bypass browser CORS blocks
-            const snapshot = await firebase.firestore().collection(collectionName).get();
+            const snapshot = await firebase.firestore().collection(collectionName.trim()).get();
             const documents = [];
             
             snapshot.forEach(doc => {
@@ -212,7 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
             appendTerminalLog('error', `Firestore query failed for [${collectionName}]: ${error.message}`);
         }
     }
-
+    
     // Helper to map native Firebase SDK data structure to your existing view field layout
     function convertFirestoreDataToRESTFormat(data) {
         const fields = {};
