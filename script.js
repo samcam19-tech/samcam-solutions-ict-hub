@@ -499,19 +499,23 @@ window.togglePasswordVisibility = function(passwordFieldId, iconElementId) {
 };
 
 window.handleLogout = function() {
-  // 1. Clear ALL possible session storage locations
+  // 1. Clear ALL possible session and local storage locations
   localStorage.removeItem('portal_session');
   localStorage.removeItem('currentLoggedInUser');
+  localStorage.removeItem('currentUser');
+  localStorage.removeItem('portal_resources');
+  localStorage.removeItem('portal_submissions');
+  
   sessionStorage.removeItem('portal_session');
   sessionStorage.removeItem('currentLoggedInUser');
 
-  // 2. Clear global user memory states
+  // 2. Clear global user memory states and broadcast updates if available
   if (typeof broadcastSessionUpdate === 'function') {
     broadcastSessionUpdate(null);
   }
   window.currentUser = null;
 
-  // 3. Reset input fields if present
+  // 3. Reset input fields if present on the page
   const userEl = document.getElementById('loginUsername');
   const passEl = document.getElementById('loginPassword');
   const errEl = document.getElementById('loginError');
@@ -526,12 +530,13 @@ window.handleLogout = function() {
     authNavActions.style.display = 'none';
   }
 
-  if (typeof updatePortalUI === 'function') updatePortalUI();
+  if (typeof updatePortalUI === 'function') {
+    updatePortalUI();
+  }
 
-  // 5. Force a hard redirect or reload to clear cached DOM memory
-  window.location.href = 'assessments.html'; 
+  // 5. Use replace() instead of href to prevent the back button from returning to the dashboard
+  window.location.replace('assessment.html'); // Replace with your actual login page filename
 };
-
 
 /* ==========================================================================
    PROFILE PICTURE UPLOAD & UI DISPLAY MODULE
@@ -2911,12 +2916,6 @@ function handleLogin(e) {
       if (errEl) errEl.style.display = 'block';
     });
   }
-}
-
-function handleLogout() {
-  localStorage.removeItem('portal_session');
-  localStorage.removeItem('currentLoggedInUser');
-  checkUserSession();
 }
 
 // ==========================================================================
