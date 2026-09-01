@@ -153,6 +153,10 @@ document.addEventListener("DOMContentLoaded", () => {
         if (confirmLogout) {
           sessionStorage.removeItem("samcam_super_auth");
           sessionStorage.removeItem("samcam_super_session");
+          
+          const wrapper = document.getElementById('secureAdminWrapper');
+          if (wrapper) wrapper.style.display = 'none';
+
           await showCustomModal("Logged Out", "Your session has been terminated securely.");
           window.location.reload();
         }
