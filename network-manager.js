@@ -25,8 +25,8 @@ function initLiveTelemetryListener() {
             const data = doc.data();
             liveStations.push({
                 id: data.workstationId || doc.id,
-                ip: data.ip || "192.168.1.105",
-                learner: data.learner || "Active Session Learner",
+                ip: data.ip || data.clientIp || data.localIp || "192.168.1.105",
+                learner: data.learner || data.learnerName || data.studentName || "Active Session Learner",
                 activity: data.activeTitle || data.activity || "Active Browser Session",
                 shortUrl: data.activeUrl || "Local Workspace",
                 fullUrl: data.fullUrl || "#",
@@ -75,7 +75,7 @@ function populateTargetWorkstationSelect(stations) {
     stations.forEach(pc => {
         const opt = document.createElement("option");
         opt.value = pc.id;
-        opt.textContent = `${pc.id} - ${pc.learner}`;
+        opt.textContent = `${pc.id} - ${pc.learner} (${pc.ip})`;
         select.appendChild(opt);
     });
 
@@ -214,7 +214,7 @@ function initEventListeners() {
         const filterVal = statusFilter ? statusFilter.value : "ALL";
 
         const filtered = workstationsData.filter(pc => {
-            const matchesSearch = pc.id.toLowerCase().includes(query) || pc.learner.toLowerCase().includes(query) || pc.activity.toLowerCase().includes(query);
+            const matchesSearch = pc.id.toLowerCase().includes(query) || pc.learner.toLowerCase().includes(query) || pc.activity.toLowerCase().includes(query) || pc.ip.toLowerCase().includes(query);
             const matchesStatus = filterVal === "ALL" || pc.status.toUpperCase() === filterVal;
             return matchesSearch && matchesStatus;
         });
@@ -536,10 +536,13 @@ function openBroadcastModal() {
     bModal.style.display = "flex";
 }
 
-document.getElementById('pushPromptBtn').addEventListener('click', () => {
-    // Open the dynamic broadcast modal instead of relying on a missing HTML element
-    openBroadcastModal();
-});
+const pushBtnElem = document.getElementById('pushPromptBtn');
+if (pushBtnElem) {
+    pushBtnElem.addEventListener('click', () => {
+        openBroadcastModal();
+    });
+}
+
 async function broadcastPromptToClass(type, content) {
     if (!window.db) {
         console.error("Firestore database 'db' not initialized.");
