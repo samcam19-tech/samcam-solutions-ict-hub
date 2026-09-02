@@ -87,6 +87,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const terminalStream = document.getElementById('terminalLogStream');
     const runStressTestBtn = document.getElementById('runStressTestBtn');
     const stressTestResult = document.getElementById('stressTestResult');
+    // const collectionSelect = document.getElementById('collectionSelect');
+    const stressCountInput = document.getElementById('stressCountInput');
 
     function appendTerminalLog(type, message) {
         if (!terminalStream) return;
@@ -676,8 +678,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
    // --- 4. REAL CONCURRENT LOAD STRESS TEST (DYNAMIC) ---
-const collectionSelect = document.getElementById('collectionSelect');
-const stressCountInput = document.getElementById('stressCountInput');
 
 if (runStressTestBtn) {
     runStressTestBtn.addEventListener('click', async () => {
