@@ -600,7 +600,7 @@ window.handleLogout = function() {
   }
 
   // 5. Redirect back to the standalone login page (adjust relative depth if needed)
-  window.location.replace('../login.html');
+  window.location.replace('../index.html');
 };
 
 /* ==========================================================================
