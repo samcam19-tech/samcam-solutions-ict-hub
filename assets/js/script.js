@@ -2028,6 +2028,10 @@ function updatePortalUI() {
   if (!currentUser) {
     loginSec.style.display = 'block';
     dashSec.style.display = 'none';
+    if (teacherControls) teacherControls.style.display = 'none';
+    if (teacherReports) teacherReports.style.display = 'none';
+    if (staffRegModule) staffRegModule.style.display = 'none';
+    if (manageStaffBtn) manageStaffBtn.style.display = 'none';
     if (navLibraryManager) navLibraryManager.style.display = 'none';
     return;
   }
@@ -2072,6 +2076,7 @@ function updatePortalUI() {
 
   renderAssessments();
 }
+
 window.filterAssessmentsByClass = function() {
   renderAssessments();
 };
