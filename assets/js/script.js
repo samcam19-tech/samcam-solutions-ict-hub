@@ -2129,15 +2129,18 @@ async function renderAssessments() {
   const submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
   const now = new Date();
 
- let classFilterEl = document.getElementById('filterAssessmentClass');
+  let classFilterEl = document.getElementById('filterAssessmentClass');
   let selectedClassFilter = classFilterEl ? classFilterEl.value : 'ALL';
 
   let assessments = resources.filter(r => r.category === "Question Paper");
   
+  // Normalized class helper to prevent spacing, casing, or dot mismatch issues (e.g. "S4" vs "S.4")
+  const normalizeClass = (c) => String(c || '').replace(/[\.\s]/g, '').toUpperCase();
+
   if (isStudent) {
-    assessments = assessments.filter(a => a.class === currentUser.class);
+    assessments = assessments.filter(a => normalizeClass(a.class) === normalizeClass(currentUser.class));
   } else if (selectedClassFilter && selectedClassFilter !== 'ALL') {
-    assessments = assessments.filter(a => a.class === selectedClassFilter);
+    assessments = assessments.filter(a => normalizeClass(a.class) === normalizeClass(selectedClassFilter));
   }
 
   if (assessments.length === 0) {
@@ -2155,9 +2158,10 @@ async function renderAssessments() {
     
     const currentStudentId = currentUser ? (currentUser.schoolId || currentUser.username) : null;
     const studentSub = isStudent 
-      ? submissions.find(s => String(s.testId) === String(a.id) && (String(s.schoolId || s.studentId || s.username || '').toLowerCase() === String(currentStudentId || '').toLowerCase() || s.studentName === currentUser.fullName)) 
+      ? submissions.find(s => String(s.testId) === String(a.id || a.firebaseDocId) && (String(s.schoolId || s.studentId || s.username || '').toLowerCase() === String(currentStudentId || '').toLowerCase() || s.studentName === currentUser.fullName)) 
       : null;
     
+    const assessmentIdKey = a.id || a.firebaseDocId;
     const safeTitle = encodeURIComponent(a.title);
 
     let actionHTML = '';
@@ -2173,8 +2177,8 @@ async function renderAssessments() {
             if (!isExpired) {
                 actionHTML += `
                     <div style="display:flex; gap:0.35rem; align-items:center;">
-                      <button type="button" onclick="openSubmissionModalWithDetails('${a.id}', '${safeTitle}')" class="btn-action btn-icon-only btn-edit" title="Replace Submission"><i class="fa-solid fa-arrows-rotate"></i></button>
-                      <button type="button" onclick="cancelSubmission('${a.id}')" class="btn-action btn-icon-only btn-danger" title="Cancel Submission"><i class="fa-solid fa-trash-can"></i></button>
+                      <button type="button" onclick="openSubmissionModalWithDetails('${assessmentIdKey}', '${safeTitle}')" class="btn-action btn-icon-only btn-edit" title="Replace Submission"><i class="fa-solid fa-arrows-rotate"></i></button>
+                      <button type="button" onclick="cancelSubmission('${assessmentIdKey}')" class="btn-action btn-icon-only btn-danger" title="Cancel Submission"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
                 `;
             } else {
@@ -2189,7 +2193,7 @@ async function renderAssessments() {
                 `;
             } else {
                 actionHTML = `
-                  <button type="button" onclick="openSubmissionModalWithDetails('${a.id}', '${safeTitle}')" class="btn-action btn-icon-only btn-upload" title="Upload Answer">
+                  <button type="button" onclick="openSubmissionModalWithDetails('${assessmentIdKey}', '${safeTitle}')" class="btn-action btn-icon-only btn-upload" title="Upload Answer">
                     <i class="fa-solid fa-file-arrow-up"></i>
                   </button>
                 `;
@@ -2200,14 +2204,14 @@ async function renderAssessments() {
     else if (currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin' || currentUser.role === 'Administrator')) {
         actionHTML = `
             <div style="display:flex; gap:0.35rem; align-items:center;">
-              <button type="button" onclick="openEditAssessmentModal('${a.id}')" class="btn-action btn-icon-only btn-edit" title="Edit Assessment"><i class="fa-solid fa-pen-to-square"></i></button>
-              <button type="button" onclick="handleDeleteAssessment('${a.id}')" class="btn-action btn-icon-only btn-danger" title="Delete Assessment"><i class="fa-solid fa-trash-can"></i></button>
+              <button type="button" onclick="openEditAssessmentModal('${assessmentIdKey}')" class="btn-action btn-icon-only btn-edit" title="Edit Assessment"><i class="fa-solid fa-pen-to-square"></i></button>
+              <button type="button" onclick="handleDeleteAssessment('${assessmentIdKey}')" class="btn-action btn-icon-only btn-danger" title="Delete Assessment"><i class="fa-solid fa-trash-can"></i></button>
             </div>
         `;
     }
 
     return `
-      <div class="test-card" data-assessment-id="${a.id}" style="width: 100%; margin-bottom: 1rem;">
+      <div class="test-card" data-assessment-id="${assessmentIdKey}" style="width: 100%; margin-bottom: 1rem;">
         <div class="test-header">
           <span class="test-title">${escapeHtml(a.title)} <small style="color:#64748b;">(${escapeHtml(a.class)})</small></span>
           <span class="deadline-badge ${isExpired ? 'deadline-expired' : 'deadline-active'}" data-deadline="${a.deadline}">
