@@ -2624,9 +2624,9 @@ window.cancelSubmission = async function(testId) {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
-  const navHomeLink = document.getElementById('navHomeLink');
+  const navHomeLink = document.getElementById('navLibraryLink');
   if (navHomeLink) {
-    navHomeLink.addEventListener('click', (e) => navigateTo(e, 'home'));
+    navHomeLink.addEventListener('click', (e) => navigateTo(e, 'lib'));
   }
 
   const navQuizLink = document.getElementById('navQuizLink');
@@ -2746,11 +2746,11 @@ function toggleMobileMenu() {
 function navigateTo(e, routeKey) {
   if (e) e.preventDefault();
   const urls = {
-    home: 'index.html',
-    quiz: 'quiz.html',
-    portal: 'assessments.html'
-  };
-  const targetUrl = urls[routeKey] || 'index.html';
+  lib: '../e-library/',
+  quiz: '../quiz/',
+  portal: '../assessments/'
+};
+  const targetUrl = urls[routeKey] || '../e-library/';
   window.history.pushState({ route: routeKey }, '', targetUrl);
   window.location.href = targetUrl;
 }
