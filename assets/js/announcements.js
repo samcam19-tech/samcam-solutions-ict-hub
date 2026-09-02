@@ -150,8 +150,17 @@ function renderAnnouncements(items) {
         </div>
         <div class="announcement-title">${escapeHtml(item.title)}</div>
         <div class="announcement-body">${escapeHtml(item.body)}</div>
-        <div class="announcement-footer">
+        
+        <!-- Appended Official Contact Footer -->
+        <div style="margin-top: 1.25rem; padding-top: 0.75rem; border-top: 1px solid var(--border-color, #e2e8f0); font-size: 0.78rem; color: var(--text-muted, #64748b); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+          <div style="display: flex; gap: 1.25rem;">
+            <span><i class="fa-solid fa-envelope" style="color: var(--primary); margin-right: 4px;"></i> info@samcamsolution.org</span>
+            <span><i class="fa-solid fa-phone" style="color: var(--primary); margin-right: 4px;"></i> 0703999089</span>
+          </div>
           <span style="color: var(--text-muted); font-size: 0.75rem;">${isRead ? 'Read' : 'Click to read full notice'}</span>
+        </div>
+
+        <div class="announcement-footer" style="margin-top: 0.5rem; justify-content: flex-end;">
           ${isTeacherOrAdmin ? `
             <button class="btn btn-danger-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" onclick="event.stopPropagation(); deleteAnnouncement('${item.id}')">
               <i class="fa-solid fa-trash"></i> Delete
@@ -269,7 +278,15 @@ function openReadAnnouncementModal(id, title, priority, body, author, date) {
   if (metaEl) {
     metaEl.innerHTML = `<span><i class="fa-solid fa-user"></i> Posted by <strong>${author}</strong></span><span><i class="fa-regular fa-clock"></i> ${date}</span>`;
   }
-  if (bodyEl) bodyEl.textContent = body.replace(/\\n/g, '\n');
+  if (bodyEl) {
+    bodyEl.innerHTML = `
+      <div>${body.replace(/\\n/g, '<br>')}</div>
+      <div style="margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border-color, #e2e8f0); font-size: 0.82rem; color: var(--text-muted, #64748b); display: flex; gap: 1.5rem; flex-wrap: wrap;">
+        <span><i class="fa-solid fa-envelope" style="color: var(--primary); margin-right: 6px;"></i> Official Inquiry: <strong>info@samcamsolution.org</strong></span>
+        <span><i class="fa-solid fa-phone" style="color: var(--primary); margin-right: 6px;"></i> Helpline: <strong>0703999089</strong></span>
+      </div>
+    `;
+  }
 
   modal.style.display = 'flex';
 }
