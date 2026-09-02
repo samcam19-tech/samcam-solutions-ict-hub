@@ -2129,7 +2129,7 @@ async function renderAssessments() {
   const submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
   const now = new Date();
 
-  let classFilterEl = document.getElementById('assessmentClassFilter');
+ let classFilterEl = document.getElementById('filterAssessmentClass');
   let selectedClassFilter = classFilterEl ? classFilterEl.value : 'ALL';
 
   let assessments = resources.filter(r => r.category === "Question Paper");
