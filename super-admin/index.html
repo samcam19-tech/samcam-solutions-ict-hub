@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Platform Super Admin | Multi-Tenant Manager</title>
+  <link rel="stylesheet" href="../assets/css/super-admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+  <div class="admin-wrapper" id="secureAdminWrapper" style="display: none;">
+   <header class="admin-header" style="display: flex; justify-content: space-between; align-items: center; position: relative; overflow: visible;">
+      <div class="header-brand" style="display: flex; align-items: center; gap: 12px;">
+        <!-- Dynamic Logo Hook -->
+        <img src="images/logo.png" alt="System Logo" class="dynamic-system-logo" style="height: 40px; width: auto; object-fit: contain;" />
+        <div>
+          <!-- Added dynamic-system-name class hook -->
+          <h1 class="dynamic-system-name" style="margin: 0; font-size: 1.25rem;">Samcam Hub - Super Admin</h1>
+          <!-- Dynamic Slogan Hook -->
+          <p class="dynamic-system-slogan" style="margin: 0; font-size: 0.8rem; opacity: 0.8;">Innovative Insights in Action</p>
+        </div>
+      </div>
+      <div class="admin-profile" style="position: relative; display: inline-block; overflow: visible;">
+        <div id="adminDropdownBtn" style="cursor: pointer; display: flex; align-items: center; gap: 10px; padding: 4px 12px; border-radius: 8px; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); color: inherit;">
+          <div style="text-align: right;">
+            <span style="display: block; font-size: 0.85rem; font-weight: 600;">AKUGIZIBWE SAMUEL</span>
+            <span style="display: block; font-size: 0.7rem; opacity: 0.7;">@samcam</span>
+          </div>
+          <div style="width: 32px; height: 32px; border-radius: 50%; background: rgba(239, 68, 68, 0.15); display: flex; align-items: center; justify-content: center;">
+            <i class="fa-solid fa-right-from-bracket" style="font-size: 0.85rem; color: #f87171;"></i>
+          </div>
+        </div>
+        
+        <div id="adminDropdownMenu" style="display: none; position: absolute; right: 0; top: 100%; margin-top: 8px; background: #fff; min-width: 220px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border-radius: 8px; border: 1px solid #e2e8f0; z-index: 99999; overflow: hidden;">
+          <div style="padding: 10px 16px; border-bottom: 1px solid #f1f5f9; background: #f8fafc;">
+            <span style="display: block; font-size: 0.75rem; color: #64748b; font-weight: 600;">Signed in as</span>
+            <span style="display: block; font-size: 0.85rem; color: #1e293b; font-weight: bold;">AKUGIZIBWE SAMUEL</span>
+          </div>
+          <a href="network-manager" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #334155; text-decoration: none; font-size: 0.85rem; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+            <i class="fa-solid fa-network-wired" style="color: #0284c7; width: 16px;"></i> Lab Network Management
+          </a>
+          <a href="deep-stuff" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #334155; text-decoration: none; font-size: 0.85rem; transition: background 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+            <i class="fa-solid fa-brain" style="color: #0284c7; width: 16px;"></i> Deep Stuff
+          </a>
+          <div style="border-top: 1px solid #f1f5f9; padding: 4px 0;">
+            <a href="#" id="actualLogoutBtn" style="display: flex; align-items: center; gap: 10px; padding: 8px 16px; color: #ef4444; text-decoration: none; font-size: 0.85rem; transition: background 0.2s;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
+              <i class="fa-solid fa-right-from-bracket" style="width: 16px;"></i> Sign Out
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <main class="admin-content">
+      
+      <section class="stats-grid">
+        <div class="stat-card">
+          <h3><i class="fa-solid fa-school" style="margin-right: 6px; color: var(--primary);"></i> Registered Schools</h3>
+          <p class="stat-value" id="totalSchoolsCount">0</p>
+        </div>
+        <div class="stat-card">
+          <h3><i class="fa-solid fa-database" style="margin-right: 6px; color: var(--primary);"></i> Collections Targeted</h3>
+          <p class="stat-value" id="collectionsCount">0</p>
+        </div>
+      </section>
+
+      <div class="admin-grid">
+        
+        <!-- Register New School Panel -->
+        <div class="panel-card">
+          <h2><i class="fa-solid fa-circle-plus" style="margin-right: 8px; color: var(--primary);"></i> <span id="schoolFormTitle">Register New School Instance</span></h2>
+          <p class="panel-desc" id="schoolFormDesc">Create a brand new tenant record in the global database.</p>
+          
+          <form id="superSchoolForm">
+            <input type="hidden" id="isEditingSchool" value="false">
+            
+            <div class="form-group">
+              <label for="newSchoolId"><i class="fa-solid fa-fingerprint" style="margin-right: 4px;"></i> School Identifier (Slug):</label>
+              <input type="text" id="newSchoolId" placeholder="e.g. standard_college_ntungamo" required />
+            </div>
+            <div class="form-group">
+              <label for="newSchoolName"><i class="fa-solid fa-school-flag" style="margin-right: 4px;"></i> Full School Name:</label>
+              <input type="text" id="newSchoolName" placeholder="Standard College Ntungamo" required />
+            </div>
+            <div class="form-group">
+              <label for="newSchoolLocation"><i class="fa-solid fa-location-dot" style="margin-right: 4px;"></i> Location / District:</label>
+              <input type="text" id="newSchoolLocation" placeholder="Ntungamo" required />
+            </div>
+
+            <!-- School Logo Upload & Live Preview Container -->
+            <div class="form-group">
+              <label><i class="fa-solid fa-image" style="margin-right: 4px;"></i> School Logo:</label>
+              <div style="display: flex; align-items: center; gap: 12px; margin-top: 6px;">
+                <img id="schoolLogoPreview" src="images/default-avatar.png" alt="Logo Preview" style="width: 48px; height: 48px; object-fit: cover; border-radius: 50%; border: 1px solid #cbd5e1; background: #fff;" />
+                <div style="flex: 1;">
+                  <input type="file" id="newSchoolLogoFile" accept="image/*" class="form-control" style="font-size: 0.8rem;" />
+                  <span style="font-size: 0.72rem; color: #64748b;">Upload PNG/JPEG logo.</span>
+                </div>
+              </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+              <button type="submit" id="saveSchoolBtn" class="btn-primary" style="flex: 1;"><i class="fa-solid fa-plus" style="margin-right: 6px;"></i> Provision School Instance</button>
+              <button type="button" id="cancelSchoolEditBtn" class="btn-outline" style="display: none;"><i class="fa-solid fa-xmark"></i> Cancel</button>
+            </div>
+          </form>
+        </div>
+
+        <!-- System Branding Configuration Panel -->
+        <div class="panel-card">
+          <h2><i class="fa-solid fa-palette" style="margin-right: 8px; color: var(--primary);"></i> System Branding Configuration</h2>
+          <p class="panel-desc">Manage platform-wide identity, names, slogans, and logo assets.</p>
+          <form id="systemBrandingForm">
+            <div class="form-group">
+              <label for="brandingSystemName"><i class="fa-solid fa-signature" style="margin-right: 4px;"></i> System Name:</label>
+              <input type="text" id="brandingSystemName" placeholder="SAMCAM SOLUTIONS ICT HUB" required />
+            </div>
+            <div class="form-group">
+              <label for="brandingSystemSlogan"><i class="fa-solid fa-comment-dots" style="margin-right: 4px;"></i> System Slogan:</label>
+              <input type="text" id="brandingSystemSlogan" placeholder="Empowering Digital Education" />
+            </div>
+            <div class="form-group">
+              <label for="brandingSystemLogoUrl"><i class="fa-solid fa-link" style="margin-right: 4px;"></i> Logo Image URL:</label>
+              <input type="url" id="brandingSystemLogoUrl" placeholder="https://example.com/logo.png" />
+            </div>
+            <div class="form-group">
+              <label for="brandingSystemLogoFile"><i class="fa-solid fa-upload" style="margin-right: 4px;"></i> Or Upload Logo File:</label>
+              <input type="file" id="brandingSystemLogoFile" accept="image/*" class="form-control" />
+            </div>
+            <button type="submit" class="btn-primary" style="margin-top: 15px;"><i class="fa-solid fa-floppy-disk" style="margin-right: 6px;"></i> Save Branding Settings</button>
+          </form>
+        </div>
+
+        <!-- Legacy Data Migration Utility Panel -->
+        <div class="panel-card" style="grid-column: 1 / -1;">
+          <h2><i class="fa-solid fa-shuffle" style="margin-right: 8px; color: var(--warning);"></i> Legacy Data Migration Utility</h2>
+          <p class="panel-desc">Map existing root-level collections to a designated school instance.</p>
+          <form id="migrationForm">
+            <div class="form-group">
+              <label for="targetSchoolSelect"><i class="fa-solid fa-bullseye" style="margin-right: 4px;"></i> Select Target School for Legacy Data:</label>
+              <select id="targetSchoolSelect" class="form-select" required>
+                <option value="">-- Load registered schools --</option>
+              </select>
+            </div>
+
+            <!-- Dynamic Collections Checkbox Container -->
+            <div class="form-group" style="margin-top: 15px;">
+              <label style="display: block; font-weight: 500; font-size: 13px; margin-bottom: 6px;"><i class="fa-solid fa-list-check" style="margin-right: 4px;"></i> Select Collections to Migrate:</label>
+              <div id="migrationCollectionsContainer" style="border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; background: #fff;">
+                <p style="font-size: 13px; color: #64748b;"><i class="fa-solid fa-spinner fa-spin" style="margin-right: 6px;"></i> Loading available collections...</p>
+              </div>
+            </div>
+
+            <button type="button" id="executeMigrationBtn" class="btn-warning" style="margin-top: 15px;"><i class="fa-solid fa-file-arrow-up" style="margin-right: 6px;"></i> Run Global Data Migration</button>
+          </form>
+        </div>
+
+      </div>
+
+      <!-- Active Platform Tenants Table Section -->
+      <section class="schools-table-section">
+        <h2><i class="fa-solid fa-server" style="margin-right: 8px; color: var(--primary);"></i> Active Platform Tenants</h2>
+        <div class="table-container">
+          <table class="data-table" id="schoolsTable">
+            <thead>
+              <tr>
+                <th><i class="fa-solid fa-id-badge" style="margin-right: 4px;"></i> School ID</th>
+                <th><i class="fa-solid fa-building-columns" style="margin-right: 4px;"></i> School Name</th>
+                <th><i class="fa-solid fa-map-pin" style="margin-right: 4px;"></i> Location</th>
+                <th><i class="fa-solid fa-signal" style="margin-right: 4px;"></i> Status</th>
+                <th><i class="fa-solid fa-calendar-days" style="margin-right: 4px;"></i> Date Provisioned</th>
+                <th><i class="fa-solid fa-sliders" style="margin-right: 4px;"></i> Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="6" style="text-align: center;"><i class="fa-solid fa-spinner fa-spin" style="margin-right: 6px;"></i> Loading registered schools...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Full-Width Feature 1: Global Announcement Broadcaster -->
+      <div id="featureAnnouncements" class="admin-feature-card" style="width: 100%; margin-bottom: 1.5rem; box-sizing: border-box;">
+         <h3 class="feature-title"><i class="fa-solid fa-bullhorn" style="margin-right: 8px; color: var(--primary);"></i> Global Announcement Broadcaster</h3>
+         <div id="announcementFormCard" style="background: var(--bg-main, #f8fafc); padding: 16px; border-radius: 8px; border: 1px solid var(--border, #e2e8f0); margin-bottom: 20px;">
+           <h4 id="announceFormHeading" style="font-size: 14px; font-weight: 600; margin-bottom: 12px;"><i class="fa-solid fa-pen-to-square" style="margin-right: 4px;"></i> Publish New Broadcast</h4>
+           <input type="hidden" id="editingAnnouncementDocId" value="">
+           
+           <div class="form-group" style="margin-bottom: 12px;">
+             <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;"><i class="fa-solid fa-heading" style="margin-right: 4px;"></i> Announcement Title</label>
+             <input type="text" id="globalAnnounceTitle" placeholder="e.g., 📢 New Notes Available on the Portal!" class="feature-input" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;">
+           </div>
+           
+           <div class="form-group" style="margin-bottom: 12px;">
+             <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;"><i class="fa-solid fa-align-left" style="margin-right: 4px;"></i> Announcement Body / Message</label>
+             <textarea id="globalAnnounceText" placeholder="Type platform-wide broadcast message..." class="feature-textarea" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px; min-height: 80px;"></textarea>
+           </div>
+           
+           <div class="form-row" style="display: flex; gap: 10px; margin-bottom: 12px;">
+             <div class="form-group" style="flex: 1;">
+               <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;"><i class="fa-solid fa-triangle-exclamation" style="margin-right: 4px;"></i> Priority Level</label>
+               <select id="announcePriority" class="feature-select" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;">
+                 <option value="Urgent">Urgent</option>
+                 <option value="Normal" selected>Normal</option>
+                 <option value="Low">Low</option>
+               </select>
+             </div>
+             <div class="form-group" style="flex: 1;">
+               <label style="font-size: 13px; font-weight: 600; margin-bottom: 4px; display: block;"><i class="fa-solid fa-users-rectangle" style="margin-right: 4px;"></i> Target Audience</label>
+               <select id="announceTarget" class="feature-select" style="width: 100%; padding: 8px; border: 1px solid var(--border, #e2e8f0); border-radius: 6px;">
+                 <option value="all">All Schools & Users</option>
+                 <option value="teachers">Teachers Only</option>
+                 <option value="students">Students Only</option>
+               </select>
+             </div>
+           </div>
+           
+           <div class="feature-controls-row" style="display: flex; gap: 10px;">
+             <button id="sendBroadcastBtn" class="btn-primary" style="flex: 1;"><i class="fa-solid fa-bullhorn"></i> Publish Global Broadcast</button>
+             <button id="cancelEditBroadcastBtn" class="btn-outline" style="display: none; flex: 0.4;"><i class="fa-solid fa-ban" style="margin-right: 4px;"></i> Cancel</button>
+           </div>
+         </div>
+
+         <div style="margin-top: 20px;">
+           <h4 style="font-size: 14px; font-weight: 600; margin-bottom: 10px;"><i class="fa-solid fa-tower-broadcast" style="margin-right: 4px;"></i> Active Global Broadcasts</h4>
+           <div id="activeBroadcastsList" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border, #e2e8f0); border-radius: 6px; padding: 10px; background: #fff;">
+             <p style="color: var(--text-muted, #64748b); font-size: 13px; text-align: center; padding: 15px;"><i class="fa-solid fa-spinner fa-spin" style="margin-right: 6px;"></i> Loading active broadcasts...</p>
+           </div>
+         </div>
+      </div>
+
+      <!-- Full-Width Feature 2: Centralized E-Resource Repository Manager -->
+      <div id="featureEResources" class="admin-feature-card" style="width: 100%; margin-bottom: 1.5rem; box-sizing: border-box;">
+         <div style="padding: 1.5rem;">
+           <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+             <i class="fa-solid fa-floppy-disk" style="font-size: 1.2rem; color: #0284c7;"></i>
+             <h3 style="margin: 0; font-size: 1.1rem; color: #1e293b; font-weight: 700;">Centralized E-Resource Publisher</h3>
+           </div>
+           <p style="margin: 0 0 1rem 0; font-size: 0.85rem; color: #64748b;">
+             Distribute study materials, notes, and curriculum files instantly with complete metadata to tenant schools.
+           </p>
+
+           <!-- Form Layout matching database schema -->
+           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+             <div>
+               <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Resource Title *</label>
+               <input type="text" id="globalResTitle" placeholder="e.g., S.5 END OF TERM 2 ICT GUIDE" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;" />
+             </div>
+             <div>
+               <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Class / Level</label>
+               <select id="globalResClassLevel" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #fff;">
+                 <option value="S1">S.1</option>
+                 <option value="S2">S.2</option>
+                 <option value="S3">S.3</option>
+                 <option value="S4">S.4</option>
+                 <option value="S5" selected>S.5</option>
+                 <option value="S6">S.6</option>
+                 <option value="General">General / All</option>
+               </select>
+             </div>
+           </div>
+
+           <div style="margin-bottom: 0.75rem;">
+             <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Description / Notes</label>
+             <textarea id="globalResDescription" placeholder="The marking guide for S.5 end of term 2..." style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; height: 60px; resize: vertical;"></textarea>
+           </div>
+
+           <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem;">
+             <div>
+               <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Category</label>
+               <select id="globalResCategory" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #fff;">
+                 <option value="Datasets">Datasets</option>
+                 <option value="Notes & Handouts" selected>Notes & Handouts</option>
+                 <option value="Past Papers">Past Papers</option>
+                 <option value="Marking Guides">Marking Guides</option>
+                 <option value="Practicals">Practicals</option>
+               </select>
+             </div>
+             <div>
+               <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Access Type</label>
+               <select id="globalResAccessType" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #fff;">
+                 <option value="free" selected>Free</option>
+                 <option value="paid">Paid</option>
+               </select>
+             </div>
+             <div>
+               <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Price (UGX)</label>
+               <input type="number" id="globalResPrice" value="0" placeholder="0" style="width: 100%; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem;" />
+             </div>
+           </div>
+
+           <div style="margin-bottom: 1rem;">
+             <label style="display: block; font-size: 0.75rem; font-weight: 600; color: #475569; margin-bottom: 0.25rem;">Resource File (PDF / Doc / ZIP) *</label>
+             <input type="file" id="globalResFileInput" style="width: 100%; padding: 0.4rem; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.85rem; background: #f8fafc;" />
+           </div>
+
+           <button type="button" id="publishGlobalResBtn" class="btn btn-primary" style="width: 100%; padding: 0.65rem; background: #0284c7; color: #fff; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.9rem;">
+             <i class="fa-solid fa-cloud-arrow-up"></i> Publish to All Schools
+           </button>
+
+           <div style="margin-top: 1.5rem; border-top: 1px solid #e2e8f0; padding-top: 1rem;">
+             <h4 style="margin: 0 0 0.75rem 0; font-size: 0.9rem; color: #334155; font-weight: 600;">Repository Manager & Status Toggle</h4>
+             <div id="globalResourcesList">
+               <!-- Live feed gets injected here -->
+             </div>
+           </div>
+         </div>
+      </div>
+
+      <!-- Remaining Feature Cards Grid Container -->
+      <div class="feature-cards-grid">
+        
+       <!-- Feature: Tenant Status & Subscription Manager -->
+        <div id="featureTenants" class="admin-feature-card" style="display: flex; flex-direction: column; justify-content: space-between;">
+          <div>
+            <h3 class="feature-title"><i class="fa-solid fa-house-laptop" style="margin-right: 8px; color: var(--primary);"></i> Tenant Status & Subscriptions</h3>
+            <p class="feature-description" style="margin-bottom: 12px;">Activate, suspend, or manage tenant accounts across the ecosystem network.</p>
+            
+            <div class="feature-controls-row" style="margin-bottom: 12px;">
+              <input type="text" id="manageSchoolIdInput" placeholder="Enter exact School ID..." class="feature-input-flex" />
+              <button id="toggleStatusBtn" class="btn-warning"><i class="fa-solid fa-toggle-on" style="margin-right: 6px;"></i> Toggle Status</button>
+            </div>
+          </div>
+
+          <!-- Live Tenant Metadata Preview Feed -->
+          <div id="tenantLivePreviewFeed" style="background: var(--bg-main, #f8fafc); border: 1px solid var(--border, #e2e8f0); border-radius: 8px; padding: 1rem; font-size: 0.8rem; color: #475569; margin-top: auto;">
+            <div style="text-align: center; color: #64748b;"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading tenant metadata...</div>
+          </div>
+        </div>
+
+        <!-- Feature: Cross-Tenant Global Search -->
+        <div id="featureSearch" class="admin-feature-card">
+          <h3 class="feature-title"><i class="fa-solid fa-magnifying-glass-chart" style="margin-right: 8px; color: var(--primary);"></i> Cross-Tenant Global Search</h3>
+          <p class="feature-description">Query system-wide data records across multiple databases seamlessly.</p>
+          <div class="feature-controls-row">
+            <input type="text" id="globalSearchQuery" placeholder="Search users, quizzes, threads..." class="feature-input-flex" />
+            <button id="executeGlobalSearchBtn" class="btn-primary"><i class="fa-solid fa-search" style="margin-right: 6px;"></i> Search</button>
+          </div>
+          <div id="globalSearchResults" class="feature-results-box"></div>
+        </div>
+
+        <!-- Feature: Comprehensive System Audit Logs -->
+        <div id="featureAudit" class="admin-feature-card">
+          <h3 class="feature-title"><i class="fa-solid fa-clipboard-list" style="margin-right: 8px; color: var(--primary);"></i> Comprehensive Audit Trail</h3>
+          <p class="feature-description">Inspect sequential system logs and administrative actions for tracking purposes.</p>
+          <button id="refreshAuditBtn" class="btn-secondary-small"><i class="fa-solid fa-rotate" style="margin-right: 6px;"></i> Refresh Logs</button>
+          <div id="auditLogsList" class="audit-logs-container">Click Refresh to load system audit trails.</div>
+        </div>
+
+        <!-- Feature: Global Backup & Snapshot Generator -->
+        <div id="featureBackup" class="admin-feature-card">
+          <h3 class="feature-title"><i class="fa-solid fa-database" style="margin-right: 8px; color: var(--primary);"></i> Global Backup & Snapshot</h3>
+          <p class="feature-description">Export multi-tenant database collections into a backup file, or restore from a JSON backup snapshot.</p>
+          
+          <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+            <button id="generateBackupBtn" class="btn-success"><i class="fa-solid fa-download" style="margin-right: 6px;"></i> Download Full JSON Backup</button>
+            
+            <div style="border-top: 1px solid var(--border, #e2e8f0); padding-top: 10px; margin-top: 5px;">
+              <label for="restoreBackupFile" style="font-size: 12px; font-weight: 600; display: block; margin-bottom: 6px;"><i class="fa-solid fa-upload" style="margin-right: 4px;"></i> Restore from JSON Backup:</label>
+              <input type="file" id="restoreBackupFileInput" accept=".json" class="form-control" style="font-size: 0.8rem; margin-bottom: 8px;" />
+              <button id="restoreBackupBtn" class="btn-warning" style="width: 100%;"><i class="fa-solid fa-database" style="margin-right: 6px;"></i> Restore Database Snapshot</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feature: Global Analytics & Telemetry Dashboard -->
+        <div id="featureTelemetry" class="admin-feature-card">
+          <h3 class="feature-title"><i class="fa-solid fa-chart-line" style="margin-right: 8px; color: var(--primary);"></i> Telemetry & Analytics</h3>
+          <p class="feature-description">Analyze live platform performance metrics, active counts, and resource loads.</p>
+          <button id="loadTelemetryBtn" class="btn-secondary-small"><i class="fa-solid fa-chart-pie" style="margin-right: 6px;"></i> Fetch Live Telemetry Stats</button>
+          <div id="telemetryStatsContent" class="feature-description">Click button to aggregate system stats.</div>
+        </div>
+
+        <!-- Feature: System Maintenance & Read-Only Mode Switch -->
+        <div id="featureMaintenance" class="admin-feature-card">
+          <h3 class="feature-title"><i class="fa-solid fa-triangle-exclamation" style="margin-right: 8px; color: var(--warning);"></i> System Maintenance Mode</h3>
+          <p class="feature-description">Toggle global read-only mode to lock standard user writes during updates.</p>
+          <button id="toggleMaintenanceBtn" class="btn-danger"><i class="fa-solid fa-lock" style="margin-right: 6px;"></i> Toggle Maintenance Lock</button>
+        </div>
+
+        <!-- Feature: Custom Feature Flag / Module Toggler -->
+        <div id="featureFlags" class="admin-feature-card">
+          <h3 class="feature-title"><i class="fa-solid fa-toggle-on" style="margin-right: 8px; color: var(--primary);"></i> Feature Flags & Modules</h3>
+          <p class="feature-description">Enable or disable specific advanced platform modules per tenant school instance.</p>
+          <div class="feature-controls-row">
+            <input type="text" id="flagSchoolId" placeholder="School ID..." class="feature-input-flex" />
+            <select id="flagModule" class="feature-select">
+              <option value="live_classes">Live Classes Portal</option>
+              <option value="ai_formulas">AI Formula Submissions</option>
+              <option value="discussions">Forum Discussions</option>
+            </select>
+          </div>
+          <button id="toggleModuleBtn" class="btn-primary"><i class="fa-solid fa-sliders" style="margin-right: 6px;"></i> Toggle Module Access</button>
+        </div>
+
+        <!-- Feature: Master Admin Access & Credential Rotator -->
+        <div id="featureKeyRotator" class="admin-feature-card">
+          <h3 class="feature-title"><i class="fa-solid fa-key" style="margin-right: 8px; color: var(--purple, #8b5cf6);"></i> Master Key Rotator</h3>
+          <p class="feature-description">Secure platform integrity by updating root administrative security keys.</p>
+          <button id="rotateMasterKeyBtn" class="btn-purple"><i class="fa-solid fa-shield-keyhole" style="margin-right: 6px;"></i> Change Master Admin Key</button>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Custom Modal Markup -->
+  <div id="customModal" class="modal-overlay">
+    <div class="modal-card">
+      <h3 id="modalTitle"><i class="fa-solid fa-circle-info" style="margin-right: 6px; color: var(--primary);"></i> Notice</h3>
+      <p id="modalMessage">Message content goes here...</p>
+      <div id="modalInputContainer" class="modal-hidden" style="margin-bottom: 16px;">
+        <input type="text" id="modalInput" class="form-control" placeholder="Enter value..." />
+      </div>
+      <div class="modal-actions">
+        <button id="modalCancelBtn" class="btn-outline modal-hidden"><i class="fa-solid fa-xmark" style="margin-right: 4px;"></i> Cancel</button>
+        <button id="modalConfirmBtn" class="btn-primary"><i class="fa-solid fa-check" style="margin-right: 4px;"></i> OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1. Load Firebase SDKs ONCE -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-functions-compat.js"></script>
+
+  <!-- Your existing configuration script -->
+  <script src="..assets/js/firebase-config.js"></script>
+
+  <!-- Include Brand Loader Script -->
+  <script src="..assets/js/brand-loader.js"></script>
+
+  <!-- The super admin engine script -->
+  <script src="..assets/js/super-admin.js"></script>
+</body>
+</html>

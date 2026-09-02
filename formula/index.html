@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>ICT Assessment Engine - Formula & Query Verifier | SAMCAM SOLUTION ICT HUB</title>
+    <link rel="stylesheet" href="..assets/css/formula.css">
+
+    <!-- Firebase App (Core) SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+</head>
+<body>
+    <header class="app-navbar">
+        <div class="nav-brand">
+            <span class="nav-icon">🎓</span>
+            <span class="nav-title">Formula & Query Verifier</span>
+        </div>
+        
+        <!-- Hamburger Menu Toggle Button -->
+        <button class="hamburger-btn" id="hamburgerBtn" aria-label="Toggle navigation">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+
+        <div class="nav-right" id="navRight">
+            <div class="user-menu-container" id="userMenuContainer">
+                <div class="user-profile-trigger" id="userProfileTrigger">
+                    <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop&crop=faces" alt="Avatar" class="user-avatar" id="userAvatar">
+                    <div class="user-info">
+                        <span class="user-name" id="navUserName">Loading...</span>
+                        <span class="user-handle" id="navUserHandle">@user</span>
+                    </div>
+                    <span class="dropdown-arrow">▼</span>
+                </div>
+                <div class="dropdown-menu" id="userDropdownMenu">
+                    <a href="#" class="dropdown-item logout-item" id="logoutBtn">🚪 Logout</a>
+                </div>
+            </div>
+            <button class="back-btn" onclick="history.back()">← Back</button>
+        </div>
+    </header>
+
+    <div class="container">
+        <header class="content-header" style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+          <img src="images/logo.png" alt="System Logo" class="dynamic-system-logo" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
+          <div>
+            <h1 class="dynamic-system-name" style="margin: 0; font-size: 1.5rem; font-weight: 700;">ICT Formula & Access Query Verifier</h1>
+            <p class="dynamic-system-slogan" style="margin: 0; font-size: 0.85rem; color: #64748b;">Master Excel logical, lookup, and conditional functions along with Access criteria rules.</p>
+          </div>
+        </header>
+
+        <main>
+            <section class="challenge-selector">
+                <label for="challengeSelect"><strong>Select Practice Challenge:</strong></label>
+               <select id="challengeSelect">
+                    <option value="excel_if">Excel: IF Function (Conditional Check)</option>
+                    <option value="excel_vlookup">Excel: VLOOKUP Function</option>
+                    <option value="excel_hlookup">Excel: HLOOKUP Function</option>
+                    <option value="excel_lookup">Excel: LOOKUP Function</option>
+                    <option value="excel_sumif">Excel: SUMIF Function</option>
+                    <option value="excel_countif">Excel: COUNTIF Function</option>
+                    <option value="excel_averageif">Excel: AVERAGEIF Function</option>
+                    <option value="excel_rank">Excel: RANK Function</option>
+                    <option value="excel_sum">Excel: SUM Function</option>
+                    <option value="excel_average">Excel: AVERAGE Function</option>
+                    <option value="access_criteria">Access: Query Criteria & Wildcards</option>
+                    <option value="access_calculated">Access: Calculated Queries</option>
+            </select>
+            </section>
+
+            <section class="workspace">
+                <div class="prompt-box">
+                    <h3>Challenge Instructions</h3>
+                    <p id="challengePrompt">Loading prompt...</p>
+                    <div class="hint-box" id="challengeHint"></div>
+                </div>
+
+                <div class="input-area">
+                    <label for="studentAnswer" id="inputLabel">Enter your formula or expression:</label>
+                    <div class="editor-container">
+                        <div id="formulaBackdrop" class="editor-backdrop" aria-hidden="true"></div>
+                        <textarea id="studentAnswer" placeholder="Type your formula here... e.g. =IF(A1>50, 'Pass', 'Fail')" rows="3" spellcheck="false"></textarea>
+                    </div>
+                    <button id="verifyBtn" class="primary-btn">Verify Answer</button>
+                </div>
+
+                <div class="result-box" id="resultBox">
+                    <h3>Feedback</h3>
+                    <div id="feedbackOutput" class="feedback-placeholder">Submit an answer to see real-time verification and grading.</div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Firebase Configuration & Initialization -->
+    <script src="../assets/js/firebase-config.js"></script>
+    <!-- Include Brand Loader Script -->
+    <script src="../assets/js/brand-loader.js"></script>
+    <!-- Main Application Script -->
+    <script src="../assets/js/formula.js"></script>
+    <script>
+        // Populate the navigation bar dynamically from portal_session or window.currentUser
+        document.addEventListener("DOMContentLoaded", () => {
+            let activeUser = window.currentUser;
+
+            if (!activeUser) {
+                const sessionData = localStorage.getItem('portal_session');
+                if (sessionData) {
+                    try {
+                        activeUser = JSON.parse(sessionData);
+                    } catch (e) {
+                        console.error("Error parsing portal_session from localStorage:", e);
+                    }
+                }
+            }
+
+            if (activeUser) {
+                const nameEl = document.getElementById('navUserName');
+                const handleEl = document.getElementById('navUserHandle');
+                
+                if (nameEl) nameEl.textContent = activeUser.username || activeUser.name || "Student User";
+                if (handleEl) handleEl.textContent = activeUser.handle ? `@${activeUser.handle}` : (activeUser.role ? `@${activeUser.role.toLowerCase()}` : "@student");
+            }
+
+            // Interactive dropdown toggle logic for the user profile menu
+            const trigger = document.getElementById('userProfileTrigger');
+            const menu = document.getElementById('userDropdownMenu');
+            
+            trigger.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menu.classList.toggle('show');
+            });
+
+            window.addEventListener('click', () => {
+                if (menu.classList.contains('show')) {
+                    menu.classList.remove('show');
+                }
+            });
+
+            // Optional logout handler clearing session
+            const logoutItem = document.querySelector('.logout-item');
+            if (logoutItem) {
+                logoutItem.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    localStorage.removeItem('portal_session');
+                    window.location.href = '../assessments/index.html';
+                });
+            }
+        });
+    </script>
+</body>
+</html>

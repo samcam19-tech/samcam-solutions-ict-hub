@@ -1,0 +1,359 @@
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Learner Discussion Forum - SAMCAM SOLUTIONS ICT HUB</title>
+  <!-- Stylesheets -->
+  <link rel="stylesheet" href="../assets/css/forum.css">
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    /* Mobile Menu & Header Responsive Styling */
+    @media (max-width: 768px) {
+      .forum-header {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: 0.75rem !important;
+        padding: 1rem !important;
+      }
+      .forum-header > div:first-child > div:first-of-type {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+      }
+      .forum-header h2 {
+        font-size: 1.15rem !important;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        margin: 0;
+      }
+      .header-actions-wrapper {
+        display: none !important;
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 0.5rem !important;
+        margin-top: 0.5rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.15);
+      }
+      .header-actions-wrapper.mobile-open {
+        display: flex !important;
+      }
+      #navProfileWidget {
+        width: 100%;
+        justify-content: flex-start;
+        margin-right: 0 !important;
+        margin-bottom: 0.25rem;
+      }
+    }
+
+    .mobile-menu-toggle {
+      display: none;
+      background: none;
+      border: 1px solid var(--border-color, #cbd5e1);
+      color: inherit;
+      padding: 0.4rem 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 1rem;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @media (max-width: 768px) {
+      .mobile-menu-toggle {
+        display: inline-flex;
+      }
+    }
+
+    /* Pulsing notification icon counter badge */
+    .nav-notification-badge {
+      background: #ef4444;
+      color: #fff;
+      font-size: 0.65rem;
+      padding: 0.1rem 0.35rem;
+      border-radius: 10px;
+      font-weight: 700;
+      vertical-align: middle;
+      margin-left: 0.4rem;
+      animation: pulse-badge 2s infinite ease-in-out;
+      display: inline-block;
+    }
+
+    @keyframes pulse-badge {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.12); opacity: 0.85; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
+    /* Modern Toast Notification Container */
+    #forumToastContainer {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      max-width: 320px;
+    }
+
+    .forum-toast {
+      background: #1e293b;
+      color: #f8fafc;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+      font-size: 0.85rem;
+      border-left: 4px solid #3b82f6;
+      animation: slide-in 0.3s ease-out forwards;
+      cursor: pointer;
+    }
+
+    @keyframes slide-in {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="forum-wrapper">
+    <!-- Header Section -->
+    <header class="forum-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+      <div style="flex: 1; min-width: 250px; display: flex; align-items: center; gap: 1rem;">
+  <img src="images/logo.png" alt="System Logo" class="dynamic-system-logo" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
+  <div style="flex: 1;">
+    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+      <h2 class="dynamic-system-name" style="margin: 0; font-size: 1.25rem; font-weight: 700;">
+        <i class="fa-solid fa-comments"></i> Learner Discussion Forum 
+        <span id="globalForumCounter"></span>
+      </h2>
+      <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle Navigation Menu">
+        <i class="fa-solid fa-bars" id="mobileMenuIcon"></i>
+      </button>
+    </div>
+    <p class="dynamic-system-slogan" style="margin: 0.35rem 0 0 0; font-size: 0.8rem; color: #64748b;">Engage in academic discourse, ask questions, and collaborate with peers.</p>
+  </div>
+</div>
+
+     <!-- Action buttons & role-based back links container -->
+      <div class="header-actions-wrapper" style="display: flex; align-items: center; gap: 0.75rem;">
+        
+        <!-- User Profile Navbar Widget -->
+        <div id="navProfileWidget" style="display: flex; align-items: center; gap: 0.6rem; background: rgba(15, 23, 42, 0.4); padding: 0.35rem 0.75rem; border-radius: 30px; border: 1px solid rgba(255, 255, 255, 0.15); margin-right: 0.5rem;">
+          <img id="navProfilePic" src="images/default-avatar.png" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid #38bdf8;" onerror="this.src='images/default-avatar.png'">
+          <div style="display: flex; flex-direction: column; text-align: left; line-height: 1.2;">
+            <span id="navFullName" style="font-size: 0.8rem; font-weight: 600; color: #f8fafc;">User</span>
+            <span id="navUsername" style="font-size: 0.7rem; color: #38bdf8;">@username</span>
+          </div>
+        </div>
+
+        <!-- Button for Teachers to post a new prompt -->
+        <button class="btn btn-primary teacher-only" id="openNewThreadModalBtn" onclick="openNewThreadModal()" style="display: none;">
+          <i class="fa-solid fa-plus"></i> New Discussion Question
+        </button>
+
+        <!-- Back Link for Staff -->
+        <a href="assessments" class="btn btn-outline teacher-only back-link-staff" id="staffBackLink" style="display: none;">
+          <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+        </a>
+
+        <!-- Back Link for Students -->
+        <a href="assessments" class="btn btn-outline student-only back-link-student" id="studentBackLink" style="display: inline-flex;">
+          <i class="fa-solid fa-arrow-left"></i> Back to Portal
+        </a>
+      </div>
+    </header>
+
+    <!-- Search and Filter Bar -->
+    <div class="forum-controls" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem;">
+      <div class="search-box" style="flex: 1; min-width: 200px;">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="forumSearchInput" placeholder="Search discussion topics..." onkeyup="filterForumThreads()">
+      </div>
+      
+      <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+        <div class="filter-box">
+          <select id="classFilterSelect" onchange="filterForumThreads()">
+            <option value="">All Classes / Levels</option>
+            <option value="Senior 1">Senior 1</option>
+            <option value="Senior 2">Senior 2</option>
+            <option value="Senior 3">Senior 3</option>
+            <option value="Senior 4">Senior 4</option>
+            <option value="Senior 5">Senior 5</option>
+            <option value="Senior 6">Senior 6</option>
+          </select>
+        </div>
+
+        <!-- "Mark All Read" Button -->
+        <button class="btn btn-sm btn-outline" onclick="markAllThreadsAsRead()" title="Mark all discussions as read" style="white-space: nowrap; background: transparent; height: 38px;">
+          <i class="fa-solid fa-check-double" style="color: #10b981;"></i> Mark All Read
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="forum-container">
+      <!-- Threads List Feed -->
+      <div class="threads-feed" id="threadsFeedContainer">
+        <div class="loading-state">
+          <i class="fa-solid fa-spinner fa-spin"></i> Loading discussions...
+        </div>
+      </div>
+
+      <!-- Active Thread Detail Pane -->
+      <div class="thread-detail-pane" id="threadDetailPane">
+        <div class="no-thread-selected">
+          <i class="fa-regular fa-comment-dots"></i>
+          <p>Select a discussion topic from the left to view replies and join the conversation.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Create New Discussion Thread (Controlled via JS functions) -->
+  <div class="forum-modal-overlay" id="newThreadModal" style="display: none;">
+    <div class="forum-modal">
+      <div class="forum-modal-header">
+        <h3>Post New Discussion Question</h3>
+        <button onclick="closeNewThreadModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="newThreadForm" onsubmit="handleCreateThread(event)">
+        <div class="form-group">
+          <label>Topic Title</label>
+          <input type="text" id="threadTitleInput" required placeholder="e.g., Understanding XLOOKUP vs VLOOKUP">
+        </div>
+        <div class="form-group">
+          <label>Target Class</label>
+          <select id="threadClassInput" required>
+            <option value="General">General / All Classes</option>
+            <option value="Senior 1">Senior 1</option>
+            <option value="Senior 2">Senior 2</option>
+            <option value="Senior 3">Senior 3</option>
+            <option value="Senior 4">Senior 4</option>
+            <option value="Senior 5">Senior 5</option>
+            <option value="Senior 6">Senior 6</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Question / Prompt Details</label>
+          <textarea id="threadBodyInput" rows="5" required placeholder="Type your question or discussion guidelines here..."></textarea>
+        </div>
+        <div class="forum-modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeNewThreadModal()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Post Question</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Custom System Dialog Modal -->
+  <div id="systemModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); z-index:9999; justify-content:center; align-items:center; backdrop-filter:blur(2px);">
+    <div style="background:#ffffff; padding:1.5rem; border-radius:10px; width:100%; max-width:400px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);">
+      <h3 id="systemModalTitle" style="margin-top:0; margin-bottom:0.5rem; font-size:1.1rem; color:#0f172a; display:flex; align-items:center; gap:0.5rem;">
+        <i id="systemModalIcon" class="fa-solid fa-circle-info" style="color:#3b82f6;"></i> <span id="systemModalTitleText">Confirmation</span>
+      </h3>
+      <p id="systemModalMessage" style="color:#475569; font-size:0.9rem; margin-bottom:1.25rem; line-height:1.4;"></p>
+      
+      <div id="systemModalPromptContainer" style="margin-bottom:1.25rem; display:none;">
+        <input type="text" id="systemModalPromptInput" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;" />
+      </div>
+
+      <div style="display:flex; justify-content:flex-end; gap:0.5rem;" id="systemModalButtons">
+        <button id="systemModalCancelBtn" class="btn btn-sm btn-outline" style="display:none;" onclick="closeSystemModal(false)">Cancel</button>
+        <button id="systemModalOkBtn" class="btn btn-sm btn-primary" onclick="closeSystemModal(true)">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase and Forum Engine Scripts -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+  <script src="../assets/js/firebase-config.js"></script>
+  <script src="../assets/js/forum-engine.js"></script>
+
+  <!-- Role-based Back Link, Profile Widget & Mobile Menu Controller Script -->
+  <script>
+    function toggleMobileMenu() {
+      const actionsWrapper = document.querySelector('.header-actions-wrapper');
+      const menuIcon = document.getElementById('mobileMenuIcon');
+      if (actionsWrapper) {
+        actionsWrapper.classList.toggle('mobile-open');
+        if (actionsWrapper.classList.contains('mobile-open')) {
+          menuIcon.className = "fa-solid fa-xmark";
+        } else {
+          menuIcon.className = "fa-solid fa-bars";
+        }
+      }
+    }
+
+    window.addEventListener('portalSessionChanged', (e) => {
+      updateHeaderSessionData(e.detail);
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+      let activeUser = window.currentUser;
+      if (!activeUser) {
+        const sessionData = localStorage.getItem('currentLoggedInUser') || localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
+        if (sessionData) {
+          try { activeUser = JSON.parse(sessionData); } catch (err) {}
+        }
+      }
+      updateHeaderSessionData(activeUser);
+    });
+
+    function updateHeaderSessionData(user) {
+      let role = '';
+      let fullName = 'Portal User';
+      let username = 'user';
+      let pic = 'images/default-avatar.png';
+
+      if (user && typeof user === 'object') {
+        role = user.role || user.userType || user.type || user.accessLevel || '';
+        fullName = user.fullName || user.name || user.username || 'Portal User';
+        username = user.username || 'user';
+        pic = user.profilePic || user.avatarUrl || user.photoURL || 'images/default-avatar.png';
+      }
+
+      // Populate Navbar Profile Widget Elements
+      const elNavPic = document.getElementById('navProfilePic');
+      const elNavName = document.getElementById('navFullName');
+      const elNavUsername = document.getElementById('navUsername');
+
+      if (elNavPic) elNavPic.src = pic;
+      if (elNavName) elNavName.textContent = fullName;
+      if (elNavUsername) elNavUsername.textContent = '@' + username;
+
+      // Evaluate role-based permissions and back links
+      const combined = `${role} ${fullName}`.toLowerCase();
+      const isTeacherOrAdmin = combined.includes('teacher') || 
+                               combined.includes('admin') || 
+                               combined.includes('instructor') ||
+                               combined.includes('staff') ||
+                               (user && user.role === 'Teacher');
+
+      const staffLink = document.getElementById('staffBackLink');
+      const studentLink = document.getElementById('studentBackLink');
+
+      if (staffLink && studentLink) {
+        if (isTeacherOrAdmin) {
+          staffLink.style.display = 'inline-flex';
+          studentLink.style.display = 'none';
+        } else {
+          staffLink.style.display = 'none';
+          studentLink.style.display = 'inline-flex';
+        }
+      }
+    }
+  </script>
+  <!-- Include Brand Loader Script -->
+  <script src="../assets/js/brand-loader.js"></script>
+</body>
+</html>

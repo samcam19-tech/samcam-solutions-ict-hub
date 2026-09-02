@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>System Audit Trails | Admin Dashboard</title>
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- External CSS -->
+  <link rel="stylesheet" href="../assets/css/audit-styles.css">
+
+  <!-- FIREBASE SDKs (Compat Version) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
+
+  <!-- YOUR FIREBASE CONFIGURATION -->
+  <script src="../assets/js/firebase-config.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      try {
+        const sessionData = localStorage.getItem('portal_session');
+        if (!sessionData) {
+          throw new Error("No active session found.");
+        }
+
+        const user = JSON.parse(sessionData);
+        const role = (user.role || '').toLowerCase();
+        
+        // Verify if the active session belongs to an admin/administrator
+        if (role !== 'admin' && role !== 'administrator') {
+          if (typeof showCustomModal === 'function') {
+            showCustomModal({
+              title: 'Access Denied',
+              message: 'Administrator privileges are required to access this portal section.',
+              type: 'error',
+              onClose: () => { window.location.href = "index.html"; }
+            });
+          } else {
+            window.location.href = "index";
+          }
+        } else {
+          console.log("Admin session verified for:", user.name || user.username);
+        }
+      } catch (err) {
+        console.warn("Authentication check failed:", err.message);
+        if (typeof showCustomModal === 'function') {
+          showCustomModal({
+            title: 'Authentication Required',
+            message: 'Please log in with an administrator account to continue.',
+            type: 'warning',
+            onClose: () => { window.location.href = "index.html"; }
+          });
+        } else {
+          window.location.href = "index.html";
+        }
+      }
+    });
+</script>
+</head>
+<body>
+
+  <main class="audit-dashboard-container">
+    <!-- TOP HEADER & ACTION BAR -->
+    <header class="audit-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+  <div style="display: flex; align-items: center; gap: 1rem;">
+    <img src="images/logo.png" alt="System Logo" class="dynamic-system-logo" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
+    
+    <div>
+      <h2 class="dynamic-system-name" style="margin: 0; font-size: 1.25rem; font-weight: 700;">System Audit Trails</h2>
+      <p class="dynamic-system-slogan" style="margin: 0; font-size: 0.8rem; color: #64748b;">Monitor and review all successful and failed authentication attempts across the portal.</p>
+    </div>
+  </div>
+
+  <div class="audit-actions">
+    <a href="library_dashboard" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+      <i class="fa-solid fa-arrow-left"></i> Back to Library
+    </a>
+    <button type="button" class="btn btn-secondary" onclick="refreshAuditLogs()">
+      <i class="fa-solid fa-rotate"></i> Refresh
+    </button>
+    <button type="button" class="btn btn-primary" onclick="exportAuditLogs()">
+      <i class="fa-solid fa-download"></i> Export CSV
+    </button>
+  </div>
+</header>
+
+    <!-- FILTER CONTROLS BAR -->
+    <section class="audit-filters">
+      <div class="filter-group">
+        <label for="auditSearchInput">Search User / IP</label>
+        <input type="text" id="auditSearchInput" placeholder="Filter by username or IP..." onkeyup="filterAuditLogs()">
+      </div>
+      <div class="filter-group">
+        <label for="auditStatusFilter">Status</label>
+        <select id="auditStatusFilter" onchange="filterAuditLogs()">
+          <option value="ALL">All Statuses</option>
+          <option value="SUCCESS">Success Only</option>
+          <option value="FAILED">Failed Only</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="auditDateFilter">Time Range</label>
+        <select id="auditDateFilter" onchange="filterAuditLogs()">
+          <option value="TODAY">Last 24 Hours</option>
+          <option value="7DAYS">Last 7 Days</option>
+          <option value="30DAYS">Last 30 Days</option>
+          <option value="ALL">All Time</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- AUDIT LOGS TABLE CONTAINER -->
+    <section class="audit-table-card">
+      <div class="table-responsive">
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Timestamp</th>
+              <th>Username / Account</th>
+              <th>Failure Reason</th>
+              <th>IP Address</th>
+              <th>Device / User Agent</th>
+            </tr>
+          </thead>
+          <tbody id="auditLogsTableBody">
+            <tr data-status="SUCCESS" data-date="2026-08-22">
+              <td>
+                <span class="badge badge-success">
+                  <i class="fa-solid fa-circle-check"></i> SUCCESS
+                </span>
+              </td>
+              <td class="nowrap">Aug 22, 2026, 23:15</td>
+              <td class="font-weight-500 text-dark">samuel_admin</td>
+              <td class="text-muted">—</td>
+              <td class="font-mono">192.168.1.45</td>
+              <td class="text-secondary" title="Mozilla/5.0 (Windows NT 10.0; Win64; x64)">Chrome / Windows</td>
+            </tr>
+            <tr data-status="FAILED" data-date="2026-08-22">
+              <td>
+                <span class="badge badge-failed">
+                  <i class="fa-solid fa-circle-xmark"></i> FAILED
+                </span>
+              </td>
+              <td class="nowrap">Aug 22, 2026, 22:40</td>
+              <td class="font-weight-500 text-dark">bursary_user</td>
+              <td><span class="reason-tag">INVALID_PASSWORD</span></td>
+              <td class="font-mono">105.186.2.14</td>
+              <td class="text-secondary" title="Mozilla/5.0 (Android 13)">Mobile Safari / Android</td>
+            </tr>
+            <tr data-status="FAILED" data-date="2026-08-22">
+              <td>
+                <span class="badge badge-failed">
+                  <i class="fa-solid fa-circle-xmark"></i> FAILED
+                </span>
+              </td>
+              <td class="nowrap">Aug 22, 2026, 21:05</td>
+              <td class="font-weight-500 text-dark">unknown_intruder</td>
+              <td><span class="reason-tag">USER_NOT_FOUND</span></td>
+              <td class="font-mono">41.210.14.88</td>
+              <td class="text-secondary" title="PostmanRuntime/7.32.3">API Client / Python</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- PAGINATION FOOTER -->
+      <footer class="audit-pagination">
+        <div id="auditCounterText">Showing <strong>3</strong> of <strong>3</strong> total audit events</div>
+        <div class="pagination-buttons">
+          <button type="button" class="btn-page" disabled>Previous</button>
+          <button type="button" class="btn-page active">1</button>
+          <button type="button" class="btn-page" disabled>Next</button>
+        </div>
+      </footer>
+    </section>
+  </main>
+
+  <!-- External JS -->
+  <script src="../assets/js/brand-loader.js"></script>
+  <script src="../assets/js/audit-script.js"></script>
+</body>
+</html>

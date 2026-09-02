@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>SAMCAM SOLUTIONS | Assessment Engine</title>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Quiz Stylesheet -->
+  <link rel="stylesheet" href="../assets/css/quiz-style.css" />
+  
+  <style>
+    /* --- MOBILE MENU & PROFILE RESPONSIVE STYLES --- */
+    .mobile-menu-toggle {
+      display: none;
+      background: transparent;
+      border: none;
+      font-size: 1.35rem;
+      color: #ffffff;
+      cursor: pointer;
+      padding: 0.5rem;
+    }
+
+    .user-profile-widget {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .user-profile-widget img {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .user-meta-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.2;
+    }
+
+    .user-meta-text .full-name {
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #ffffff;
+    }
+
+    .user-meta-text .username {
+      font-size: 0.75rem;
+      color: #94a3b8;
+    }
+
+    /* --- CUSTOM MODAL DIALOG STYLES --- */
+    .custom-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+    }
+
+    .custom-modal-overlay.active {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .custom-modal-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 400px;
+      padding: 1.5rem;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+      transform: translateY(10px);
+      transition: transform 0.2s ease;
+      text-align: center;
+    }
+
+    .custom-modal-overlay.active .custom-modal-card {
+      transform: translateY(0);
+    }
+
+    .custom-modal-icon {
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .custom-modal-icon.success { color: #22c55e; }
+    .custom-modal-icon.error { color: #ef4444; }
+    .custom-modal-icon.warning { color: #f59e0b; }
+    .custom-modal-icon.info { color: #38bdf8; }
+
+    .custom-modal-title {
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #f8fafc;
+      margin-bottom: 0.5rem;
+    }
+
+    .custom-modal-message {
+      font-size: 0.9rem;
+      color: #94a3b8;
+      margin-bottom: 1.5rem;
+      line-height: 1.4;
+    }
+
+    .custom-modal-actions {
+      display: flex;
+      gap: 0.75rem;
+      justify-content: center;
+    }
+
+    .custom-modal-actions button {
+      flex: 1;
+      padding: 0.6rem 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+    }
+
+    .custom-modal-btn-primary {
+      background: #0284c7;
+      color: #ffffff;
+    }
+
+    .custom-modal-btn-primary:hover {
+      background: #0369a1;
+    }
+
+    .custom-modal-btn-secondary {
+      background: #334155;
+      color: #f8fafc;
+    }
+
+    .custom-modal-btn-secondary:hover {
+      background: #475569;
+    }
+
+    @media (max-width: 768px) {
+      .mobile-menu-toggle {
+        display: block;
+      }
+      .header-container {
+        position: relative;
+        justify-content: space-between;
+      }
+      .user-profile {
+        display: none !important;
+        flex-direction: column;
+        width: 100%;
+        background: var(--bg-card, #1e293b);
+        position: absolute;
+        top: 100%;
+        left: 0;
+        padding: 1rem 1.25rem;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+        border-bottom: 1px solid #334155;
+        gap: 0.75rem !important;
+        align-items: flex-start !important;
+        box-sizing: border-box;
+        z-index: 1000;
+      }
+      .user-profile.mobile-active {
+        display: flex !important;
+      }
+      .user-profile .btn {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  </style>
+
+  <!-- jsPDF & AutoTable for PDF Generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+  <!-- SheetJS for Excel Exports -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<!-- Top Portal Header -->
+  <header class="portal-header">
+  <div class="header-container" style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 1rem;">
+    <div class="brand-title" style="display: flex; align-items: center; gap: 0.75rem;">
+      <img src="images/logo.png" alt="System Logo" class="dynamic-system-logo" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
+      <div style="display: flex; flex-direction: column;">
+        <h2 class="dynamic-system-name" style="margin: 0; font-size: 1.1rem; font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif;">ICT Assessment Engine</h2>
+        <span class="dynamic-system-slogan" style="font-size: 0.75rem; color: #94a3b8; font-weight: 500;">Innovative ICT Insights In Action</span>
+      </div>
+    </div>
+
+    <button type="button" class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle Navigation Menu">
+      <i class="fa-solid fa-bars" id="menuToggleIcon"></i>
+    </button>
+
+    <div class="user-profile" id="userProfileContainer" style="display: flex; align-items: center; gap: 1rem;">
+      
+      <div class="profile-dropdown-wrapper" style="position: relative;">
+        <div class="user-profile-widget" onclick="toggleProfileDropdown(event)" style="cursor: pointer; display: flex; align-items: center; gap: 10px;">
+          <img src="images/default-avatar.png" id="bannerProfilePic" alt="User Profile" onerror="this.src='images/default-avatar.png'">
+          <div class="user-meta-text">
+            <span class="full-name" id="userNameDisplay">Loading...</span>
+            <span class="username" id="profileUsernameDisplay">@user</span>
+          </div>
+          <i class="fa-solid fa-chevron-down" style="font-size: 0.75rem; color: #94a3b8; margin-left: 4px;"></i>
+        </div>
+
+        <div id="profileDropdownMenu" class="profile-dropdown-menu" style="display: none; position: absolute; right: 0; top: calc(100% + 10px); background: #1e293b; border: 1px solid #334155; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); width: 200px; z-index: 1100; overflow: hidden;">
+            <a href="#" onclick="openViewProfileModal(event)" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f8fafc; text-decoration: none; font-size: 0.85rem; border-bottom: 1px solid #334155;">
+              <i class="fa-solid fa-user" style="color: #38bdf8; width: 16px;"></i> View Profile
+            </a>
+            <a href="#" onclick="openEditProfileModal(event)" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f8fafc; text-decoration: none; font-size: 0.85rem; border-bottom: 1px solid #334155;">
+              <i class="fa-solid fa-user-pen" style="color: #38bdf8; width: 16px;"></i> Edit Profile
+            </a>
+          
+            <a href="formula" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f8fafc; text-decoration: none; font-size: 0.85rem; border-bottom: 1px solid #334155;">
+              <i class="fa-solid fa-calculator" style="color: #38bdf8; width: 16px;"></i> Formula & Query Lab
+            </a>
+          
+            <a href="#" onclick="handlePortalLogout(event)" style="display: flex; align-items: center; gap: 8px; padding: 0.75rem 1rem; color: #f87171; text-decoration: none; font-size: 0.85rem;">
+              <i class="fa-solid fa-right-from-bracket" style="width: 16px;"></i> Logout
+            </a>
+        </div>
+      </div>
+
+      <div id="userBadge" class="user-badge" style="display:none;">
+        <i class="fa-solid fa-circle-notch fa-spin"></i> Checking Session...
+      </div>
+
+      <a href="assessments" class="btn btn-outline" title="Back to Assessments" style="padding: 0.4rem 0.75rem; font-size: 0.8rem; background: rgba(255,255,255,0.1); border-color: #334155; color: #fff; text-decoration: none; display: inline-flex; align-items: center; gap: 0.35rem; border-radius: 20px;">
+        <i class="fa-solid fa-arrow-left"></i> Back
+      </a>
+      <button type="button" class="btn btn-outline" onclick="exitQuizRunner()" style="padding: 0.35rem 0.7rem; font-size: 0.8rem; display: none;" id="runnerBackButton">
+        <i class="fa-solid fa-arrow-left"></i> Back
+      </button>
+    </div>
+  </div>
+</header>
+
+  <!-- Main Container -->
+  <main class="portal-container">
+
+    <!-- =================================================================== -->
+    <!-- TEACHER / ADMIN MANAGEMENT PANEL                                    -->
+    <!-- =================================================================== -->
+    <section id="teacherPanel" class="admin-panel" style="display: none;">
+      <div class="panel-header">
+        <div>
+          <h3><i class="fa-solid fa-user-shield"></i> Educator Control Center</h3>
+          <p>Create live assessment items and track student submissions in real-time.</p>
+        </div>
+        <button class="btn btn-primary" onclick="toggleQuizBuilder()">
+          <i class="fa-solid fa-plus-circle"></i> Create New Quiz
+        </button>
+      </div>
+
+      <!-- Quiz Builder Form -->
+      <form id="createQuizForm" class="builder-form" style="display: none;" onsubmit="handleSaveQuiz(event)">
+        <h4><i class="fa-solid fa-pen-ruler"></i> Quiz Creator</h4>
+        
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="builderTitle">Assessment Title</label>
+            <input type="text" id="builderTitle" placeholder="e.g., S.4 End of Term Spreadsheets Practical" required />
+          </div>
+
+          <div class="form-group">
+            <label for="builderClass">Target Class / Stream</label>
+            <select id="builderClass" required>
+              <option value="S1">Senior 1 (S1)</option>
+              <option value="S2">Senior 2 (S2)</option>
+              <option value="S3">Senior 3 (S3)</option>
+              <option value="S4" selected>Senior 4 (S4)</option>
+              <option value="S5">Senior 5 (S5)</option>
+              <option value="S6">Senior 6 (S6)</option>
+              <option value="All">All Streams</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="builderDuration">Timer (Minutes)</label>
+            <input type="number" id="builderDuration" min="1" max="180" value="5" required />
+          </div>
+        </div>
+
+        <!-- Document Import Box -->
+        <div style="background:#f8fafc; border:1px dashed #cbd5e1; padding:1rem; border-radius:8px; margin:1rem 0; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <h4 style="margin:0 0 0.2rem 0; font-size:0.95rem; color:#0f172a;"><i class="fa-solid fa-file-arrow-up" style="color:#0284c7;"></i> Import Questions from File</h4>
+            <p style="margin:0; font-size:0.8rem; color:#64748b;">Upload a Word (.docx) or text outline to auto-populate questions.</p>
+          </div>
+          <div>
+            <input type="file" id="quizDocInput" accept=".docx, .txt" style="display:none;" onchange="handleDocumentImport(event)">
+            <button type="button" onclick="document.getElementById('quizDocInput').click()" class="btn btn-secondary" style="background:#0284c7; color:#fff; padding:0.5rem 1rem; border-radius:6px; border:none; cursor:pointer; font-size:0.85rem;">
+              <i class="fa-solid fa-upload"></i> Choose Document
+            </button>
+          </div>
+        </div>
+
+        <!-- Dynamic Questions Container -->
+        <div id="builderQuestionsContainer" class="builder-questions"></div>
+
+        <div class="builder-actions">
+          <button type="button" class="btn btn-secondary" onclick="addQuestionToBuilder()">
+            <i class="fa-solid fa-plus"></i> Add Question
+          </button>
+          <div class="builder-right-btns">
+            <button type="button" class="btn btn-outline" onclick="toggleQuizBuilder()">Cancel</button>
+            <button type="submit" class="btn btn-success">
+              <i class="fa-solid fa-cloud-arrow-up"></i> Publish Quiz
+            </button>
+          </div>
+        </div>
+      </form>
+
+      <!-- Teacher Moderation Queue Panel -->
+      <div id="teacherModerationContainer" class="my-6"></div>
+
+      <!-- Live Results Table & Export -->
+      <div class="results-table-container">
+        <div class="results-header">
+          <h4><i class="fa-solid fa-chart-column"></i> Student Submissions Oversight</h4>
+          <button class="btn btn-excel" onclick="exportResultsToExcel()">
+            <i class="fa-solid fa-file-excel"></i> Export to Excel
+          </button>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="resultsTable">
+            <thead>
+              <tr>
+                <th>Student Name</th>
+                <th>Class</th>
+                <th>Assessment Title</th>
+                <th>Time Spent</th>
+                <th>Score (%)</th>
+                <th>Submitted At</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="teacherResultsTable">
+              <tr>
+                <td colspan="7" class="table-loading">
+                  <i class="fa-solid fa-circle-notch fa-spin"></i> Fetching submissions...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Controls for Submissions Table -->
+        <div id="submissionsPagination" class="pagination-container" style="display: none; justify-content: space-between; align-items: center; padding: 1rem 0;">
+          <span id="submissionsPaginationInfo" style="font-size: 0.85rem; color: #64748b;">Showing 0 of 0 entries</span>
+          <div class="pagination-buttons" style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-outline" id="subPrevBtn" onclick="changeSubmissionsPage(-1)"><i class="fa-solid fa-chevron-left"></i> Prev</button>
+            <span id="subPageIndicator" style="align-self: center; font-size: 0.85rem; font-weight: 600;">Page 1 of 1</span>
+            <button class="btn btn-outline" id="subNextBtn" onclick="changeSubmissionsPage(1)">Next <i class="fa-solid fa-chevron-right"></i></button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- AVAILABLE QUIZZES DASHBOARD (Student View)                          -->
+    <!-- =================================================================== -->
+    <section id="availableQuizzesContainer" class="dashboard-section">
+      <div class="section-title">
+        <h3><i class="fa-solid fa-book-open-reader"></i> Available Assessments</h3>
+        <p>Select an assessment below to begin or view your completed score breakdown.</p>
+      </div>
+
+      <!-- Quizzes Grid -->
+      <div id="quizList" class="quiz-grid"></div>
+
+      <!-- Pagination Controls for Available Quizzes -->
+      <div id="quizzesPagination" class="pagination-container" style="display: none; justify-content: space-between; align-items: center; padding: 1.5rem 0 0 0;">
+        <span id="quizzesPaginationInfo" style="font-size: 0.85rem; color: #64748b;">Showing 0 of 0 quizzes</span>
+        <div class="pagination-buttons" style="display: flex; gap: 0.5rem;">
+          <button class="btn btn-outline" id="quizPrevBtn" onclick="changeQuizzesPage(-1)"><i class="fa-solid fa-chevron-left"></i> Prev</button>
+          <span id="quizPageIndicator" style="align-self: center; font-size: 0.85rem; font-weight: 600;">Page 1 of 1</span>
+          <button class="btn btn-outline" id="quizNextBtn" onclick="changeQuizzesPage(1)">Next <i class="fa-solid fa-chevron-right"></i></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- ACTIVE QUIZ RUNNER INTERFACE                                        -->
+    <!-- =================================================================== -->
+    <section id="quizRunner" class="quiz-runner" style="display: none;">
+      <div class="runner-header">
+        <div>
+          <span id="activeQuizClass" class="badge badge-primary">S4</span>
+          <h2 id="activeQuizTitle">ICT Practical Quiz</h2>
+        </div>
+        <div class="timer-box">
+          <i class="fa-solid fa-clock"></i> Time Left: <span id="quizTimer">00:00</span>
+        </div>
+      </div>
+
+      <div id="questionsList" class="questions-wrapper"></div>
+
+      <div class="runner-footer">
+        <button type="button" class="btn btn-success btn-lg" onclick="submitQuizToFirestore()">
+          <i class="fa-solid fa-paper-plane"></i> Submit Assessment
+        </button>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- TEACHER INSPECTOR MODAL (Learner Response Inspector)                -->
+    <!-- =================================================================== -->
+    <div id="inspectorModal" class="modal-overlay" style="display: none;">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3 id="modalStudentName">Learner Responses</h3>
+          <button class="modal-close" onclick="closeInspectorModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="modalResponseBody">
+          <!-- Populated dynamically by JS -->
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" onclick="closeInspectorModal()">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- VIEW PROFILE MODAL                                                  -->
+    <!-- =================================================================== -->
+    <div id="viewProfileModal" class="modal-overlay" style="display: none;">
+      <div class="modal-card" style="max-width: 440px; padding: 0; overflow: hidden; border-radius: 12px; background: #1e293b; border: 1px solid #334155; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4);">
+        
+        <!-- Modal Header / Clean Title Bar -->
+        <div style="background: #0f172a; padding: 1rem 1.25rem; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="margin: 0; font-size: 1rem; font-weight: 600; color: #f8fafc; display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-user" style="color: #0284c7;"></i> User Profile Details
+          </h3>
+          <button class="modal-close" onclick="closeViewProfileModal()" style="background: transparent; border: none; color: #94a3b8; width: 28px; height: 28px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; transition: color 0.2s;">&times;</button>
+        </div>
+
+        <!-- Modal Body Container -->
+        <div class="modal-body" style="padding: 1.5rem; text-align: center;">
+          
+          <!-- Centered Profile Picture Container -->
+          <div style="margin-bottom: 1rem; display: flex; justify-content: center;">
+            <img src="images/default-avatar.png" id="modalProfilePic" alt="Profile Picture" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid #0284c7; background: #0f172a; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);" onerror="this.src='images/default-avatar.png'">
+          </div>
+
+          <!-- Names and Handle -->
+          <h4 id="modalFullName" style="margin: 0 0 0.15rem 0; font-size: 1.2rem; font-weight: 700; color: #f8fafc;">Loading...</h4>
+          <p id="modalUsername" style="margin: 0 0 1.25rem 0; font-size: 0.85rem; color: #38bdf8; font-weight: 500;">@username</p>
+          
+          <!-- Structured Information List -->
+          <div style="display: flex; flex-direction: column; gap: 0.75rem; text-align: left;">
+            
+            <!-- Full Name Row -->
+            <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(15, 23, 42, 0.6); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid #334155;">
+              <div style="display: flex; align-items: center; gap: 10px; color: #94a3b8; font-size: 0.85rem;">
+                <i class="fa-solid fa-user" style="color: #0284c7; width: 16px;"></i> Full Name
+              </div>
+              <span id="modalFullNameRow" style="color: #f8fafc; font-size: 0.9rem; font-weight: 500;">-</span>
+            </div>
+
+            <!-- Role/Class Row -->
+            <div style="display: flex; align-items: center; justify-content: space-between; background: rgba(15, 23, 42, 0.6); padding: 0.75rem 1rem; border-radius: 8px; border: 1px solid #334155;">
+              <div style="display: flex; align-items: center; gap: 10px; color: #94a3b8; font-size: 0.85rem;">
+                <i class="fa-solid fa-shield-halved" style="color: #0284c7; width: 16px;"></i> Role / Class
+              </div>
+              <span id="modalUserRole" class="badge badge-primary" style="font-size: 0.8rem; padding: 0.2rem 0.6rem; border-radius: 4px; background: rgba(2, 132, 199, 0.2); color: #38bdf8; border: 1px solid rgba(2, 132, 199, 0.3);">-</span>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="modal-footer" style="padding: 1rem 1.5rem; background: rgba(15, 23, 42, 0.4); border-top: 1px solid #334155; display: flex; justify-content: flex-end;">
+          <button class="btn btn-secondary" onclick="closeViewProfileModal()" style="padding: 0.5rem 1.25rem; font-size: 0.85rem;">Close</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- EDIT PROFILE MODAL                                                  -->
+    <!-- =================================================================== -->
+    <div id="editProfileModal" class="modal-overlay" style="display: none;">
+      <div class="modal-card" style="max-width: 450px;">
+        <div class="modal-header">
+          <h3><i class="fa-solid fa-user-pen"></i> Edit Profile</h3>
+          <button class="modal-close" onclick="closeEditProfileModal()">&times;</button>
+        </div>
+        <form id="editProfileForm" onsubmit="handleSaveProfile(event)">
+          <div class="modal-body" style="display: flex; flex-direction: column; gap: 1rem;">
+            <div class="form-group">
+              <label for="editFullName" style="font-size: 0.85rem; color: #cbd5e1; margin-bottom: 0.3rem; display: block;">Full Name</label>
+              <input type="text" id="editFullName" class="form-control" style="width: 100%; padding: 0.6rem; background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 6px;" required />
+            </div>
+            <div class="form-group">
+              <label for="editUsername" style="font-size: 0.85rem; color: #cbd5e1; margin-bottom: 0.3rem; display: block;">Username</label>
+              <input type="text" id="editUsername" class="form-control" style="width: 100%; padding: 0.6rem; background: #0f172a; border: 1px solid #334155; color: #fff; border-radius: 6px;" required />
+            </div>
+            <div class="form-group">
+              <label for="editProfilePicUrl" style="font-size: 0.85rem; color: #cbd5e1; margin-bottom: 0.3rem; display: block;">Profile Picture URL (Read-Only)</label>
+              <input type="text" id="editProfilePicUrl" class="form-control" readonly style="width: 100%; padding: 0.6rem; background: #1e293b; border: 1px solid #334155; color: #94a3b8; border-radius: 6px; cursor: not-allowed;" />
+            </div>
+          </div>
+          <div class="modal-footer" style="display: flex; justify-content: flex-end; gap: 0.5rem; padding: 1rem;">
+            <button type="button" class="btn btn-outline" onclick="closeEditProfileModal()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- GLOBAL CUSTOM MODAL CONTAINER ELEMENT                               -->
+    <!-- =================================================================== -->
+    <div id="globalCustomModal" class="custom-modal-overlay">
+      <div class="custom-modal-card">
+        <div id="customModalIconContainer" class="custom-modal-icon success">
+          <i id="customModalIcon" class="fa-solid fa-circle-check"></i>
+        </div>
+        <h3 id="customModalTitle" class="custom-modal-title">Notification</h3>
+        <p id="customModalMessage" class="custom-modal-message">Message goes here...</p>
+        <div id="customModalActions" class="custom-modal-actions">
+          <button id="customModalConfirmBtn" class="custom-modal-btn-primary" onclick="closeCustomModal(true)">OK</button>
+          <button id="customModalCancelBtn" class="custom-modal-btn-secondary" style="display: none;" onclick="closeCustomModal(false)">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    
+    // Mobile Navigation Drawer Toggle Script
+    function toggleMobileMenu() {
+      const userProfile = document.getElementById('userProfileContainer');
+      const menuIcon = document.getElementById('menuToggleIcon');
+      userProfile.classList.toggle('mobile-active');
+      if (userProfile.classList.contains('mobile-active')) {
+        menuIcon.className = "fa-solid fa-xmark";
+      } else {
+        menuIcon.className = "fa-solid fa-bars";
+      }
+    }
+
+    // Toggle Profile Dropdown Visibility
+    function toggleProfileDropdown(event) {
+      event.stopPropagation();
+      const menu = document.getElementById('profileDropdownMenu');
+      if (menu) {
+        menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+      }
+    }
+
+    // Close dropdown when clicking outside
+    window.addEventListener('click', () => {
+      const menu = document.getElementById('profileDropdownMenu');
+      if (menu) {
+        menu.style.display = 'none';
+      }
+    });
+
+    // Handle User Logout Action
+    function handlePortalLogout(event) {
+      event.preventDefault();
+      localStorage.removeItem('currentLoggedInUser');
+      localStorage.removeItem('portal_session'); // Clears both just in case
+      window.location.href = 'index.html'; // Adjust to your login page filename if different
+    }
+
+   function openViewProfileModal(event) {
+  event.preventDefault();
+  const menu = document.getElementById('profileDropdownMenu');
+  if (menu) menu.style.display = 'none';
+
+  if (typeof currentUser !== 'undefined' && currentUser) {
+    const fullName = currentUser.fullName || currentUser.username || 'Portal User';
+    const username = '@' + (currentUser.username || 'user');
+    const role = currentUser.role ? currentUser.role.toUpperCase() : (currentUser.class || 'Student');
+    const pic = currentUser.profilePic || currentUser.avatarUrl || currentUser.photoURL || 'images/default-avatar.png';
+
+    const elFullName = document.getElementById('modalFullName');
+    const elFullNameRow = document.getElementById('modalFullNameRow');
+    const elUsername = document.getElementById('modalUsername');
+    const elUserRole = document.getElementById('modalUserRole');
+    const elProfilePic = document.getElementById('modalProfilePic');
+
+    if (elFullName) elFullName.textContent = fullName;
+    if (elFullNameRow) elFullNameRow.textContent = fullName;
+    if (elUsername) elUsername.textContent = username;
+    if (elUserRole) elUserRole.textContent = role;
+    if (elProfilePic) elProfilePic.src = pic;
+  }
+  document.getElementById('viewProfileModal').style.display = 'flex';
+}
+
+function closeViewProfileModal() {
+  document.getElementById('viewProfileModal').style.display = 'none';
+}
+
+function openEditProfileModal(event) {
+  event.preventDefault();
+  const menu = document.getElementById('profileDropdownMenu');
+  if (menu) menu.style.display = 'none';
+
+  if (typeof currentUser !== 'undefined' && currentUser) {
+    document.getElementById('editFullName').value = currentUser.fullName || '';
+    document.getElementById('editUsername').value = currentUser.username || '';
+    document.getElementById('editProfilePicUrl').value = currentUser.profilePic || currentUser.avatarUrl || currentUser.photoURL || '';
+  }
+  document.getElementById('editProfileModal').style.display = 'flex';
+}
+
+function closeEditProfileModal() {
+  document.getElementById('editProfileModal').style.display = 'none';
+}
+
+async function handleSaveProfile(event) {
+  event.preventDefault();
+  if (typeof currentUser !== 'undefined' && currentUser) {
+    const oldUsername = currentUser.username;
+    const updatedFullName = document.getElementById('editFullName').value.trim();
+    const updatedUsername = document.getElementById('editUsername').value.trim();
+
+    const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+
+    // If the username is being changed, check if the new one is already taken
+    if (updatedUsername.toLowerCase() !== oldUsername.toLowerCase()) {
+      if (localUsers.some(u => u.username.toLowerCase() === updatedUsername.toLowerCase())) {
+        showCustomModal({
+          title: "Username Taken",
+          message: "Username already exists! Please choose a unique username.",
+          type: "warning"
+        });
+        return;
+      }
+    }
+
+    // Update current user properties
+    currentUser.fullName = updatedFullName;
+    currentUser.username = updatedUsername;
+
+    // Locate and update the user record in the local users array
+    const userIndex = localUsers.findIndex(u => u.username.toLowerCase() === oldUsername.toLowerCase());
+    if (userIndex >= 0) {
+      localUsers[userIndex] = currentUser;
+    } else {
+      // Fallback if old username wasn't matched exactly
+      localUsers.push(currentUser);
+    }
+    localStorage.setItem('portal_users', JSON.stringify(localUsers));
+
+    // If Firestore cloud sync is active, update the document
+    if (window.db) {
+      try {
+        // If username changed, we might want to delete the old Firestore doc and create/update the new one
+        if (updatedUsername.toLowerCase() !== oldUsername.toLowerCase()) {
+          await window.db.collection('users').doc(oldUsername.toLowerCase()).delete();
+        }
+
+        await window.db.collection('users').doc(updatedUsername.toLowerCase()).set({
+          fullName: currentUser.fullName,
+          class: currentUser.class || 'Student',
+          username: currentUser.username,
+          password: currentUser.password, // preserve existing password
+          role: currentUser.role || 'Student',
+          updatedAt: new Date().toISOString()
+        }, { merge: true });
+      } catch (err) {
+        console.error('Firestore update error:', err);
+      }
+    }
+
+    // Update active session storage reference
+    localStorage.setItem('currentLoggedInUser', JSON.stringify(currentUser));
+    
+    // Refresh UI elements
+    if (typeof syncQuizEngineSession === 'function') {
+      syncQuizEngineSession(currentUser);
+    } else {
+      const nameDisplay = document.getElementById('userNameDisplay');
+      const userHandleDisplay = document.getElementById('profileUsernameDisplay');
+      if (nameDisplay) nameDisplay.textContent = currentUser.fullName;
+      if (userHandleDisplay) userHandleDisplay.textContent = '@' + currentUser.username;
+    }
+
+    closeEditProfileModal();
+    showCustomModal({
+      title: "Success",
+      message: "Profile updated successfully!",
+      type: "success"
+    });
+  }
+}
+  </script>
+
+  <!-- Firebase SDKs (App, Firestore, & Storage Compatibility Mode) -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
+  <!-- Firebase Configuration & Setup -->
+  <script src="../assets/js/firebase-config.js"></script>
+
+  <!-- Quiz Engine Logic -->
+  <!-- Include Brand Loader Script -->
+  <script src="../assets/js/brand-loader.js"></script>
+  <script src="../assets/js/quiz-engine.js"></script>
+</body>
+</html>

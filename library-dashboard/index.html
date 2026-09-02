@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Library Administration Dashboard | SAMCAM SOLUTION ICT HUB</title>
+  <link rel="stylesheet" href="../assets/css/library_dashboard.css">
+  <!-- FontAwesome & Google Fonts -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <div class="dashboard-container">
+    <!-- Header -->
+    <header class="dash-header">
+      <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <div style="display: flex; align-items: center; gap: 1rem;">
+          <img src="images/logo.png" alt="System Logo" class="dynamic-system-logo" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
+          <div>
+            <h2 class="dynamic-system-name" style="margin: 0; font-size: 1.25rem; font-weight: 700;"><i class="fa-solid fa-book-bookmark"></i> E-Library Management Portal</h2>
+            <p class="dynamic-system-slogan" style="margin: 0.35rem 0 0 0; font-size: 0.8rem; color: #64748b;">Modern administration hub for digital assets, pricing control, and resource inventory.</p>
+          </div>
+        </div>
+        <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle navigation menu">
+          <i class="fa-solid fa-bars" id="menuIcon"></i>
+        </button>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="header-actions" id="headerActions">
+        <a href="logs" class="btn-primary" style="background: var(--primary, #2563eb); text-decoration: none; justify-content: center;">
+          <i class="fa-solid fa-shield-halved"></i> Audit Trails
+        </a>
+        <a href="payments" class="btn-primary" style="background: var(--warning, #d97706); text-decoration: none; justify-content: center;">
+          <i class="fa-solid fa-file-shield"></i> Verify Payments
+        </a>
+        <a href="assessments" class="btn-secondary" style="justify-content: center;">
+          <i class="fa-solid fa-arrow-left"></i> Back to Portal
+        </a>
+      </div>
+    </header>
+
+    <!-- KPI Metrics Summary Bar -->
+    <div class="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background: #e0e7ff; color: #4f46e5;"><i class="fa-solid fa-folder-open"></i></div>
+        <div>
+          <span class="kpi-label">Total Resources</span>
+          <h3 id="kpiTotal">0</h3>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background: #d1fae5; color: #059669;"><i class="fa-solid fa-gift"></i></div>
+        <div>
+          <span class="kpi-label">Free Resources</span>
+          <h3 id="kpiFree">0</h3>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background: #fef3c7; color: #d97706;"><i class="fa-solid fa-tag"></i></div>
+        <div>
+          <span class="kpi-label">Paid / Premium</span>
+          <h3 id="kpiPaid">0</h3>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon" style="background: #fee2e2; color: #dc2626;"><i class="fa-solid fa-cloud-arrow-down"></i></div>
+        <div>
+          <span class="kpi-label">Categories Tracked</span>
+          <h3 id="kpiCategories">5</h3>
+        </div>
+      </div>
+    </div>
+
+    <!-- Analytics & Download Statistics Side-by-Side Row -->
+    <div class="dash-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 2rem;">
+      
+      <!-- Left: Download Statistics Table by Resource -->
+      <div class="card" style="display: flex; flex-direction: column;">
+        <div class="table-header-flex" style="margin-bottom: 1rem;">
+          <h3><i class="fa-solid fa-table-list"></i> Resource Download Stats</h3>
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Downloads per resource</span>
+        </div>
+        <div class="table-responsive stats-table-container">
+          <table class="stats-table">
+            <thead>
+              <tr>
+                <th>Resource Name</th>
+                <th class="text-center" style="width: 75px;">Class</th>
+                <th class="text-right" style="width: 90px;">Downloads</th>
+              </tr>
+            </thead>
+            <tbody id="resourceStatsTableBody">
+              <tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding: 1.5rem;">Loading stats...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Right: Download Distribution Bar Graph -->
+      <div class="card graph-card" style="margin-bottom: 0;">
+        <div class="table-header-flex">
+          <h3><i class="fa-solid fa-chart-column"></i> Downloads by Class Level</h3>
+          <span style="font-size: 0.85rem; color: var(--text-muted);">Real-time metrics</span>
+        </div>
+        <div style="position: relative; height: 280px; width: 100%;">
+          <canvas id="downloadsChart"></canvas>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="dash-grid">
+      
+      <!-- Left: Resource Upload / Edit Form Card -->
+      <div class="card form-card">
+        <h3 id="formTitle"><i class="fa-solid fa-cloud-arrow-up"></i> Upload New Resource</h3>
+        <form id="libraryResourceForm" onsubmit="handleLibraryFormSubmit(event)">
+          <input type="hidden" id="editingResourceId">
+
+          <div class="form-group">
+            <label>Resource Title</label>
+            <input type="text" id="resTitle" placeholder="e.g. Advanced UNEB ICT Practical Workbook" required>
+          </div>
+
+          <div class="form-group">
+            <label>Description</label>
+            <textarea id="resDescription" placeholder="Briefly describe the resource content..." rows="3" required></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Class / Level</label>
+              <select id="resClass" required>
+                <option value="S1">Senior 1</option>
+                <option value="S2">Senior 2</option>
+                <option value="S3">Senior 3</option>
+                <option value="S4">Senior 4</option>
+                <option value="S5">Senior 5</option>
+                <option value="S6">Senior 6</option>
+                <option value="General">General / All</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Category</label>
+              <select id="resCategory" required>
+                <option value="Notes">Notes & Handouts</option>
+                <option value="Past Papers">Past Papers</option>
+                <option value="Marking Guides">Marking Guides</option>
+                <option value="Support Files">Support Files</option>
+                <option value="Software">Software & Tools</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>Access Type</label>
+              <select id="resAccessType" onchange="togglePriceField()" required>
+                <option value="free">Free Resource</option>
+                <option value="paid">Paid / Private Resource</option>
+              </select>
+            </div>
+            <div class="form-group" id="priceGroup" style="display: none;">
+              <label>Price (UGX)</label>
+              <input type="number" id="resPrice" placeholder="e.g. 5000" min="0">
+            </div>
+          </div>
+
+          <div class="form-group" id="fileInputWrapper">
+            <label>Select Resource File</label>
+            <input type="file" id="resFile">
+            <small class="help-text">Leave blank if editing details without changing the file.</small>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" id="saveResourceBtn" class="btn-primary" style="justify-content: center;">
+              <i class="fa-solid fa-upload"></i> Save Resource
+            </button>
+            <button type="button" id="cancelEditBtn" class="btn-secondary" style="display:none; justify-content: center;" onclick="resetLibraryForm()">
+              Cancel Edit
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Right: Resource Inventory Table & Advanced Controls -->
+      <div class="card table-card">
+        <div class="table-toolbar">
+          <h3><i class="fa-solid fa-list"></i> Existing Resources</h3>
+          
+          <!-- Advanced Filtering Controls Toolbar -->
+          <div class="filter-controls">
+            <select id="filterClass" onchange="applyAdvancedFilters()" class="filter-select">
+              <option value="">All Classes</option>
+              <option value="S1">Senior 1</option>
+              <option value="S2">Senior 2</option>
+              <option value="S3">Senior 3</option>
+              <option value="S4">Senior 4</option>
+              <option value="S5">Senior 5</option>
+              <option value="S6">Senior 6</option>
+              <option value="General">General</option>
+            </select>
+
+            <select id="filterAccess" onchange="applyAdvancedFilters()" class="filter-select">
+              <option value="">All Access Types</option>
+              <option value="free">Free Only</option>
+              <option value="paid">Paid Only</option>
+            </select>
+
+            <input type="text" id="librarySearch" placeholder="Search title or category..." onkeyup="applyAdvancedFilters()">
+          </div>
+        </div>
+
+        <!-- Bulk Action Bar (Hidden unless items selected) -->
+        <div id="bulkActionBar" class="bulk-action-bar" style="display: none;">
+          <span><strong id="selectedCount">0</strong> items selected</span>
+          <button onclick="bulkDeleteResources()" class="btn-action btn-delete">
+            <i class="fa-solid fa-trash"></i> Delete Selected
+          </button>
+        </div>
+        
+        <div class="table-responsive">
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 40px;"><input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll(this)"></th>
+                <th>Title & Description</th>
+                <th>Class / Category</th>
+                <th>Access</th>
+                <th>Price</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="libraryTableBody">
+              <tr><td colspan="6" style="text-align:center; color:#64748b;">Loading resources...</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Controls Placeholder Container -->
+        <div id="libraryPaginationContainer" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 0.5rem; font-family: Inter, sans-serif; font-size: 0.875rem; color: var(--text-muted, #475569);"></div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Custom Alert / Confirm Modal Dialog -->
+  <div id="customModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+      <div id="modalIconContainer" class="modal-icon-wrapper">
+        <i id="modalIcon" class="fa-solid fa-circle-info"></i>
+      </div>
+      <h3 id="modalTitle">Notification</h3>
+      <p id="modalMessage">Message goes here...</p>
+      <div id="modalButtons" class="modal-actions">
+        <button id="modalConfirmBtn" class="btn-primary" onclick="closeCustomModal(true)">OK</button>
+        <button id="modalCancelBtn" class="btn-secondary" onclick="closeCustomModal(false)" style="display: none;">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase SDKs Compat (v9.23.0) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+  <script src="../assets/js/firebase-config.js"></script>
+  <script src="../assets/js/ibrary_dashboard.js"></script>
+</body>
+</html>

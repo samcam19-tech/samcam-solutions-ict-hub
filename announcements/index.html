@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="description" content="SAMCAM SOLUTIONS - Premier ICT Academic Resource Hub & Institutional Announcements.">
+  <title>Announcements - SAMCAM SOLUTIONS ICT HUB</title>
+  
+  <!-- Preconnect & External Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome for Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- External CSS -->
+  <link rel="stylesheet" href="../assets/css/styles.css">
+  <link rel="stylesheet" href="../assets/css/announcements.css">
+
+  <style>
+    /* Minimal Navbar Styling for Brand Logo & Slogan */
+    .navbar {
+      background: var(--bg-card, #ffffff);
+      border-bottom: 1px solid var(--border-color, #e2e8f0);
+      padding: 0.75rem 1.5rem;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+    }
+    .nav-container {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 1200px;
+      margin: 0 auto;
+      width: 100%;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .nav-right-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+    @media (max-width: 768px) {
+      .navbar {
+        padding: 0.5rem 1rem;
+      }
+      .nav-container {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .nav-right-actions {
+        justify-content: space-between;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOP NAVIGATION BAR -->
+  <nav class="navbar" role="navigation" aria-label="Main Navigation">
+    <div class="nav-container">
+      <div class="brand" style="display: flex; align-items: center; gap: 0.75rem;">
+        <img src="images/logo.png" alt="Samcam Solutions Logo" class="dynamic-system-logo" style="height: 40px; width: 40px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
+        <div class="brand-text" style="display: flex; flex-direction: column;">
+          <span class="dynamic-system-name" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 800; font-size: 1.1rem; color: var(--text-color, #0f172a); letter-spacing: -0.5px;">SAMCAM SOLUTIONS</span>
+          <span class="dynamic-system-slogan" style="font-size: 0.75rem; color: #64748b; font-weight: 500;">Innovative ICT Insights In Action</span>
+        </div>
+      </div>
+      
+      <!-- Right Side Actions & Profile Widget -->
+      <div class="nav-right-actions">
+        <!-- User Profile Navbar Widget -->
+        <div id="navProfileWidget" style="display: flex; align-items: center; gap: 0.6rem; background: var(--bg-main, #f8fafc); padding: 0.3rem 0.65rem; border-radius: 30px; border: 1px solid var(--border-color, #cbd5e1);">
+          <img id="navProfilePic" src="images/default-avatar.png" alt="Avatar" style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 1px solid #38bdf8;" onerror="this.src='images/default-avatar.png'">
+          <div style="display: flex; flex-direction: column; text-align: left; line-height: 1.15;">
+            <span id="navFullName" style="font-size: 0.78rem; font-weight: 600; color: var(--text-color, #0f172a);">User</span>
+            <span id="navUsername" style="font-size: 0.68rem; color: #0284c7;">@username</span>
+          </div>
+        </div>
+
+        <div>
+          <a href="assessments" class="btn btn-outline" style="font-size: 0.85rem; padding: 0.4rem 0.8rem;">
+            <i class="fa-solid fa-arrow-left"></i> Back to Portal
+          </a>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <div class="announcements-wrapper">
+    <!-- Header -->
+    <header class="announcements-header">
+      <div>
+        <h2>
+          <i class="fa-solid fa-bullhorn" style="color: var(--primary);"></i> LMS Announcements
+          <!-- Clickable Notification Badge Counter -->
+          <div class="notification-badge-container" onclick="toggleUnreadFilter()" title="Click to filter unread notices" style="cursor: pointer; display: inline-flex; align-items: center; gap: 0.3rem; margin-left: 0.5rem; vertical-align: middle;">
+            <span id="unreadBadgeCount" class="notification-counter" style="background: #ef4444; color: white; padding: 0.05rem 0.4rem; border-radius: 10px; font-size: 0.75rem; font-weight: 700;">0</span>
+            <span class="badge-label" style="font-size: 0.75rem; font-weight: 600; color: #64748b;">New</span>
+          </div>
+        </h2>
+        <p>Stay updated with institutional notices, exam timetables, and academic updates.</p>
+      </div>
+      <div>
+        <button class="btn btn-primary teacher-only" id="newAnnouncementBtn" onclick="openAnnouncementModal()" style="display: none;">
+          <i class="fa-solid fa-plus"></i> Post Announcement
+        </button>
+      </div>
+    </header>
+
+    <!-- Controls Bar -->
+    <div class="announcements-controls">
+      <div class="search-box">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="announcementSearch" placeholder="Search announcements..." onkeyup="filterAnnouncements()">
+      </div>
+      <div class="filter-box">
+        <select id="priorityFilter" onchange="filterAnnouncements()">
+          <option value="">All Priorities / Categories</option>
+          <option value="General">General</option>
+          <option value="Urgent">Urgent</option>
+          <option value="Exam">Exam Schedule</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Feed List -->
+    <div class="announcements-feed" id="announcementsFeed">
+      <div class="empty-state">
+        <i class="fa-solid fa-spinner fa-spin"></i> Loading announcements from cloud...
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Post New Announcement -->
+  <div class="modal-overlay" id="announcementModal" style="display: none;">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>Post New Institutional Announcement</h3>
+        <button onclick="closeAnnouncementModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="announcementForm" onsubmit="handlePostAnnouncement(event)">
+        <div class="form-group">
+          <label>Announcement Title</label>
+          <input type="text" id="annTitle" required placeholder="e.g., End of Term 2 Examination Timetable Release">
+        </div>
+        <div class="form-group">
+          <label>Category / Priority</label>
+          <select id="annPriority" required>
+            <option value="General">General Notice</option>
+            <option value="Urgent">Urgent Alert</option>
+            <option value="Exam">Exam Schedule / Academic</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Message Content</label>
+          <textarea id="annBody" rows="5" required placeholder="Provide full details of the announcement here..."></textarea>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-outline" onclick="closeAnnouncementModal()">Cancel</button>
+          <button type="submit" id="submitNoticeBtn" class="btn btn-primary">Publish Notice</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal: Full Read/View Announcement Modal -->
+  <div class="modal-overlay" id="readAnnouncementModal" style="display: none; align-items: center; justify-content: center; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 10000;" onclick="closeReadModalOutside(event)">
+    <div class="modal-box" style="background: var(--bg-card, #ffffff); max-width: 600px; width: 90%; max-height: 85vh; overflow-y: auto; border-radius: 12px; padding: 1.5rem; position: relative; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.2);">
+      <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color, #e2e8f0); padding-bottom: 0.75rem; margin-bottom: 1rem;">
+        <div id="readModalCategoryTag" style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; padding: 0.2rem 0.5rem; border-radius: 4px;"></div>
+        <button onclick="closeReadModal()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: #64748b;"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <h2 id="readModalTitle" style="font-size: 1.25rem; font-weight: 700; color: var(--text-color, #0f172a); margin-bottom: 0.5rem;"></h2>
+      <div id="readModalDateAuthor" style="font-size: 0.8rem; color: #64748b; margin-bottom: 1rem; display: flex; gap: 1rem;"></div>
+      <div id="readModalBody" style="font-size: 0.9rem; color: #334155; line-height: 1.6; white-space: pre-wrap; background: var(--bg-main, #f8fafc); padding: 1rem; border-radius: 8px; border: 1px solid var(--border-color, #e2e8f0); margin-bottom: 1.5rem;"></div>
+      <div style="text-align: right;">
+        <button type="button" class="btn btn-primary" onclick="closeReadModal()">Close Notice</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 1. Load Firebase SDKs ONCE -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+
+  <!-- 2. Load Firebase Configuration & Initialization -->
+  <script src="../assets/js/firebase-config.js"></script>
+
+  <!-- 3. Load Global Branding Engine -->
+  <script src="../assets/js/brand-loader.js"></script>
+
+  <script src="../assets/js/script.js"></script>
+
+  <!-- 4. Load Announcements Logic -->
+  <script src="../assets/js/announcements.js"></script>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", () => {
+      function updateNavbarProfile() {
+        // Priority: window.currentUser first, then fallback to storage
+        let activeUser = window.currentUser;
+        if (!activeUser) {
+          const sessionData = localStorage.getItem('currentLoggedInUser') || 
+                              localStorage.getItem('portal_session') || 
+                              sessionStorage.getItem('portal_session');
+          if (sessionData) {
+            try { activeUser = JSON.parse(sessionData); } catch (err) {}
+          }
+        }
+
+        if (activeUser && typeof activeUser === 'object') {
+          const fullName = activeUser.fullName || activeUser.name || activeUser.username || 'User';
+          const username = activeUser.username || 'user';
+          const pic = activeUser.profilePic || activeUser.avatarUrl || activeUser.photoURL || 'images/default-avatar.png';
+
+          const elNavPic = document.getElementById('navProfilePic');
+          const elNavName = document.getElementById('navFullName');
+          const elNavUsername = document.getElementById('navUsername');
+
+          if (elNavPic) elNavPic.src = pic;
+          if (elNavName) elNavName.textContent = fullName;
+          if (elNavUsername) elNavUsername.textContent = '@' + username;
+        }
+      }
+
+      // Run immediately
+      updateNavbarProfile();
+
+      // Re-check periodically or listen to storage events incase another tab/login changed it
+      window.addEventListener('storage', (event) => {
+        if (event.key === 'currentLoggedInUser' || event.key === 'portal_session') {
+          location.reload(); // Force refresh to load the new user's state completely
+        }
+      });
+    });
+  </script>
+</body>
+</html>
