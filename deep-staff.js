@@ -718,71 +718,75 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-// --- 4. DYNAMIC CONCURRENT LOAD STRESS TEST ---
-    if (runStressTestBtn) {
-        runStressTestBtn.addEventListener('click', async () => {
-            const stressCountInput = document.getElementById('stressCountInput');
-            const stressCollectionSelect = document.getElementById('stressCollectionSelect');
-            
-            const concurrentCount = parseInt(stressCountInput?.value) || 200;
-            const targetCollection = stressCollectionSelect?.value || 'checkins';
+// --- 4. DYNAMIC CONCURRENT LOAD STRESS TEST (EVENT DELEGATION FIX) ---
+document.addEventListener('click', async (e) => {
+    const runStressTestBtn = e.target.closest('#runStressTestBtn');
+    if (!runStressTestBtn) return;
 
-            runStressTestBtn.disabled = true;
-            runStressTestBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Running ${concurrentCount} Pings on [${targetCollection}]...`;
-            
-            appendTerminalLog('info', `Initiating real stress simulation: firing ${concurrentCount} concurrent requests to [${targetCollection}]...`);
-            const startTime = performance.now();
+    const stressCountInput = document.getElementById('stressCountInput');
+    const stressCollectionSelect = document.getElementById('stressCollectionSelect');
+    const stressTestResult = document.getElementById('stressTestResult');
 
-            try {
-                const testBatch = Array.from({ length: concurrentCount }, (_, index) => {
-                    const uniqueId = `SIM_${targetCollection.toUpperCase()}_${Math.floor(1000 + Math.random() * 9000)}_${index}`;
-                    const payload = {
-                        fields: {
-                            simulationId: { stringValue: uniqueId },
-                            status: { stringValue: "stress_test_active" },
-                            targetCollection: { stringValue: targetCollection },
-                            timestamp: { timestampValue: new Date().toISOString() }
-                        }
-                    };
+    const concurrentCount = parseInt(stressCountInput?.value) || 200;
+    const targetCollection = stressCollectionSelect?.value || 'checkins';
 
-                    return fetch(`${FIRESTORE_BASE_URL}/${targetCollection}?documentId=${uniqueId}`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify(payload)
-                    });
-                });
+    runStressTestBtn.disabled = true;
+    runStressTestBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Running ${concurrentCount} Pings on [${targetCollection}]...`;
 
-                const results = await Promise.allSettled(testBatch);
-                let successCount = 0;
-                
-                results.forEach(res => {
-                    if (res.status === 'fulfilled' && (res.value.ok || res.value.status === 409)) {
-                        successCount++;
-                    }
-                });
+    appendTerminalLog('info', `Initiating real stress simulation: firing ${concurrentCount} concurrent requests to [${targetCollection}]...`);
+    const startTime = performance.now();
 
-                const endTime = performance.now();
-                const duration = Math.round(endTime - startTime);
-
-                if (stressTestResult) {
-                    stressTestResult.classList.remove('hidden');
-                    stressTestResult.innerHTML = `<span>Processed: <strong>${successCount}/${concurrentCount}</strong></span><span>Latency: <strong>${duration}ms</strong></span><span class="text-success">Status: Optimal</span>`;
+    try {
+        const testBatch = Array.from({ length: concurrentCount }, (_, index) => {
+            const uniqueId = `SIM_${targetCollection.toUpperCase()}_${Math.floor(1000 + Math.random() * 9000)}_${index}`;
+            const payload = {
+                fields: {
+                    simulationId: { stringValue: uniqueId },
+                    status: { stringValue: "stress_test_active" },
+                    targetCollection: { stringValue: targetCollection },
+                    timestamp: { timestampValue: new Date().toISOString() }
                 }
-                
-                appendTerminalLog('success', `Stress simulation passed: ${successCount}/${concurrentCount} operations on [${targetCollection}] resolved in ${duration}ms.`);
+            };
 
-            } catch (err) {
-                console.error("Stress Test Error:", err);
-                appendTerminalLog('error', `Stress test simulation encountered exceptions: ${err.message}`);
-                if (stressTestResult) {
-                    stressTestResult.innerHTML = `<span class="text-danger">Status: Failed (${err.message})</span>`;
-                }
-            } finally {
-                runStressTestBtn.disabled = false;
-                runStressTestBtn.innerHTML = `<i class="fa-solid fa-gauge-high"></i> Run Concurrent Load Simulation`;
+            const url = `${FIRESTORE_BASE_URL}/${targetCollection}?documentId=${uniqueId}&key=${API_KEY}`;
+            return fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+        });
+
+        const results = await Promise.allSettled(testBatch);
+        let successCount = 0;
+
+        results.forEach(res => {
+            if (res.status === 'fulfilled' && (res.value.ok || res.value.status === 409)) {
+                successCount++;
             }
         });
+
+        const endTime = performance.now();
+        const duration = Math.round(endTime - startTime);
+
+        if (stressTestResult) {
+            stressTestResult.classList.remove('hidden');
+            stressTestResult.innerHTML = `<span>Processed: <strong>${successCount}/${concurrentCount}</strong></span><span>Latency: <strong>${duration}ms</strong></span><span class="text-success">Status: Optimal</span>`;
+        }
+
+        appendTerminalLog('success', `Stress simulation passed: ${successCount}/${concurrentCount} operations on [${targetCollection}] resolved in ${duration}ms.`);
+
+    } catch (err) {
+        console.error("Stress Test Error:", err);
+        appendTerminalLog('error', `Stress test simulation encountered exceptions: ${err.message}`);
+        if (stressTestResult) {
+            stressTestResult.innerHTML = `<span class="text-danger">Status: Failed (${err.message})</span>`;
+        }
+    } finally {
+        runStressTestBtn.disabled = false;
+        runStressTestBtn.innerHTML = `<i class="fa-solid fa-gauge-high"></i> Run Concurrent Load Simulation`;
     }
+});
+
 
 // --- DYNAMICALLY POPULATE ALL COLLECTION DROPDOWNS ---
 async function initializeCollectionDropdowns() {
