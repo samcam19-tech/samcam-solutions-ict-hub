@@ -483,7 +483,7 @@ window.executeLogin = async function() {
     if (typeof updatePortalUI === 'function') updatePortalUI();
 
     // Redirect cleanly to the main dashboard page
-    window.location.replace('../e-library/index.html');
+    window.location.replace('../e-library/');
   } else {
     await logAuthenticationAttempt('FAILED', usernameInput, failureReason);
 
@@ -600,7 +600,7 @@ window.handleLogout = function() {
   }
 
   // 5. Redirect back to the standalone login page (adjust relative depth if needed)
-  window.location.replace('../index.html');
+  window.location.replace('/');
 };
 
 /* ==========================================================================
