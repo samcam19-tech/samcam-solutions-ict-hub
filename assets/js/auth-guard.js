@@ -14,13 +14,21 @@
       
       const pathname = window.location.pathname;
       
-      // Determine if the current page is the root login page
+      // Determine if the current page is a protected subfolder page
       const isSubfolderPage = pathname.includes('/classes/') || 
-                              pathname.includes('/quiz/') || 
-                              pathname.includes('/forum/') || 
-                              pathname.includes('/assessments/') || 
-                              pathname.includes('/library_dashboard/') || 
-                              pathname.includes('/announcements/');
+                            pathname.includes('/quiz/') || 
+                            pathname.includes('/forum/') ||
+                            pathname.includes('/blogs/') || 
+                            pathname.includes('/deep-staff/') ||
+                            pathname.includes('/network-manager/') || 
+                            pathname.includes('/payments/') ||
+                            pathname.includes('/logs/') || 
+                            pathname.includes('/super-admin/') ||    
+                            pathname.includes('/assessments/') || 
+                            pathname.includes('/library_dashboard/') || 
+                            pathname.includes('/e-library/') ||
+                            pathname.includes('/formula/') ||
+                            pathname.includes('/announcements/');
 
       const isLoginPage = !isSubfolderPage && (pathname.endsWith('index.html') || pathname.endsWith('/') || pathname === '');
 
@@ -30,7 +38,7 @@
           try {
             const session = JSON.parse(sessionData);
             if (session && (session.name || session.email || session.role || session.userType)) {
-              window.location.replace('assessments/');
+              window.location.replace('/assessments/');
               return;
             }
           } catch (err) {
@@ -40,21 +48,21 @@
       } else {
         // Rule 2: If NOT logged in, block access to protected subfolder pages and send to login
         if (!hasSession) {
-          window.location.replace('../index.html');
+          window.location.replace('/index.html');
           return;
         }
 
         // Validate session structural integrity
         const session = JSON.parse(sessionData);
         if (!session || (!session.name && !session.email && !session.role && !session.userType)) {
-          window.location.replace('../index.html');
+          window.location.replace('/index.html');
         }
       }
     } catch (e) {
       console.error("Auth routing validation error:", e);
       // Fail-safe: boot unverified states back to login if outside root index
       if (!window.location.pathname.endsWith('index.html') || window.location.pathname.includes('/classes/')) {
-        window.location.replace('../index.html');
+        window.location.replace('/index.html');
       }
     }
   }
