@@ -838,3 +838,12 @@ body {
   .resource-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
   .nav-container, .stats-container, .main-content, .footer-container { padding-left: 1.5rem; padding-right: 1.5rem; }
 }
+
+/* Hide all view sections by default to prevent layout overlap */
+#loginSection, 
+#dashboardSection, 
+#assessmentsSection, 
+#submissionsSection, 
+#studentsSection {
+  display: none;
+}
