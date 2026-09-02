@@ -541,10 +541,14 @@
         <div class="card-box" id="assessmentsViewPanel">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
             <h3 style="margin: 0;"><i class="fa-solid fa-list-check"></i> Active Assessments</h3>
-            <select id="filterAssessmentClass" style="padding: 0.4rem; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem;">
-              <option value="ALL">All Classes</option>
-              <option value="S1">S.1</option><option value="S2">S.2</option><option value="S3">S.3</option>
-              <option value="S4">S.4</option><option value="S5">S.5</option><option value="S6">S.6</option>
+            <select id="filterAssessmentClass" onchange="filterAssessmentsByClass()" style="padding: 0.4rem; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem;">
+              <option value="ALL" selected>All Classes</option>
+              <option value="S1">S.1</option>
+              <option value="S2">S.2</option>
+              <option value="S3">S.3</option>
+              <option value="S4">S.4</option>
+              <option value="S5">S.5</option>
+              <option value="S6">S.6</option>
             </select>
           </div>
           <div id="assessmentsContainer"></div>
