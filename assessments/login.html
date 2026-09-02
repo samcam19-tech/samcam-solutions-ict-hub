@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Portal Sign In - SAMCAM SOLUTION</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="login.css">
+</head>
+<body>
+
+    <div class="portal-container">
+        <div id="loginSection" class="card-box">
+            <h3><i class="fa-solid fa-right-to-bracket"></i> Portal Sign In</h3>
+            
+            <form method="POST" onsubmit="handleLogin(event)">
+                <div class="form-group">
+                    <label for="loginUsername">Username</label>
+                    <input type="text" id="loginUsername" name="username" placeholder="Enter username..." required autocomplete="username">
+                </div>
+                
+                <div class="form-group" style="position: relative;">
+                    <label for="loginPassword">Password</label>
+                    <div style="position: relative; display: flex; align-items: center;">
+                        <input type="password" id="loginPassword" name="password" placeholder="Enter password..." required autocomplete="current-password" style="width: 100%; padding-right: 40px;">
+                        <span onclick="togglePasswordVisibility('loginPassword', 'togglePassIcon')" style="position: absolute; right: 12px; cursor: pointer; color: #64748b; font-size: 0.9rem;">
+                            <i id="togglePassIcon" class="fa-solid fa-eye"></i>
+                        </span>
+                    </div>
+                </div>
+
+                <div style="display: flex; align-items: center; gap: 0.5rem; margin: 1rem 0;">
+                    <input type="checkbox" id="rememberMeCheck" style="width: auto; margin: 0; cursor: pointer;">
+                    <label for="rememberMeCheck" style="font-size: 0.9rem; cursor: pointer; margin: 0; font-weight: normal; display: inline; text-align: left;">Remember Me</label>
+                </div>
+
+                <div id="loginError" class="error-msg" style="display:none; color: #ef4444; margin-top: 0.5rem; font-size: 0.85rem;">Invalid username or password!</div>
+                
+                <button type="submit" id="signInBtn" class="btn-submit" style="margin-top: 1rem; width: 100%;">Sign In</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="login.js"></script>
+</body>
+</html>
