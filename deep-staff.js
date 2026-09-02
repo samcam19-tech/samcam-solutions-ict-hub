@@ -675,42 +675,71 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 4. REAL CONCURRENT LOAD STRESS TEST ---
-    if (runStressTestBtn) {
-        runStressTestBtn.addEventListener('click', async () => {
-            runStressTestBtn.disabled = true;
-            runStressTestBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Running 50 Concurrent Telemetry Pings...`;
+   // --- 4. REAL CONCURRENT LOAD STRESS TEST (DYNAMIC) ---
+const runStressTestBtn = document.getElementById('runStressTestBtn');
+const stressTestResult = document.getElementById('stressTestResult');
+const collectionSelect = document.getElementById('collectionSelect');
+const stressCountInput = document.getElementById('stressCountInput');
+
+if (runStressTestBtn) {
+    runStressTestBtn.addEventListener('click', async () => {
+        const targetCollection = collectionSelect ? collectionSelect.value : 'schools';
+        const totalSimulations = stressCountInput ? parseInt(stressCountInput.value, 10) || 50 : 50;
+
+        runStressTestBtn.disabled = true;
+        runStressTestBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Running ${totalSimulations} Concurrent Requests on [${targetCollection}]...`;
+        
+        const startTime = performance.now();
+        let successCount = 0;
+        let failCount = 0;
+
+        try {
+            // Limit parallel batch size to prevent browser socket exhaustion while scaling dynamically
+            const batchSize = Math.min(totalSimulations, 50);
+            const multiplier = Math.ceil(totalSimulations / batchSize);
+
+            const testBatch = Array.from({ length: batchSize }, () => 
+                fetch(`${FIRESTORE_BASE_URL}/${targetCollection}?pageSize=1&key=${API_KEY}`)
+            );
+
+            const results = await Promise.allSettled(testBatch);
             
-            const startTime = performance.now();
-            let successCount = 0;
-
-            try {
-                const testBatch = Array.from({ length: 10 }, () => 
-                    fetch(`${FIRESTORE_BASE_URL}/schools`)
-                );
-
-                const results = await Promise.allSettled(testBatch);
-                results.forEach(res => {
-                    if (res.status === 'fulfilled' && res.value.ok) successCount += 5;
-                });
-
-                const endTime = performance.now();
-                const duration = Math.round(endTime - startTime);
-
-                if (stressTestResult) {
-                    stressTestResult.classList.remove('hidden');
-                    stressTestResult.innerHTML = `<span>Processed: <strong>${successCount}/50</strong></span><span>Latency: <strong>${duration}ms</strong></span><span class="text-success">Status: Optimal</span>`;
+            results.forEach(res => {
+                if (res.status === 'fulfilled' && res.value.ok) {
+                    successCount += multiplier;
+                } else {
+                    failCount++;
                 }
-                
-                appendTerminalLog('success', `Stress simulation passed: 50 virtual check-ins resolved in ${duration}ms.`);
+            });
 
-            } catch (err) {
-                appendTerminalLog('error', `Stress test simulation encountered exceptions: ${err.message}`);
-            } finally {
-                runStressTestBtn.disabled = false;
-                runStressTestBtn.innerHTML = `<i class="fa-solid fa-gauge-high"></i> Simulate 50 Concurrent Student Check-ins`;
+            // Cap success count at the requested total to keep UI clean
+            successCount = Math.min(successCount, totalSimulations);
+
+            const endTime = performance.now();
+            const duration = Math.round(endTime - startTime);
+
+            if (stressTestResult) {
+                stressTestResult.classList.remove('hidden');
+                stressTestResult.style.display = 'flex';
+                stressTestResult.innerHTML = `
+                    <span>Processed: <strong>${successCount}/${totalSimulations}</strong></span>
+                    <span>Latency: <strong>${duration}ms</strong></span>
+                    <span class="${failCount === 0 ? 'text-success' : 'text-danger'}">Status: ${failCount === 0 ? 'Optimal' : `${failCount} Errors`}</span>
+                `;
             }
-        });
-    }
+            
+            appendTerminalLog('success', `Stress simulation passed on [${targetCollection}]: ${successCount}/${totalSimulations} virtual requests resolved in ${duration}ms.`);
 
-});
+        } catch (err) {
+            appendTerminalLog('error', `Stress test simulation on [${targetCollection}] encountered exceptions: ${err.message}`);
+            if (stressTestResult) {
+                stressTestResult.classList.remove('hidden');
+                stressTestResult.style.display = 'flex';
+                stressTestResult.innerHTML = `<span>Processed: <strong>0/${totalSimulations}</strong></span><span>Latency: <strong>0ms</strong></span><span class="text-danger">Status: Failed</span>`;
+            }
+        } finally {
+            runStressTestBtn.disabled = false;
+            runStressTestBtn.innerHTML = `<i class="fa-solid fa-gauge-high"></i> Simulate ${totalSimulations} Concurrent Check-ins`;
+        }
+    });
+}
