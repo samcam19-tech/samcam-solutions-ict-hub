@@ -172,17 +172,52 @@
                         </label>
                     </div>
                 </div>
-                <div class="stress-test-panel">
-                    <h4>Load Simulation Console</h4>
-                    <button id="runStressTestBtn" class="btn btn-primary btn-block">
-                        <i class="fa-solid fa-gauge-high"></i> Simulate 50 Concurrent Student Check-ins
-                    </button>
-                    <div id="stressTestResult" class="stress-metrics hidden">
-                        <span>Processed: <strong>50/50</strong></span>
-                        <span>Avg Time: <strong>18ms</strong></span>
-                        <span class="text-success">Status: Optimal</span>
-                    </div>
-                </div>
+                <div class="stress-test-panel" style="margin-top: 15px;">
+    <h4 style="margin-bottom: 10px;">Load Simulation Console</h4>
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+        <div>
+            <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Target Collection</label>
+            <select id="stressCollectionSelect" class="saas-select" style="width: 100%; padding: 6px 10px; background: var(--bg-main, #14171f); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-main); font-size: 12px;">
+                <option value="announcements">announcements</option>
+                <option value="attendance">attendance</option>
+                <option value="audit_logs">audit_logs</option>
+                <option value="blog_posts">blog_posts</option>
+                <option value="challenges">challenges</option>
+                <option value="e_library_resources">e_library_resources</option>
+                <option value="firewall_rules">firewall_rules</option>
+                <option value="formulaSubmissions">formulaSubmissions</option>
+                <option value="forum_threads">forum_threads</option>
+                <option value="live_classes">live_classes</option>
+                <option value="network_telemetry">network_telemetry</option>
+                <option value="notifications">notifications</option>
+                <option value="pending_payments">pending_payments</option>
+                <option value="portal_resources">portal_resources</option>
+                <option value="quiz_results">quiz_results</option>
+                <option value="quizzes">quizzes</option>
+                <option value="schools" selected>schools</option>
+                <option value="submissions">submissions</option>
+                <option value="system_config">system_config</option>
+                <option value="users">users</option>
+                <option value="workstation_telemetry">workstation_telemetry</option>
+            </select>
+        </div>
+        <div>
+            <label style="display: block; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-bottom: 4px;">Concurrent Count</label>
+            <input type="number" id="stressCountInput" value="50" min="1" max="500" style="width: 100%; padding: 6px 10px; background: var(--bg-main, #14171f); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-main); font-size: 12px; box-sizing: border-box;" />
+        </div>
+    </div>
+
+    <button id="runStressTestBtn" class="btn btn-primary btn-block" style="width: 100%; margin-bottom: 10px;">
+        <i class="fa-solid fa-gauge-high"></i> Run Dynamic Load Test
+    </button>
+
+    <div id="stressTestResult" class="stress-metrics hidden" style="display: none; background: var(--bg-main, #14171f); padding: 10px; border-radius: 6px; font-size: 12px; justify-content: space-between; align-items: center;">
+        <span>Processed: <strong id="stressProcessedVal">0/0</strong></span>
+        <span>Avg Time: <strong id="stressAvgTimeVal">0ms</strong></span>
+        <span id="stressStatusVal" class="text-success">Status: Optimal</span>
+    </div>
+</div>
             </section>
 
         </main>
