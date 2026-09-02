@@ -2750,11 +2750,11 @@ function toggleMobileMenu() {
 function navigateTo(e, routeKey) {
   if (e) e.preventDefault();
   const urls = {
-  lib: 'e-library',
+  lib: 'e-library/index.html',
   quiz: '../quiz/',
   portal: '../assessments/'
 };
-  const targetUrl = urls[routeKey] || 'e-library';
+  const targetUrl = urls[routeKey] || 'e-library/index.html';
   window.history.pushState({ route: routeKey }, '', targetUrl);
   window.location.href = targetUrl;
 }
