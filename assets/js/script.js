@@ -481,12 +481,9 @@ window.executeLogin = async function() {
     }
 
     if (typeof updatePortalUI === 'function') updatePortalUI();
-    
-    if (window.location.hash) {
-      history.replaceState(null, document.title, window.location.pathname + window.location.search);
-    }
 
-    navigateToView('dashboard', true);
+    // Redirect cleanly to the main dashboard page
+    window.location.replace('../assessments/index.html');
   } else {
     await logAuthenticationAttempt('FAILED', usernameInput, failureReason);
 
