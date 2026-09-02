@@ -1,54 +1,64 @@
 /* ==========================================================================
-   SAMCAM SOLUTIONS - AUTHENTICATION GUARD SCRIPT
-   Secures protected pages by validating active portal session storage.
+   SAMCAM SOLUTIONS - DUAL AUTHENTICATION & ROUTING GUARD SCRIPT
+   - Redirects unauthenticated users away from protected pages to login.
+   - Redirects already-authenticated users away from login to the assessments portal.
    ========================================================================== */
 
 (function () {
   'use strict';
 
-  function validateUserSession() {
+  function handleAuthRouting() {
     try {
-      // Check both local and session storage for active credentials
       const sessionData = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
+      const hasSession = !!sessionData;
       
-      if (!sessionData) {
-        redirectToLogin();
-        return;
+      const pathname = window.location.pathname;
+      
+      // Determine if the current page is the root login page
+      const isSubfolderPage = pathname.includes('/classes/') || 
+                              pathname.includes('/quiz/') || 
+                              pathname.includes('/forum/') || 
+                              pathname.includes('/assessments/') || 
+                              pathname.includes('/library_dashboard/') || 
+                              pathname.includes('/announcements/');
+
+      const isLoginPage = !isSubfolderPage && (pathname.endsWith('index.html') || pathname.endsWith('/') || pathname === '');
+
+      if (isLoginPage) {
+        // Rule 1: If already logged in, skip the login page and route straight to assessments
+        if (hasSession) {
+          try {
+            const session = JSON.parse(sessionData);
+            if (session && (session.name || session.email || session.role || session.userType)) {
+              window.location.replace('assessments/');
+              return;
+            }
+          } catch (err) {
+            // Invalid session payload, allow login form view
+          }
+        }
+      } else {
+        // Rule 2: If NOT logged in, block access to protected subfolder pages and send to login
+        if (!hasSession) {
+          window.location.replace('../index.html');
+          return;
+        }
+
+        // Validate session structural integrity
+        const session = JSON.parse(sessionData);
+        if (!session || (!session.name && !session.email && !session.role && !session.userType)) {
+          window.location.replace('../index.html');
+        }
       }
-
-      const session = JSON.parse(sessionData);
-
-      // Verify that the session object contains basic required identifiers
-      if (!session || (!session.name && !session.email && !session.role && !session.userType)) {
-        redirectToLogin();
-        return;
-      }
-
-      // Optional: Check if a schoolId is mandatory for your multi-tenant portal
-      // if (!session.schoolId && !session.schoolID && !session.institutionId) {
-      //   redirectToLogin();
-      //   return;
-      // }
-
     } catch (e) {
-      console.error("Session validation error:", e);
-      redirectToLogin();
+      console.error("Auth routing validation error:", e);
+      // Fail-safe: boot unverified states back to login if outside root index
+      if (!window.location.pathname.endsWith('index.html') || window.location.pathname.includes('/classes/')) {
+        window.location.replace('../index.html');
+      }
     }
   }
 
-  function redirectToLogin() {
-    // Prevent infinite redirect loops if already on the login index page
-    const currentPath = window.location.pathname;
-    if (currentPath.endsWith('index.html') || currentPath === '/' || currentPath === '') {
-      return;
-    }
-
-    // Determine correct relative path back to root index.html based on depth
-    // If your pages are in a subfolder (e.g., /portal/dashboard.html), '../index.html' works.
-    // Adjust path string if pages reside deeper.
-    window.location.replace('../index.html');
-  }
-
-  // Execute immediately before DOM rendering finishes to prevent content flashing
-  validateUserSession();
+  // Execute immediately during document parsing to prevent content flashing
+  handleAuthRouting();
 })();
