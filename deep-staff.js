@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // --- FIREBASE CONFIGURATION & CONSTANTS ---
     const PROJECT_ID = "samcam-system";
+    const API_KEY = "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw";
     const FIRESTORE_BASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
     const globalUnlockBtn = document.getElementById('globalUnlockBtn');
