@@ -206,7 +206,7 @@
   <header class="portal-header">
   <div class="header-container" style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 1rem;">
     <div class="brand-title" style="display: flex; align-items: center; gap: 0.75rem;">
-      <img src="images/logo.png" alt="System Logo" class="dynamic-system-logo" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
+      <img src="../images/logo.png" alt="System Logo" class="dynamic-system-logo" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover;" onerror="this.style.display='none'">
       <div style="display: flex; flex-direction: column;">
         <h2 class="dynamic-system-name" style="margin: 0; font-size: 1.1rem; font-weight: 800; font-family: 'Plus Jakarta Sans', sans-serif;">ICT Assessment Engine</h2>
         <span class="dynamic-system-slogan" style="font-size: 0.75rem; color: #94a3b8; font-weight: 500;">Innovative ICT Insights In Action</span>
@@ -221,7 +221,7 @@
       
       <div class="profile-dropdown-wrapper" style="position: relative;">
         <div class="user-profile-widget" onclick="toggleProfileDropdown(event)" style="cursor: pointer; display: flex; align-items: center; gap: 10px;">
-          <img src="images/default-avatar.png" id="bannerProfilePic" alt="User Profile" onerror="this.src='images/default-avatar.png'">
+          <img src="../images/default-avatar.png" id="bannerProfilePic" alt="User Profile">
           <div class="user-meta-text">
             <span class="full-name" id="userNameDisplay">Loading...</span>
             <span class="username" id="profileUsernameDisplay">@user</span>
@@ -466,7 +466,7 @@
           
           <!-- Centered Profile Picture Container -->
           <div style="margin-bottom: 1rem; display: flex; justify-content: center;">
-            <img src="images/default-avatar.png" id="modalProfilePic" alt="Profile Picture" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid #0284c7; background: #0f172a; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);" onerror="this.src='images/default-avatar.png'">
+            <img src="../images/default-avatar.png" id="modalProfilePic" alt="Profile Picture" style="width: 90px; height: 90px; border-radius: 50%; object-fit: cover; border: 3px solid #0284c7; background: #0f172a; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);">
           </div>
 
           <!-- Names and Handle -->
@@ -602,7 +602,7 @@
     const fullName = currentUser.fullName || currentUser.username || 'Portal User';
     const username = '@' + (currentUser.username || 'user');
     const role = currentUser.role ? currentUser.role.toUpperCase() : (currentUser.class || 'Student');
-    const pic = currentUser.profilePic || currentUser.avatarUrl || currentUser.photoURL || 'images/default-avatar.png';
+    const pic = currentUser.profilePic || currentUser.avatarUrl || currentUser.photoURL || '../images/default-avatar.png';
 
     const elFullName = document.getElementById('modalFullName');
     const elFullNameRow = document.getElementById('modalFullNameRow');
