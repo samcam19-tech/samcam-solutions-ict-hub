@@ -2061,7 +2061,7 @@ function handleCheatingViolation(reason) {
             if (typeof submitQuizToFirestore === 'function') {
                 submitQuizToFirestore();
             } else {
-                window.location.href = 'assessments.html';
+                window.location.href = '/assessments/';
             }
         }
     }
