@@ -483,7 +483,7 @@ window.executeLogin = async function() {
     if (typeof updatePortalUI === 'function') updatePortalUI();
 
     // Redirect cleanly to the main dashboard page
-    window.location.replace('../assessments/index.html');
+    window.location.replace('../e-library/index.html');
   } else {
     await logAuthenticationAttempt('FAILED', usernameInput, failureReason);
 
