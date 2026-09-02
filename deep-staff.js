@@ -676,8 +676,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
    // --- 4. REAL CONCURRENT LOAD STRESS TEST (DYNAMIC) ---
-const runStressTestBtn = document.getElementById('runStressTestBtn');
-const stressTestResult = document.getElementById('stressTestResult');
 const collectionSelect = document.getElementById('collectionSelect');
 const stressCountInput = document.getElementById('stressCountInput');
 
