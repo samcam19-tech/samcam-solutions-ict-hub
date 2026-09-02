@@ -109,10 +109,13 @@ document.addEventListener("DOMContentLoaded", () => {
           <span style="display: block; font-size: 0.75rem; color: #64748b; font-weight: 600;">Signed in as</span>
           <span style="display: block; font-size: 0.85rem; color: #1e293b; font-weight: bold;">${currentAdmin.fullName}</span>
         </div>
-        <a href="network-manager.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #334155; text-decoration: none; font-size: 0.85rem;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+        <a href="../network-manager/index.html.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #334155; text-decoration: none; font-size: 0.85rem;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
           <i class="fa-solid fa-network-wired" style="color: #0284c7; width: 16px;"></i> Lab Network Management
         </a>
-        <a href="deep-stuff.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #334155; text-decoration: none; font-size: 0.85rem;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+        <a href="../deep-stuff/index.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #334155; text-decoration: none; font-size: 0.85rem;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
+          <i class="fa-solid fa-brain" style="color: #0284c7; width: 16px;"></i> Deep Stuff
+        </a>
+        <a href="../library-dashboard/index.html" style="display: flex; align-items: center; gap: 10px; padding: 10px 16px; color: #334155; text-decoration: none; font-size: 0.85rem;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
           <i class="fa-solid fa-brain" style="color: #0284c7; width: 16px;"></i> Deep Stuff
         </a>
         <div style="border-top: 1px solid #f1f5f9; padding: 4px 0;">
@@ -591,7 +594,7 @@ async function loadRegisteredSchools() {
       const data = docSnap.data();
       const dateStr = data.createdAt ? new Date(data.createdAt.seconds * 1000).toLocaleDateString() : "Just now";
       const statusBadge = data.status === 'suspended' ? '<span class="status-badge-suspended">Suspended</span>' : '<span class="status-badge-active">Active</span>';
-      const logoUrl = data.logoUrl || 'images/default-avatar.png';
+      const logoUrl = data.logoUrl || '../images/default-avatar.png';
       
       if (tableBody) {
         tableBody.innerHTML += `
@@ -599,7 +602,7 @@ async function loadRegisteredSchools() {
             <td><code>${escapeHtml(data.schoolId)}</code></td>
             <td>
               <div style="display: flex; align-items: center; gap: 8px;">
-                <img src="${escapeHtml(logoUrl)}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1px solid #cbd5e1; background: #fff;" onerror="this.src='images/default-avatar.png';" />
+                <img src="${escapeHtml(logoUrl)}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; border: 1px solid #cbd5e1; background: #fff;"/>
                 <strong>${escapeHtml(data.schoolName)}</strong>
               </div>
             </td>
