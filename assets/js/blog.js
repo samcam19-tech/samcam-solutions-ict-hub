@@ -221,7 +221,7 @@ function renderBlog() {
     const postSchoolId = post.schoolId || 'global';
 
     // Resolve Author Avatar (Fallback to default local avatar if missing)
-    const defaultAvatar = "images/default-avatar.png";
+    const defaultAvatar = "../images/default-avatar.png";
     const authorPic = post.authorAvatar || defaultAvatar;
 
     // Build Admin Action Buttons if authorized
@@ -255,7 +255,7 @@ function renderBlog() {
 
           <div class="blog-card-footer" style="display: flex; align-items: center; justify-content: space-between; margin-top: 1rem; border-top: 1px solid #f1f5f9; padding-top: 0.75rem;">
             <div class="blog-author" style="display: flex; align-items: center; gap: 0.5rem;">
-              <img src="${authorPic}" alt="${post.author || 'Author'}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid #cbd5e1;" onerror="this.src='images/default-avatar.png'">
+              <img src="${authorPic}" alt="${post.author || 'Author'}" style="width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid #cbd5e1;">
               <span style="font-weight: 500; font-size: 0.9rem; color: var(--text-main, #334155);">${post.author || 'Samcam ICT'}</span>
             </div>
             <button class="read-more-btn" onclick="toggleCardExpansion('${post.id}')" style="font-weight: 600;">
