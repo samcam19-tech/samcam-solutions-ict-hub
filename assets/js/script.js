@@ -80,6 +80,13 @@ window.navigateToView = function(viewName, pushState = true) {
   if (studentsSec) studentsSec.style.display = 'none';
 
   if (!window.currentUser) {
+    // Explicitly hide all other modules when unauthenticated
+    if (dashSec) dashSec.style.display = 'none';
+    if (assessmentsSec) assessmentsSec.style.display = 'none';
+    if (submissionsSec) submissionsSec.style.display = 'none';
+    if (studentsSec) studentsSec.style.display = 'none';
+
+    // Show only the login section
     if (loginSec) loginSec.style.display = 'block';
     if (pushState) history.pushState({ view: 'login' }, '', '#login');
     return;
