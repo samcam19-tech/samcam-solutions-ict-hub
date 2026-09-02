@@ -48,21 +48,21 @@
       } else {
         // Rule 2: If NOT logged in, block access to protected subfolder pages and send to login
         if (!hasSession) {
-          window.location.replace('/index.html');
+          window.location.replace('/');
           return;
         }
 
         // Validate session structural integrity
         const session = JSON.parse(sessionData);
         if (!session || (!session.name && !session.email && !session.role && !session.userType)) {
-          window.location.replace('/index.html');
+          window.location.replace('/');
         }
       }
     } catch (e) {
       console.error("Auth routing validation error:", e);
       // Fail-safe: boot unverified states back to login if outside root index
       if (!window.location.pathname.endsWith('index.html') || window.location.pathname.includes('/classes/')) {
-        window.location.replace('/index.html');
+        window.location.replace('/');
       }
     }
   }
