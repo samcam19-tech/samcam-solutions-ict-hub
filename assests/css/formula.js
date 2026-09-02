@@ -1,0 +1,987 @@
+// ==========================================
+// 1. SESSION MANAGEMENT & PROFILE HELPER
+// ==========================================
+function getCurrentUserProfile() {
+    let activeUser = window.currentUser;
+
+    if (!activeUser) {
+        const sessionData = localStorage.getItem('portal_session');
+        if (sessionData) {
+            try {
+                activeUser = JSON.parse(sessionData);
+            } catch (e) {
+                console.error("Error parsing portal_session from localStorage:", e);
+                activeUser = null;
+            }
+        }
+    }
+
+    // Fallback if no active session is found
+    return activeUser || {
+        username: "Guest Student",
+        role: "Student",
+        institution: "Standard College Ntungamo"
+    };
+}
+
+// ==========================================
+// 2. DOM ELEMENT REFERENCES
+// ==========================================
+const challengeSelect = document.getElementById("challengeSelect");
+const challengePrompt = document.getElementById("challengePrompt");
+const challengeHint = document.getElementById("challengeHint");
+const studentAnswer = document.getElementById("studentAnswer");
+const verifyBtn = document.getElementById("verifyBtn");
+const feedbackOutput = document.getElementById("feedbackOutput");
+
+// State variables for question sequencing
+let currentQuestionsList = [];
+let currentIndex = 0;
+let isAnswerCorrect = false;
+
+// Helper function to verify matching parenthesis depth (deduplicated)
+function areParenthesesBalanced(str) {
+    let depth = 0;
+    let inString = false;
+    let stringChar = '';
+
+    for (let i = 0; i < str.length; i++) {
+        let char = str[i];
+
+        if ((char === '"' || char === "'") && (i === 0 || str[i - 1] !== '\\')) {
+            if (!inString) {
+                inString = true;
+                stringChar = char;
+            } else if (stringChar === char) {
+                inString = false;
+            }
+        }
+
+        if (!inString) {
+            if (char === '(') depth++;
+            if (char === ')') depth--;
+            if (depth < 0) return false; // Closed before opened
+        }
+    }
+    return depth === 0;
+}
+
+// ==========================================
+// 3. FULLY UPGRADED WORLD-CLASS EXCEL & ACCESS ENGINE
+// ==========================================
+function excelColToNum(colStr) {
+    let num = 0;
+    const upper = colStr.toUpperCase();
+    for (let i = 0; i < upper.length; i++) {
+        num = num * 26 + (upper.charCodeAt(i) - 64);
+    }
+    return num;
+}
+
+function isValidCellCoordinate(cellStr) {
+    const match = cellStr.match(/^([A-Z]+)(\d+)$/i);
+    if (!match) return false;
+
+    const colLetters = match[1];
+    const rowNum = parseInt(match[2], 10);
+    const colNum = excelColToNum(colLetters);
+    
+    const MAX_COL = 16384; // XFD
+    const MAX_ROW = 1048576;
+
+    return colNum >= 1 && colNum <= MAX_COL && rowNum >= 1 && rowNum <= MAX_ROW;
+}
+
+function tokenizeFormula(formulaStr) {
+    let tokens = [];
+    let current = '';
+    let inString = false;
+    let stringChar = '';
+
+    for (let i = 0; i < formulaStr.length; i++) {
+        let char = formulaStr[i];
+        
+        if ((char === '"' || char === "'") && (i === 0 || formulaStr[i - 1] !== '\\')) {
+            if (!inString) {
+                inString = true;
+                stringChar = char;
+            } else if (stringChar === char) {
+                inString = false;
+            }
+        }
+
+        if (!inString && /\s/.test(char)) {
+            if (current) {
+                tokens.push(current);
+                current = '';
+            }
+            continue;
+        }
+
+        current += char;
+    }
+    if (current) tokens.push(current);
+    return tokens;
+}
+
+function splitExcelArguments(argStr) {
+    let args = [];
+    let current = '';
+    let depth = 0;
+    let inString = false;
+    let stringChar = '';
+
+    for (let i = 0; i < argStr.length; i++) {
+        let char = argStr[i];
+        
+        if ((char === '"' || char === "'") && (i === 0 || argStr[i - 1] !== '\\')) {
+            if (!inString) {
+                inString = true;
+                stringChar = char;
+            } else if (stringChar === char) {
+                inString = false;
+            }
+        }
+
+        if (!inString) {
+            if (char === '(') depth++;
+            if (char === ')') depth--;
+            if (char === ',' && depth === 0) {
+                args.push(current.trim());
+                current = '';
+                continue;
+            }
+        }
+        current += char;
+    }
+    if (current) args.push(current.trim());
+    return args;
+}
+
+function isValidExcelValueToken(token) {
+    const clean = token.trim();
+    if (!clean) return false;
+    if (!isNaN(Number(clean))) return true;
+    const rawCell = clean.replace(/\$/g, '').split('!').pop();
+    if (isValidCellCoordinate(rawCell)) return true;
+    if ((clean.startsWith('"') && clean.endsWith('"')) || (clean.startsWith("'") && clean.endsWith("'"))) return true;
+    if (/^(=?\s*[A-Z]+\s*\(.*\))$/i.test(clean)) return true;
+    if (['TRUE', 'FALSE'].includes(clean.toUpperCase())) return true;
+    return false;
+}
+
+function normalizeAlgebraicExpression(expr) {
+    return expr.replace(/\s+/g, '').toUpperCase();
+}
+
+function validateStudentAnswer(question, inputStr) {
+    let cleanInput = inputStr ? inputStr.trim() : "";
+    
+    // Permanently auto-fix any space between a function name and its opening parenthesis (e.g. "IF (" -> "IF(")
+    cleanInput = cleanInput.replace(/\b([A-Z][A-Z0-9_]*)\s+(\()/gi, '$1$2');
+    
+    // Also auto-fix it if it happens inside the formula text without word boundaries being strict
+    cleanInput = cleanInput.replace(/([A-Z]+)\s+\(/gi, '$1(');
+
+    const rule = question.ruleType; 
+    const expected = question.expectedValue ? question.expectedValue.trim() : ""; 
+
+    if (!cleanInput) {
+        return { correct: false, message: "Please enter an expression before verifying." };
+    }
+
+    if (!cleanInput.startsWith("=") && rule.startsWith("EXCEL_")) {
+        return { 
+            correct: false, 
+            message: `#NAME? Error: Did you forget to start your formula with an equals sign (=)? Excel formulas must begin with =.` 
+        };
+    }
+
+    if (cleanInput.includes(";") && !cleanInput.includes(",")) {
+        return { 
+            correct: false, 
+            message: `#VALUE! Error: It looks like you used semicolons (;) instead of commas (,). Check your regional argument separator settings.` 
+        };
+    }
+
+    if (rule.startsWith("EXCEL_") && !areParenthesesBalanced(cleanInput)) {
+        return { 
+            correct: false, 
+            message: `#VALUE! Error: Unbalanced parentheses. Ensure every opened bracket has a matching closing bracket.` 
+        };
+    }
+
+    const upperInput = cleanInput.toUpperCase();
+
+    switch (rule) {
+        case "EXCEL_SUM":
+        case "EXCEL_AVERAGE": {
+            const func = rule === "EXCEL_SUM" ? "SUM" : "AVERAGE";
+            const pattern = new RegExp(`^=\\s*${func}\\s*\\(\\s*(.+?)\\s*\\)$`, 'i');
+            const match = cleanInput.match(pattern);
+
+            if (!match) {
+                return { correct: false, message: `#NAME? Error: Excel expects proper function syntax like =${func}(range).` };
+            }
+
+            const args = splitExcelArguments(match[1]);
+            if (args.length === 0) {
+                return { correct: false, message: `#VALUE! Error: The ${func} function requires at least one argument or range.` };
+            }
+
+            const allSubRangesValid = args.every(sub => {
+                const cleanSub = sub.trim().replace(/\s+/g, '');
+                if (cleanSub.includes(':')) {
+                    const parts = cleanSub.split(':');
+                    if (parts.length === 2) {
+                        const startCell = parts[0].replace(/\$/g, '');
+                        const endCell = parts[1].replace(/\$/g, '');
+                        return isValidCellCoordinate(startCell) && isValidCellCoordinate(endCell);
+                    }
+                    return false;
+                } else {
+                    return isValidCellCoordinate(cleanSub.replace(/\$/g, ''));
+                }
+            });
+
+            let isWithinBounds = false;
+            if (allSubRangesValid) {
+                const normExpected = expected.replace(/\s+/g, '').toUpperCase();
+                const fullInnerNormalized = match[1].replace(/\s+/g, '').toUpperCase();
+                isWithinBounds = (fullInnerNormalized === normExpected) || (fullInnerNormalized.includes(normExpected)) || upperInput.includes(normExpected);
+            }
+
+            return {
+                correct: isWithinBounds,
+                message: isWithinBounds 
+                    ? `Correct! "${cleanInput}" successfully evaluates within Excel grid limits (Max: XFD1048576).` 
+                    : `#REF! Error: Check your range boundaries or ensure coordinates do not exceed Excel limits.`
+            };
+        }
+
+      case "EXCEL_IF": {
+            const ifPattern = /^=\s*IF\s*\(\s*(.+)\s*\)$/i;
+            const match = cleanInput.match(ifPattern);
+
+            if (!match) {
+                return { 
+                    correct: false, 
+                    message: `#NAME? Error: Ensure your formula starts with =IF( and closes with matching parentheses.` 
+                };
+            }
+
+            const innerContent = match[1];
+            const args = splitExcelArguments(innerContent);
+            
+            if (args.length < 3) {
+                return { 
+                    correct: false, 
+                    message: `#VALUE! Error: Your IF function has only ${args.length} argument(s). Excel requires at least 3 arguments: logical_test, value_if_true, and value_if_false.` 
+                };
+            }
+            
+            if (args.length > 3) {
+                return { 
+                    correct: false, 
+                    message: `#VALUE! Error: Too many top-level arguments provided for a single IF block. Check your comma separators.` 
+                };
+            }
+
+            let maxDepth = 0;
+            let currentDepth = 0;
+            for (let i = 0; i < cleanInput.length; i++) {
+                if (cleanInput[i] === '(') {
+                    currentDepth++;
+                    if (currentDepth > maxDepth) maxDepth = currentDepth;
+                } else if (cleanInput[i] === ')') {
+                    currentDepth = Math.max(0, currentDepth - 1);
+                }
+            }
+
+            if (maxDepth > 64) {
+                return {
+                    correct: false,
+                    message: `#VALUE! Error: Formula exceeds Excel's maximum nesting limit of 64 levels (current depth: ${maxDepth}).`
+                };
+            }
+
+            const logicalTest = args[0].trim();
+            const valueIfTrue = args[1].trim();
+            const valueIfFalse = args[2].trim();
+
+            let targetCondition = expected ? expected.trim() : "";
+            
+            // If expected is empty, default to checking that the logical test isn't empty
+            if (!targetCondition) {
+                if (!logicalTest) {
+                    return {
+                        correct: false,
+                        message: `#VALUE! Error: Logical test condition cannot be blank.`
+                    };
+                }
+                return {
+                    correct: true,
+                    message: `Correct! "${cleanInput}" properly satisfies Excel's IF function argument structure.`
+                };
+            }
+
+            if (targetCondition.toUpperCase().startsWith("=IF(")) {
+                const expectedMatch = targetCondition.match(/^=\s*IF\s*\(\s*(.+)\s*\)$/i);
+                if (expectedMatch) {
+                    const expectedArgs = splitExcelArguments(expectedMatch[1]);
+                    if (expectedArgs.length > 0) {
+                        targetCondition = expectedArgs[0].trim();
+                    }
+                }
+            }
+
+            const expectedNormalized = targetCondition.replace(/\s+/g, '').toUpperCase();
+            const logicalNormalized = logicalTest.replace(/\s+/g, '').toUpperCase();
+            const isLogicalValid = expectedNormalized === "" || logicalNormalized === expectedNormalized || logicalNormalized.includes(expectedNormalized);
+
+            if (!isLogicalValid) {
+                return { 
+                    correct: false, 
+                    message: `#VALUE! Error in logical condition. Expected core criteria component missing: ${targetCondition}.` 
+                };
+            }
+
+            return {
+                correct: true,
+                message: `Correct! "${cleanInput}" properly satisfies Excel's IF function argument structure and data typing rules.`
+            };
+        }
+            
+        case "EXCEL_VLOOKUP":
+        case "EXCEL_HLOOKUP": {
+            const func = rule.replace('EXCEL_', '');
+            const pattern = new RegExp(`^=\\s*${func}\\s*\\(\\s*(.+)\\s*\\)$`, 'i');
+            const match = cleanInput.match(pattern);
+            
+            if (!match) {
+                return { correct: false, message: `#NAME? Error: Verify your function syntax and parenthesis layout for =${func}().` };
+            }
+
+            const args = splitExcelArguments(match[1]);
+            
+            if (args.length < 3 || args.length > 4) {
+                return { correct: false, message: `#VALUE! Error: =${func} requires 3 or 4 arguments (lookup_value, table_array, col_index_num, [range_lookup]). Found ${args.length}.` };
+            }
+
+            const tableArrayArg = args[1].trim();
+            const hasAbsoluteRef = /\$[A-Z]+\$\d+/.test(tableArrayArg) || /\$[A-Z]+[A-Z]*\d+/.test(tableArrayArg) || /[A-Z]+\$\d+/.test(tableArrayArg);
+
+            if (!hasAbsoluteRef) {
+                return {
+                    correct: false,
+                    message: `#REF! Error: The table array (${tableArrayArg}) must use absolute cell referencing (e.g., $A$1:$D$10) to prevent shifting when copied.`
+                };
+            }
+
+            const correct = upperInput.includes(expected.toUpperCase());
+            return {
+                correct,
+                message: correct 
+                    ? `Correct! "${cleanInput}" matches required ${func} layout criteria and parameters.` 
+                    : `#N/A Error: Verify your lookup parameters, reference structure, and table array for =${func}().`
+            };
+        }
+
+        case "EXCEL_LOOKUP": {
+            const pattern = /^=\s*LOOKUP\s*\(\s*(.+)\s*\)$/i;
+            const match = cleanInput.match(pattern);
+            
+            if (!match) {
+                return { correct: false, message: `#NAME? Error: Verify your function syntax and parenthesis layout for =LOOKUP().` };
+            }
+
+            const args = splitExcelArguments(match[1]);
+            
+            if (args.length < 2 || args.length > 3) {
+                return { correct: false, message: `#VALUE! Error: =LOOKUP requires 2 or 3 arguments. Found ${args.length}.` };
+            }
+
+            const correct = upperInput.includes(expected.toUpperCase());
+            return {
+                correct,
+                message: correct 
+                    ? `Correct! "${cleanInput}" matches required LOOKUP layout criteria and parameters.` 
+                    : `#N/A Error: Verify your lookup parameters and reference structure for =LOOKUP().`
+            };
+        }
+            
+        case "EXCEL_SUMIF":
+        case "EXCEL_COUNTIF":
+        case "EXCEL_AVERAGEIF": {
+            const func = rule.replace('EXCEL_', '');
+            const pattern = new RegExp(`^=\\s*${func}\\s*\\(\\s*(.+)\\s*\\)$`, 'i');
+            const match = cleanInput.match(pattern);
+
+            if (!match) {
+                return { correct: false, message: `#NAME? Error: Verify your function prefix and closing parenthesis for =${func}().` };
+            }
+
+            const args = splitExcelArguments(match[1]);
+            
+            let minArgs = 2;
+            let maxArgs = 3;
+            if (func === 'COUNTIF') {
+                minArgs = 2;
+                maxArgs = 2;
+            }
+
+            if (args.length < minArgs || args.length > maxArgs) {
+                return { 
+                    correct: false, 
+                    message: `#VALUE! Error: The ${func} function requires ${minArgs === maxArgs ? minArgs : '2 to 3'} arguments. Found ${args.length}.` 
+                };
+            }
+
+            const correct = upperInput.includes(expected.toUpperCase());
+            return {
+                correct,
+                message: correct 
+                    ? `Correct! "${cleanInput}" accurately built the ${func} conditional structure.` 
+                    : `#VALUE! Error: Check your range, criteria expression, and parameter types for =${func}().`
+            };
+        }
+
+        case "EXCEL_RANK": {
+            const pattern = /^=\s*(?:RANK|RANK\.EQ)\s*\(\s*(.+)\s*\)$/i;
+            const match = cleanInput.match(pattern);
+
+            if (!match) {
+                return { correct: false, message: `#NAME? Error: Syntax format mismatch. Expected structure: =RANK(number, ref, [order]).` };
+            }
+
+            const args = splitExcelArguments(match[1]);
+            if (args.length < 2 || args.length > 3) {
+                return { correct: false, message: `#VALUE! Error: =RANK requires 2 or 3 arguments (number, ref, [order]). Found ${args.length}.` };
+            }
+
+            const correct = upperInput.includes(expected.toUpperCase());
+            return {
+                correct,
+                message: correct 
+                    ? `Correct! "${cleanInput}" successfully computed the rank configuration.` 
+                    : `#VALUE! Error: Check your number reference and comparison range parameters for =RANK().`
+            };
+        }
+
+        case "ACCESS_CRITERIA": {
+            const cleanedStudentInput = upperInput.trim();
+            const normalizedStudent = cleanedStudentInput.replace(/\s+/g, '').replace(/^LIKE/i, '').replace(/["']/g, '').replace(/%/g, '*');
+            const normalizedExpected = expected.toUpperCase().replace(/\s+/g, '').replace(/^LIKE/i, '').replace(/["']/g, '').replace(/%/g, '*');
+
+            const correct = normalizedStudent === normalizedExpected || cleanedStudentInput.includes(expected.toUpperCase());
+            return {
+                correct,
+                message: correct 
+                    ? `Correct! "${cleanInput}" matches Access design criteria formatting.` 
+                    : `Invalid Criteria Error: Remember that Microsoft Access query criteria use asterisks (*) for wildcards instead of percentage signs (%), and text values must be enclosed in quotes.`
+            };
+        }
+
+        case "ACCESS_CALCULATED": {
+            const colonIndex = cleanInput.indexOf(':');
+            const hasValidAlias = colonIndex > 0 && colonIndex < cleanInput.length - 1;
+
+            const normalizedStudent = upperInput.replace(/\s+/g, '').replace(/\[/g, '').replace(/\]/g, '');
+            const normalizedExpected = expected.toUpperCase().replace(/\s+/g, '').replace(/\[/g, '').replace(/\]/g, '');
+
+            const correct = hasValidAlias && normalizedStudent.includes(normalizedExpected);
+
+            return {
+                correct,
+                message: correct 
+                    ? `Correct! "${cleanInput}" successfully defined the calculated query expression.` 
+                    : `Syntax Error: Ensure you use a proper field alias followed by a colon and square bracket expressions (e.g., Total: [Price]*[Qty]).`
+            };
+        }
+
+        default: {
+            let normalizedStudent = cleanInput;
+            let normalizedExpected = expected;
+
+            if (typeof normalizeAlgebraicExpression === 'function') {
+                try {
+                    normalizedStudent = normalizeAlgebraicExpression(cleanInput);
+                    normalizedExpected = normalizeAlgebraicExpression(expected);
+                } catch (e) {
+                    console.warn("Algebraic normalization fallback error:", e);
+                }
+            }
+
+            const studentComp = normalizedStudent.replace(/\s+/g, '').toUpperCase();
+            const expectedComp = normalizedExpected.replace(/\s+/g, '').toUpperCase();
+            const upperCleanInput = cleanInput.replace(/\s+/g, '').toUpperCase();
+            const upperExpected = expected.toUpperCase().replace(/\s+/g, '');
+
+            const correct = (studentComp === expectedComp) || (upperCleanInput === upperExpected) || upperInput.includes(expected.toUpperCase());
+            
+            return { 
+                correct, 
+                message: correct 
+                    ? `Correct! "${cleanInput}" verified successfully.` 
+                    : `Incorrect ("${cleanInput}"). Please check your entry and formatting.` 
+            };
+        }
+    }
+}
+
+// ==========================================
+// 4. DYNAMIC QUESTION FETCHING FROM FIRESTORE
+// ==========================================
+async function loadChallengesFromFirestore() {
+    const selectedCategory = challengeSelect ? challengeSelect.value : ""; 
+    currentQuestionsList = [];
+    currentIndex = 0;
+    
+    if (challengePrompt) challengePrompt.textContent = "Loading challenges from the database...";
+    if (challengeHint) challengeHint.textContent = "";
+    if (studentAnswer) studentAnswer.value = "";
+    if (verifyBtn) {
+        verifyBtn.textContent = "Verify Answer";
+        verifyBtn.style.display = "block";
+    }
+    if (studentAnswer) studentAnswer.style.display = "block";
+
+    if (typeof db === 'undefined') {
+        if (challengePrompt) challengePrompt.textContent = "Database connection not found.";
+        return;
+    }
+
+    try {
+        const snapshot = await db.collection("challenges")
+            .where("category", "==", selectedCategory)
+            .get();
+
+        if (snapshot.empty) {
+            if (challengePrompt) challengePrompt.textContent = "No challenges found for this category in the database yet.";
+            if (challengeHint) challengeHint.textContent = "Ask an administrator/teacher to add questions for this section.";
+            if (studentAnswer) studentAnswer.style.display = "none";
+            if (verifyBtn) verifyBtn.style.display = "none";
+            return;
+        }
+
+        let fetchedQuestions = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            fetchedQuestions.push({
+                id: doc.id,
+                type: data.type || "EXCEL",
+                prompt: data.prompt,
+                hint: data.hint || "",
+                ruleType: data.ruleType || "DEFAULT",
+                expectedValue: data.expectedValue || "",
+                expectedTrue: data.expectedTrue || "",
+                expectedFalse: data.expectedFalse || ""
+            });
+        });
+
+        // Fisher-Yates shuffle algorithm to ensure unique, random order per user/session
+        for (let i = fetchedQuestions.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [fetchedQuestions[i], fetchedQuestions[j]] = [fetchedQuestions[j], fetchedQuestions[i]];
+        }
+
+        currentQuestionsList = fetchedQuestions;
+        displayCurrentQuestion();
+    } catch (error) {
+        console.error("Error fetching challenges: ", error);
+        if (challengePrompt) challengePrompt.textContent = "Error loading challenges from server.";
+    }
+}
+
+function displayCurrentQuestion() {
+    if (!currentQuestionsList || currentQuestionsList.length === 0) return;
+
+    if (currentIndex >= currentQuestionsList.length) {
+        if (challengePrompt) challengePrompt.textContent = "🎉 Congratulations! You have completed all questions in this category set.";
+        if (challengeHint) challengeHint.textContent = "";
+        if (studentAnswer) studentAnswer.style.display = "none";
+        if (verifyBtn) verifyBtn.style.display = "none";
+        if (feedbackOutput) {
+            feedbackOutput.className = "feedback-correct";
+            feedbackOutput.textContent = "Session complete. Great work!";
+        }
+        
+        // Clear backdrop if it exists
+        const backdrop = document.getElementById('formulaBackdrop');
+        if (backdrop) backdrop.innerHTML = '';
+        return;
+    }
+
+    if (studentAnswer) studentAnswer.style.display = "block";
+    if (verifyBtn) verifyBtn.style.display = "block";
+    
+    const current = currentQuestionsList[currentIndex];
+    if (challengePrompt) challengePrompt.textContent = `Question ${currentIndex + 1} of ${currentQuestionsList.length}: ${current.prompt}`;
+    if (challengeHint) challengeHint.textContent = "Hint: " + (current.hint || "None provided.");
+    
+    // Reset answer and explicitly trigger editor update to clear/refresh backdrop colors
+    if (studentAnswer) studentAnswer.value = "";
+    const backdrop = document.getElementById('formulaBackdrop');
+    if (backdrop) {
+        backdrop.innerHTML = highlightFormula("") + ' ';
+    }
+
+    isAnswerCorrect = false;
+    
+    if (verifyBtn) {
+        verifyBtn.textContent = "Verify Answer";
+        verifyBtn.className = "primary-btn";
+    }
+    
+    if (feedbackOutput) {
+        feedbackOutput.className = "feedback-placeholder";
+        feedbackOutput.textContent = "Submit an answer to see real-time verification and grading.";
+    }
+}
+
+// ==========================================
+// 5. VERIFICATION & PROGRESSION EVENT HANDLER
+// ==========================================
+if (challengeSelect) {
+    challengeSelect.addEventListener("change", loadChallengesFromFirestore);
+}
+
+if (verifyBtn) {
+    verifyBtn.addEventListener("click", async () => {
+        if (!currentQuestionsList || currentQuestionsList.length === 0 || currentIndex >= currentQuestionsList.length) return;
+        const current = currentQuestionsList[currentIndex];
+
+        // If already answered correctly, clicking advances to the next question in sequence
+        if (isAnswerCorrect) {
+            currentIndex++;
+            displayCurrentQuestion();
+            return;
+        }
+
+        const val = studentAnswer ? studentAnswer.value : "";
+        if (!val.trim()) {
+            if (feedbackOutput) {
+                feedbackOutput.className = "feedback-incorrect";
+                feedbackOutput.textContent = "Please enter an expression before verifying.";
+            }
+            return;
+        }
+
+        let result;
+        try {
+            result = validateStudentAnswer(current, val);
+        } catch (err) {
+            console.error("Validation execution error:", err);
+            result = { correct: false, message: "Syntax execution issue while validating formula." };
+        }
+
+        if (result.correct) {
+            isAnswerCorrect = true;
+            if (feedbackOutput) {
+                feedbackOutput.className = "feedback-correct";
+                feedbackOutput.textContent = "✔ " + result.message;
+            }
+            
+            // Switch button to Next action style
+            verifyBtn.textContent = currentIndex < currentQuestionsList.length - 1 ? "Next Question →" : "Finish Set 🎉";
+            verifyBtn.className = "primary-btn next-action-btn";
+        } else {
+            if (feedbackOutput) {
+                feedbackOutput.className = "feedback-incorrect";
+                feedbackOutput.textContent = "✘ " + result.message;
+            }
+        }
+
+        // Safely retrieve active user profile with robust fallbacks
+        let activeUser = { username: "Anonymous Student", role: "Student", institution: "Standard College Ntungamo" };
+        if (typeof getCurrentUserProfile === 'function') {
+            try {
+                const profile = getCurrentUserProfile();
+                if (profile) activeUser = profile;
+            } catch (e) {
+                console.warn("Could not retrieve user profile for logging:", e);
+            }
+        }
+
+        // Log the user submission attempt to Firestore safely
+        if (typeof db !== 'undefined') {
+            try {
+                await db.collection("formulaSubmissions").add({
+                    challengeId: current.id,
+                    challengeType: current.type,
+                    ruleType: current.ruleType || "DEFAULT",
+                    expectedValue: current.expectedValue || "",
+                    submission: val,
+                    isCorrect: result.correct,
+                    feedbackMessage: result.message,
+                    user: activeUser.username || activeUser.name || "Unknown",
+                    role: activeUser.role || "Student",
+                    institution: activeUser.institution || "Standard College Ntungamo",
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } catch (error) {
+                console.error("Error saving submission to Firestore: ", error);
+            }
+        }
+    });
+}
+
+// Hamburger Mobile Menu Toggle
+const hamburgerBtn = document.getElementById('hamburgerBtn');
+const navRight = document.getElementById('navRight');
+
+if (hamburgerBtn && navRight) {
+    hamburgerBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        navRight.classList.toggle('mobile-active');
+    });
+
+    // Prevent internal clicks inside navRight from closing the mobile menu
+    navRight.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+
+    // Close mobile menu when clicking outside
+    window.addEventListener('click', () => {
+        if (navRight.classList.contains('mobile-active')) {
+            navRight.classList.remove('mobile-active');
+        }
+    });
+}
+
+// ==========================================
+// 6. ADMIN / TEACHER BULK IMPORT MODULE
+// ==========================================
+function setupAdminImportModule() {
+    let activeUser = { role: "Student" };
+    if (typeof getCurrentUserProfile === 'function') {
+        try {
+            const profile = getCurrentUserProfile();
+            if (profile) activeUser = profile;
+        } catch (e) {
+            console.warn("Profile retrieval warning:", e);
+        }
+    }
+    
+    console.log("Current Active User Profile:", activeUser);
+
+    const userRole = (activeUser.role || "").toLowerCase().trim();
+    
+    const isAdminOrTeacher = 
+        userRole.includes("admin") || 
+        userRole.includes("teach") || 
+        userRole.includes("educat") || 
+        userRole.includes("staff") ||
+        userRole.includes("instructor");
+
+    let adminContainer = document.getElementById("adminImportSection");
+    if (!adminContainer) {
+        adminContainer = document.createElement("div");
+        adminContainer.id = "adminImportSection";
+        adminContainer.className = "admin-import-card";
+        
+        adminContainer.innerHTML = `
+            <div class="admin-card-header">
+                <div class="admin-title-group">
+                    <span class="admin-badge"> Educator Hub</span>
+                    <h3>Bulk Question Import</h3>
+                </div>
+                <p class="admin-subtitle">Batch upload structured JSON challenge payloads directly into Firebase Firestore collections.</p>
+            </div>
+            
+            <div class="admin-form-grid">
+                <div class="admin-input-group">
+                    <label for="importCategory">Target Category Key</label>
+                    <input type="text" id="importCategory" class="admin-text-input" placeholder="e.g., excel_if, access_criteria" />
+                </div>
+                
+                <div class="admin-input-group full-width">
+                    <label for="jsonInput">Questions JSON Array Payload</label>
+                    <textarea id="jsonInput" class="admin-textarea" rows="5" placeholder='[{"type":"EXCEL", "prompt":"...", "hint":"...", "ruleType":"EXCEL_IF", "expectedValue":"...", "expectedTrue":"...", "expectedFalse":"..."}]'></textarea>
+                </div>
+            </div>
+
+            <div class="admin-card-footer">
+                <button id="uploadBatchBtn" class="primary-btn admin-action-btn">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    Upload to Firebase
+                </button>
+                <div id="uploadFeedback" class="admin-feedback-msg"></div>
+            </div>
+        `;
+        
+        const workspace = document.querySelector(".workspace");
+        if (workspace) {
+            workspace.parentNode.insertBefore(adminContainer, workspace);
+        } else {
+            document.body.appendChild(adminContainer);
+        }
+    }
+
+    if (isAdminOrTeacher) {
+        adminContainer.style.display = "block";
+        
+        const uploadBtn = document.getElementById("uploadBatchBtn");
+        if (uploadBtn && !uploadBtn.dataset.bound) {
+            uploadBtn.dataset.bound = "true";
+            uploadBtn.addEventListener("click", async () => {
+                const targetCategoryInput = document.getElementById("importCategory");
+                const jsonInputBox = document.getElementById("jsonInput");
+                const targetCategory = targetCategoryInput.value.trim();
+                const rawJson = jsonInputBox.value.trim();
+                const feedbackDiv = document.getElementById("uploadFeedback");
+
+                if (!targetCategory || !rawJson) {
+                    feedbackDiv.className = "admin-feedback-msg error";
+                    feedbackDiv.textContent = "Please provide both a target category key and a JSON payload.";
+                    return;
+                }
+
+                try {
+                    const questionsArray = JSON.parse(rawJson);
+                    if (!Array.isArray(questionsArray)) {
+                        throw new Error("JSON root must be an array of objects.");
+                    }
+
+                    feedbackDiv.className = "admin-feedback-msg info";
+                    feedbackDiv.textContent = `Uploading ${questionsArray.length} items to Firestore...`;
+                    uploadBtn.disabled = true;
+
+                    const batch = db.batch();
+                    questionsArray.forEach(q => {
+                        const docRef = db.collection("challenges").doc();
+                        batch.set(docRef, {
+                            category: targetCategory,
+                            type: q.type || "EXCEL",
+                            prompt: q.prompt,
+                            hint: q.hint || "",
+                            ruleType: q.ruleType || "DEFAULT",
+                            expectedValue: q.expectedValue || "",
+                            expectedTrue: q.expectedTrue || "",
+                            expectedFalse: q.expectedFalse || "",
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    });
+
+                    await batch.commit();
+                    feedbackDiv.className = "admin-feedback-msg success";
+                    feedbackDiv.textContent = "✔ Successfully imported all questions! Refreshing client workspace...";
+                    
+                    jsonInputBox.value = "";
+                    targetCategoryInput.value = "";
+
+                    setTimeout(() => {
+                        if (typeof loadChallengesFromFirestore === 'function') {
+                            loadChallengesFromFirestore();
+                        }
+                        uploadBtn.disabled = false;
+                        feedbackDiv.textContent = "";
+                        feedbackDiv.className = "admin-feedback-msg";
+                    }, 1800);
+
+                } catch (err) {
+                    console.error("Batch import error:", err);
+                    feedbackDiv.className = "admin-feedback-msg error";
+                    feedbackDiv.textContent = "Import Failed: " + err.message;
+                    uploadBtn.disabled = false;
+                }
+            });
+        }
+    } else {
+        adminContainer.style.display = "none";
+    }
+}
+
+// ==========================================
+// CLEAN SYNTAX HIGHLIGHTER ENGINE
+// ==========================================
+function highlightFormula(text) {
+    if (!text) return '';
+    
+    const safeText = text
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+    let bracketDepth = 0;
+
+    const tokenRegex = /(".*?"|'.*?')|([A-Z][A-Z0-9_]*\b(?=\())|([A-Z]+\d+:[A-Z]+\d+|\$[A-Z]+\$\d+[A-Z]?|[A-Z]+\d+)|(=)|([()]+)|([+\-*/^=<>]=?)/g;
+
+    return safeText.replace(tokenRegex, (match, str, func, cell, eq, bracket, op) => {
+        if (str) {
+            return `<span class="token-string">${str}</span>`;
+        }
+        if (func) {
+            return `<span class="token-function">${func}</span>`;
+        }
+        if (cell) {
+            return `<span class="token-cell">${cell}</span>`;
+        }
+        if (eq) {
+            return `<span class="token-equals">${eq}</span>`;
+        }
+        if (bracket) {
+            let result = '';
+            for (let char of bracket) {
+                if (char === '(') bracketDepth++;
+                const currentLevel = Math.min(64, Math.max(1, bracketDepth));
+                result += `<span class="token-bracket-${currentLevel}">${char}</span>`;
+                if (char === ')') bracketDepth = Math.max(0, bracketDepth - 1);
+            }
+            return result;
+        }
+        if (op) {
+            return `<span class="token-operator">${op}</span>`;
+        }
+        return match;
+    });
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const textarea = document.getElementById('studentAnswer');
+    const backdropCode = document.getElementById('formulaBackdrop');
+
+    if (textarea && backdropCode) {
+        if (textarea.value.includes('<span') || textarea.value.includes('token-')) {
+            textarea.value = '';
+        }
+
+        function updateEditor() {
+            let rawText = textarea.value;
+            
+            if (rawText.includes('<span')) {
+                textarea.value = '';
+                backdropCode.innerHTML = ' ';
+                return;
+            }
+    
+            const sanitizedText = rawText.replace(/([A-Z][A-Z0-9_]*)\s+(\()/g, '$1$2');
+            
+            if (sanitizedText !== rawText) {
+                const cursorPosition = textarea.selectionStart;
+                textarea.value = sanitizedText;
+                const newCursorPos = Math.max(0, cursorPosition - 1);
+                textarea.setSelectionRange(newCursorPos, newCursorPos);
+            }
+    
+            backdropCode.innerHTML = highlightFormula(textarea.value) + ' ';
+        }
+
+        textarea.addEventListener('input', updateEditor);
+        
+        textarea.addEventListener('scroll', () => {
+            if (backdropCode.parentElement) {
+                backdropCode.parentElement.scrollTop = textarea.scrollTop;
+                backdropCode.parentElement.scrollLeft = textarea.scrollLeft;
+            }
+        });
+
+        updateEditor();
+    }
+});
+
+// ==========================================
+// 7. INITIALIZATION ON PAGE LOAD
+// ==========================================
+loadChallengesFromFirestore();
+setupAdminImportModule();
