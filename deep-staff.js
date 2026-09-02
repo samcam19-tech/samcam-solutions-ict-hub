@@ -117,11 +117,12 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.insertAdjacentHTML('beforeend', modalHtml);
     }
 
-    // Inject Bulk Operations Panel above or near the table container if not present
+    // Inject Bulk Operations Panel above or near the table container if not present, with conditional display based on selection
     const tableContainer = document.querySelector('.table-container') || tableBody?.parentElement;
     if (tableContainer && !document.getElementById('bulkActionsCard')) {
+        const isUsersSelected = collectionSelect && collectionSelect.value === 'users';
         const bulkCardHtml = `
-            <div id="bulkActionsCard" style="background:var(--bg-card, #1e222d); border:1px solid var(--border-color, #2a2f3d); border-radius:10px; padding:15px 20px; margin-bottom:20px; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:15px;">
+            <div id="bulkActionsCard" style="background:var(--bg-card, #1e222d); border:1px solid var(--border-color, #2a2f3d); border-radius:10px; padding:15px 20px; margin-bottom:20px; display:${isUsersSelected ? 'flex' : 'none'}; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:15px;">
                 <div>
                     <h4 style="margin:0 0 5px 0; color:var(--text-main, #fff); font-size:15px;"><i class="fa-solid fa-wand-magic-sparkles"></i> Bulk User Data Operations</h4>
                     <p style="margin:0; font-size:12px; color:var(--text-secondary, #94a3b8);">Target collection: <code>users</code> (Auto-applies across all pagination pages)</p>
@@ -132,6 +133,17 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>`;
         tableContainer.insertAdjacentHTML('beforebegin', bulkCardHtml);
+    }
+
+    // --- COLLECTION SELECT CHANGE HANDLER ---
+    if (collectionSelect) {
+        collectionSelect.addEventListener('change', (e) => {
+            const bulkCard = document.getElementById('bulkActionsCard');
+            if (bulkCard) {
+                bulkCard.style.display = e.target.value === 'users' ? 'flex' : 'none';
+            }
+            fetchCollectionData(e.target.value);
+        });
     }
 
     // --- 1. DYNAMIC FIRESTORE DOCUMENT EXPLORER WITH PAGINATION ---
@@ -403,6 +415,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
+
 
     // --- DYNAMIC MODAL FORM GENERATOR & PATCH HANDLER ---
     async function openDynamicEditModal(collectionName, docId) {
