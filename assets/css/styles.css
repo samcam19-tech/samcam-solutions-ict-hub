@@ -220,7 +220,7 @@ body {
 
 /* HERO & COVER BACKGROUND */
 .cover-hero {
-  background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.88)), url('../images/banner-bg.png');
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.88)), url('../../images/banner-bg.png');
   background-size: cover;
   background-position: center;
   padding: 2.5rem 1rem 3.5rem;
