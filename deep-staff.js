@@ -75,6 +75,80 @@ document.addEventListener('DOMContentLoaded', () => {
         return summaries.join(' | ') || "No field metadata";
     }
 
+    // --- 🚀 MOVED UP: DYNAMIC FIRESTORE DOCUMENT EXPLORER (Declared First) ---
+    async function fetchCollectionData(collectionName) {
+        if (!collectionName || typeof collectionName !== 'string' || !collectionName.trim() || collectionName.includes('Loading')) {
+            console.warn("fetchCollectionData aborted: Invalid or uninitialized collection name.");
+            return;
+        }
+
+        const tableBodyEl = document.getElementById('firestoreTableBody');
+        if (!tableBodyEl) return;
+        tableBodyEl.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);"><i class="fa-solid fa-spinner fa-spin"></i> Querying live Firestore documents...</td></tr>`;
+        
+        try {
+            const snapshot = await firebase.firestore().collection(collectionName.trim()).get();
+            const documents = [];
+            
+            snapshot.forEach(doc => {
+                documents.push({
+                    id: doc.id,
+                    name: `projects/databases/documents/collections/${collectionName}/documents/${doc.id}`,
+                    fields: convertFirestoreDataToRESTFormat(doc.data()),
+                    updateTime: new Date().toISOString()
+                });
+            });
+
+            tableBodyEl.innerHTML = '';
+            
+            if (documents.length === 0) {
+                tableBodyEl.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);">No documents found in [${collectionName}].</td></tr>`;
+                appendTerminalLog('info', `Collection [${collectionName}] returned 0 documents.`);
+                return;
+            }
+
+            documents.forEach(doc => {
+                const docId = doc.id;
+                const fields = doc.fields || {};
+                let entityName = fields.schoolName?.stringValue || fields.terminalId?.stringValue || fields.adminUser?.stringValue || fields.fullName?.stringValue || "N/A";
+                let statusSummary = parseFieldSummary(fields);
+                let updateTime = doc.updateTime ? new Date(doc.updateTime).toLocaleString() : "Unknown";
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><code>${docId}</code></td>
+                    <td><strong>${entityName}</strong></td>
+                    <td>${statusSummary}</td>
+                    <td>${updateTime}</td>
+                    <td style="white-space: nowrap;">
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <button class="btn btn-sm btn-outline inspect-doc" data-collection="${collectionName}" data-id="${docId}"><i class="fa-solid fa-code"></i> Inspect</button>
+                            <button class="btn btn-sm btn-primary edit-doc" data-collection="${collectionName}" data-id="${docId}"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                        </div>
+                    </td>
+                `;
+                tableBodyEl.appendChild(tr);
+            });
+
+            document.querySelectorAll('.edit-doc').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const col = e.currentTarget.getAttribute('data-collection');
+                    const id = e.currentTarget.getAttribute('data-id');
+                    if (typeof openDynamicEditModal === 'function') {
+                        openDynamicEditModal(col, id);
+                    }
+                });
+            });
+
+            appendTerminalLog('success', `Successfully fetched all ${documents.length} records from [${collectionName}].`);
+
+        } catch (error) {
+            console.error("Firestore Fetch Error:", error);
+            tableBodyEl.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger);">Failed to connect to Firestore backend. Check console logs.</td></tr>`;
+            appendTerminalLog('error', `Firestore query failed for [${collectionName}]: ${error.message}`);
+        }
+    }
+
     // --- MASTER KEY GATE & SESSION HANDLERS ---
     (function checkMasterKeySession() {
         if (sessionStorage.getItem('samcam_super_admin_verified') === 'true') {
@@ -147,79 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("Logged out successfully. Returned to Master Key entry gate.");
     };
 
-    // --- DYNAMIC FIRESTORE DOCUMENT EXPLORER ---
-    async function fetchCollectionData(collectionName) {
-        if (!collectionName || typeof collectionName !== 'string' || !collectionName.trim() || collectionName.includes('Loading')) {
-            console.warn("fetchCollectionData aborted: Invalid or uninitialized collection name.");
-            return;
-        }
-
-        const tableBodyEl = document.getElementById('firestoreTableBody');
-        if (!tableBodyEl) return;
-        tableBodyEl.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);"><i class="fa-solid fa-spinner fa-spin"></i> Querying live Firestore documents...</td></tr>`;
-        
-        try {
-            const snapshot = await firebase.firestore().collection(collectionName.trim()).get();
-            const documents = [];
-            
-            snapshot.forEach(doc => {
-                documents.push({
-                    id: doc.id,
-                    name: `projects/databases/documents/collections/${collectionName}/documents/${doc.id}`,
-                    fields: convertFirestoreDataToRESTFormat(doc.data()),
-                    updateTime: doc.metadata.hasPendingWrites ? new Date().toISOString() : new Date().toISOString()
-                });
-            });
-
-            tableBodyEl.innerHTML = '';
-            
-            if (documents.length === 0) {
-                tableBodyEl.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);">No documents found in [${collectionName}].</td></tr>`;
-                appendTerminalLog('info', `Collection [${collectionName}] returned 0 documents.`);
-                return;
-            }
-
-            documents.forEach(doc => {
-                const docId = doc.id;
-                const fields = doc.fields || {};
-                let entityName = fields.schoolName?.stringValue || fields.terminalId?.stringValue || fields.adminUser?.stringValue || fields.fullName?.stringValue || "N/A";
-                let statusSummary = parseFieldSummary(fields);
-                let updateTime = doc.updateTime ? new Date(doc.updateTime).toLocaleString() : "Unknown";
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><code>${docId}</code></td>
-                    <td><strong>${entityName}</strong></td>
-                    <td>${statusSummary}</td>
-                    <td>${updateTime}</td>
-                    <td style="white-space: nowrap;">
-                        <div style="display: flex; gap: 6px; align-items: center;">
-                            <button class="btn btn-sm btn-outline inspect-doc" data-collection="${collectionName}" data-id="${docId}"><i class="fa-solid fa-code"></i> Inspect</button>
-                            <button class="btn btn-sm btn-primary edit-doc" data-collection="${collectionName}" data-id="${docId}"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                        </div>
-                    </td>
-                `;
-                tableBodyEl.appendChild(tr);
-            });
-
-            document.querySelectorAll('.edit-doc').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const col = e.currentTarget.getAttribute('data-collection');
-                    const id = e.currentTarget.getAttribute('data-id');
-                    if (typeof openDynamicEditModal === 'function') {
-                        openDynamicEditModal(col, id);
-                    }
-                });
-            });
-
-            appendTerminalLog('success', `Successfully fetched all ${documents.length} records from [${collectionName}].`);
-
-        } catch (error) {
-            console.error("Firestore Fetch Error:", error);
-            tableBodyEl.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger);">Failed to connect to Firestore backend. Check console logs.</td></tr>`;
-            appendTerminalLog('error', `Firestore query failed for [${collectionName}]: ${error.message}`);
-        }
-    }
+   
 
     // --- INJECT DYNAMIC MODAL CONTAINER & BULK ACTION CONTROLS INTO DOM ---
     if (!document.getElementById('dynamicEditModal')) {
