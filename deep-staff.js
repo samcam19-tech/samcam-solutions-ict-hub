@@ -259,17 +259,25 @@ document.addEventListener('DOMContentLoaded', () => {
         tableContainer.insertAdjacentHTML('beforebegin', bulkCardHtml);
     }
 
-    // --- COLLECTION SELECT CHANGE HANDLER ---
-    if (collectionSelect) {
-        collectionSelect.addEventListener('change', (e) => {
-            console.log("-> Dropdown changed to:", e.target.value);
+    // --- COLLECTION SELECT CHANGE HANDLER (EXPLICITLY TARGETED) ---
+    const mainCollectionSelect = document.getElementById('collectionSelect');
+    if (mainCollectionSelect) {
+        mainCollectionSelect.addEventListener('change', (e) => {
+            const selectedCollection = e.target.value;
+            console.log("-> Main Explorer dropdown changed to:", selectedCollection);
+            
             const bulkCard = document.getElementById('bulkActionsCard');
             if (bulkCard) {
-                bulkCard.style.display = e.target.value === 'users' ? 'flex' : 'none';
+                bulkCard.style.display = selectedCollection === 'users' ? 'flex' : 'none';
             }
-            fetchCollectionData(e.target.value);
+            
+            if (typeof fetchCollectionData === 'function') {
+                fetchCollectionData(selectedCollection);
+            } else {
+                console.error("fetchCollectionData is not globally defined!");
+            }
         });
-    } 
+    }
 
     // --- BULLETPROOF COLLECTION LOADER ---
     async function loadCollectionDropdowns() {
