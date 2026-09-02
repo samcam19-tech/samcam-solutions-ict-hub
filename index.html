@@ -3,41 +3,68 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Portal Sign In - SAMCAM SOLUTION</title>
+    <title>SAMCAM SOLUTION ICT HUB | Portal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../assets/css/login.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/css/login.css">
 </head>
 <body>
 
-    <div class="portal-container">
-        <div id="loginSection" class="card-box">
-            <h3><i class="fa-solid fa-right-to-bracket"></i> Portal Sign In</h3>
+    <div class="split-login-wrapper">
+        <!-- Left Brand Showcase Panel -->
+        <div class="brand-showcase-panel">
+            <div class="brand-top">
+                <img src="images/logo.png" alt="SAMCAM SOLUTION LMS Logo" onerror="this.style.display='none'">
+                <h1>SAMCAM SOLUTION LMS</h1>
+            </div>
             
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="loginUsername">Username</label>
-                    <input type="text" id="loginUsername" name="username" placeholder="Enter username..." required autocomplete="username">
+            <div class="brand-center">
+                <h2>Innovative ICT Insights <span>In Action</span></h2>
+                <p>Welcome to the ultimate academic portal. Access structured assessments, interactive coding environments, and advanced resource libraries seamlessly.</p>
+            </div>
+
+            <div class="brand-footer">
+                &copy; 2026 SAMCAM SOLUTION ICT HUB. All rights reserved.
+            </div>
+        </div>
+
+        <!-- Right Form Container Panel -->
+        <div class="form-container-panel">
+            <div class="card-box">
+                <div class="mobile-brand-header">
+                    <img src="images/logo.png" alt="Logo" onerror="this.style.display='none'">
+                    <h2>SAMCAM SOLUTION LMS</h2>
+                    <p>Innovative ICT Insights In Action</p>
                 </div>
+
+                <h3><i class="fa-solid fa-right-to-bracket"></i> Portal Sign In</h3>
                 
-                <div class="form-group" style="position: relative;">
-                    <label for="loginPassword">Password</label>
-                    <div style="position: relative; display: flex; align-items: center;">
-                        <input type="password" id="loginPassword" name="password" placeholder="Enter password..." required autocomplete="current-password" style="width: 100%; padding-right: 40px;">
-                        <span onclick="togglePasswordVisibility('loginPassword', 'togglePassIcon')" style="position: absolute; right: 12px; cursor: pointer; color: #64748b; font-size: 0.9rem;">
-                            <i id="togglePassIcon" class="fa-solid fa-eye"></i>
-                        </span>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="loginUsername">Username</label>
+                        <input type="text" id="loginUsername" name="username" placeholder="Enter username..." required autocomplete="username">
                     </div>
-                </div>
+                    
+                    <div class="form-group password-group">
+                        <label for="loginPassword">Password</label>
+                        <div class="password-input-wrapper">
+                            <input type="password" id="loginPassword" name="password" placeholder="Enter password..." required autocomplete="current-password">
+                            <span onclick="togglePasswordVisibility('loginPassword', 'togglePassIcon')" class="password-toggle-btn">
+                                <i id="togglePassIcon" class="fa-solid fa-eye"></i>
+                            </span>
+                        </div>
+                    </div>
 
-                <div style="display: flex; align-items: center; gap: 0.5rem; margin: 1rem 0;">
-                    <input type="checkbox" id="rememberMeCheck" style="width: auto; margin: 0; cursor: pointer;">
-                    <label for="rememberMeCheck" style="font-size: 0.9rem; cursor: pointer; margin: 0; font-weight: normal; display: inline; text-align: left;">Remember Me</label>
-                </div>
+                    <div class="remember-me-wrapper">
+                        <input type="checkbox" id="rememberMeCheck">
+                        <label for="rememberMeCheck">Remember Me</label>
+                    </div>
 
-                <div id="loginError" class="error-msg" style="display:none; color: #ef4444; margin-top: 0.5rem; font-size: 0.85rem;">Invalid username or password!</div>
-                
-                <button type="submit" id="signInBtn" class="btn-submit" style="margin-top: 1rem; width: 100%;">Sign In</button>
-            </form>
+                    <div id="loginError" class="error-msg" style="display:none;">Invalid username or password!</div>
+                    
+                    <button type="submit" id="signInBtn" class="btn-submit">Sign In</button>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -47,7 +74,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
     
     <!-- Your Firebase Config & Main Logic Scripts -->
-    <script src="../assets/js/firebase-config.js"></script>
-    <script src="../assets/js/script.js"></script>
+    <script src="assets/js/firebase-config.js"></script>
+    <script src="assets/js/script.js"></script>
 </body>
 </html>
