@@ -39,10 +39,10 @@
               title: 'Access Denied',
               message: 'Administrator privileges are required to access this portal section.',
               type: 'error',
-              onClose: () => { window.location.href = "index.html"; }
+              onClose: () => { window.location.href = "../index.html"; }
             });
           } else {
-            window.location.href = "../../login.html";
+            window.location.href = "../index,html";
           }
         } else {
           console.log("Admin session verified for:", user.name || user.username);
@@ -54,10 +54,10 @@
             title: 'Authentication Required',
             message: 'Please log in with an administrator account to continue.',
             type: 'warning',
-            onClose: () => { window.location.href = "index.html"; }
+            onClose: () => { window.location.href = "../index.html"; }
           });
         } else {
-          window.location.href = "index.html";
+          window.location.href = "../index.html";
         }
       }
     });
@@ -78,7 +78,7 @@
   </div>
 
   <div class="audit-actions">
-    <a href="library-dashboard" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
+    <a href="../library-dashboard/" class="btn btn-secondary" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px;">
       <i class="fa-solid fa-arrow-left"></i> Back to Library
     </a>
     <button type="button" class="btn btn-secondary" onclick="refreshAuditLogs()">
