@@ -603,7 +603,7 @@ window.handleLogout = function() {
   }
 
   // 5. Use replace() instead of href to prevent the back button from returning to the dashboard
-  window.location.replace('/assessments/index.html');
+  window.location.replace('./');
 };
 
 /* ==========================================================================
