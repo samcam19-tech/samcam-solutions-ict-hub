@@ -807,7 +807,7 @@ function setupAdminActions() {
     formDesc.textContent = "Create a brand new tenant record in the global database.";
     saveBtn.innerHTML = '<i class="fa-solid fa-plus" style="margin-right: 6px;"></i> Provision School Instance';
     cancelEditBtn.style.display = "none";
-    logoPreview.src = "images/default-avatar.png";
+    logoPreview.src = "../images/default-avatar.png";
     selectedLogoFile = null;
   }
 
@@ -825,7 +825,7 @@ function setupAdminActions() {
       schoolIdInput.disabled = true; // Lock slug during edit
       document.getElementById("newSchoolName").value = data.schoolName || "";
       document.getElementById("newSchoolLocation").value = data.location || "";
-      logoPreview.src = data.logoUrl || "images/default-avatar.png";
+      logoPreview.src = data.logoUrl || "../images/default-avatar.png";
       
       isEditingInput.value = "true";
       formTitle.textContent = `Edit School: ${data.schoolName || schoolId}`;
@@ -1191,12 +1191,12 @@ function initTenantSubscriptionManager() {
       const tenantName = data.schoolName || data.name || cleanId;
       
       // Fallback to default avatar image if school logo is not present
-      const schoolLogoUrl = data.logoUrl || data.logo || "images/default-avatar.png";
+      const schoolLogoUrl = data.logoUrl || data.logo || "../images/default-avatar.png";
 
       if (previewFeed) {
         previewFeed.innerHTML = `
           <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 0.75rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">
-            <img src="${escapeHtml(schoolLogoUrl)}" alt="School Logo" style="width: 36px; height: 36px; object-fit: cover; border-radius: 50%; border: 1px solid #cbd5e1; background: #fff;" onerror="this.src='images/default-avatar.png';" />
+            <img src="${escapeHtml(schoolLogoUrl)}" alt="School Logo" style="width: 36px; height: 36px; object-fit: cover; border-radius: 50%; border: 1px solid #cbd5e1; background: #fff;"/>
             <div style="flex: 1; overflow: hidden;">
               <div style="font-weight: 700; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${escapeHtml(tenantName)}</div>
               <div style="font-size: 0.75rem; color: #64748b;">ID: <strong>${escapeHtml(cleanId)}</strong></div>
