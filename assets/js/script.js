@@ -599,8 +599,8 @@ window.handleLogout = function() {
     updatePortalUI();
   }
 
-  // 5. Use replace() instead of href to prevent the back button from returning to the dashboard
-  window.location.replace('./');
+  // 5. Redirect back to the standalone login page (adjust relative depth if needed)
+  window.location.replace('../login.html');
 };
 
 /* ==========================================================================
