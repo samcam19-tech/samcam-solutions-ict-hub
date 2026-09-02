@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <link rel="stylesheet" href="../assets/css/styles.css">
+  <link rel="stylesheet" href="../assets/css/assessments.css">
   <style>
     .portal-container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; box-sizing: border-box; }
     .portal-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 2rem; }
@@ -255,20 +255,7 @@
         justify-content: center;
       }
     }
-    /* 1. Hide all dashboard and protected panels by default on page load */
-    #dashboardSection,
-    #teacherControls,
-    #teacherReports,
-    #adminStaffRegistrationModule,
-    #openManageStaffBtn,
-    #navLibraryManager {
-        display: none;
-    }
-    
-    /* 2. Ensure the login section is visible by default */
-    #loginSection {
-        display: block;
-    }
+   
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
@@ -347,7 +334,7 @@
     </div>
 
     <!-- MAIN PORTAL DASHBOARD -->
-    <div id="dashboardSection" style="display: none;">
+    <div id="dashboardSection" style="display: none; !important;">
       
       <!-- User Info Banner -->
 <div class="auth-banner">
