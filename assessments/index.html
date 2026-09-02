@@ -255,6 +255,20 @@
         justify-content: center;
       }
     }
+    /* 1. Hide all dashboard and protected panels by default on page load */
+    #dashboardSection,
+    #teacherControls,
+    #teacherReports,
+    #adminStaffRegistrationModule,
+    #openManageStaffBtn,
+    #navLibraryManager {
+        display: none;
+    }
+    
+    /* 2. Ensure the login section is visible by default */
+    #loginSection {
+        display: block;
+    }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 </head>
