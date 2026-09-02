@@ -1,11 +1,84 @@
-// ==========================================
-// GLOBAL CONFIGURATION & CONSTANTS
-// ==========================================
-const PROJECT_ID = "samcam-system";
-const API_KEY = "AIzaSyBcZxH7TTpejrFmF4ji0DS66xVfDVhZEfw";
-const FIRESTORE_BASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+// --- MASTER KEY GATE & SESSION HANDLERS ---
+(function checkMasterKeySession() {
+    if (sessionStorage.getItem('samcam_super_admin_verified') === 'true') {
+        const gate = document.getElementById('masterKeyGate');
+        const app = document.getElementById('deepStaffApp');
+        if (gate) gate.style.display = 'none';
+        if (app) app.style.display = 'block';
+    }
+})();
+
+window.verifyMasterKey = async function() {
+    const inputField = document.getElementById('masterKeyInput');
+    const errorDiv = document.getElementById('masterKeyError');
+    if (!inputField || !errorDiv) return;
+
+    const inputVal = inputField.value.trim();
+    errorDiv.style.display = 'none';
+
+    try {
+        const PROJECT_ID = "samcam-system";
+        const response = await fetch(`https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/system_config/super_admin_settings`);
+        
+        if (!response.ok) {
+            throw new Error(`Failed to fetch super admin settings: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const validKey = data.fields?.masterKey?.stringValue;
+
+        if (!validKey) {
+            throw new Error("Master key configuration missing in Firestore.");
+        }
+
+        if (inputVal === validKey) {
+            sessionStorage.setItem('samcam_super_admin_verified', 'true');
+            const gate = document.getElementById('masterKeyGate');
+            const app = document.getElementById('deepStaffApp');
+            if (gate) gate.style.display = 'none';
+            if (app) app.style.display = 'block';
+        } else {
+            errorDiv.style.display = 'block';
+            errorDiv.textContent = "Invalid Master Key. Access denied.";
+        }
+    } catch (error) {
+        console.error("Master key verification error:", error);
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = "Authentication error. Check connection or Firestore rules.";
+    }
+};
+
+window.logoutDeepStaff = function() {
+    sessionStorage.removeItem('samcam_super_admin_verified');
+
+    const gateEl = document.getElementById('masterKeyGate');
+    const appEl = document.getElementById('deepStaffApp');
+    const inputEl = document.getElementById('masterKeyInput');
+    const errEl = document.getElementById('masterKeyError');
+
+    if (appEl) appEl.style.display = 'none';
+    if (gateEl) gateEl.style.display = 'flex';
+
+    if (inputEl) {
+        inputEl.value = '';
+        inputEl.focus();
+    }
+    if (errEl) {
+        errEl.textContent = '';
+        errEl.style.display = 'none';
+    }
+
+    console.log("Logged out successfully. Returned to Master Key entry gate.");
+};
+
+
 // --- MAIN APP INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
+    
+    // --- FIREBASE CONFIGURATION & CONSTANTS ---
+    const PROJECT_ID = "samcam-system";
+    const FIRESTORE_BASE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
+
     const globalUnlockBtn = document.getElementById('globalUnlockBtn');
     const emergencyStatusLog = document.getElementById('emergencyStatusLog');
     const collectionSelect = document.getElementById('collectionSelect');
@@ -15,7 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const runStressTestBtn = document.getElementById('runStressTestBtn');
     const stressTestResult = document.getElementById('stressTestResult');
 
-    // --- TERMINAL LOGGER HELPER ---
     function appendTerminalLog(type, message) {
         if (!terminalStream) return;
         const div = document.createElement('div');
@@ -26,21 +98,130 @@ document.addEventListener('DOMContentLoaded', () => {
         terminalStream.scrollTop = terminalStream.scrollHeight;
     }
 
-    // --- DATA PARSING & FORMATTING HELPERS ---
-    function convertFirestoreDataToRESTFormat(data) {
-        const fields = {};
-        for (const [key, value] of Object.entries(data || {})) {
-            if (typeof value === 'string') {
-                fields[key] = { stringValue: value };
-            } else if (typeof value === 'number') {
-                fields[key] = { doubleValue: value };
-            } else if (typeof value === 'boolean') {
-                fields[key] = { booleanValue: value };
-            } else {
-                fields[key] = { stringValue: JSON.stringify(value) };
+    // --- INJECT DYNAMIC MODAL CONTAINER & BULK ACTION CONTROLS INTO DOM ---
+    if (!document.getElementById('dynamicEditModal')) {
+        const modalHtml = `
+            <div id="dynamicEditModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
+                <div style="background:var(--bg-card, #1e222d); border:1px solid var(--border-color, #2a2f3d); border-radius:12px; width:90%; max-width:600px; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 10px 25px rgba(0,0,0,0.5);">
+                    <div style="padding:16px 20px; border-bottom:1px solid var(--border-color, #2a2f3d); display:flex; justify-content:space-between; align-items:center;">
+                        <h3 id="modalDocTitle" style="margin:0; font-size:16px; color:var(--text-main, #fff);">Edit Document</h3>
+                        <button id="closeModalBtn" style="background:none; border:none; color:var(--text-secondary, #94a3b8); cursor:pointer; font-size:18px;"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div id="modalFormBody" style="padding:20px; overflow-y:auto; flex:1;"></div>
+                    <div style="padding:16px 20px; border-top:1px solid var(--border-color, #2a2f3d); display:flex; justify-content:flex-end; gap:10px;">
+                        <button id="cancelModalBtn" class="btn btn-outline" style="padding:8px 16px;">Cancel</button>
+                        <button id="saveModalBtn" class="btn btn-primary" style="padding:8px 16px;"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+                    </div>
+                </div>
+            </div>`;
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    }
+
+    // Inject Bulk Operations Panel above or near the table container if not present, with conditional display based on selection
+    const tableContainer = document.querySelector('.table-container') || tableBody?.parentElement;
+    if (tableContainer && !document.getElementById('bulkActionsCard')) {
+        const isUsersSelected = collectionSelect && collectionSelect.value === 'users';
+        const bulkCardHtml = `
+            <div id="bulkActionsCard" style="background:var(--bg-card, #1e222d); border:1px solid var(--border-color, #2a2f3d); border-radius:10px; padding:15px 20px; margin-bottom:20px; display:${isUsersSelected ? 'flex' : 'none'}; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:15px;">
+                <div>
+                    <h4 style="margin:0 0 5px 0; color:var(--text-main, #fff); font-size:15px;"><i class="fa-solid fa-wand-magic-sparkles"></i> Bulk User Data Operations</h4>
+                    <p style="margin:0; font-size:12px; color:var(--text-secondary, #94a3b8);">Target collection: <code>users</code> (Auto-applies across all pagination pages)</p>
+                </div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                   <button id="bulkCapitalizeBtn" class="btn btn-sm btn-primary" style="background:var(--primary, #3b82f6); border-color:var(--primary); color:#ffffff;"><i class="fa-solid fa-font"></i> Capitalize All Full Names</button>
+                    <button id="bulkPasswordResetBtn" class="btn btn-sm btn-primary" style="background:var(--danger, #ef4444); border-color:var(--danger);"><i class="fa-solid fa-key"></i> Reset All Passwords Securely</button>
+                </div>
+            </div>`;
+        tableContainer.insertAdjacentHTML('beforebegin', bulkCardHtml);
+    }
+
+    // --- COLLECTION SELECT CHANGE HANDLER ---
+    if (collectionSelect) {
+        collectionSelect.addEventListener('change', (e) => {
+            const bulkCard = document.getElementById('bulkActionsCard');
+            if (bulkCard) {
+                bulkCard.style.display = e.target.value === 'users' ? 'flex' : 'none';
             }
+            fetchCollectionData(e.target.value);
+        });
+    }
+
+    // --- 1. DYNAMIC FIRESTORE DOCUMENT EXPLORER WITH PAGINATION ---
+    async function fetchCollectionData(collectionName) {
+        if (!tableBody) return;
+        tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);"><i class="fa-solid fa-spinner fa-spin"></i> Querying live Firestore documents across all pages...</td></tr>`;
+        
+        try {
+            let allDocuments = [];
+            let pageToken = '';
+            
+            do {
+                let url = `${FIRESTORE_BASE_URL}/${collectionName}?pageSize=300`;
+                if (pageToken) {
+                    url += `&pageToken=${encodeURIComponent(pageToken)}`;
+                }
+                
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Firestore HTTP error! Status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                if (data.documents) {
+                    allDocuments = allDocuments.concat(data.documents);
+                }
+                pageToken = data.nextPageToken;
+            } while (pageToken);
+
+            const documents = allDocuments;
+            tableBody.innerHTML = '';
+            
+            if (documents.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);">No documents found in [${collectionName}].</td></tr>`;
+                appendTerminalLog('info', `Collection [${collectionName}] returned 0 documents.`);
+                return;
+            }
+
+            documents.forEach(doc => {
+                const docPathParts = doc.name.split('/');
+                const docId = docPathParts[docPathParts.length - 1];
+                
+                const fields = doc.fields || {};
+                let entityName = fields.schoolName?.stringValue || fields.terminalId?.stringValue || fields.adminUser?.stringValue || fields.fullName?.stringValue || "N/A";
+                let statusSummary = parseFieldSummary(fields);
+                let updateTime = doc.updateTime ? new Date(doc.updateTime).toLocaleString() : "Unknown";
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><code>${docId}</code></td>
+                    <td><strong>${entityName}</strong></td>
+                    <td>${statusSummary}</td>
+                    <td>${updateTime}</td>
+                    <td style="white-space: nowrap;">
+                        <div style="display: flex; gap: 6px; align-items: center;">
+                            <button class="btn btn-sm btn-outline inspect-doc" data-collection="${collectionName}" data-id="${docId}"><i class="fa-solid fa-code"></i> Inspect</button>
+                            <button class="btn btn-sm btn-primary edit-doc" data-collection="${collectionName}" data-id="${docId}"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
+                        </div>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            document.querySelectorAll('.edit-doc').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const col = e.currentTarget.getAttribute('data-collection');
+                    const id = e.currentTarget.getAttribute('data-id');
+                    openDynamicEditModal(col, id);
+                });
+            });
+
+            appendTerminalLog('success', `Successfully fetched all ${documents.length} records from [${collectionName}].`);
+
+        } catch (error) {
+            console.error("Firestore Fetch Error:", error);
+            tableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger);">Failed to connect to Firestore backend. Check console logs.</td></tr>`;
+            appendTerminalLog('error', `Firestore query failed for [${collectionName}]: ${error.message}`);
         }
-        return fields;
     }
 
     function parseFirestoreValue(valueObj) {
@@ -75,247 +256,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return summaries.join(' | ') || "No field metadata";
     }
 
-    // --- 🚀 MOVED UP: DYNAMIC FIRESTORE DOCUMENT EXPLORER (Declared First) ---
-    async function fetchCollectionData(collectionName) {
-        if (!collectionName || typeof collectionName !== 'string' || !collectionName.trim() || collectionName.includes('Loading')) {
-            console.warn("fetchCollectionData aborted: Invalid or uninitialized collection name.");
-            return;
-        }
-
-        const tableBodyEl = document.getElementById('firestoreTableBody');
-        if (!tableBodyEl) return;
-        tableBodyEl.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);"><i class="fa-solid fa-spinner fa-spin"></i> Querying live Firestore documents...</td></tr>`;
-        
-        try {
-            const snapshot = await firebase.firestore().collection(collectionName.trim()).get();
-            const documents = [];
-            
-            snapshot.forEach(doc => {
-                documents.push({
-                    id: doc.id,
-                    name: `projects/databases/documents/collections/${collectionName}/documents/${doc.id}`,
-                    fields: convertFirestoreDataToRESTFormat(doc.data()),
-                    updateTime: new Date().toISOString()
-                });
-            });
-
-            tableBodyEl.innerHTML = '';
-            
-            if (documents.length === 0) {
-                tableBodyEl.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-secondary);">No documents found in [${collectionName}].</td></tr>`;
-                appendTerminalLog('info', `Collection [${collectionName}] returned 0 documents.`);
-                return;
-            }
-
-            documents.forEach(doc => {
-                const docId = doc.id;
-                const fields = doc.fields || {};
-                let entityName = fields.schoolName?.stringValue || fields.terminalId?.stringValue || fields.adminUser?.stringValue || fields.fullName?.stringValue || "N/A";
-                let statusSummary = parseFieldSummary(fields);
-                let updateTime = doc.updateTime ? new Date(doc.updateTime).toLocaleString() : "Unknown";
-
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><code>${docId}</code></td>
-                    <td><strong>${entityName}</strong></td>
-                    <td>${statusSummary}</td>
-                    <td>${updateTime}</td>
-                    <td style="white-space: nowrap;">
-                        <div style="display: flex; gap: 6px; align-items: center;">
-                            <button class="btn btn-sm btn-outline inspect-doc" data-collection="${collectionName}" data-id="${docId}"><i class="fa-solid fa-code"></i> Inspect</button>
-                            <button class="btn btn-sm btn-primary edit-doc" data-collection="${collectionName}" data-id="${docId}"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
-                        </div>
-                    </td>
-                `;
-                tableBodyEl.appendChild(tr);
-            });
-
-            document.querySelectorAll('.edit-doc').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const col = e.currentTarget.getAttribute('data-collection');
-                    const id = e.currentTarget.getAttribute('data-id');
-                    if (typeof openDynamicEditModal === 'function') {
-                        openDynamicEditModal(col, id);
-                    }
-                });
-            });
-
-            appendTerminalLog('success', `Successfully fetched all ${documents.length} records from [${collectionName}].`);
-
-        } catch (error) {
-            console.error("Firestore Fetch Error:", error);
-            tableBodyEl.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--danger);">Failed to connect to Firestore backend. Check console logs.</td></tr>`;
-            appendTerminalLog('error', `Firestore query failed for [${collectionName}]: ${error.message}`);
-        }
-    }
-
-    // --- MASTER KEY GATE & SESSION HANDLERS ---
-    (function checkMasterKeySession() {
-        if (sessionStorage.getItem('samcam_super_admin_verified') === 'true') {
-            const gate = document.getElementById('masterKeyGate');
-            const app = document.getElementById('deepStaffApp');
-            if (gate) gate.style.display = 'none';
-            if (app) app.style.display = 'block';
-        }
-    })();
-
-    window.verifyMasterKey = async function() {
-        const inputField = document.getElementById('masterKeyInput');
-        const errorDiv = document.getElementById('masterKeyError');
-        if (!inputField || !errorDiv) return;
-
-        const inputVal = inputField.value.trim();
-        errorDiv.style.display = 'none';
-
-        try {
-            const response = await fetch(`https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents/system_config/super_admin_settings`);
-            
-            if (!response.ok) {
-                throw new Error(`Failed to fetch super admin settings: ${response.status}`);
-            }
-
-            const data = await response.json();
-            const validKey = data.fields?.masterKey?.stringValue;
-
-            if (!validKey) {
-                throw new Error("Master key configuration missing in Firestore.");
-            }
-
-            if (inputVal === validKey) {
-                sessionStorage.setItem('samcam_super_admin_verified', 'true');
-                const gate = document.getElementById('masterKeyGate');
-                const app = document.getElementById('deepStaffApp');
-                if (gate) gate.style.display = 'none';
-                if (app) app.style.display = 'block';
-            } else {
-                errorDiv.style.display = 'block';
-                errorDiv.textContent = "Invalid Master Key. Access denied.";
-            }
-        } catch (error) {
-            console.error("Master key verification error:", error);
-            errorDiv.style.display = 'block';
-            errorDiv.textContent = "Authentication error. Check connection or Firestore rules.";
-        }
-    };
-
-    window.logoutDeepStaff = function() {
-        sessionStorage.removeItem('samcam_super_admin_verified');
-
-        const gateEl = document.getElementById('masterKeyGate');
-        const appEl = document.getElementById('deepStaffApp');
-        const inputEl = document.getElementById('masterKeyInput');
-        const errEl = document.getElementById('masterKeyError');
-
-        if (appEl) appEl.style.display = 'none';
-        if (gateEl) gateEl.style.display = 'flex';
-
-        if (inputEl) {
-            inputEl.value = '';
-            inputEl.focus();
-        }
-        if (errEl) {
-            errEl.textContent = '';
-            errEl.style.display = 'none';
-        }
-
-        console.log("Logged out successfully. Returned to Master Key entry gate.");
-    };
-
-   
-
-    // --- INJECT DYNAMIC MODAL CONTAINER & BULK ACTION CONTROLS INTO DOM ---
-    if (!document.getElementById('dynamicEditModal')) {
-        const modalHtml = `
-            <div id="dynamicEditModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:9999; justify-content:center; align-items:center;">
-                <div style="background:var(--bg-card, #1e222d); border:1px solid var(--border-color, #2a2f3d); border-radius:12px; width:90%; max-width:600px; max-height:85vh; display:flex; flex-direction:column; box-shadow:0 10px 25px rgba(0,0,0,0.5);">
-                    <div style="padding:16px 20px; border-bottom:1px solid var(--border-color, #2a2f3d); display:flex; justify-content:space-between; align-items:center;">
-                        <h3 id="modalDocTitle" style="margin:0; font-size:16px; color:var(--text-main, #fff);">Edit Document</h3>
-                        <button id="closeModalBtn" style="background:none; border:none; color:var(--text-secondary, #94a3b8); cursor:pointer; font-size:18px;"><i class="fa-solid fa-xmark"></i></button>
-                    </div>
-                    <div id="modalFormBody" style="padding:20px; overflow-y:auto; flex:1;"></div>
-                    <div style="padding:16px 20px; border-top:1px solid var(--border-color, #2a2f3d); display:flex; justify-content:flex-end; gap:10px;">
-                        <button id="cancelModalBtn" class="btn btn-outline" style="padding:8px 16px;">Cancel</button>
-                        <button id="saveModalBtn" class="btn btn-primary" style="padding:8px 16px;"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
-                    </div>
-                </div>
-            </div>`;
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-    }
-
-    const tableContainer = document.querySelector('.table-container') || tableBody?.parentElement;
-    if (tableContainer && !document.getElementById('bulkActionsCard')) {
-        const isUsersSelected = collectionSelect && collectionSelect.value === 'users';
-        const bulkCardHtml = `
-            <div id="bulkActionsCard" style="background:var(--bg-card, #1e222d); border:1px solid var(--border-color, #2a2f3d); border-radius:10px; padding:15px 20px; margin-bottom:20px; display:${isUsersSelected ? 'flex' : 'none'}; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:15px;">
-                <div>
-                    <h4 style="margin:0 0 5px 0; color:var(--text-main, #fff); font-size:15px;"><i class="fa-solid fa-wand-magic-sparkles"></i> Bulk User Data Operations</h4>
-                    <p style="margin:0; font-size:12px; color:var(--text-secondary, #94a3b8);">Target collection: <code>users</code> (Auto-applies across all pagination pages)</p>
-                </div>
-                <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                   <button id="bulkCapitalizeBtn" class="btn btn-sm btn-primary" style="background:var(--primary, #3b82f6); border-color:var(--primary); color:#ffffff;"><i class="fa-solid fa-font"></i> Capitalize All Full Names</button>
-                    <button id="bulkPasswordResetBtn" class="btn btn-sm btn-primary" style="background:var(--danger, #ef4444); border-color:var(--danger);"><i class="fa-solid fa-key"></i> Reset All Passwords Securely</button>
-                </div>
-            </div>`;
-        tableContainer.insertAdjacentHTML('beforebegin', bulkCardHtml);
-    }
-
-    // --- 1. MAIN EXPLORER DROPDOWN HANDLER ---
-    const mainCollectionSelect = document.getElementById('collectionSelect');
-    if (mainCollectionSelect) {
-        mainCollectionSelect.addEventListener('change', (e) => {
-            const selectedCollection = e.target.value;
-            console.log("-> Main Explorer dropdown changed to:", selectedCollection);
-            
-            const bulkCard = document.getElementById('bulkActionsCard');
-            if (bulkCard) {
-                bulkCard.style.display = selectedCollection === 'users' ? 'flex' : 'none';
-            }
-            
-            if (typeof fetchCollectionData === 'function') {
-                fetchCollectionData(selectedCollection);
-            } else {
-                console.error("fetchCollectionData is not globally defined!");
-            }
-        });
-    }
-
-    // --- BULLETPROOF COLLECTION LOADER ---
-    async function loadCollectionDropdowns() {
-        console.log("-> Starting loadCollectionDropdowns()...");
-        const colSelect = document.getElementById('collectionSelect');
-        const stressSelect = document.getElementById('stressCollectionSelect');
-        
-        if (!colSelect) {
-            console.error("-> CRITICAL: element with id 'collectionSelect' not found in DOM!");
-            return;
-        }
-
-        try {
-            console.log("-> Fetching collections from Cloud Function...");
-            const response = await fetch('https://us-central1-samcam-system.cloudfunctions.net/listCollections');
-            
-            const data = await response.json();
-            const collections = Array.isArray(data) ? data : (data.collections || data.data || []);
-
-            if (collections.length > 0) {
-                const optionsHtml = collections.map(col => `<option value="${col}">${col}</option>`).join('');
-                colSelect.innerHTML = optionsHtml;
-                if (stressSelect) stressSelect.innerHTML = optionsHtml;
-                
-                fetchCollectionData(collections[0]);
-            } else {
-                colSelect.innerHTML = '<option value="">No collections found</option>';
-            }
-        } catch (err) {
-            console.error("-> FAILED in loadCollectionDropdowns:", err);
-            const fallback = ['users', 'quizzes', 'submissions', 'announcements', 'schools', 'e_library_resources', 'forum_threads', 'blogs'];
-            colSelect.innerHTML = fallback.map(col => `<option value="${col}">${col}</option>`).join('');
-            fetchCollectionData(fallback[0]);
-        }
-    }
-
-    loadCollectionDropdowns();
-
     // --- BULK ACTION 1: CAPITALIZE ALL USER FULL NAMES ---
     const bulkCapitalizeBtn = document.getElementById('bulkCapitalizeBtn');
     if (bulkCapitalizeBtn) {
@@ -346,6 +286,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const currentName = fields.fullName?.stringValue;
                     if (!currentName) continue;
 
+                    // Title Case formatter: ensures each word starts with an uppercase letter
                     const capitalized = currentName
                         .toLowerCase()
                         .split(' ')
@@ -406,6 +347,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 let credentialsLog = "ID/Email,FullName,NewPassword\n";
                 let resetCount = 0;
 
+                // Generator function meeting criteria: >=8 chars, uppercase, lowercase, numbers, special characters
                 function generateSecurePassword() {
                     const upper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
                     const lower = "abcdefghijklmnopqrstuvwxyz";
@@ -435,6 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     const newPassword = generateSecurePassword();
 
+                    // Send PATCH request updating the 'password' field (adjust field name if your database uses 'pass' or 'userPassword')
                     const patchUrl = `https://firestore.googleapis.com/v1/${doc.name}?updateMask.fieldPaths=password`;
                     const patchRes = await fetch(patchUrl, {
                         method: 'PATCH',
@@ -448,6 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
 
+                // Trigger automatic text/CSV download file containing the new credentials for administrator records
                 const blob = new Blob([credentialsLog], { type: 'text/csv;charset=utf-8;' });
                 const urlObj = URL.createObjectURL(blob);
                 const a = document.createElement('a');
@@ -471,7 +415,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-});
+
+
 
     // --- DYNAMIC MODAL FORM GENERATOR & PATCH HANDLER ---
     async function openDynamicEditModal(collectionName, docId) {
@@ -729,76 +674,72 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+// --- 4. DYNAMIC CONCURRENT LOAD STRESS TEST ---
+    if (runStressTestBtn) {
+        runStressTestBtn.addEventListener('click', async () => {
+            const stressCountInput = document.getElementById('stressCountInput');
+            const stressCollectionSelect = document.getElementById('stressCollectionSelect');
+            
+            const concurrentCount = parseInt(stressCountInput?.value) || 200;
+            const targetCollection = stressCollectionSelect?.value || 'checkins';
 
-// --- 4. DYNAMIC CONCURRENT LOAD STRESS TEST (EVENT DELEGATION FIX) ---
-document.addEventListener('click', async (e) => {
-    const runStressTestBtn = e.target.closest('#runStressTestBtn');
-    if (!runStressTestBtn) return;
+            runStressTestBtn.disabled = true;
+            runStressTestBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Running ${concurrentCount} Pings on [${targetCollection}]...`;
+            
+            appendTerminalLog('info', `Initiating real stress simulation: firing ${concurrentCount} concurrent requests to [${targetCollection}]...`);
+            const startTime = performance.now();
 
-    const stressCountInput = document.getElementById('stressCountInput');
-    const stressCollectionSelect = document.getElementById('stressCollectionSelect');
-    const stressTestResult = document.getElementById('stressTestResult');
+            try {
+                const testBatch = Array.from({ length: concurrentCount }, (_, index) => {
+                    const uniqueId = `SIM_${targetCollection.toUpperCase()}_${Math.floor(1000 + Math.random() * 9000)}_${index}`;
+                    const payload = {
+                        fields: {
+                            simulationId: { stringValue: uniqueId },
+                            status: { stringValue: "stress_test_active" },
+                            targetCollection: { stringValue: targetCollection },
+                            timestamp: { timestampValue: new Date().toISOString() }
+                        }
+                    };
 
-    const concurrentCount = parseInt(stressCountInput?.value) || 200;
-    const targetCollection = stressCollectionSelect?.value || 'checkins';
+                    return fetch(`${FIRESTORE_BASE_URL}/${targetCollection}?documentId=${uniqueId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload)
+                    });
+                });
 
-    runStressTestBtn.disabled = true;
-    runStressTestBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Running ${concurrentCount} Pings on [${targetCollection}]...`;
+                const results = await Promise.allSettled(testBatch);
+                let successCount = 0;
+                
+                results.forEach(res => {
+                    if (res.status === 'fulfilled' && (res.value.ok || res.value.status === 409)) {
+                        successCount++;
+                    }
+                });
 
-    appendTerminalLog('info', `Initiating real stress simulation: firing ${concurrentCount} concurrent requests to [${targetCollection}]...`);
-    const startTime = performance.now();
+                const endTime = performance.now();
+                const duration = Math.round(endTime - startTime);
 
-    try {
-        const testBatch = Array.from({ length: concurrentCount }, (_, index) => {
-            const uniqueId = `SIM_${targetCollection.toUpperCase()}_${Math.floor(1000 + Math.random() * 9000)}_${index}`;
-            const payload = {
-                fields: {
-                    simulationId: { stringValue: uniqueId },
-                    status: { stringValue: "stress_test_active" },
-                    targetCollection: { stringValue: targetCollection },
-                    timestamp: { timestampValue: new Date().toISOString() }
+                if (stressTestResult) {
+                    stressTestResult.classList.remove('hidden');
+                    stressTestResult.innerHTML = `<span>Processed: <strong>${successCount}/${concurrentCount}</strong></span><span>Latency: <strong>${duration}ms</strong></span><span class="text-success">Status: Optimal</span>`;
                 }
-            };
+                
+                appendTerminalLog('success', `Stress simulation passed: ${successCount}/${concurrentCount} operations on [${targetCollection}] resolved in ${duration}ms.`);
 
-            const url = `${FIRESTORE_BASE_URL}/${targetCollection}?documentId=${uniqueId}&key=${API_KEY}`;
-            return fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(payload)
-            });
-        });
-
-        const results = await Promise.allSettled(testBatch);
-        let successCount = 0;
-
-        results.forEach(res => {
-            if (res.status === 'fulfilled' && (res.value.ok || res.value.status === 409)) {
-                successCount++;
+            } catch (err) {
+                console.error("Stress Test Error:", err);
+                appendTerminalLog('error', `Stress test simulation encountered exceptions: ${err.message}`);
+                if (stressTestResult) {
+                    stressTestResult.innerHTML = `<span class="text-danger">Status: Failed (${err.message})</span>`;
+                }
+            } finally {
+                runStressTestBtn.disabled = false;
+                runStressTestBtn.innerHTML = `<i class="fa-solid fa-gauge-high"></i> Run Concurrent Load Simulation`;
             }
         });
-
-        const endTime = performance.now();
-        const duration = Math.round(endTime - startTime);
-
-        if (stressTestResult) {
-            stressTestResult.classList.remove('hidden');
-            stressTestResult.innerHTML = `<span>Processed: <strong>${successCount}/${concurrentCount}</strong></span><span>Latency: <strong>${duration}ms</strong></span><span class="text-success">Status: Optimal</span>`;
-        }
-
-        appendTerminalLog('success', `Stress simulation passed: ${successCount}/${concurrentCount} operations on [${targetCollection}] resolved in ${duration}ms.`);
-
-    } catch (err) {
-        console.error("Stress Test Error:", err);
-        appendTerminalLog('error', `Stress test simulation encountered exceptions: ${err.message}`);
-        if (stressTestResult) {
-            stressTestResult.innerHTML = `<span class="text-danger">Status: Failed (${err.message})</span>`;
-        }
-    } finally {
-        runStressTestBtn.disabled = false;
-        runStressTestBtn.innerHTML = `<i class="fa-solid fa-gauge-high"></i> Run Concurrent Load Simulation`;
     }
-});
-
+    });
 
 // --- DYNAMICALLY POPULATE ALL COLLECTION DROPDOWNS ---
 async function initializeCollectionDropdowns() {
@@ -856,4 +797,3 @@ async function initializeCollectionDropdowns() {
         });
     }
 }
-
