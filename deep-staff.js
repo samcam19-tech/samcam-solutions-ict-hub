@@ -259,7 +259,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tableContainer.insertAdjacentHTML('beforebegin', bulkCardHtml);
     }
 
-    // --- COLLECTION SELECT CHANGE HANDLER (EXPLICITLY TARGETED) ---
+    // --- 1. MAIN EXPLORER DROPDOWN HANDLER ---
     const mainCollectionSelect = document.getElementById('collectionSelect');
     if (mainCollectionSelect) {
         mainCollectionSelect.addEventListener('change', (e) => {
@@ -729,6 +729,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+
 // --- 4. DYNAMIC CONCURRENT LOAD STRESS TEST (EVENT DELEGATION FIX) ---
 document.addEventListener('click', async (e) => {
     const runStressTestBtn = e.target.closest('#runStressTestBtn');
