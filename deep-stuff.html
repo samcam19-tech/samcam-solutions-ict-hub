@@ -89,7 +89,27 @@
                     <h2><i class="fa-solid fa-database"></i> Real-Time Firestore Document Explorer</h2>
                     <div class="card-tools">
                         <select id="collectionSelect" class="saas-select">
-                            <option value="">Loading collections...</option>
+                            <option value="announcements">announcements</option>
+                            <option value="attendance">attendance</option>
+                            <option value="audit_logs">audit_logs</option>
+                            <option value="blog_posts">blog_posts</option>
+                            <option value="challenges">challenges</option>
+                            <option value="e_library_resources">e_library_resources</option>
+                            <option value="firewall_rules">firewall_rules</option>
+                            <option value="formulaSubmissions">formulaSubmissions</option>
+                            <option value="forum_threads">forum_threads</option>
+                            <option value="live_classes">live_classes</option>
+                            <option value="network_telemetry">network_telemetry</option>
+                            <option value="notifications">notifications</option>
+                            <option value="pending_payments">pending_payments</option>
+                            <option value="portal_resources">portal_resources</option>
+                            <option value="quiz_results">quiz_results</option>
+                            <option value="quizzes">quizzes</option>
+                            <option value="schools" selected>schools</option>
+                            <option value="submissions">submissions</option>
+                            <option value="system_config">system_config</option>
+                            <option value="users">users</option>
+                            <option value="workstation_telemetry">workstation_telemetry</option>
                         </select>
                         <button id="refreshDocsBtn" class="btn btn-sm btn-outline"><i class="fa-solid fa-rotate"></i> Refresh</button>
                     </div>
@@ -154,24 +174,12 @@
                 </div>
                 <div class="stress-test-panel">
                     <h4>Load Simulation Console</h4>
-                    <div style="display: flex; gap: 10px; margin-bottom: 12px; flex-wrap: wrap;">
-                        <div style="flex: 1; min-width: 130px;">
-                            <label style="font-size: 11px; display: block; margin-bottom: 4px; color: var(--text-secondary);">Target Collection</label>
-                            <select id="stressCollectionSelect" class="saas-select" style="width: 100%;">
-                                <option value="">Loading...</option>
-                            </select>
-                        </div>
-                        <div style="flex: 1; min-width: 130px;">
-                            <label style="font-size: 11px; display: block; margin-bottom: 4px; color: var(--text-secondary);">Concurrent Count</label>
-                            <input type="number" id="stressCountInput" value="200" min="1" max="1000" class="saas-select" style="width: 100%; box-sizing: border-box; padding: 6px 10px;">
-                        </div>
-                    </div>
                     <button id="runStressTestBtn" class="btn btn-primary btn-block">
-                        <i class="fa-solid fa-gauge-high"></i> Run Concurrent Load Simulation
+                        <i class="fa-solid fa-gauge-high"></i> Simulate 50 Concurrent Student Check-ins
                     </button>
                     <div id="stressTestResult" class="stress-metrics hidden">
-                        <span>Processed: <strong>0/0</strong></span>
-                        <span>Latency: <strong>0ms</strong></span>
+                        <span>Processed: <strong>50/50</strong></span>
+                        <span>Avg Time: <strong>18ms</strong></span>
                         <span class="text-success">Status: Optimal</span>
                     </div>
                 </div>
