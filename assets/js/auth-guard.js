@@ -23,10 +23,11 @@
                             pathname.includes('/network-manager/') || 
                             pathname.includes('/payments/') ||
                             pathname.includes('/logs/') || 
+                            pathname.includes('/logs/') || 
                             pathname.includes('/profile/') || 
                             pathname.includes('/super-admin/') ||    
                             pathname.includes('/assessments/') || 
-                            pathname.includes('/library_dashboard/') || 
+                            pathname.includes('/library-dashboard/') || 
                             pathname.includes('/e-library/') ||
                             pathname.includes('/formula/') ||
                             pathname.includes('/announcements/');
