@@ -29,8 +29,6 @@ const SAMCAM_BUSINESS_ACCOUNTS = {
 const db = window.db || (typeof firebase !== "undefined" ? firebase.firestore() : null);
 
 document.addEventListener("DOMContentLoaded", () => {
-  // Initialize Theme
-  initTheme();
 
   // Load state from URL parameters first before fetching data
   loadStateFromURL();
@@ -686,7 +684,7 @@ function updateStatsCounters() {
 }
 
 /* ==========================================================================
-   4. MODAL & THEME UTILITIES
+   4. MODAL UTILITIES
    ========================================================================== */
 function openPreviewModal(encodedItem) {
   const item = JSON.parse(decodeURIComponent(encodedItem));
@@ -720,38 +718,6 @@ function closePreviewModal(e) {
 function closePreviewModalDirect() {
   const modal = document.getElementById('previewModal');
   if (modal) modal.style.display = 'none';
-}
-
-function initTheme() {
-  const savedTheme = localStorage.getItem('portal_theme') || 'light';
-  document.documentElement.setAttribute('data-theme', savedTheme);
-  
-  const themeBtn = document.getElementById('themeToggleBtn');
-  if (themeBtn) {
-    updateThemeButtonUI(themeBtn, savedTheme);
-    themeBtn.removeEventListener('click', toggleTheme); // Prevent duplicate event listeners
-    themeBtn.addEventListener('click', toggleTheme);
-  }
-}
-
-function toggleTheme() {
-  const currentTheme = document.documentElement.getAttribute('data-theme');
-  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-  
-  document.documentElement.setAttribute('data-theme', newTheme);
-  localStorage.setItem('portal_theme', newTheme);
-  
-  const themeBtn = document.getElementById('themeToggleBtn');
-  if (themeBtn) {
-    updateThemeButtonUI(themeBtn, newTheme);
-  }
-}
-
-function updateThemeButtonUI(btn, theme) {
-  const icon = btn.querySelector('i');
-  if (icon) {
-    icon.className = theme === 'dark' ? 'fa-solid fa-sun' : 'fa-solid fa-moon';
-  }
 }
 
 function handleScroll() {
