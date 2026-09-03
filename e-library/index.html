@@ -33,6 +33,11 @@
       padding: 0.5rem;
     }
 
+    /* Hide labels by default on desktop viewports */
+    .nav-action-item .nav-item-label {
+      display: none;
+    }
+
     /* Standardized Unified Navbar Action Button/Link Style */
     .nav-action-item {
       display: inline-flex;
@@ -90,8 +95,19 @@
         justify-content: flex-start;
         padding: 0.6rem 0.9rem;
       }
-      .nav-actions .desktop-only {
-        display: inline-flex !important;
+      /* Reveal labels in mobile view */
+      .nav-action-item .nav-item-label {
+        display: inline;
+      }
+      .nav-profile-dropdown-container {
+        width: 100% !important;
+      }
+      #userProfileDropdownMenu {
+        position: static !important;
+        width: 100% !important;
+        box-shadow: none !important;
+        border: none !important;
+        margin-top: 0.5rem;
       }
     }
   </style>
@@ -142,13 +158,14 @@
             <i class="fa-solid fa-bell" style="font-size: 1rem;"></i>
             <span id="navUnreadBadge" class="nav-badge-counter" style="position: absolute; top: -8px; right: -10px; background: #ef4444; color: white; font-size: 0.6rem; font-weight: 700; padding: 0.05rem 0.3rem; border-radius: 10px; min-width: 15px; text-align: center; line-height: 1.2;">0</span>
           </span>
-          <span></span>
+          <span class="nav-item-label">Notifications</span>
         </button>
 
         <!-- User Profile Dropdown Menu -->
-        <div class="nav-profile-dropdown-container" style="position: relative; display: inline-block;">
-          <button id="userProfileToggleBtn" class="nav-action-item" onclick="toggleProfileDropdown(event)" aria-label="User Profile Options" title="Profile Settings" style="background: none; border: none; cursor: pointer; display: flex; align-items: center; padding: 0.4rem;">
-            <i class="fa-solid fa-user-circle" style="font-size: 1.3rem; color: #38bdf8;"></i>
+        <div class="nav-profile-dropdown-container" style="position: relative; display: inline-block; width: 100%;">
+          <button id="userProfileToggleBtn" class="nav-action-item" onclick="toggleProfileDropdown(event)" aria-label="User Profile Options" title="Profile Settings" style="cursor: pointer; display: flex; align-items: center;">
+            <i class="fa-solid fa-user-circle" style="font-size: 1.1rem; color: #38bdf8;"></i>
+            <span class="nav-item-label">Profile Settings</span>
           </button>
           
           <div id="userProfileDropdownMenu" style="display: none; position: absolute; right: 0; top: calc(100% + 8px); background: #1e293b; border: 1px solid #334155; border-radius: 10px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5); min-width: 180px; z-index: 1000; overflow: hidden;">
