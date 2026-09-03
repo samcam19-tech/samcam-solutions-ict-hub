@@ -23,7 +23,6 @@
                             pathname.includes('/network-manager/') || 
                             pathname.includes('/payments/') ||
                             pathname.includes('/logs/') || 
-                            pathname.includes('/logs/') || 
                             pathname.includes('/profile/') || 
                             pathname.includes('/super-admin/') ||    
                             pathname.includes('/assessments/') || 
