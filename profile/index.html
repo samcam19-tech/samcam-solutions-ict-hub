@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAMCAM SOLUTION ICT HUB | Edit Profile</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1rem;
+        }
+
+        .profile-container {
+            width: 100%;
+            max-width: 600px;
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.4);
+            padding: 2.5rem;
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            border-bottom: 1px solid #334155;
+            padding-bottom: 1.25rem;
+        }
+
+        .profile-header h2 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #f8fafc;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .profile-header h2 i {
+            color: #38bdf8;
+        }
+
+        .back-btn {
+            background: #0f172a;
+            color: #94a3b8;
+            border: 1px solid #334155;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            background: #334155;
+            color: #fff;
+        }
+
+        /* Avatar Upload Section */
+        .avatar-upload-section {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+            background: #0f172a;
+            padding: 1.25rem;
+            border-radius: 12px;
+            border: 1px solid #334155;
+        }
+
+        .avatar-preview-wrapper {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            overflow: hidden;
+            border: 2px solid #38bdf8;
+            background: #1e293b;
+            flex-shrink: 0;
+        }
+
+        .avatar-preview-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .avatar-info h4 {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #f8fafc;
+            margin-bottom: 0.25rem;
+        }
+
+        .avatar-info p {
+            font-size: 0.8rem;
+            color: #94a3b8;
+            margin-bottom: 0.75rem;
+        }
+
+        .upload-file-btn {
+            background: #0284c7;
+            color: white;
+            border: none;
+            padding: 0.45rem 0.9rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            transition: filter 0.2s;
+        }
+
+        .upload-file-btn:hover {
+            filter: brightness(1.1);
+        }
+
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #cbd5e1;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-group input:focus {
+            border-color: #38bdf8;
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+        }
+
+        .form-group input:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .section-divider {
+            border: 0;
+            height: 1px;
+            background: #334155;
+            margin: 1.75rem 0;
+        }
+
+        .btn-submit {
+            background: #0284c7;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: filter 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-submit:hover {
+            filter: brightness(1.1);
+        }
+
+        .btn-submit:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="profile-container">
+        <div class="profile-header">
+            <h2><i class="fa-solid fa-user-gear"></i> Account Settings</h2>
+            <a href="../assessments/" class="back-btn"><i class="fa-solid fa-arrow-left"></i> Back to Portal</a>
+        </div>
+
+        <form id="editProfileForm">
+            <!-- Avatar Selection Box -->
+            <div class="avatar-upload-section">
+                <div class="avatar-preview-wrapper">
+                    <img id="avatarPreview" src="https://via.placeholder.com/150" alt="Profile Picture" onerror="this.src='https://via.placeholder.com/150'">
+                </div>
+                <div class="avatar-info">
+                    <h4>Profile Avatar</h4>
+                    <p>Upload a new avatar image (PNG, JPG, or WEBP).</p>
+                    <label class="upload-file-btn" for="avatarFileInput">
+                        <i class="fa-solid fa-cloud-arrow-up"></i> Choose Image
+                    </label>
+                    <input type="file" id="avatarFileInput" accept="image/*" style="display: none;">
+                </div>
+            </div>
+
+            <!-- Read-Only Information -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label>Username (ID)</label>
+                    <input type="text" id="profileUsername" disabled>
+                </div>
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="profileFullName" disabled>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label>Role</label>
+                    <input type="text" id="profileRole" disabled>
+                </div>
+                <div class="form-group">
+                    <label>Class / Group</label>
+                    <input type="text" id="profileClass" disabled>
+                </div>
+            </div>
+
+            <hr class="section-divider">
+
+            <h3 style="font-size: 1.1rem; font-weight: 700; margin-bottom: 1rem; color: #f8fafc;">
+                <i class="fa-solid fa-lock" style="color: #38bdf8; margin-right: 6px;"></i> Security & Password
+            </h3>
+
+            <div class="form-group">
+                <label for="currentPassword">Current Password</label>
+                <input type="password" id="currentPassword" placeholder="Enter current password to authorize changes">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" placeholder="Leave blank to keep current">
+                </div>
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm New Password</label>
+                    <input type="password" id="confirmPassword" placeholder="Confirm new password">
+                </div>
+            </div>
+
+            <button type="submit" id="saveChangesBtn" class="btn-submit" style="margin-top: 1.5rem;">
+                <i class="fa-solid fa-floppy-disk"></i> Save Profile Updates
+            </button>
+        </form>
+    </div>
+
+    <!-- Custom SaaS Alert Modal Component -->
+    <div id="customAlertModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; padding: 1rem;">
+      <div id="customAlertBox" style="background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 2rem; width: 100%; max-width: 400px; box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); text-align: center; transform: scale(0.95); transition: transform 0.2s ease, opacity 0.2s ease; opacity: 0;">
+        <div id="customAlertIconWrapper" style="width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.25rem; font-size: 1.25rem;">
+          <i id="customAlertIcon" class="fa-solid"></i>
+        </div>
+        <h3 id="customAlertTitle" style="font-size: 1.2rem; font-weight: 700; color: #f8fafc; margin-bottom: 0.5rem;">Notice</h3>
+        <p id="customAlertMessage" style="font-size: 0.9rem; color: #94a3b8; line-height: 1.5; margin-bottom: 1.5rem;"></p>
+        <button type="button" id="customAlertOkBtn" onclick="closeCustomAlert()" style="background: #0284c7; color: white; border: none; border-radius: 8px; padding: 0.75rem 1rem; font-size: 0.95rem; font-weight: 600; cursor: pointer; width: 100%; transition: filter 0.2s;">
+          OK
+        </button>
+      </div>
+    </div>
+
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+    
+    <!-- Firebase Config & Script -->
+    <script src="../assets/js/firebase-config.js"></script>
+    
+    <script>
+        // Custom Modal Alert Controller Functions
+        function showCustomAlert(message, type = 'info', title = '') {
+            const modal = document.getElementById('customAlertModal');
+            const box = document.getElementById('customAlertBox');
+            const msgEl = document.getElementById('customAlertMessage');
+            const titleEl = document.getElementById('customAlertTitle');
+            const iconEl = document.getElementById('customAlertIcon');
+            const iconWrapper = document.getElementById('customAlertIconWrapper');
+
+            msgEl.textContent = message;
+
+            if (type === 'success') {
+                titleEl.textContent = title || 'Success';
+                iconEl.className = 'fa-solid fa-check';
+                iconWrapper.style.background = 'rgba(16, 185, 129, 0.15)';
+                iconWrapper.style.color = '#34d399';
+            } else if (type === 'error') {
+                titleEl.textContent = title || 'Action Failed';
+                iconEl.className = 'fa-solid fa-triangle-exclamation';
+                iconWrapper.style.background = 'rgba(239, 68, 68, 0.15)';
+                iconWrapper.style.color = '#f87171';
+            } else {
+                titleEl.textContent = title || 'System Notice';
+                iconEl.className = 'fa-solid fa-circle-info';
+                iconWrapper.style.background = 'rgba(2, 132, 199, 0.15)';
+                iconWrapper.style.color = '#38bdf8';
+            }
+
+            modal.style.display = 'flex';
+            setTimeout(() => {
+                box.style.transform = 'scale(1)';
+                box.style.opacity = '1';
+            }, 10);
+
+            document.getElementById('customAlertOkBtn').focus();
+        }
+
+        function closeCustomAlert() {
+            const modal = document.getElementById('customAlertModal');
+            const box = document.getElementById('customAlertBox');
+            box.style.transform = 'scale(0.95)';
+            box.style.opacity = '0';
+            setTimeout(() => {
+                modal.style.display = 'none';
+            }, 200);
+        }
+
+        window.addEventListener('click', (e) => {
+            const modal = document.getElementById('customAlertModal');
+            if (e.target === modal) {
+                closeCustomAlert();
+            }
+        });
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeCustomAlert();
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const sessionData = localStorage.getItem('portal_session') || sessionStorage.getItem('portal_session');
+            if (!sessionData) {
+                window.location.replace('/');
+                return;
+            }
+
+            let session;
+            try {
+                session = JSON.parse(sessionData);
+            } catch (e) {
+                window.location.replace('/');
+                return;
+            }
+
+            const username = session.username || session.name;
+            if (!username) {
+                window.location.replace('/');
+                return;
+            }
+
+            const db = firebase.firestore();
+            const storage = firebase.storage();
+
+            const usernameInput = document.getElementById('profileUsername');
+            const fullNameInput = document.getElementById('profileFullName');
+            const roleInput = document.getElementById('profileRole');
+            const classInput = document.getElementById('profileClass');
+            const currentPasswordInput = document.getElementById('currentPassword');
+            const newPasswordInput = document.getElementById('newPassword');
+            const confirmPasswordInput = document.getElementById('confirmPassword');
+            const avatarPreview = document.getElementById('avatarPreview');
+            const avatarFileInput = document.getElementById('avatarFileInput');
+            const saveBtn = document.getElementById('saveChangesBtn');
+
+            let selectedFile = null;
+            let currentStoredPassword = '';
+            let userDocId = '';
+
+            // Fetch user record from Firestore based on username document ID or query
+            async function loadUserData() {
+                try {
+                    const userRef = db.collection('users').doc(username);
+                    const docSnap = await userRef.get();
+
+                    if (docSnap.exists) {
+                        populateForm(docSnap.id, docSnap.data());
+                    } else {
+                        const querySnap = await db.collection('users').where('username', '==', username).get();
+                        if (!querySnap.empty) {
+                            const matchedDoc = querySnap.docs[0];
+                            populateForm(matchedDoc.id, matchedDoc.data());
+                        } else {
+                            showCustomAlert('User record not found in database.', 'error');
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error loading user profile:", err);
+                    showCustomAlert('Failed to load profile details.', 'error');
+                }
+            }
+
+            function populateForm(docId, data) {
+                userDocId = docId;
+                usernameInput.value = data.username || docId;
+                fullNameInput.value = data.fullName || '';
+                roleInput.value = data.role || 'Student';
+                classInput.value = data.class || 'N/A';
+                currentStoredPassword = data.password || '';
+
+                if (data.profilePic) {
+                    avatarPreview.src = data.profilePic;
+                }
+            }
+
+            // Handle file selection preview
+            avatarFileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    selectedFile = file;
+                    const reader = new FileReader();
+                    reader.onload = (uploadEvent) => {
+                        avatarPreview.src = uploadEvent.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+            });
+
+            // Handle form submission
+            document.getElementById('editProfileForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+
+                const enteredCurrentPass = currentPasswordInput.value.trim();
+                const newPass = newPasswordInput.value.trim();
+                const confirmPass = confirmPasswordInput.value.trim();
+
+                // Validate current password
+                if (!enteredCurrentPass) {
+                    showCustomAlert('Please enter your current password to authorize updates.', 'error');
+                    currentPasswordInput.focus();
+                    return;
+                }
+
+                if (enteredCurrentPass !== currentStoredPassword) {
+                    showCustomAlert('Incorrect current password provided.', 'error');
+                    currentPasswordInput.focus();
+                    return;
+                }
+
+                // Validate new password matching if provided
+                if (newPass && newPass !== confirmPass) {
+                    showCustomAlert('New passwords do not match.', 'error');
+                    confirmPasswordInput.focus();
+                    return;
+                }
+
+                saveBtn.disabled = true;
+                saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Saving Updates...';
+
+                try {
+                    let downloadUrl = null;
+
+                    // Upload profile picture to Firebase Storage if selected
+                    if (selectedFile) {
+                        const fileExt = selectedFile.name.split('.').pop();
+                        const fileName = `${userDocId}_${Date.now()}.${fileExt}`;
+                        
+                        const storageRef = storage.ref(`profile_pictures/${fileName}`);
+                        const snapshot = await storageRef.put(selectedFile);
+                        downloadUrl = await snapshot.ref.getDownloadURL();
+                    }
+
+                    // Prepare update payload for Firestore
+                    const updates = {};
+                    if (downloadUrl) {
+                        updates.profilePic = downloadUrl;
+                    }
+                    if (newPass) {
+                        updates.password = newPass;
+                    }
+
+                    if (Object.keys(updates).length > 0) {
+                        await db.collection('users').doc(userDocId).update(updates);
+                        if (newPass) {
+                            currentStoredPassword = newPass;
+                        }
+                    }
+
+                    showCustomAlert('Your profile has been updated successfully!', 'success', 'Profile Updated');
+                    currentPasswordInput.value = '';
+                    newPasswordInput.value = '';
+                    confirmPasswordInput.value = '';
+                    selectedFile = null;
+                    avatarFileInput.value = '';
+
+                } catch (err) {
+                    console.error("Error updating profile:", err);
+                    showCustomAlert('Failed to update profile. Please try again.', 'error');
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i class="fa-solid fa-floppy-disk"></i> Save Profile Updates';
+                }
+            });
+
+            loadUserData();
+        });
+    </script>
+</body>
+</html>
