@@ -39,7 +39,7 @@
           try {
             const session = JSON.parse(sessionData);
             if (session && (session.name || session.email || session.role || session.userType)) {
-              window.location.replace('/assessments/');
+              window.location.replace('/e-library/');
               return;
             }
           } catch (err) {
