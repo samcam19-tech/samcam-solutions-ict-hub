@@ -115,7 +115,7 @@
       </div>
 
      <!-- Mobile Hamburger Button -->
-      <button type="button" class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle Navigation Menu">
+      <button type="button" class="mobile-menu-toggle" onclick="toggleHumbergerMobileMenu()" aria-label="Toggle Navigation Menu">
         <i class="fa-solid fa-bars" id="menuToggleIcon"></i>
       </button>
 
@@ -337,7 +337,7 @@
     let navAnnouncementsCache = [];
 
     // Mobile Navigation Drawer Toggle Script
-    function toggleMobileMenu() {
+    function toggleHumbergerMobileMenu() {
       const navActions = document.getElementById('navActionsContainer');
       const menuIcon = document.getElementById('menuToggleIcon');
       navActions.classList.toggle('mobile-active');
