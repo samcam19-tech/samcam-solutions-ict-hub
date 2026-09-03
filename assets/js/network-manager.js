@@ -151,19 +151,28 @@ function populateTargetWorkstationSelect(stations) {
 function renderWorkstations(stations) {
     const grid = document.getElementById("workstationGrid");
     if (!grid) return;
-    grid.innerHTML = "";
+
+    // Create a map of incoming station IDs for quick lookup
+    const stationMap = new Map();
+    stations.forEach(pc => stationMap.set(pc.id, pc));
+
+    // Remove cards that are no longer active/present in the stations list
+    Array.from(grid.children).forEach(card => {
+        const id = card.dataset.id;
+        if (!stationMap.has(id)) {
+            grid.removeChild(card);
+        }
+    });
 
     stations.forEach(pc => {
-        const card = document.createElement("div");
-        card.className = "workstation-card";
-        card.dataset.id = pc.id;
+        let card = grid.querySelector(`.workstation-card[data-id="${pc.id}"]`);
 
         // Dynamic thumbnail content: display image snapshot if available, else show fallback title/icon
         let previewContent = "";
         if (pc.screenUrl) {
             previewContent = `
                 <div class="thumbnail-container" style="width: 100%; height: 110px; background: #000; border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative;" title="Click to view full image">
-                    <img src="${pc.screenUrl}" alt="Live Screen Preview" style="width: 100%; height: 100%; object-fit: cover;" />
+                    <img src="${pc.screenUrl}" alt="Live Screen Preview" class="live-screenshot-img" style="width: 100%; height: 100%; object-fit: cover;" />
                     <div class="zoom-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s ease;">
                         <i class="fa-solid fa-expand" style="color: #fff; font-size: 1.2rem;"></i>
                     </div>
@@ -174,12 +183,12 @@ function renderWorkstations(stations) {
                 <div style="color: var(--text-muted); font-size: 0.8rem; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 15px 0;">
                     <i class="fa-solid fa-globe" style="font-size: 1.4rem; color: var(--primary);"></i>
                     <span style="font-weight: 500; color: var(--text-main); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; max-width: 230px;" title="${pc.activity}">${pc.activity}</span>
-                    <span style="font-size: 0.7rem; color: var(--primary); opacity: 0.8;">🔗 ${pc.shortUrl}</span>
+                    <span style="font-size: 0.7rem; color: var(--primary); opacity: 0.8;">🔗 ${pc.shortUrl || ''}</span>
                 </div>
             `;
         }
 
-        card.innerHTML = `
+        const cardInnerHtml = `
             <div class="ws-header">
                 <span class="ws-id"><div class="ws-status-indicator ${pc.status}"></div> ${pc.id} (${pc.ip})</span>
                 <span style="font-size: 0.70rem; color: var(--text-muted);">${pc.lastUpdated}</span>
@@ -196,30 +205,60 @@ function renderWorkstations(stations) {
             </div>
         `;
 
-        // Bind quick assign learner button inside card
-        const assignBtn = card.querySelector(".btn-assign-learner");
-        assignBtn.onclick = (e) => {
-            e.stopPropagation();
-            openAssignLearnerModal(pc.id, pc.learner);
-        };
+        if (!card) {
+            // Create a brand new card element if it doesn't exist yet
+            card = document.createElement("div");
+            card.className = "workstation-card";
+            card.dataset.id = pc.id;
+            card.innerHTML = cardInnerHtml;
+            grid.appendChild(card);
+        } else {
+            // Update existing card contents smoothly without recreating elements from scratch
+            const existingImg = card.querySelector(".live-screenshot-img");
+            const currentSrc = existingImg ? existingImg.src : null;
 
-        // Add hover effect for zoom icon if thumbnail exists
-        if (pc.screenUrl) {
-            const thumbDiv = card.querySelector(".thumbnail-container");
-            const overlay = card.querySelector(".zoom-overlay");
-            thumbDiv.onmouseenter = () => overlay.style.opacity = "1";
-            thumbDiv.onmouseleave = () => overlay.style.opacity = "0";
+            // If a brand new screenshot URL arrived, preload it first to prevent flicker
+            if (pc.screenUrl && pc.screenUrl !== currentSrc) {
+                const preloader = new Image();
+                preloader.src = pc.screenUrl;
+                preloader.onload = () => {
+                    card.innerHTML = cardInnerHtml;
+                    bindCardEvents(card, pc);
+                };
+            } else {
+                card.innerHTML = cardInnerHtml;
+            }
+        }
 
-            // Click on thumbnail opens full image viewer directly
-            thumbDiv.onclick = (e) => {
-                e.stopPropagation(); // Prevent opening the node control modal
-                openFullImageViewer(pc.screenUrl, `Live Feed: ${pc.id} - ${pc.learner}`);
+        bindCardEvents(card, pc);
+    });
+
+    // Helper function to bind click and hover interactions cleanly
+    function bindCardEvents(cardElement, pcData) {
+        const assignBtn = cardElement.querySelector(".btn-assign-learner");
+        if (assignBtn) {
+            assignBtn.onclick = (e) => {
+                e.stopPropagation();
+                openAssignLearnerModal(pcData.id, pcData.learner);
             };
         }
 
-        card.addEventListener("click", () => openNodeModal(pc));
-        grid.appendChild(card);
-    });
+        if (pcData.screenUrl) {
+            const thumbDiv = cardElement.querySelector(".thumbnail-container");
+            const overlay = cardElement.querySelector(".zoom-overlay");
+            if (thumbDiv && overlay) {
+                thumbDiv.onmouseenter = () => overlay.style.opacity = "1";
+                thumbDiv.onmouseleave = () => overlay.style.opacity = "0";
+
+                thumbDiv.onclick = (e) => {
+                    e.stopPropagation();
+                    openFullImageViewer(pcData.screenUrl, `Live Feed: ${pcData.id} - ${pcData.learner}`);
+                };
+            }
+        }
+
+        cardElement.onclick = () => openNodeModal(pcData);
+    }
 
     const onlineCounter = document.getElementById("onlineCount");
     if (onlineCounter) {
