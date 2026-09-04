@@ -78,6 +78,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (gateEl) gateEl.style.display = 'none';
     if (appEl) appEl.style.display = 'flex';
   }
+
+  // Initialize the warning note button handler
+  if (typeof initSendWarningButton === 'function') {
+    initSendWarningButton();
+  }
 });
 
 // Real-time listener pulling directly from workstation_telemetry collection
@@ -899,3 +904,54 @@ window.logoutNetOps = function() {
 
   console.log("Logged out successfully. Returned to Master Key entry gate.");
 };
+
+function initSendWarningButton() {
+    const warningBtn = document.getElementById("modalMessageBtn");
+    if (!warningBtn) return;
+
+    // Prevent duplicate binding if script runs more than once
+    if (warningBtn.dataset.bound === "true") return;
+    warningBtn.dataset.bound = "true";
+
+    warningBtn.onclick = async () => {
+        const workstationId = window.activeInspectionNodeId;
+
+        if (!workstationId) {
+            alert("No active workstation selected in inspection panel.");
+            return;
+        }
+
+        const warningMessage = prompt(`Enter warning note to send to workstation ${workstationId}:`, "Please refocus on your assigned task and avoid unrelated browsing.");
+        if (!warningMessage || warningMessage.trim() === "") return;
+
+        try {
+            warningBtn.disabled = true;
+            warningBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Sending Warning...';
+
+            // Check if Firebase and Firestore are configured and available
+            if (typeof firebase === 'undefined' || !firebase.firestore) {
+                throw new Error("Firebase library not initialized.");
+            }
+
+            const db = firebase.firestore();
+            
+            // Push command document to Firestore collection
+            await db.collection("workstation_commands").doc(workstationId).set({
+                command: "WARN",
+                message: warningMessage.trim(),
+                timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+                acknowledged: false
+            }, { merge: true });
+
+            alert(`Warning note successfully dispatched to station ${workstationId}!`);
+
+        } catch (error) {
+            console.error("Error sending warning note:", error);
+            alert(`Failed to send warning note: ${error.message}`);
+        } finally {
+            warningBtn.disabled = false;
+            warningBtn.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> Send Warning Note';
+        }
+    };
+}
+
