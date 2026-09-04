@@ -167,57 +167,55 @@ function renderWorkstations(stations) {
     stations.forEach(pc => {
         let card = grid.querySelector(`.workstation-card[data-id="${pc.id}"]`);
 
-        // Dynamic thumbnail content: display image snapshot if available, else show fallback title/icon
+        // Presentation-style slide thumbnail preview content
         let previewContent = "";
         if (pc.screenUrl) {
             previewContent = `
-                <div class="thumbnail-container" style="width: 100%; height: 110px; background: #000; border-radius: 6px; overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative;" title="Click to view full image">
-                    <img src="${pc.screenUrl}" alt="Live Screen Preview" class="live-screenshot-img" style="width: 100%; height: 100%; object-fit: cover;" />
-                    <div class="zoom-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s ease;">
-                        <i class="fa-solid fa-expand" style="color: #fff; font-size: 1.2rem;"></i>
+                <div class="thumbnail-container" style="width: 100%; aspect-ratio: 16/9; background: #0f172a; border-radius: 8px; overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.1);" title="Click to inspect slide preview">
+                    <img src="${pc.screenUrl}" alt="Slide Snapshot" class="live-screenshot-img" style="width: 100%; height: 100%; object-fit: cover;" />
+                    <div class="zoom-overlay" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(2px); display: flex; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.2s ease;">
+                        <span style="background: rgba(255,255,255,0.9); color: #0f172a; padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; display: inline-flex; align-items: center; gap: 6px;"><i class="fa-solid fa-expand"></i> Inspect Slide</span>
                     </div>
                 </div>
             `;
         } else {
             previewContent = `
-                <div style="color: var(--text-muted); font-size: 0.8rem; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 15px 0;">
-                    <i class="fa-solid fa-globe" style="font-size: 1.4rem; color: var(--primary);"></i>
-                    <span style="font-weight: 500; color: var(--text-main); font-size: 0.78rem; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; max-width: 230px;" title="${pc.activity}">${pc.activity}</span>
-                    <span style="font-size: 0.7rem; color: var(--primary); opacity: 0.8;">🔗 ${pc.shortUrl || ''}</span>
+                <div style="width: 100%; aspect-ratio: 16/9; background: #f8fafc; border: 1px dashed #cbd5e1; border-radius: 8px; color: var(--text-muted); font-size: 0.8rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px;">
+                    <i class="fa-solid fa-desktop" style="font-size: 1.5rem; color: #94a3b8;"></i>
+                    <span style="font-weight: 600; color: #475569; font-size: 0.78rem; text-align: center; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; max-width: 220px;" title="${pc.activity}">${pc.activity || 'No active preview'}</span>
+                    <span style="font-size: 0.7rem; color: var(--primary);">🔗 ${pc.shortUrl || 'Standby Mode'}</span>
                 </div>
             `;
         }
 
         const cardInnerHtml = `
-            <div class="ws-header">
-                <span class="ws-id"><div class="ws-status-indicator ${pc.status}"></div> ${pc.id} (${pc.ip})</span>
-                <span style="font-size: 0.70rem; color: var(--text-muted);">${pc.lastUpdated}</span>
+            <div class="ws-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span class="ws-id" style="display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.85rem;"><div class="ws-status-indicator ${pc.status}"></div> ${pc.id}</span>
+                <span style="font-size: 0.70rem; color: var(--text-muted); background: #f1f5f9; padding: 2px 6px; border-radius: 4px;">${pc.ip}</span>
             </div>
-            <div class="ws-thumbnail-preview" style="padding: 8px;">
+            <div class="ws-thumbnail-preview" style="margin-bottom: 8px;">
                 ${previewContent}
             </div>
-            <div class="ws-meta">
-                <span>Learner: <strong>${pc.learner}</strong></span>
-                <span>CPU: ${pc.cpu} | RAM: ${pc.ram}</span>
+            <div class="ws-meta" style="font-size: 0.78rem; display: flex; flex-direction: column; gap: 3px; margin-bottom: 8px; color: #334155;">
+                <div style="display: flex; justify-content: space-between;"><span>Learner:</span> <strong style="color: #0f172a;">${pc.learner || 'Unassigned'}</strong></div>
+                <div style="display: flex; justify-content: space-between;"><span>Load:</span> <span style="font-family: monospace;">CPU: ${pc.cpu || '0'}% | RAM: ${pc.ram || '0'}%</span></div>
             </div>
-            <div class="ws-inline-actions" style="padding: 0 8px 8px 8px; display: flex; gap: 6px;">
-                <button class="btn-assign-learner" data-id="${pc.id}" data-current="${pc.learner}" style="flex: 1; padding: 4px 8px; font-size: 0.75rem; background: #0ea5e9; border: none; color: #fff; border-radius: 4px; cursor: pointer;"><i class="fa-solid fa-user-pen"></i> Assign Name</button>
+            <div class="ws-inline-actions" style="display: flex; gap: 6px;">
+                <button class="btn-assign-learner" data-id="${pc.id}" data-current="${pc.learner}" style="flex: 1; padding: 5px 8px; font-size: 0.75rem; background: #f8fafc; border: 1px solid #cbd5e1; color: #334155; border-radius: 6px; cursor: pointer; font-weight: 500;"><i class="fa-solid fa-user-pen"></i> Assign</button>
             </div>
         `;
 
         if (!card) {
-            // Create a brand new card element if it doesn't exist yet
             card = document.createElement("div");
-            card.className = "workstation-card";
+            card.className = "workstation-card slide-card";
+            card.style.cssText = "background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: transform 0.2s ease, box-shadow 0.2s ease; cursor: pointer;";
             card.dataset.id = pc.id;
             card.innerHTML = cardInnerHtml;
             grid.appendChild(card);
         } else {
-            // Update existing card contents smoothly without recreating elements from scratch
             const existingImg = card.querySelector(".live-screenshot-img");
             const currentSrc = existingImg ? existingImg.src : null;
 
-            // If a brand new screenshot URL arrived, preload it first to prevent flicker
             if (pc.screenUrl && pc.screenUrl !== currentSrc) {
                 const preloader = new Image();
                 preloader.src = pc.screenUrl;
@@ -233,7 +231,6 @@ function renderWorkstations(stations) {
         bindCardEvents(card, pc);
     });
 
-    // Helper function to bind click and hover interactions cleanly
     function bindCardEvents(cardElement, pcData) {
         const assignBtn = cardElement.querySelector(".btn-assign-learner");
         if (assignBtn) {
@@ -252,7 +249,7 @@ function renderWorkstations(stations) {
 
                 thumbDiv.onclick = (e) => {
                     e.stopPropagation();
-                    openFullImageViewer(pcData.screenUrl, `Live Feed: ${pcData.id} - ${pcData.learner}`);
+                    openFullImageViewer(pcData.screenUrl, `Slide Preview: ${pcData.id} - ${pcData.learner}`);
                 };
             }
         }
@@ -274,7 +271,6 @@ function renderWorkstations(stations) {
     updateGlobalLockToggleButtonState();
     updateQuickToggleBtnState();
 }
-
 function areAllTerminalsLocked() {
     if (!workstationsData || workstationsData.length === 0) return false;
     return workstationsData.every(pc => pc.status === "locked");
