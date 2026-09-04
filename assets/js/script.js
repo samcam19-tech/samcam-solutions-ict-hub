@@ -609,7 +609,7 @@ window.handleLogout = function() {
 
 // 1. Function to update all profile image elements on the page
 window.updateProfileUIImages = function(user) {
-  const defaultAvatar = "images/default-avatar.png";
+  const defaultAvatar = "../images/default-avatar.png";
   const userAvatar = (user && user.profilePic && user.profilePic.trim() !== "") 
     ? user.profilePic 
     : defaultAvatar;
