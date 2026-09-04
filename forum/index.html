@@ -149,7 +149,7 @@
         
         <!-- User Profile Navbar Widget -->
         <div id="navProfileWidget" style="display: flex; align-items: center; gap: 0.6rem; background: rgba(15, 23, 42, 0.4); padding: 0.35rem 0.75rem; border-radius: 30px; border: 1px solid rgba(255, 255, 255, 0.15); margin-right: 0.5rem;">
-          <img id="navProfilePic" src="../images/default-avatar.png" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid #38bdf8;" onerror="this.src='../images/default-avatar.png'">
+          <img id="navProfilePic" src="../images/default-avatar.png" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid #38bdf8;">
           <div style="display: flex; flex-direction: column; text-align: left; line-height: 1.2;">
             <span id="navFullName" style="font-size: 0.8rem; font-weight: 600; color: #f8fafc;">User</span>
             <span id="navUsername" style="font-size: 0.7rem; color: #38bdf8;">@username</span>
@@ -315,13 +315,13 @@
       let role = '';
       let fullName = 'Portal User';
       let username = 'user';
-      let pic = 'images/default-avatar.png';
+      let pic = '../images/default-avatar.png';
 
       if (user && typeof user === 'object') {
         role = user.role || user.userType || user.type || user.accessLevel || '';
         fullName = user.fullName || user.name || user.username || 'Portal User';
         username = user.username || 'user';
-        pic = user.profilePic || user.avatarUrl || user.photoURL || 'images/default-avatar.png';
+        pic = user.profilePic || user.avatarUrl || user.photoURL || '../images/default-avatar.png';
       }
 
       // Populate Navbar Profile Widget Elements
