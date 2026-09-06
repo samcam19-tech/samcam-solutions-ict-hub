@@ -639,6 +639,9 @@ window.addEventListener('portalSessionChanged', (e) => {
   if (typeof window.renderSubmissions === 'function') {
     window.renderSubmissions();
   }
+  if (typeof window.renderAssessments === 'function') {
+    window.renderAssessments();
+  }
 });
 
 // Handle File Input Change & Firebase Storage Upload with Debug Logging
