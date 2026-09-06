@@ -598,17 +598,18 @@
     // --- GLOBAL CACHE DECLARATION ---
     let navAnnouncementsCache = [];
 
-    // Mobile Navigation Drawer Toggle Script
     function toggleHumbergerMobileMenu() {
-      const navActions = document.getElementById('navActionsContainer');
-      const menuIcon = document.getElementById('menuToggleIcon');
-      navActions.classList.toggle('mobile-active');
-      if (navActions.classList.contains('mobile-active')) {
+    const navActions = document.querySelector('.nav-actions');
+    const menuIcon = document.getElementById('menuToggleIcon');
+    if (!navActions || !menuIcon) return;
+
+    navActions.classList.toggle('mobile-open');
+    if (navActions.classList.contains('mobile-open')) {
         menuIcon.className = "fa-solid fa-xmark";
-      } else {
+    } else {
         menuIcon.className = "fa-solid fa-bars";
-      }
     }
+}
 
     // --- NAVBAR ANNOUNCEMENTS INTEGRATION SCRIPT ---
 
