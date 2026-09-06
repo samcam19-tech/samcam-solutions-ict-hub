@@ -3343,14 +3343,19 @@ window.renderSubmissions = async function() {
   const paginationContainer = document.getElementById('submissionsPagination');
   if (!container) return;
 
+  // Resolve Firestore instance safely, with a brief retry if window.db isn't ready yet on page load
+  let db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
+  if (!db && document.readyState !== 'complete') {
+    console.warn("Firebase not ready yet during initial load, retrying renderSubmissions in 1 second...");
+    setTimeout(() => { if (typeof window.renderSubmissions === 'function') window.renderSubmissions(); }, 1000);
+    return;
+  }
+
   const currentUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser') || '{}');
   const activeSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || window.currentSchoolId) : null;
   const roleLower = (currentUser.role || '').toLowerCase();
 
   let submissions = [];
-  
-  // Resolve Firestore instance safely
-  const db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
 
   if (db) {
     try {
