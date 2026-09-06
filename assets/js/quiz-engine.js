@@ -219,19 +219,19 @@ function fetchActiveQuizzes() {
 
   const cachedQuizzes = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || [];
   if (cachedQuizzes.length > 0) {
-    const filteredCached = activeSchoolId ? cachedQuizzes.filter(q => !q.schoolId || q.schoolId.toUpperCase() === activeSchoolId.toUpperCase()) : cachedQuizzes;
+    const filteredCached = activeSchoolId ? cachedQuizzes.filter(q => !q.schoolId || q.schoolId.toLowerCase() === activeSchoolId.toLowerCase()) : cachedQuizzes;
     renderQuizCards(filteredCached);
   }
 
   if (!db) {
-    console.warn("Firestore not initialized. Using fallback data.");
-    if (cachedQuizzes.length === 0) renderQuizCards(MOCK_QUIZZES);
+    console.warn("Firestore not initialized.");
     return;
   }
 
   let query = db.collection('quizzes');
   if (activeSchoolId) {
-    query = query.where('schoolId', '==', activeSchoolId.toUpperCase());
+    // Match exact schoolId casing as stored in the database without forcing uppercase
+    query = query.where('schoolId', '==', activeSchoolId);
   }
 
   query.onSnapshot((snapshot) => {
@@ -240,15 +240,17 @@ function fetchActiveQuizzes() {
       freshQuizzes.push({ id: doc.id, ...doc.data() });
     });
 
-    const quizzesToDisplay = freshQuizzes.length > 0 ? freshQuizzes : (cachedQuizzes.length > 0 ? cachedQuizzes : MOCK_QUIZZES);
+    console.log("Fetched quizzes from Firestore:", freshQuizzes);
+
+    // Exclude MOCK_QUIZZES fallback so actual database results render properly
+    const quizzesToDisplay = freshQuizzes.length > 0 ? freshQuizzes : cachedQuizzes;
+    
     localStorage.setItem('portal_quizzes_cache', JSON.stringify(quizzesToDisplay));
     renderQuizCards(quizzesToDisplay);
   }, (err) => {
     console.error("Firestore Listener Error:", err);
-    if (cachedQuizzes.length === 0) renderQuizCards(MOCK_QUIZZES);
   });
 }
-
 // --- Pagination State for Available Quizzes ---
 let currentQuizzesPage = 1;
 const quizzesPerPage = 6;
