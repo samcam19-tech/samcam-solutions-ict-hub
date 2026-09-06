@@ -266,16 +266,20 @@ function renderQuizCards(quizzesList) {
   const isAdminOrTeacher = userRole === 'admin' || userRole === 'teacher';
   const activeSchoolId = (typeof currentSchoolId !== 'undefined' && currentSchoolId) ? currentSchoolId.toUpperCase() : (currentUser && currentUser.schoolId ? currentUser.schoolId.toUpperCase() : '');
 
-  // Filter quizzes based on tenant schoolId, user role, and class
-  globalFilteredQuizzes = quizzesList.filter(q => {
+  // Filter quizzes based on tenant schoolId, user role, and class with case-insensitivity
+  globalFilteredQuizzes = (quizzesList || []).filter(q => {
     // Enforce strict tenant isolation by schoolId if present on the quiz document
     if (activeSchoolId && q.schoolId && q.schoolId.toUpperCase() !== activeSchoolId) {
       return false;
     }
     if (isAdminOrTeacher) return true;
     if (!currentUser || !currentUser.class) return true;
-    const target = q.targetClass || 'All';
-    return target === 'All' || target === currentUser.class;
+
+    const target = (q.targetClass || 'All').trim();
+    const userClass = currentUser.class.trim();
+
+    if (target.toLowerCase() === 'all' || userClass === '') return true;
+    return target.toLowerCase() === userClass.toLowerCase();
   });
 
   if (globalFilteredQuizzes.length === 0) {
@@ -325,7 +329,7 @@ function renderQuizCardsPage() {
   let html = '';
   paginatedQuizzes.forEach(q => {
     const qCount = q.questions ? q.questions.length : 0;
-    const attempt = learnerSubmissionsMap[q.id];
+    const attempt = learnerSubmissionsMap ? learnerSubmissionsMap[q.id] : null;
 
     if (attempt) {
       // Completed / Inactive State Card
@@ -354,7 +358,7 @@ function renderQuizCardsPage() {
             
             <div style="background:#e0f2fe; border:1px solid #bae6fd; border-radius:6px; padding:0.6rem; margin-bottom:1rem; color:#0369a1; font-size:0.85rem;">
               <div><i class="fa-solid fa-award"></i> <strong>Score:</strong> ${attempt.percentage}% (${attempt.score}/${attempt.totalQuestions})</div>
-              <div><i class="fa-solid fa-stopwatch"></i> <strong>Time Taken:</strong> ${formatSeconds(attempt.timeSpentSeconds)}</div>
+              <div><i class="fa-solid fa-stopwatch"></i> <strong>Time Taken:</strong> ${formatSeconds ? formatSeconds(attempt.timeSpentSeconds) : attempt.timeSpentSeconds + 's'}</div>
             </div>
           </div>
 
