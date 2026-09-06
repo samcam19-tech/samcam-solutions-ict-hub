@@ -3345,6 +3345,7 @@ window.renderSubmissions = async function() {
 
   const currentUser = JSON.parse(localStorage.getItem('portal_session') || localStorage.getItem('currentLoggedInUser') || '{}');
   const activeSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || window.currentSchoolId) : null;
+  const roleLower = (currentUser.role || '').toLowerCase();
 
   let submissions = [];
   
@@ -3355,7 +3356,7 @@ window.renderSubmissions = async function() {
     try {
       let query = db.collection('submissions');
       // Only filter by schoolId if both exist and user is not admin
-      if (activeSchoolId && currentUser.role && currentUser.role.toLowerCase() !== 'admin') {
+      if (activeSchoolId && roleLower !== 'admin' && roleLower !== 'administrator') {
         query = query.where('schoolId', '==', activeSchoolId);
       }
       const snap = await query.get();
@@ -3369,7 +3370,7 @@ window.renderSubmissions = async function() {
   // Fallback to localStorage if Firestore returned nothing
   if (submissions.length === 0) {
     submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
-    if (activeSchoolId && currentUser && currentUser.role && currentUser.role.toLowerCase() !== 'admin') {
+    if (activeSchoolId && roleLower !== 'admin' && roleLower !== 'administrator') {
       submissions = submissions.filter(s => (s.schoolId || '').toLowerCase() === activeSchoolId.toLowerCase());
     }
     console.log(`Fetched ${submissions.length} submissions from localStorage fallback.`);
