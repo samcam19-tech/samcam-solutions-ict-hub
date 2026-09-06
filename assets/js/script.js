@@ -3341,16 +3341,18 @@ window.saveSubmissionGrade = async function(e) {
   renderSubmissions();
 };
 
-window.renderSubmissions = async function() {
+// Keep track of the current page globally or in a scoped object
+window.currentSubmissionsPage = window.currentSubmissionsPage || 1;
+
+window.renderSubmissions = async function(page = 1) {
+  window.currentSubmissionsPage = page;
   const container = document.getElementById('submissionsContainer');
   const paginationContainer = document.getElementById('submissionsPagination');
   if (!container) return;
 
-  // Resolve Firestore instance safely, with a brief retry if window.db isn't ready yet on page load
   let db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
   if (!db && document.readyState !== 'complete') {
-    console.warn("Firebase not ready yet during initial load, retrying renderSubmissions in 1 second...");
-    setTimeout(() => { if (typeof window.renderSubmissions === 'function') window.renderSubmissions(); }, 1000);
+    setTimeout(() => { if (typeof window.renderSubmissions === 'function') window.renderSubmissions(page); }, 1000);
     return;
   }
 
@@ -3363,25 +3365,21 @@ window.renderSubmissions = async function() {
   if (db) {
     try {
       let query = db.collection('submissions');
-      // Only filter by schoolId if both exist and user is not admin
       if (activeSchoolId && roleLower !== 'admin' && roleLower !== 'administrator') {
         query = query.where('schoolId', '==', activeSchoolId);
       }
       const snap = await query.get();
       snap.forEach(doc => submissions.push({ id: doc.id, ...doc.data() }));
-      console.log(`Fetched ${submissions.length} submissions from Firestore.`);
     } catch (err) {
       console.warn('Firestore submissions fetch warning:', err);
     }
   }
 
-  // Fallback to localStorage if Firestore returned nothing
   if (submissions.length === 0) {
     submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
     if (activeSchoolId && roleLower !== 'admin' && roleLower !== 'administrator') {
       submissions = submissions.filter(s => (s.schoolId || '').toLowerCase() === activeSchoolId.toLowerCase());
     }
-    console.log(`Fetched ${submissions.length} submissions from localStorage fallback.`);
   }
 
   if (submissions.length === 0) {
@@ -3397,6 +3395,12 @@ window.renderSubmissions = async function() {
 
   submissions.sort((a, b) => new Date(b.submittedAt || 0) - new Date(a.submittedAt || 0));
 
+  // --- Pagination Slice Logic ---
+  const pageSize = 10;
+  const totalPages = Math.ceil(submissions.length / pageSize);
+  const startIndex = (page - 1) * pageSize;
+  const paginatedSubmissions = submissions.slice(startIndex, startIndex + pageSize);
+
   let html = `
     <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 1rem; background: #f8fafc; border-bottom: 1px solid #e2e8f0; border-top-left-radius: 8px; border-top-right-radius: 8px; font-size: 0.85rem; color: #475569;">
       <div style="display: flex; align-items: center; gap: 0.75rem;">
@@ -3404,10 +3408,10 @@ window.renderSubmissions = async function() {
         <span style="font-weight: 600; color: #1e293b;">Select All (${submissions.length})</span>
       </div>
       <div style="display: flex; gap: 0.5rem; align-items: center;">
-        <button type="button" id="bulkDownloadBtn" onclick="downloadAllStudentSubmissions()" style="display: flex; align-items: center; gap: 0.4rem; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+        <button type="button" id="bulkDownloadBtn" onclick="downloadAllStudentSubmissions()" style="display: flex; align-items: center; gap: 0.4rem; background: #e0f2fe; color: #0369a1; border: 1px solid #bae6fd; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer;">
           <i class="fa-solid fa-file-zipper"></i> Download All as ZIP
         </button>
-        <button type="button" id="bulkDeleteBtn" onclick="deleteSelectedSubmissions()" style="display: none; align-items: center; gap: 0.4rem; background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;">
+        <button type="button" id="bulkDeleteBtn" onclick="deleteSelectedSubmissions()" style="display: none; align-items: center; gap: 0.4rem; background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer;">
           <i class="fa-solid fa-trash-can"></i> Delete Selected
         </button>
       </div>
@@ -3415,12 +3419,12 @@ window.renderSubmissions = async function() {
     <div style="background: #ffffff; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; overflow: hidden;">
   `;
 
-  html += submissions.map(sub => {
+  html += paginatedSubmissions.map(sub => {
     const studentIdentifier = sub.schoolId || sub.studentUsername || sub.studentName || 'N/A';
     const formattedDate = sub.submittedAt ? new Date(sub.submittedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '';
     
     return `
-    <div class="sub-item" data-id="${sub.id}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 1rem; border-bottom: 1px solid #f1f5f9; gap: 1rem; transition: background 0.15s;">
+    <div class="sub-item" data-id="${sub.id}" style="display: flex; justify-content: space-between; align-items: center; padding: 0.85rem 1rem; border-bottom: 1px solid #f1f5f9; gap: 1rem;">
       <div style="display: flex; align-items: center; gap: 1rem; flex: 1; min-width: 0;">
         <input type="checkbox" class="submission-checkbox" value="${sub.id}" data-url="${escapeHtml(sub.fileUrl || '')}" data-name="${escapeHtml(sub.studentName || 'Student')}_${escapeHtml(sub.fileName || 'submission')}" onclick="updateBulkDeleteState()" style="cursor: pointer; width: 16px; height: 16px; accent-color: #0ea5e9; flex-shrink: 0;">
         <div style="min-width: 0;">
@@ -3436,15 +3440,14 @@ window.renderSubmissions = async function() {
           </div>
         </div>
       </div>
-      
       <div style="display: flex; gap: 0.35rem; align-items: center; flex-shrink: 0;">
-        <a href="${sub.fileUrl || '#'}" download="${escapeHtml(sub.fileName || 'submission')}" target="_blank" rel="noopener noreferrer" title="Download File" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #0284c7; border-radius: 6px; text-decoration: none; transition: background 0.2s;">
+        <a href="${sub.fileUrl || '#'}" download="${escapeHtml(sub.fileName || 'submission')}" target="_blank" rel="noopener noreferrer" title="Download File" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #0284c7; border-radius: 6px; text-decoration: none;">
           <i class="fa-solid fa-download" style="font-size: 0.85rem;"></i>
         </a>
-        <button type="button" onclick="openGradingModal('${sub.id}')" title="Grade Submission" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #f0fdf4; color: #16a34a; border: none; border-radius: 6px; cursor: pointer; transition: background 0.2s;">
+        <button type="button" onclick="openGradingModal('${sub.id}')" title="Grade Submission" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #f0fdf4; color: #16a34a; border: none; border-radius: 6px; cursor: pointer;">
           <i class="fa-solid fa-star" style="font-size: 0.85rem;"></i>
         </button>
-        <button type="button" onclick="deleteSingleSubmission('${sub.id}')" title="Delete Submission" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #fef2f2; color: #dc2626; border: none; border-radius: 6px; cursor: pointer; transition: background 0.2s;">
+        <button type="button" onclick="deleteSingleSubmission('${sub.id}')" title="Delete Submission" style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; background: #fef2f2; color: #dc2626; border: none; border-radius: 6px; cursor: pointer;">
           <i class="fa-solid fa-trash-can" style="font-size: 0.85rem;"></i>
         </button>
       </div>
@@ -3454,7 +3457,34 @@ window.renderSubmissions = async function() {
 
   html += `</div>`;
   container.innerHTML = html;
-  if (paginationContainer) paginationContainer.style.display = 'flex';
+
+  // --- Populate Pagination Controls UI ---
+  if (paginationContainer) {
+    if (totalPages <= 1) {
+      paginationContainer.style.display = 'none';
+    } else {
+      paginationContainer.style.display = 'flex';
+      paginationContainer.style.justifyContent = 'center';
+      paginationContainer.style.gap = '0.35rem';
+      paginationContainer.style.marginTop = '1rem';
+
+      let paginationHtml = `
+        <button type="button" onclick="renderSubmissions(${page - 1})" ${page === 1 ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : 'style="cursor: pointer;"'} style="padding: 0.4rem 0.75rem; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; font-size: 0.8rem;">Prev</button>
+      `;
+
+      for (let i = 1; i <= totalPages; i++) {
+        paginationHtml += `
+          <button type="button" onclick="renderSubmissions(${i})" style="padding: 0.4rem 0.75rem; border: 1px solid ${i === page ? '#0ea5e9' : '#cbd5e1'}; background: ${i === page ? '#0ea5e9' : '#fff'}; color: ${i === page ? '#fff' : '#334155'}; border-radius: 6px; font-size: 0.8rem; cursor: pointer; font-weight: ${i === page ? '600' : '400'};">${i}</button>
+        `;
+      }
+
+      paginationHtml += `
+        <button type="button" onclick="renderSubmissions(${page + 1})" ${page === totalPages ? 'disabled style="opacity: 0.5; cursor: not-allowed;"' : 'style="cursor: pointer;"'} style="padding: 0.4rem 0.75rem; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; font-size: 0.8rem;">Next</button>
+      `;
+
+      paginationContainer.innerHTML = paginationHtml;
+    }
+  }
 };
 
 // Companion function using your exact showCustomModal implementation
