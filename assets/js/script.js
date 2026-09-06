@@ -1930,13 +1930,28 @@ window.deleteAllStudents = async function() {
 // ==========================================================================
 window.handleCreateAssessment = async function(e) {
   e.preventDefault();
-  if (!currentUser || currentUser.role !== 'Teacher') return;
+  console.log("Submit event intercepted!");
 
-  const title = document.getElementById('testTitle').value;
-  const targetClass = document.getElementById('targetClass').value;
-  const description = document.getElementById('testDesc').value;
-  const deadline = document.getElementById('testDeadline').value;
+  if (!currentUser || currentUser.role !== 'Teacher') {
+    console.warn("Blocked: User is not logged in or not a Teacher.", currentUser);
+    showCustomModal({
+      title: "Access Denied",
+      message: "You must be logged in as a Teacher to publish assessments.",
+      type: "warning"
+    });
+    return;
+  }
+
+  const titleInput = document.getElementById('testTitle');
+  const targetClassInput = document.getElementById('targetClass');
+  const descriptionInput = document.getElementById('testDesc');
+  const deadlineInput = document.getElementById('testDeadline');
   const fileInput = document.getElementById('testFile');
+
+  const title = titleInput ? titleInput.value : '';
+  const targetClass = targetClassInput ? targetClassInput.value : '';
+  const description = descriptionInput ? descriptionInput.value : '';
+  const deadline = deadlineInput ? deadlineInput.value : '';
 
   if (!fileInput || fileInput.files.length === 0) {
     showCustomModal({
@@ -1991,7 +2006,8 @@ window.handleCreateAssessment = async function(e) {
       type: "success"
     });
 
-    document.getElementById('assessmentForm').reset();
+    const form = document.getElementById('assessmentForm');
+    if (form) form.reset();
     if (typeof renderAssessments === 'function') renderAssessments();
 
   } catch (error) {
@@ -2003,6 +2019,15 @@ window.handleCreateAssessment = async function(e) {
     });
   }
 };
+
+document.addEventListener('DOMContentLoaded', () => {
+  const form = document.getElementById('assessmentForm');
+  console.log("Assessment form found:", form);
+
+  if (form && typeof window.handleCreateAssessment === 'function') {
+    form.addEventListener('submit', window.handleCreateAssessment);
+  }
+});
 
 // ==========================================================================
 // 5. PORTAL UI RENDERERS & CLASS FILTER DROPDOWN (SCOPED WITH SCHOOL ID)
