@@ -633,9 +633,12 @@ window.updateProfileUIImages = function(user) {
   }
 };
 
-// 2. Hook into session changes to refresh profile images automatically
+// Hook into session changes to refresh UI components automatically
 window.addEventListener('portalSessionChanged', (e) => {
   window.updateProfileUIImages(e.detail);
+  if (typeof window.renderSubmissions === 'function') {
+    window.renderSubmissions();
+  }
 });
 
 // Handle File Input Change & Firebase Storage Upload with Debug Logging
