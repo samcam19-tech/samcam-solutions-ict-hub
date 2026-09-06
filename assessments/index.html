@@ -508,7 +508,7 @@
 
           <div class="card-box">
             <h3><i class="fa-solid fa-upload"></i> Publish New Assessment</h3>
-            <form id="assessmentForm">
+            <form id="assessmentForm" onsubmit="window.handleCreateAssessment(event)">
               <div class="form-group">
                 <label for="testTitle">Assessment Title</label>
                 <input type="text" id="testTitle" placeholder="e.g. Wakissha UCE ICT 2 MOCK 2026" required>
