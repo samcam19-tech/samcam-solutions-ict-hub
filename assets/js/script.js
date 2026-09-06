@@ -2097,6 +2097,7 @@ function updatePortalUI() {
   }
 
   renderAssessments();
+  updatePortalUI()
 }
 
 window.filterAssessmentsByClass = function() {
