@@ -3348,24 +3348,31 @@ window.renderSubmissions = async function() {
 
   let submissions = [];
   
-  if (window.db) {
+  // Resolve Firestore instance safely
+  const db = window.db || (typeof firebase !== 'undefined' ? firebase.firestore() : null);
+
+  if (db) {
     try {
-      let query = window.db.collection('submissions');
-      if (activeSchoolId && currentUser.role !== 'admin') {
+      let query = db.collection('submissions');
+      // Only filter by schoolId if both exist and user is not admin
+      if (activeSchoolId && currentUser.role && currentUser.role.toLowerCase() !== 'admin') {
         query = query.where('schoolId', '==', activeSchoolId);
       }
       const snap = await query.get();
       snap.forEach(doc => submissions.push({ id: doc.id, ...doc.data() }));
+      console.log(`Fetched ${submissions.length} submissions from Firestore.`);
     } catch (err) {
       console.warn('Firestore submissions fetch warning:', err);
     }
   }
 
+  // Fallback to localStorage if Firestore returned nothing
   if (submissions.length === 0) {
     submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
-    if (activeSchoolId && currentUser && currentUser.role !== 'admin') {
+    if (activeSchoolId && currentUser && currentUser.role && currentUser.role.toLowerCase() !== 'admin') {
       submissions = submissions.filter(s => (s.schoolId || '').toLowerCase() === activeSchoolId.toLowerCase());
     }
+    console.log(`Fetched ${submissions.length} submissions from localStorage fallback.`);
   }
 
   if (submissions.length === 0) {
