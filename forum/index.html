@@ -577,7 +577,7 @@
       }
     }
 
-    // Interactive Ask AI Student Query Handler (Restored using direct REST endpoint)
+    // Fixed Interactive Ask AI Student Query Handler using official ESM SDK & Fallback Key Support
     window.submitStudentAiQuery = async function() {
         const input = document.getElementById('studentAiQuestionInput');
         const responseBox = document.getElementById('studentAiResponseBox');
@@ -590,7 +590,14 @@
         content.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Consulting AI teacher assistant...`;
         
         try {
-            const apiKey = window.GEMINI_API_KEY || 'AQ.Ab8RN6J2wGYo9rbjfkqQDFyIybqltvN3gFh7HIFAIve9Awve1A';
+            const { GoogleGenAI } = await import("https://esm.run/@google/genai");
+            const apiKey = window.GEMINI_API_KEY || localStorage.getItem('gemini_api_key') || '';
+            
+            if (!apiKey) {
+                throw new Error("Gemini API Key is missing. Please configure window.GEMINI_API_KEY in firebase-config.js.");
+            }
+
+            const ai = new GoogleGenAI({ apiKey: apiKey });
 
             let threadContext = "";
             if (typeof globalThreads !== 'undefined' && typeof currentActiveThreadId !== 'undefined') {
@@ -609,28 +616,17 @@
                 Student's Question: ${studentQuestion}
             `;
 
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-            
-            const res = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }]
-                })
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
             });
 
-            const data = await res.json();
-            
-            if (data.error) {
-                throw new Error(data.error.message || 'API Error');
-            }
-
-            const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
+            const rawText = response.text || "No response generated.";
             content.innerHTML = typeof formatRichContent === 'function' ? formatRichContent(rawText) : rawText.replace(/\n/g, '<br>');
 
         } catch (err) {
             console.error("Ask AI Assistant Error:", err);
-            content.innerHTML = `<span style="color: #ef4444;">Failed to generate response. Please check your network connection or try again.</span>`;
+            content.innerHTML = `<span style="color: #ef4444;">Failed to generate response: ${err.message || 'Please check your API key configuration.'}</span>`;
         }
     };
   </script>
