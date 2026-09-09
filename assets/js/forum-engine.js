@@ -612,7 +612,10 @@ window.generateAiSummary = async function(threadId) {
         }
 
         const { GoogleGenAI } = await import("https://esm.run/@google/genai");
-        const ai = new GoogleGenAI();
+        
+        // Pass your API key explicitly so it works in the browser environment
+        const apiKey = window.GEMINI_API_KEY || 'AQ.Ab8RN6Jy3aK19u9bgH9es8cdnMwSdeJbViZ6Kt7fO28nSBhJlQ';
+        const ai = new GoogleGenAI({ apiKey: apiKey });
 
         const prompt = `
             You are an expert ICT educator specializing in the Ugandan Lower Secondary Curriculum and UNEB standards.
@@ -644,15 +647,10 @@ window.generateAiSummary = async function(threadId) {
         `;
 
     } catch (err) {
-        console.warn("Client-side direct token restricted, using intelligent curriculum parser fallback.");
-        
+        console.error("Gemini API Error:", err);
         content.innerHTML = `
-            <div style="display:flex; flex-direction:column; gap:0.5rem; font-size:0.85rem; color:#334155;">
-                <div style="font-weight:bold; color:#0f172a;">🤖 Pedagogical Discussion Synthesis (Offline Mode):</div>
-                <div>1. <strong>Core Concept & Objective:</strong> Focuses on practical problem-solving aligned with Lower Secondary ICT competencies.</div>
-                <div>2. <strong>Student Progress & Insights:</strong> Learners have actively contributed peer responses, evaluating technical workflows and sharing task solutions.</div>
-                <div>3. <strong>Verified Solution / Best Practice:</strong> Refer to instructor-marked best answers within the thread for precise formatting and rubric criteria.</div>
-                <div>4. <strong>Pedagogical Takeaway:</strong> Encourage peer review on syntax and structural accuracy before final practical assessments.</div>
+            <div style="color: #ef4444; font-size: 0.85rem; padding: 0.5rem;">
+                <strong>API Generation Failed:</strong> ${err.message || 'Check console logs for details.'}
             </div>
         `;
     }
