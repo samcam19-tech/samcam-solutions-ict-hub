@@ -614,7 +614,7 @@ window.generateAiSummary = async function(threadId) {
         const { GoogleGenAI } = await import("https://esm.run/@google/genai");
         
         // Pass your API key explicitly so it works in the browser environment
-        const apiKey = window.GEMINI_API_KEY || 'AQ.Ab8RN6Jy3aK19u9bgH9es8cdnMwSdeJbViZ6Kt7fO28nSBhJlQ';
+        const apiKey = window.GEMINI_API_KEY;
         const ai = new GoogleGenAI({ apiKey: apiKey });
 
         const prompt = `
