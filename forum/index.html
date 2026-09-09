@@ -4,180 +4,205 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Learner Discussion Forum - SAMCAM SOLUTIONS ICT HUB</title>
-  <!-- Authentication Guard (Force Login Before Access) -->
-   <script src="../assets/js/auth-guard.js"></script>
+  
+  <!-- Authentication Guard -->
+  <script src="../assets/js/auth-guard.js"></script>
+  
   <!-- Stylesheets -->
   <link rel="stylesheet" href="../assets/css/forum.css">
-  <!-- FontAwesome for Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
   <style>
-    /* Mobile Menu & Header Responsive Styling */
-    @media (max-width: 768px) {
-      .forum-header {
-        flex-direction: column !important;
-        align-items: stretch !important;
-        gap: 0.75rem !important;
-        padding: 1rem !important;
-      }
-      .forum-header > div:first-child > div:first-of-type {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        width: 100%;
-      }
-      .forum-header h2 {
-        font-size: 1.15rem !important;
-        display: flex;
-        align-items: center;
-        gap: 0.4rem;
-        margin: 0;
-      }
-      .header-actions-wrapper {
-        display: none !important;
-        width: 100%;
-        flex-direction: column;
-        align-items: stretch !important;
-        gap: 0.5rem !important;
-        margin-top: 0.5rem;
-        padding-top: 0.75rem;
-        border-top: 1px solid rgba(255, 255, 255, 0.15);
-      }
-      .header-actions-wrapper.mobile-open {
-        display: flex !important;
-      }
-      #navProfileWidget {
-        width: 100%;
-        justify-content: flex-start;
-        margin-right: 0 !important;
-        margin-bottom: 0.25rem;
-      }
+    :root {
+      --primary-color: #2563eb;
+      --primary-hover: #1d4ed8;
+      --bg-main: #f8fafc;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --border-color: #e2e8f0;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+      --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .mobile-menu-toggle {
-      display: none;
-      background: none;
-      border: 1px solid var(--border-color, #cbd5e1);
-      color: inherit;
-      padding: 0.4rem 0.6rem;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 1rem;
-      align-items: center;
-      justify-content: center;
+    body {
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      margin: 0;
+      padding: 0;
+      -webkit-font-smoothing: antialiased;
     }
 
-    @media (max-width: 768px) {
-      .mobile-menu-toggle {
-        display: inline-flex;
-      }
-    }
-
-    /* Pulsing notification icon counter badge */
-    .nav-notification-badge {
-      background: #ef4444;
-      color: #fff;
-      font-size: 0.65rem;
-      padding: 0.1rem 0.35rem;
-      border-radius: 10px;
-      font-weight: 700;
-      vertical-align: middle;
-      margin-left: 0.4rem;
-      animation: pulse-badge 2s infinite ease-in-out;
-      display: inline-block;
-    }
-
-    @keyframes pulse-badge {
-      0% { transform: scale(1); opacity: 1; }
-      50% { transform: scale(1.12); opacity: 0.85; }
-      100% { transform: scale(1); opacity: 1; }
-    }
-
-    /* Modern Toast Notification Container */
-    #forumToastContainer {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      z-index: 9999;
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      max-width: 320px;
-    }
-
-    .forum-toast {
-      background: #1e293b;
-      color: #f8fafc;
-      padding: 0.75rem 1rem;
-      border-radius: 8px;
-      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
-      font-size: 0.85rem;
-      border-left: 4px solid #3b82f6;
-      animation: slide-in 0.3s ease-out forwards;
-      cursor: pointer;
-    }
-
-    @keyframes slide-in {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-
-    /* --- ASK AI MODULE STYLES --- */
-    .ask-ai-module {
-      background: var(--bg-card, #ffffff);
-      border: 1px solid var(--border-color, #cbd5e1);
-      border-radius: 12px;
-      padding: 1.25rem;
-      margin-bottom: 1.5rem;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    .forum-wrapper {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1.5rem;
       box-sizing: border-box;
     }
 
-    .ask-ai-header {
-      font-size: 1rem;
+    /* Modern SaaS Header */
+    .forum-header {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.75rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .forum-header h2 {
+      font-size: 1.25rem;
       font-weight: 700;
+      color: var(--text-main);
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      margin-top: 0;
-      margin-bottom: 0.35rem;
-      color: var(--text-color, #0f172a);
+      margin: 0;
     }
 
-    .ask-ai-header i {
-      color: var(--primary, #2563eb);
+    .forum-header h2 i {
+      color: var(--primary-color);
+    }
+
+    /* Profile Widget Component */
+    #navProfileWidget {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--bg-main);
+      padding: 0.4rem 0.85rem;
+      border-radius: 9999px;
+      border: 1px solid var(--border-color);
+    }
+
+    #navProfilePic {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+
+    /* Controls Bar */
+    .forum-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      background: var(--bg-card);
+      padding: 1rem;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      min-width: 240px;
+    }
+
+    .search-box i {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 0.625rem 1rem 0.625rem 2.5rem;
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      color: var(--text-main);
+      transition: var(--transition);
+      box-sizing: border-box;
+    }
+
+    .search-box input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+
+    .filter-box select {
+      padding: 0.625rem 1rem;
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      color: var(--text-main);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .filter-box select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+
+    /* Ask AI Module Component */
+    .ask-ai-module {
+      background: linear-gradient(135deg, #eff6ff 0%, #f8fafc 100%);
+      border: 1px solid #bfdbfe;
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: var(--shadow-md);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .ask-ai-header {
+      font-size: 1.05rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin: 0 0 0.25rem 0;
+      color: #1e40af;
     }
 
     .ask-ai-subtitle {
-      font-size: 0.85rem;
-      color: #64748b;
-      margin-bottom: 0.85rem;
-      margin-top: 0;
-    }
-
-    .ask-ai-form {
-      display: flex;
-      flex-direction: column;
-      gap: 0.75rem;
+      font-size: 0.875rem;
+      color: #475569;
+      margin: 0 0 1rem 0;
     }
 
     .ask-ai-form textarea {
       width: 100%;
-      min-height: 85px;
-      padding: 0.75rem;
-      border: 1px solid var(--border-color, #cbd5e1);
-      border-radius: 8px;
-      background: var(--bg-main, #f8fafc);
-      color: var(--text-color, #0f172a);
+      min-height: 90px;
+      padding: 0.875rem;
+      border: 1px solid #cbd5e1;
+      border-radius: var(--radius-sm);
+      background: var(--bg-card);
+      color: var(--text-main);
       font-family: inherit;
       font-size: 0.9rem;
       resize: vertical;
       box-sizing: border-box;
-      transition: border-color 0.2s ease;
+      transition: var(--transition);
+      box-shadow: inset 0 1px 2px rgba(0,0,0,0.02);
     }
 
     .ask-ai-form textarea:focus {
       outline: none;
-      border-color: var(--primary, #2563eb);
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
     }
 
     .ask-ai-submit-btn {
@@ -185,44 +210,121 @@
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
-      background: var(--primary, #2563eb);
+      background: var(--primary-color);
       color: white;
       border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 8px;
+      padding: 0.625rem 1.25rem;
+      border-radius: var(--radius-sm);
       font-size: 0.875rem;
       font-weight: 600;
       cursor: pointer;
-      transition: background 0.2s ease;
+      transition: var(--transition);
+      box-shadow: var(--shadow-sm);
     }
 
     .ask-ai-submit-btn:hover {
-      background: #1d4ed8;
+      background: var(--primary-hover);
+      transform: translateY(-1px);
     }
 
     .ask-ai-response-container {
       display: none;
-      margin-top: 1rem;
-      padding: 1rem;
-      background: var(--bg-main, #f8fafc);
-      border: 1px solid var(--border-color, #e2e8f0);
-      border-radius: 8px;
+      margin-top: 1.25rem;
+      padding: 1.25rem;
+      background: var(--bg-card);
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-sm);
     }
 
     .ask-ai-response-title {
       font-weight: 700;
       font-size: 0.85rem;
-      color: var(--primary, #2563eb);
-      margin-bottom: 0.5rem;
+      color: var(--primary-color);
+      margin-bottom: 0.75rem;
       display: flex;
       align-items: center;
       gap: 0.4rem;
+      text-transform: uppercase;
+      letter-spacing: 0.025em;
     }
 
     #studentAiResponseContent {
-      font-size: 0.85rem;
-      color: var(--text-color, #334155);
-      line-height: 1.5;
+      font-size: 0.9rem;
+      color: #334155;
+      line-height: 1.6;
+    }
+
+    /* Buttons & Modals */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.625rem 1rem;
+      border-radius: var(--radius-sm);
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      border: 1px solid transparent;
+      text-decoration: none;
+    }
+
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border-color: var(--border-color);
+      color: var(--text-main);
+    }
+
+    .btn-outline:hover {
+      background: var(--bg-main);
+      border-color: #cbd5e1;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+      .forum-wrapper {
+        padding: 1rem;
+      }
+      .forum-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .header-actions-wrapper {
+        display: none;
+        flex-direction: column;
+        gap: 0.75rem;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid var(--border-color);
+      }
+      .header-actions-wrapper.mobile-open {
+        display: flex;
+      }
+      .mobile-menu-toggle {
+        display: inline-flex !important;
+      }
+    }
+
+    .mobile-menu-toggle {
+      display: none;
+      background: var(--bg-main);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.5rem 0.75rem;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
     }
   </style>
 </head>
@@ -231,60 +333,60 @@
 
   <div class="forum-wrapper">
     <!-- Header Section -->
-    <header class="forum-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-      <div style="flex: 1; min-width: 250px; display: flex; align-items: center; gap: 1rem;">
-  <img src="../images/logo.png" alt="System Logo" class="dynamic-system-logo" style="width: 45px; height: 45px; border-radius: 50%; object-fit: cover;">
-  <div style="flex: 1;">
-    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-      <h2 class="dynamic-system-name" style="margin: 0; font-size: 1.25rem; font-weight: 700;">
-        <i class="fa-solid fa-comments"></i> Learner Discussion Forum 
-        <span id="globalForumCounter"></span>
-      </h2>
-      <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle Navigation Menu">
-        <i class="fa-solid fa-bars" id="mobileMenuIcon"></i>
-      </button>
-    </div>
-    <p class="dynamic-system-slogan" style="margin: 0.35rem 0 0 0; font-size: 0.8rem; color: #64748b;">Engage in academic discourse, ask questions, and collaborate with peers.</p>
-  </div>
-</div>
+    <header class="forum-header">
+      <div style="display: flex; align-items: center; gap: 1rem; flex: 1;">
+        <img src="../images/logo.png" alt="System Logo" class="dynamic-system-logo" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 2px solid var(--border-color);">
+        <div>
+          <div style="display: flex; align-items: center; gap: 1rem;">
+            <h2 class="dynamic-system-name">
+              <i class="fa-solid fa-comments"></i> Learner Discussion Forum
+              <span id="globalForumCounter"></span>
+            </h2>
+            <button class="mobile-menu-toggle" onclick="toggleMobileMenu()" aria-label="Toggle Navigation Menu">
+              <i class="fa-solid fa-bars" id="mobileMenuIcon"></i>
+            </button>
+          </div>
+          <p class="dynamic-system-slogan" style="margin: 0.25rem 0 0 0; font-size: 0.85rem; color: var(--text-muted);">Engage in academic discourse, ask questions, and collaborate with peers.</p>
+        </div>
+      </div>
 
-     <!-- Action buttons & role-based back links container -->
+      <!-- Action buttons & role-based back links container -->
       <div class="header-actions-wrapper" style="display: flex; align-items: center; gap: 0.75rem;">
         
         <!-- User Profile Navbar Widget -->
-        <div id="navProfileWidget" style="display: flex; align-items: center; gap: 0.6rem; background: rgba(15, 23, 42, 0.4); padding: 0.35rem 0.75rem; border-radius: 30px; border: 1px solid rgba(255, 255, 255, 0.15); margin-right: 0.5rem;">
-          <img id="navProfilePic" src="../images/default-avatar.png" alt="Avatar" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 1px solid #38bdf8;">
+        <div id="navProfileWidget">
+          <img id="navProfilePic" src="../images/default-avatar.png" alt="Avatar">
           <div style="display: flex; flex-direction: column; text-align: left; line-height: 1.2;">
-            <span id="navFullName" style="font-size: 0.8rem; font-weight: 600; color: #f8fafc;">User</span>
-            <span id="navUsername" style="font-size: 0.7rem; color: #38bdf8;">@username</span>
+            <span id="navFullName" style="font-size: 0.8rem; font-weight: 600; color: var(--text-main);">User</span>
+            <span id="navUsername" style="font-size: 0.7rem; color: var(--primary-color);">@username</span>
           </div>
         </div>
 
         <!-- Button for Teachers to post a new prompt -->
         <button class="btn btn-primary teacher-only" id="openNewThreadModalBtn" onclick="openNewThreadModal()" style="display: none;">
-          <i class="fa-solid fa-plus"></i> New Discussion Question
+          <i class="fa-solid fa-plus"></i> New Discussion
         </button>
 
         <!-- Back Link for Staff -->
         <a href="../assessments/" class="btn btn-outline teacher-only back-link-staff" id="staffBackLink" style="display: none;">
-          <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+          <i class="fa-solid fa-arrow-left"></i> Dashboard
         </a>
 
         <!-- Back Link for Students -->
-        <a href="../assessments/" class="btn btn-outline student-only back-link-student" id="studentBackLink" style="display: inline-flex;">
+        <a href="../assessments/" class="btn btn-outline student-only back-link-student" id="studentBackLink">
           <i class="fa-solid fa-arrow-left"></i> Back to Portal
         </a>
       </div>
     </header>
 
     <!-- Search and Filter Bar -->
-    <div class="forum-controls" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.5rem;">
-      <div class="search-box" style="flex: 1; min-width: 200px;">
+    <div class="forum-controls">
+      <div class="search-box">
         <i class="fa-solid fa-magnifying-glass"></i>
         <input type="text" id="forumSearchInput" placeholder="Search discussion topics..." onkeyup="filterForumThreads()">
       </div>
       
-      <div style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
+      <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
         <div class="filter-box">
           <select id="classFilterSelect" onchange="filterForumThreads()">
             <option value="">All Classes / Levels</option>
@@ -297,70 +399,69 @@
           </select>
         </div>
 
-        <!-- "Mark All Read" Button -->
-        <button class="btn btn-sm btn-outline" onclick="markAllThreadsAsRead()" title="Mark all discussions as read" style="white-space: nowrap; background: transparent; height: 38px;">
-          <i class="fa-solid fa-check-double" style="color: #10b981;"></i> Mark All Read
+        <button class="btn btn-outline" onclick="markAllThreadsAsRead()" title="Mark all discussions as read" style="height: 38px; padding: 0 0.85rem;">
+          <i class="fa-solid fa-check-double" style="color: #10b981;"></i> Mark Read
         </button>
       </div>
     </div>
 
-    <!-- Interactive Student "Ask AI" Module (Strategically placed below controls) -->
+    <!-- Interactive Student "Ask AI" Module -->
     <div class="ask-ai-module">
-        <div class="ask-ai-header">
-            <i class="fa-solid fa-robot"></i> Ask AI Teacher Assistant
-        </div>
-        <p class="ask-ai-subtitle">Stuck on a concept or need further clarification? Ask our curriculum-aligned AI assistant instantly!</p>
-        
-        <div class="ask-ai-form">
-            <textarea id="studentAiQuestionInput" placeholder="Type your question about this topic or ICT concept here..."></textarea>
-            <button type="button" onclick="submitStudentAiQuery()" class="ask-ai-submit-btn">
-                <i class="fa-solid fa-paper-plane"></i> Ask AI
-            </button>
-        </div>
+      <div class="ask-ai-header">
+        <i class="fa-solid fa-robot"></i> Ask AI Teacher Assistant
+      </div>
+      <p class="ask-ai-subtitle">Stuck on a concept or need further clarification? Ask our curriculum-aligned AI assistant instantly.</p>
+      
+      <div class="ask-ai-form" style="display: flex; flex-direction: column; gap: 0.75rem;">
+        <textarea id="studentAiQuestionInput" placeholder="Type your question about this topic or ICT concept here..."></textarea>
+        <button type="button" onclick="submitStudentAiQuery()" class="ask-ai-submit-btn">
+          <i class="fa-solid fa-paper-plane"></i> Ask AI Assistant
+        </button>
+      </div>
 
-        <!-- Response Box Container -->
-        <div id="studentAiResponseBox" class="ask-ai-response-container">
-            <div class="ask-ai-response-title">
-                <i class="fa-solid fa-sparkles"></i> AI Teacher Feedback:
-            </div>
-            <div id="studentAiResponseContent"></div>
+      <!-- Response Box Container -->
+      <div id="studentAiResponseBox" class="ask-ai-response-container">
+        <div class="ask-ai-response-title">
+          <i class="fa-solid fa-sparkles"></i> AI Teacher Feedback:
         </div>
+        <div id="studentAiResponseContent"></div>
+      </div>
     </div>
 
     <!-- Main Content Grid -->
-    <div class="forum-container">
+    <div class="forum-container" style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 1.5rem; align-items: start;">
       <!-- Threads List Feed -->
-      <div class="threads-feed" id="threadsFeedContainer">
-        <div class="loading-state">
+      <div class="threads-feed" id="threadsFeedContainer" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1rem; min-height: 400px; box-shadow: var(--shadow-sm);">
+        <div class="loading-state" style="text-align: center; padding: 3rem; color: var(--text-muted);">
           <i class="fa-solid fa-spinner fa-spin"></i> Loading discussions...
         </div>
       </div>
 
       <!-- Active Thread Detail Pane -->
-      <div class="thread-detail-pane" id="threadDetailPane">
-        <div class="no-thread-selected">
-          <i class="fa-regular fa-comment-dots"></i>
-          <p>Select a discussion topic from the left to view replies and join the conversation.</p>
+      <div class="thread-detail-pane" id="threadDetailPane" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: var(--radius-lg); padding: 1.5rem; min-height: 400px; box-shadow: var(--shadow-sm); position: sticky; top: 1.5rem;">
+        <div class="no-thread-selected" style="text-align: center; padding: 4rem 2rem; color: var(--text-muted);">
+          <i class="fa-regular fa-comment-dots" style="font-size: 2.5rem; margin-bottom: 1rem; color: #cbd5e1;"></i>
+          <p style="margin: 0; font-size: 0.95rem;">Select a discussion topic from the list to view replies and join the conversation.</p>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Modal: Create New Discussion Thread (Controlled via JS functions) -->
-  <div class="forum-modal-overlay" id="newThreadModal" style="display: none;">
-    <div class="forum-modal">
-      <div class="forum-modal-header">
-        <h3>Post New Discussion Question</h3>
-        <button onclick="closeNewThreadModal()"><i class="fa-solid fa-xmark"></i></button>
+  <!-- Modal: Create New Discussion Thread -->
+  <div class="forum-modal-overlay" id="newThreadModal" style="display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
+    <div class="forum-modal" style="background: var(--bg-card); padding: 2rem; border-radius: var(--radius-lg); width: 100%; max-width: 500px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
+      <div class="forum-modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
+        <h3 style="margin: 0; font-size: 1.15rem; color: var(--text-main);">Post New Discussion Question</h3>
+        <button onclick="closeNewThreadModal()" style="background: none; border: none; font-size: 1.15rem; cursor: pointer; color: var(--text-muted);"><i class="fa-solid fa-xmark"></i></button>
       </div>
-      <form id="newThreadForm" onsubmit="handleCreateThread(event)">
-        <div class="form-group">
-          <label>Topic Title</label>
-          <input type="text" id="threadTitleInput" required placeholder="e.g., Understanding XLOOKUP vs VLOOKUP">
+      <form id="newThreadForm" onsubmit="handleCreateThread(event)" style="display: flex; flex-direction: column; gap: 1rem;">
+        <div class="form-group" style="display: flex; flex-direction: column; gap: 0.4rem;">
+          <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Topic Title</label>
+          <input type="text" id="threadTitleInput" required placeholder="e.g., Understanding XLOOKUP vs VLOOKUP" style="padding: 0.625rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.9rem;">
         </div>
-        <div class="form-group">
-          <label>Target Class</label>
-          <select id="threadClassInput" required>
+        <div class="form-group" style="display: flex; flex-direction: column; gap: 0.4rem;">
+          <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Target Class</label>
+          <select id="threadClassInput" required style="padding: 0.625rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.9rem; background: var(--bg-card);">
             <option value="General">General / All Classes</option>
             <option value="Senior 1">Senior 1</option>
             <option value="Senior 2">Senior 2</option>
@@ -370,12 +471,12 @@
             <option value="Senior 6">Senior 6</option>
           </select>
         </div>
-        <div class="form-group">
-          <label>Question / Prompt Details</label>
-          <textarea id="threadBodyInput" rows="5" required placeholder="Type your question or discussion guidelines here..."></textarea>
+        <div class="form-group" style="display: flex; flex-direction: column; gap: 0.4rem;">
+          <label style="font-size: 0.85rem; font-weight: 600; color: var(--text-main);">Question / Prompt Details</label>
+          <textarea id="threadBodyInput" rows="5" required placeholder="Type your question or discussion guidelines here..." style="padding: 0.625rem; border: 1px solid var(--border-color); border-radius: var(--radius-sm); font-size: 0.9rem; font-family: inherit; resize: vertical;"></textarea>
         </div>
-        <div class="forum-modal-footer">
-          <button type="button" class="btn btn-secondary" onclick="closeNewThreadModal()">Cancel</button>
+        <div class="forum-modal-footer" style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 0.5rem;">
+          <button type="button" class="btn btn-outline" onclick="closeNewThreadModal()">Cancel</button>
           <button type="submit" class="btn btn-primary">Post Question</button>
         </div>
       </form>
@@ -383,20 +484,20 @@
   </div>
 
   <!-- Custom System Dialog Modal -->
-  <div id="systemModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15,23,42,0.6); z-index:9999; justify-content:center; align-items:center; backdrop-filter:blur(2px);">
-    <div style="background:#ffffff; padding:1.5rem; border-radius:10px; width:100%; max-width:400px; box-shadow:0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);">
-      <h3 id="systemModalTitle" style="margin-top:0; margin-bottom:0.5rem; font-size:1.1rem; color:#0f172a; display:flex; align-items:center; gap:0.5rem;">
-        <i id="systemModalIcon" class="fa-solid fa-circle-info" style="color:#3b82f6;"></i> <span id="systemModalTitleText">Confirmation</span>
+  <div id="systemModal" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.6); z-index:9999; justify-content:center; align-items:center; backdrop-filter:blur(4px);">
+    <div style="background:var(--bg-card); padding:1.75rem; border-radius:var(--radius-lg); width:100%; max-width:400px; box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);">
+      <h3 id="systemModalTitle" style="margin-top:0; margin-bottom:0.5rem; font-size:1.1rem; color:var(--text-main); display:flex; align-items:center; gap:0.5rem;">
+        <i id="systemModalIcon" class="fa-solid fa-circle-info" style="color:var(--primary-color);"></i> <span id="systemModalTitleText">Confirmation</span>
       </h3>
-      <p id="systemModalMessage" style="color:#475569; font-size:0.9rem; margin-bottom:1.25rem; line-height:1.4;"></p>
+      <p id="systemModalMessage" style="color:var(--text-muted); font-size:0.9rem; margin-bottom:1.25rem; line-height:1.5;"></p>
       
       <div id="systemModalPromptContainer" style="margin-bottom:1.25rem; display:none;">
-        <input type="text" id="systemModalPromptInput" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; font-size:0.9rem;" />
+        <input type="text" id="systemModalPromptInput" style="width:100%; padding:0.625rem; border:1px solid var(--border-color); border-radius:var(--radius-sm); font-size:0.9rem;" />
       </div>
 
-      <div style="display:flex; justify-content:flex-end; gap:0.5rem;" id="systemModalButtons">
-        <button id="systemModalCancelBtn" class="btn btn-sm btn-outline" style="display:none;" onclick="closeSystemModal(false)">Cancel</button>
-        <button id="systemModalOkBtn" class="btn btn-sm btn-primary" onclick="closeSystemModal(true)">OK</button>
+      <div style="display:flex; justify-content:flex-end; gap:0.75rem;" id="systemModalButtons">
+        <button id="systemModalCancelBtn" class="btn btn-outline" style="display:none;" onclick="closeSystemModal(false)">Cancel</button>
+        <button id="systemModalOkBtn" class="btn btn-primary" onclick="closeSystemModal(true)">OK</button>
       </div>
     </div>
   </div>
@@ -408,18 +509,14 @@
   <script src="../assets/js/firebase-config.js"></script>
   <script src="../assets/js/forum-engine.js"></script>
 
-  <!-- Role-based Back Link, Profile Widget & Mobile Menu Controller Script -->
+  <!-- Script Controllers -->
   <script>
     function toggleMobileMenu() {
       const actionsWrapper = document.querySelector('.header-actions-wrapper');
       const menuIcon = document.getElementById('mobileMenuIcon');
       if (actionsWrapper) {
         actionsWrapper.classList.toggle('mobile-open');
-        if (actionsWrapper.classList.contains('mobile-open')) {
-          menuIcon.className = "fa-solid fa-xmark";
-        } else {
-          menuIcon.className = "fa-solid fa-bars";
-        }
+        menuIcon.className = actionsWrapper.classList.contains('mobile-open') ? "fa-solid fa-xmark" : "fa-solid fa-bars";
       }
     }
 
@@ -451,7 +548,6 @@
         pic = user.profilePic || user.avatarUrl || user.photoURL || '../images/default-avatar.png';
       }
 
-      // Populate Navbar Profile Widget Elements
       const elNavPic = document.getElementById('navProfilePic');
       const elNavName = document.getElementById('navFullName');
       const elNavUsername = document.getElementById('navUsername');
@@ -460,13 +556,12 @@
       if (elNavName) elNavName.textContent = fullName;
       if (elNavUsername) elNavUsername.textContent = '@' + username;
 
-      // Evaluate role-based permissions and back links
       const combined = `${role} ${fullName}`.toLowerCase();
       const isTeacherOrAdmin = combined.includes('teacher') || 
-                               combined.includes('admin') || 
-                               combined.includes('instructor') ||
-                               combined.includes('staff') ||
-                               (user && user.role === 'Teacher');
+                             combined.includes('admin') || 
+                             combined.includes('instructor') ||
+                             combined.includes('staff') ||
+                             (user && user.role === 'Teacher');
 
       const staffLink = document.getElementById('staffBackLink');
       const studentLink = document.getElementById('studentBackLink');
@@ -482,7 +577,7 @@
       }
     }
 
-    // Interactive Ask AI Student Query Handler
+    // Interactive Ask AI Student Query Handler (Restored using direct REST endpoint)
     window.submitStudentAiQuery = async function() {
         const input = document.getElementById('studentAiQuestionInput');
         const responseBox = document.getElementById('studentAiResponseBox');
@@ -495,9 +590,7 @@
         content.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Consulting AI teacher assistant...`;
         
         try {
-            const { GoogleGenAI } = await import("https://esm.run/@google/genai");
-            const apiKey = window.GEMINI_API_KEY || 'AQ.Ab8RN6Jy3aK19u9bgH9es8cdnMwSdeJbViZ6Kt7fO28nSBhJlQ';
-            const ai = new GoogleGenAI({ apiKey: apiKey });
+            const apiKey = window.GEMINI_API_KEY || 'AQ.Ab8RN6J2wGYo9rbjfkqQDFyIybqltvN3gFh7HIFAIve9Awve1A';
 
             let threadContext = "";
             if (typeof globalThreads !== 'undefined' && typeof currentActiveThreadId !== 'undefined') {
@@ -516,12 +609,24 @@
                 Student's Question: ${studentQuestion}
             `;
 
-            const response = await ai.models.generateContent({
-                model: 'gemini-3.6-flash',
-                contents: prompt,
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+            
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
             });
 
-            content.innerHTML = typeof formatRichContent === 'function' ? formatRichContent(response.text) : response.text.replace(/\n/g, '<br>');
+            const data = await res.json();
+            
+            if (data.error) {
+                throw new Error(data.error.message || 'API Error');
+            }
+
+            const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
+            content.innerHTML = typeof formatRichContent === 'function' ? formatRichContent(rawText) : rawText.replace(/\n/g, '<br>');
 
         } catch (err) {
             console.error("Ask AI Assistant Error:", err);
@@ -529,7 +634,7 @@
         }
     };
   </script>
-  <!-- Include Brand Loader Script -->
+  
   <script src="../assets/js/brand-loader.js"></script>
 </body>
 </html>
