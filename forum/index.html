@@ -577,71 +577,54 @@
       }
     }
 
+   import { GoogleGenAI } from "https://esm.run/@google/genai";
+
     window.submitStudentAiQuery = async function() {
-    const input = document.getElementById('studentAiQuestionInput');
-    const responseBox = document.getElementById('studentAiResponseBox');
-    const content = document.getElementById('studentAiResponseContent');
-    
-    if (!input || !input.value.trim()) return;
-    
-    const studentQuestion = input.value.trim();
-    responseBox.style.display = 'block';
-    content.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Consulting AI teacher assistant...`;
-    
-    try {
-        // Paste your exact current AQ... key string directly here
-        const apiKey = "AQ.Ab8RN6JLflBpqAQSfvg1hyRfQL4RpqDlXa5k3HDN-onQxsMwsQ";
+        const input = document.getElementById('studentAiQuestionInput');
+        const responseBox = document.getElementById('studentAiResponseBox');
+        const content = document.getElementById('studentAiResponseContent');
         
-        if (!apiKey) {
-            throw new Error("API Key is missing.");
-        }
-
-        let threadContext = "";
-        if (typeof globalThreads !== 'undefined' && typeof currentActiveThreadId !== 'undefined') {
-            const currentThread = globalThreads.find(t => t.id === currentActiveThreadId);
-            if (currentThread) {
-                threadContext = `Context - Discussion Title: ${currentThread.title}\nScenario / Question: ${currentThread.body || ''}\n`;
+        if (!input || !input.value.trim()) return;
+        
+        const studentQuestion = input.value.trim();
+        responseBox.style.display = 'block';
+        content.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Consulting AI teacher assistant...`;
+        
+        try {
+            // Initialize the official SDK client directly with your key
+            const ai = new GoogleGenAI({ apiKey: "AQ.Ab8RN6JLflBpqAQSfvg1hyRfQL4RpqDlXa5k3HDN-onQxsMwsQ" });
+    
+            let threadContext = "";
+            if (typeof globalThreads !== 'undefined' && typeof currentActiveThreadId !== 'undefined') {
+                const currentThread = globalThreads.find(t => t.id === currentActiveThreadId);
+                if (currentThread) {
+                    threadContext = `Context - Discussion Title: ${currentThread.title}\nScenario / Question: ${currentThread.body || ''}\n`;
+                }
             }
+    
+            const prompt = `
+                You are a helpful, encouraging expert ICT educator specializing in the Ugandan Lower Secondary Curriculum and UNEB standards. 
+                A secondary school student is asking a follow-up question regarding their class discussion or coursework. 
+                Provide a clear, pedagogical, encouraging, and accurate technical answer.
+    
+                ${threadContext}
+                Student's Question: ${studentQuestion}
+            `;
+    
+            // Call the model using the standard SDK method
+            const response = await ai.models.generateContent({
+                model: 'gemini-2.5-flash',
+                contents: prompt,
+            });
+    
+            const rawText = response.text || "No response generated.";
+            content.innerHTML = typeof formatRichContent === 'function' ? formatRichContent(rawText) : rawText.replace(/\n/g, '<br>');
+    
+        } catch (err) {
+            console.error("Ask AI Assistant Error:", err);
+            content.innerHTML = `<span style="color: #ef4444;">Failed to generate response: ${err.message}</span>`;
         }
-
-        const prompt = `
-            You are a helpful, encouraging expert ICT educator specializing in the Ugandan Lower Secondary Curriculum and UNEB standards. 
-            A secondary school student is asking a follow-up question regarding their class discussion or coursework. 
-            Provide a clear, pedagogical, encouraging, and accurate technical answer.
-
-            ${threadContext}
-            Student's Question: ${studentQuestion}
-        `;
-
-        // Direct REST endpoint call avoiding SDK header routing issues
-        const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-goog-api-key': apiKey
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{ text: prompt }]
-                }]
-            })
-        });
-
-        if (!apiResponse.ok) {
-            const errData = await apiResponse.json();
-            throw new Error(errData.error?.message || `HTTP error! status: ${apiResponse.status}`);
-        }
-
-        const data = await apiResponse.json();
-        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
-        
-        content.innerHTML = typeof formatRichContent === 'function' ? formatRichContent(rawText) : rawText.replace(/\n/g, '<br>');
-
-    } catch (err) {
-        console.error("Ask AI Assistant Error:", err);
-        content.innerHTML = `<span style="color: #ef4444;">Failed to generate response: ${err.message}</span>`;
-    }
-};
+    };
   </script>
   
   <script src="../assets/js/brand-loader.js"></script>
