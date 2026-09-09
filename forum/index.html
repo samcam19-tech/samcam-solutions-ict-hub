@@ -591,7 +591,7 @@
         
         try {
             const { GoogleGenAI } = await import("https://esm.run/@google/genai");
-            const apiKey = window.GEMINI_API_KEY || localStorage.getItem('gemini_api_key') || '';
+            const apiKey = window.GEMINI_API_KEY || localStorage.getItem('gemini_api_key') || 'AQ.Ab8RN6I72qFX2yNDlY0uAN-yxxGtCY24f8uY-erXawy8lT_eUg';
             
             if (!apiKey) {
                 throw new Error("Gemini API Key is missing. Please configure window.GEMINI_API_KEY in firebase-config.js.");
