@@ -589,12 +589,12 @@
     content.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Consulting AI teacher assistant...`;
     
     try {
-        const { GoogleGenAI } = await import("https://esm.run/@google/genai");
+        // Paste your exact current AQ... key string directly here
+        const apiKey = "AQ.Ab8RN6JLflBpqAQSfvg1hyRfQL4RpqDlXa5k3HDN-onQxsMwsQ";
         
-        // Hardcode your working API key string directly here
-        const apiKey = "AQ.Ab8RN6LFLxwi0aXIrkp3JYHYwV4frSryAnW4okIFYUSYblm7vw";
-
-        const ai = new GoogleGenAI({ apiKey: apiKey });
+        if (!apiKey) {
+            throw new Error("API Key is missing.");
+        }
 
         let threadContext = "";
         if (typeof globalThreads !== 'undefined' && typeof currentActiveThreadId !== 'undefined') {
@@ -613,12 +613,28 @@
             Student's Question: ${studentQuestion}
         `;
 
-        const response = await ai.models.generateContent({
-            model: 'gemini-3.6-flash',
-            contents: prompt,
+        // Direct REST endpoint call avoiding SDK header routing issues
+        const apiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': apiKey
+            },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{ text: prompt }]
+                }]
+            })
         });
 
-        const rawText = response.text || "No response generated.";
+        if (!apiResponse.ok) {
+            const errData = await apiResponse.json();
+            throw new Error(errData.error?.message || `HTTP error! status: ${apiResponse.status}`);
+        }
+
+        const data = await apiResponse.json();
+        const rawText = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
+        
         content.innerHTML = typeof formatRichContent === 'function' ? formatRichContent(rawText) : rawText.replace(/\n/g, '<br>');
 
     } catch (err) {
