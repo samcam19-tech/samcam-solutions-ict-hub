@@ -180,14 +180,8 @@
       border-color: var(--primary, #2563eb);
     }
 
-    .ask-ai-actions {
-      display: flex;
-      justify-content: flex-end;
-      gap: 0.5rem;
-      align-items: center;
-    }
-
     .ask-ai-submit-btn {
+      align-self: flex-end;
       display: inline-flex;
       align-items: center;
       gap: 0.5rem;
@@ -204,27 +198,6 @@
 
     .ask-ai-submit-btn:hover {
       background: #1d4ed8;
-    }
-
-    .ask-ai-clear-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      background: transparent;
-      color: #64748b;
-      border: 1px solid var(--border-color, #cbd5e1);
-      padding: 0.5rem 0.85rem;
-      border-radius: 8px;
-      font-size: 0.875rem;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .ask-ai-clear-btn:hover {
-      background: #f1f5f9;
-      color: #ef4444;
-      border-color: #ef4444;
     }
 
     .ask-ai-response-container {
@@ -331,7 +304,7 @@
       </div>
     </div>
 
-    <!-- Interactive Student "Ask AI" Module (With Clear Chat Button) -->
+    <!-- Interactive Student "Ask AI" Module (Strategically placed below controls) -->
     <div class="ask-ai-module">
         <div class="ask-ai-header">
             <i class="fa-solid fa-robot"></i> Ask AI Teacher Assistant
@@ -340,14 +313,9 @@
         
         <div class="ask-ai-form">
             <textarea id="studentAiQuestionInput" placeholder="Type your question about this topic or ICT concept here..."></textarea>
-            <div class="ask-ai-actions">
-                <button type="button" onclick="clearStudentAiChat()" class="ask-ai-clear-btn">
-                    <i class="fa-solid fa-trash-can"></i> Clear Chat
-                </button>
-                <button type="button" onclick="submitStudentAiQuery()" class="ask-ai-submit-btn">
-                    <i class="fa-solid fa-paper-plane"></i> Ask AI
-                </button>
-            </div>
+            <button type="button" onclick="submitStudentAiQuery()" class="ask-ai-submit-btn">
+                <i class="fa-solid fa-paper-plane"></i> Ask AI
+            </button>
         </div>
 
         <!-- Response Box Container -->
@@ -514,64 +482,51 @@
       }
     }
 
+    // Interactive Ask AI Student Query Handler
     window.submitStudentAiQuery = async function() {
-    const input = document.getElementById('studentAiQuestionInput');
-    const responseBox = document.getElementById('studentAiResponseBox');
-    const content = document.getElementById('studentAiResponseContent');
-    
-    if (!input || !input.value.trim()) return;
-    
-    const studentQuestion = input.value.trim();
-    responseBox.style.display = 'block';
-    content.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Consulting AI teacher assistant...`;
-    
-    try {
-        const { GoogleGenAI } = await import("https://esm.run/@google/genai");
-        
-        // Fallback directly to your key string if window.GEMINI_API_KEY is not defined
-        const apiKey = window.GEMINI_API_KEY || 'AQ.Ab8RN6Jy3aK19u9bgH9es8cdnMwSdeJbViZ6Kt7fO28nSBhJlQ';
-        
-        const ai = new GoogleGenAI({ apiKey: apiKey });
-
-        let threadContext = "";
-        if (typeof globalThreads !== 'undefined' && typeof currentActiveThreadId !== 'undefined') {
-            const currentThread = globalThreads.find(t => t.id === currentActiveThreadId);
-            if (currentThread) {
-                threadContext = `Context - Discussion Title: ${currentThread.title}\nScenario / Question: ${currentThread.body || ''}\n`;
-            }
-        }
-
-        const prompt = `
-            You are a helpful, encouraging expert ICT educator specializing in the Ugandan Lower Secondary Curriculum and UNEB standards. 
-            A secondary school student is asking a follow-up question regarding their class discussion or coursework. 
-            Provide a clear, pedagogical, encouraging, and accurate technical answer.
-
-            ${threadContext}
-            Student's Question: ${studentQuestion}
-        `;
-
-        const response = await ai.models.generateContent({
-            model: 'gemini-3.6-flash',
-            contents: prompt,
-        });
-
-        content.innerHTML = typeof formatRichContent === 'function' ? formatRichContent(response.text) : response.text.replace(/\n/g, '<br>');
-
-    } catch (err) {
-        console.error("Ask AI Assistant Error:", err);
-        content.innerHTML = `<span style="color: #ef4444;">Failed to generate response. Please check your network connection or try again.</span>`;
-    }
-};
-
-    // Clear Ask AI Chat Handler
-    window.clearStudentAiChat = function() {
         const input = document.getElementById('studentAiQuestionInput');
         const responseBox = document.getElementById('studentAiResponseBox');
         const content = document.getElementById('studentAiResponseContent');
+        
+        if (!input || !input.value.trim()) return;
+        
+        const studentQuestion = input.value.trim();
+        responseBox.style.display = 'block';
+        content.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Consulting AI teacher assistant...`;
+        
+        try {
+            const { GoogleGenAI } = await import("https://esm.run/@google/genai");
+            const apiKey = window.GEMINI_API_KEY || 'AQ.Ab8RN6Jy3aK19u9bgH9es8cdnMwSdeJbViZ6Kt7fO28nSBhJlQ';
+            const ai = new GoogleGenAI({ apiKey: apiKey });
 
-        if (input) input.value = '';
-        if (content) content.innerHTML = '';
-        if (responseBox) responseBox.style.display = 'none';
+            let threadContext = "";
+            if (typeof globalThreads !== 'undefined' && typeof currentActiveThreadId !== 'undefined') {
+                const currentThread = globalThreads.find(t => t.id === currentActiveThreadId);
+                if (currentThread) {
+                    threadContext = `Context - Discussion Title: ${currentThread.title}\nScenario / Question: ${currentThread.body || ''}\n`;
+                }
+            }
+
+            const prompt = `
+                You are a helpful, encouraging expert ICT educator specializing in the Ugandan Lower Secondary Curriculum and UNEB standards. 
+                A secondary school student is asking a follow-up question regarding their class discussion or coursework. 
+                Provide a clear, pedagogical, encouraging, and accurate technical answer.
+
+                ${threadContext}
+                Student's Question: ${studentQuestion}
+            `;
+
+            const response = await ai.models.generateContent({
+                model: 'gemini-3.6-flash',
+                contents: prompt,
+            });
+
+            content.innerHTML = typeof formatRichContent === 'function' ? formatRichContent(response.text) : response.text.replace(/\n/g, '<br>');
+
+        } catch (err) {
+            console.error("Ask AI Assistant Error:", err);
+            content.innerHTML = `<span style="color: #ef4444;">Failed to generate response. Please check your network connection or try again.</span>`;
+        }
     };
   </script>
   <!-- Include Brand Loader Script -->
