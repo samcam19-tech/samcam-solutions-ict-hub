@@ -577,58 +577,55 @@
       }
     }
 
-    // Fixed Interactive Ask AI Student Query Handler using official ESM SDK & Fallback Key Support
     window.submitStudentAiQuery = async function() {
-        const input = document.getElementById('studentAiQuestionInput');
-        const responseBox = document.getElementById('studentAiResponseBox');
-        const content = document.getElementById('studentAiResponseContent');
+    const input = document.getElementById('studentAiQuestionInput');
+    const responseBox = document.getElementById('studentAiResponseBox');
+    const content = document.getElementById('studentAiResponseContent');
+    
+    if (!input || !input.value.trim()) return;
+    
+    const studentQuestion = input.value.trim();
+    responseBox.style.display = 'block';
+    content.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Consulting AI teacher assistant...`;
+    
+    try {
+        const { GoogleGenAI } = await import("https://esm.run/@google/genai");
         
-        if (!input || !input.value.trim()) return;
-        
-        const studentQuestion = input.value.trim();
-        responseBox.style.display = 'block';
-        content.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Consulting AI teacher assistant...`;
-        
-        try {
-            const { GoogleGenAI } = await import("https://esm.run/@google/genai");
-            const apiKey = window.GEMINI_API_KEY || localStorage.getItem('gemini_api_key') || 'AQ.Ab8RN6I72qFX2yNDlY0uAN-yxxGtCY24f8uY-erXawy8lT_eUg';
-            
-            if (!apiKey) {
-                throw new Error("Gemini API Key is missing. Please configure window.GEMINI_API_KEY in firebase-config.js.");
+        // Hardcode your working API key string directly here
+        const apiKey = "AQ.Ab8RN6LFLxwi0aXIrkp3JYHYwV4frSryAnW4okIFYUSYblm7vw";
+
+        const ai = new GoogleGenAI({ apiKey: apiKey });
+
+        let threadContext = "";
+        if (typeof globalThreads !== 'undefined' && typeof currentActiveThreadId !== 'undefined') {
+            const currentThread = globalThreads.find(t => t.id === currentActiveThreadId);
+            if (currentThread) {
+                threadContext = `Context - Discussion Title: ${currentThread.title}\nScenario / Question: ${currentThread.body || ''}\n`;
             }
-
-            const ai = new GoogleGenAI({ apiKey: apiKey });
-
-            let threadContext = "";
-            if (typeof globalThreads !== 'undefined' && typeof currentActiveThreadId !== 'undefined') {
-                const currentThread = globalThreads.find(t => t.id === currentActiveThreadId);
-                if (currentThread) {
-                    threadContext = `Context - Discussion Title: ${currentThread.title}\nScenario / Question: ${currentThread.body || ''}\n`;
-                }
-            }
-
-            const prompt = `
-                You are a helpful, encouraging expert ICT educator specializing in the Ugandan Lower Secondary Curriculum and UNEB standards. 
-                A secondary school student is asking a follow-up question regarding their class discussion or coursework. 
-                Provide a clear, pedagogical, encouraging, and accurate technical answer.
-
-                ${threadContext}
-                Student's Question: ${studentQuestion}
-            `;
-
-            const response = await ai.models.generateContent({
-                model: 'gemini-2.5-flash',
-                contents: prompt,
-            });
-
-            const rawText = response.text || "No response generated.";
-            content.innerHTML = typeof formatRichContent === 'function' ? formatRichContent(rawText) : rawText.replace(/\n/g, '<br>');
-
-        } catch (err) {
-            console.error("Ask AI Assistant Error:", err);
-            content.innerHTML = `<span style="color: #ef4444;">Failed to generate response: ${err.message || 'Please check your API key configuration.'}</span>`;
         }
-    };
+
+        const prompt = `
+            You are a helpful, encouraging expert ICT educator specializing in the Ugandan Lower Secondary Curriculum and UNEB standards. 
+            A secondary school student is asking a follow-up question regarding their class discussion or coursework. 
+            Provide a clear, pedagogical, encouraging, and accurate technical answer.
+
+            ${threadContext}
+            Student's Question: ${studentQuestion}
+        `;
+
+        const response = await ai.models.generateContent({
+            model: 'gemini-3.6-flash',
+            contents: prompt,
+        });
+
+        const rawText = response.text || "No response generated.";
+        content.innerHTML = typeof formatRichContent === 'function' ? formatRichContent(rawText) : rawText.replace(/\n/g, '<br>');
+
+    } catch (err) {
+        console.error("Ask AI Assistant Error:", err);
+        content.innerHTML = `<span style="color: #ef4444;">Failed to generate response: ${err.message}</span>`;
+    }
+};
   </script>
   
   <script src="../assets/js/brand-loader.js"></script>
