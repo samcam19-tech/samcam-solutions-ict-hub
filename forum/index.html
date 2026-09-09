@@ -528,7 +528,7 @@
         
         try {
             const { GoogleGenAI } = await import("https://esm.run/@google/genai");
-            const apiKey = window.GEMINI_API_KEY;
+            const apiKey = window.GEMINI_API_KEY || 'AQ.Ab8RN6Jy3aK19u9bgH9es8cdnMwSdeJbViZ6Kt7fO28nSBhJlQ';
             const ai = new GoogleGenAI({ apiKey: apiKey });
 
             let threadContext = "";
