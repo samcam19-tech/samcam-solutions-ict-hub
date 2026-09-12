@@ -81,7 +81,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const globalUnlockBtn = document.getElementById('globalUnlockBtn');
     const emergencyStatusLog = document.getElementById('emergencyStatusLog');
-    const collectionSelect = document.getElementById('collectionSelect');
     const refreshDocsBtn = document.getElementById('refreshDocsBtn');
     const tableBody = document.getElementById('firestoreTableBody');
     const terminalStream = document.getElementById('terminalLogStream');
