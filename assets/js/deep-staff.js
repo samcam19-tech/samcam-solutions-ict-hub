@@ -644,38 +644,63 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // --- 3. LIVE FEATURE FLAGS ---
-    const flagLockdown = document.getElementById('flagLockdown');
-    const flagBurst = document.getElementById('flagBurst');
+   // --- 3. LIVE FEATURE FLAGS (MODERNIZED) ---
+const flagLockdown = document.getElementById('flagLockdown');
+const flagBurst = document.getElementById('flagBurst');
 
-    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-        chrome.storage.local.get(['strictLockdownV2', 'telemetryBurstMode'], (result) => {
-            if (result.strictLockdownV2 !== undefined && flagLockdown) flagLockdown.checked = result.strictLockdownV2;
-            if (result.telemetryBurstMode !== undefined && flagBurst) flagBurst.checked = result.telemetryBurstMode;
-        });
-    }
+if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+    // 1. Initial Load with error handling
+    chrome.storage.local.get(['strictLockdownV2', 'telemetryBurstMode'], (result) => {
+        if (chrome.runtime.lastError) {
+            console.error("Storage read error:", chrome.runtime.lastError);
+            return;
+        }
+        if (result.strictLockdownV2 !== undefined && flagLockdown) flagLockdown.checked = result.strictLockdownV2;
+        if (result.telemetryBurstMode !== undefined && flagBurst) flagBurst.checked = result.telemetryBurstMode;
+    });
 
-    if (flagLockdown) {
-        flagLockdown.addEventListener('change', (e) => {
-            const isEnabled = e.target.checked;
-            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                chrome.storage.local.set({ strictLockdownV2: isEnabled }, () => {
-                    appendTerminalLog('info', `Feature Flag [Strict Window Lockdown V2] set to: ${isEnabled}`);
-                });
+    // 2. Listen for external changes (syncs UI if background script changes flags)
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local') {
+            if (changes.strictLockdownV2 && flagLockdown) {
+                flagLockdown.checked = changes.strictLockdownV2.newValue;
             }
-        });
-    }
-
-    if (flagBurst) {
-        flagBurst.addEventListener('change', (e) => {
-            const isEnabled = e.target.checked;
-            if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
-                chrome.storage.local.set({ telemetryBurstMode: isEnabled }, () => {
-                    appendTerminalLog('info', `Feature Flag [Telemetry Burst Mode] set to: ${isEnabled}`);
-                });
+            if (changes.telemetryBurstMode && flagBurst) {
+                flagBurst.checked = changes.telemetryBurstMode.newValue;
             }
-        });
-    }
+        }
+    });
+}
+
+if (flagLockdown) {
+    flagLockdown.addEventListener('change', (e) => {
+        const isEnabled = e.target.checked;
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.set({ strictLockdownV2: isEnabled }, () => {
+                if (chrome.runtime.lastError) {
+                    console.error("Storage write error:", chrome.runtime.lastError);
+                    return;
+                }
+                appendTerminalLog('info', `Feature Flag [Strict Window Lockdown V2] set to: ${isEnabled}`);
+            });
+        }
+    });
+}
+
+if (flagBurst) {
+    flagBurst.addEventListener('change', (e) => {
+        const isEnabled = e.target.checked;
+        if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.set({ telemetryBurstMode: isEnabled }, () => {
+                if (chrome.runtime.lastError) {
+                    console.error("Storage write error:", chrome.runtime.lastError);
+                    return;
+                }
+                appendTerminalLog('info', `Feature Flag [Telemetry Burst Mode] set to: ${isEnabled}`);
+            });
+        }
+    });
+}
 
 if (runStressTestBtn) {
     runStressTestBtn.addEventListener('click', async () => {
