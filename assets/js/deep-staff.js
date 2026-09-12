@@ -84,6 +84,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const refreshDocsBtn = document.getElementById('refreshDocsBtn');
     const tableBody = document.getElementById('firestoreTableBody');
     const terminalStream = document.getElementById('terminalLogStream');
+    const collectionSelect = document.getElementById('collectionSelect');
+    const runStressTestBtn = document.getElementById('runStressTestBtn');
+    const stressTestResult = document.getElementById('stressTestResult');
+    const stressCountInput = document.getElementById('stressCountInput');
 
     function appendTerminalLog(type, message) {
         if (!terminalStream) return;
@@ -671,12 +675,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
-   // --- 4. REAL CONCURRENT LOAD STRESS TEST (DYNAMIC) ---
-const runStressTestBtn = document.getElementById('runStressTestBtn');
-const stressTestResult = document.getElementById('stressTestResult');
-const collectionSelect = document.getElementById('collectionSelect');
-const stressCountInput = document.getElementById('stressCountInput');
 
 if (runStressTestBtn) {
     runStressTestBtn.addEventListener('click', async () => {
