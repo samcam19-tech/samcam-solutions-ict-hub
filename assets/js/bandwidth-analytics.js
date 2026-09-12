@@ -1,5 +1,5 @@
 // ==========================================
-// BANDWIDTH-ANALYTICS.JS - 2026 ENTERPRISE SaaS STANDARD (FIXED)
+// BANDWIDTH-ANALYTICS.JS - 2026 ENTERPRISE SaaS STANDARD (CANVAS FIX)
 // ==========================================
 
 let bandwidthChartInstance = null;
@@ -60,7 +60,7 @@ function initBandwidthChart() {
     }
     if (!targetBox) return;
 
-    // Inject canvas wrapper with explicit height and flex layout to force visibility
+    // Inject canvas wrapper with absolute positioning and strict flex constraints to prevent 0x0 collapse bugs
     let wrapper = targetBox.querySelector('#chartWrapperContainer');
     if (!wrapper) {
         targetBox.innerHTML = `
@@ -68,8 +68,8 @@ function initBandwidthChart() {
                 <span style="font-weight: 600; font-size: 0.95rem; color: #1e293b;"><i class="fa-solid fa-chart-line" style="color: #0284c7; margin-right: 6px;"></i> Live Subnet Ingress & Latency Telemetry</span>
                 <span style="font-size: 0.75rem; color: #64748b; background: #f1f5f9; padding: 2px 8px; border-radius: 4px;">Port 8080 Active</span>
             </div>
-            <div id="chartWrapperContainer" style="position: relative; height: 260px; width: 100%;">
-                <canvas id="bandwidthChartCanvas"></canvas>
+            <div id="chartWrapperContainer" style="position: relative; height: 260px; width: 100%; min-height: 260px;">
+                <canvas id="bandwidthChartCanvas" style="position: absolute; left: 0; top: 0; right: 0; bottom: 0; width: 100% !important; height: 100% !important;"></canvas>
             </div>
         `;
     }
@@ -144,7 +144,6 @@ function initBandwidthChart() {
 
 // Update Chart.js datasets with incoming historical telemetry array
 function updateBandwidthChart(historyArray) {
-    // If the instance isn't created yet (e.g. DOM hasn't built the canvas container), try initializing it now
     if (!bandwidthChartInstance) {
         initBandwidthChart();
     }
@@ -161,7 +160,7 @@ function updateBandwidthChart(historyArray) {
     bandwidthChartInstance.data.datasets[0].data = recentData.map(item => item.ingressVal);
     bandwidthChartInstance.data.datasets[1].data = recentData.map(item => item.latencyVal);
     
-    bandwidthChartInstance.update('none');
+    bandwidthChartInstance.update();
 }
 
 // Helper function: Enterprise retry mechanism with exponential backoff & jitter
@@ -210,7 +209,6 @@ window.refreshBandwidthMetrics = function() {
         
         const testFileUrl = `https://firebasestorage.googleapis.com/v0/b/samcam-system.firebasestorage.app/o/ping_test.txt?alt=media&t=${Date.now()}`;
 
-        // Execute robust fetch with retry backing, alongside concurrent multi-probe packet drop analysis
         Promise.all([
             fetchWithRetry(testFileUrl, { cache: 'no-store' }),
             measurePacketLoss()
@@ -219,24 +217,20 @@ window.refreshBandwidthMetrics = function() {
                 const blob = await response.blob();
                 const endTime = performance.now();
                 
-                // Enforce a minimum time floor (50ms) and scale small test files so calculation doesn't hit 0 Mbps
                 const durationMs = Math.max(endTime - startTime, 50);
                 const durationSeconds = durationMs / 1000;
                 const fileSizeBits = (blob.size > 0 ? blob.size : 1024) * 8 * 50; 
 
-                // Throughput calculations
                 const calculatedBps = fileSizeBits / durationSeconds;
                 const actualIngress = (calculatedBps / 1_000_000).toFixed(1) + " Mbps";
                 const actualEgress = ((calculatedBps * 0.38) / 1_000_000).toFixed(1) + " Mbps";
                 
-                // Dynamically evaluate latency status description
                 const rawLatencyMs = Math.round(endTime - startTime);
                 const actualLatency = rawLatencyMs + " ms";
                 const latencyStatus = rawLatencyMs > 1000 ? "Scenic Route (High Lag)" : "Optimal performance";
                 
                 const timestamp = new Date().toISOString();
 
-                // Push enterprise metrics + historical array logging for charting to Firestore
                 return db.collection("network_telemetry").doc("bandwidth_stats").update({
                     ingress: actualIngress,
                     egress: actualEgress,
@@ -281,7 +275,6 @@ function updateBandwidthDOM(data) {
 
         if (data.latency) cards[2].querySelector('div:nth-child(2)').innerHTML = `${data.latency.split(' ')[0]} <span style="font-size: 0.9rem; font-weight: 500; color: #059669;">ms</span>`;
         
-        // Dynamically update the latency status description tag
         if (cards[2].querySelector('div:nth-child(3)')) {
             const rawLat = parseFloat(data.latency) || 0;
             const badgeText = rawLat > 1000 ? "Scenic Route (High Lag)" : "Optimal performance";
