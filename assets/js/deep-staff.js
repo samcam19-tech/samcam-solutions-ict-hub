@@ -85,8 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const refreshDocsBtn = document.getElementById('refreshDocsBtn');
     const tableBody = document.getElementById('firestoreTableBody');
     const terminalStream = document.getElementById('terminalLogStream');
-    const runStressTestBtn = document.getElementById('runStressTestBtn');
-    const stressTestResult = document.getElementById('stressTestResult');
 
     function appendTerminalLog(type, message) {
         if (!terminalStream) return;
