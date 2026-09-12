@@ -690,29 +690,45 @@ if (runStressTestBtn) {
         let failCount = 0;
 
         try {
-            // Limit parallel batch size to prevent browser socket exhaustion while scaling dynamically
-            const batchSize = Math.min(totalSimulations, 50);
-            const multiplier = Math.ceil(totalSimulations / batchSize);
+            // Process requests in optimized chunks of 50 to prevent browser socket exhaustion
+            const chunkSize = 50;
+            let results = [];
 
-            const testBatch = Array.from({ length: batchSize }, () => 
-                fetch(`${FIRESTORE_BASE_URL}/${targetCollection}?pageSize=1&key=${API_KEY}`)
-            );
-
-            const results = await Promise.allSettled(testBatch);
+            for (let i = 0; i < totalSimulations; i += chunkSize) {
+                const currentBatchSize = Math.min(chunkSize, totalSimulations - i);
+                const testBatch = Array.from({ length: currentBatchSize }, () => 
+                    fetch(`${FIRESTORE_BASE_URL}/${targetCollection}?pageSize=1&key=${API_KEY}`)
+                );
+                
+                const batchResults = await Promise.allSettled(testBatch);
+                results.push(...batchResults);
+            }
             
             results.forEach(res => {
                 if (res.status === 'fulfilled' && res.value.ok) {
-                    successCount += multiplier;
+                    successCount++;
                 } else {
                     failCount++;
                 }
             });
 
-            // Cap success count at the requested total to keep UI clean
-            successCount = Math.min(successCount, totalSimulations);
-
             const endTime = performance.now();
             const duration = Math.round(endTime - startTime);
+
+            // Determine accurate performance status based on errors and latency
+            let statusText = 'Optimal';
+            let statusClass = 'text-success';
+
+            if (failCount > 0) {
+                statusText = `${failCount} Errors`;
+                statusClass = 'text-danger';
+            } else if (duration > 5000) {
+                statusText = 'Degraded (High Latency)';
+                statusClass = 'text-warning';
+            } else if (duration > 2000) {
+                statusText = 'Moderate';
+                statusClass = 'text-info';
+            }
 
             if (stressTestResult) {
                 stressTestResult.classList.remove('hidden');
@@ -720,11 +736,11 @@ if (runStressTestBtn) {
                 stressTestResult.innerHTML = `
                     <span>Processed: <strong>${successCount}/${totalSimulations}</strong></span>
                     <span>Latency: <strong>${duration}ms</strong></span>
-                    <span class="${failCount === 0 ? 'text-success' : 'text-danger'}">Status: ${failCount === 0 ? 'Optimal' : `${failCount} Errors`}</span>
+                    <span class="${statusClass}">Status: ${statusText}</span>
                 `;
             }
             
-            appendTerminalLog('success', `Stress simulation passed on [${targetCollection}]: ${successCount}/${totalSimulations} virtual requests resolved in ${duration}ms.`);
+            appendTerminalLog('success', `Stress simulation completed on [${targetCollection}]: ${successCount}/${totalSimulations} requests resolved in ${duration}ms.`);
 
         } catch (err) {
             appendTerminalLog('error', `Stress test simulation on [${targetCollection}] encountered exceptions: ${err.message}`);
