@@ -1,5 +1,5 @@
 // ==========================================
-// BANDWIDTH-ANALYTICS.JS - 2026 ENTERPRISE SaaS STANDARD
+// BANDWIDTH-ANALYTICS.JS - 2026 ENTERPRISE SaaS STANDARD (FIXED)
 // ==========================================
 
 let bandwidthChartInstance = null;
@@ -33,6 +33,7 @@ window.initBandwidthAnalytics = function() {
                     egressTrend: "Stable load",
                     latencyTrend: "Optimal performance",
                     history: [
+                        { timestamp: new Date(Date.now() - 60000).toISOString(), ingressVal: 720.0, latencyVal: 5.1 },
                         { timestamp: new Date().toISOString(), ingressVal: 842.6, latencyVal: 4.2 }
                     ]
                 };
@@ -45,8 +46,6 @@ window.initBandwidthAnalytics = function() {
 
 // Initialize Chart.js dynamic line graph inside the placeholder container
 function initBandwidthChart() {
-    const cards = document.querySelectorAll('#bandwidthAnalyticsView > div, #bandwidthAnalyticsView .card, #bandwidthAnalyticsView div[style*="background: #ffffff"]');
-    // Target the bottom full-width container card (usually the 5th card or the one holding the subnet title)
     let targetBox = null;
     
     document.querySelectorAll('#bandwidthAnalyticsView div').forEach(el => {
@@ -145,6 +144,11 @@ function initBandwidthChart() {
 
 // Update Chart.js datasets with incoming historical telemetry array
 function updateBandwidthChart(historyArray) {
+    // If the instance isn't created yet (e.g. DOM hasn't built the canvas container), try initializing it now
+    if (!bandwidthChartInstance) {
+        initBandwidthChart();
+    }
+
     if (!bandwidthChartInstance || !Array.isArray(historyArray) || historyArray.length === 0) return;
 
     // Keep the last 15 data points to maintain clean UI flow
