@@ -330,12 +330,23 @@
       <div>
         <h3 style="margin-top: 0; font-size: 1.15rem; color: #0f172a;"><i class="fa-solid fa-id-card"></i> Account Settings</h3>
           
-        <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; width: 100%;">
+        <div style="display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.25rem; width: 100%;">
           <div style="flex-shrink: 0;">
-            <img id="bannerProfilePic" src="../images/default-avatar.png" alt="Avatar" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 1.5px solid #2563eb; flex-shrink: 0;"></div>
+            <img id="bannerProfilePic" src="../images/default-avatar.png" alt="Avatar" style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover; border: 1.5px solid #2563eb; flex-shrink: 0;">
+          </div>
           <div style="flex-grow: 1;">
             <h4 id="profileFullName" style="margin: 0 0 0.1rem 0; color: #0f172a; font-size: 0.95rem;">User Name</h4>
             <p id="profileUsernameDisplay" style="margin: 0 0 0.4rem 0; font-size: 0.8rem; color: #64748b;"></p>
+            
+            <!-- ADDED: DISPLAY ENROLLED / ASSIGNED SUBJECTS BADGES -->
+            <div style="margin-bottom: 0.6rem;">
+              <span id="profileSubjectRoleLabel" style="font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: #64748b; display: block; margin-bottom: 0.2rem;">Registered Subject(s)</span>
+              <div id="profileSubjectsList" style="display: flex; flex-wrap: wrap; gap: 0.3rem;">
+                <span class="subject-badge" style="background: #e0f2fe; color: #0369a1; font-size: 0.72rem; padding: 0.15rem 0.45rem; border-radius: 4px; font-weight: 600;">ICT</span>
+                <span class="subject-badge" style="background: #e0f2fe; color: #0369a1; font-size: 0.72rem; padding: 0.15rem 0.45rem; border-radius: 4px; font-weight: 600;">Chemistry</span>
+              </div>
+            </div>
+
             <label for="profilePicInput" class="btn-action btn-upload" style="display: inline-flex; align-items: center; gap: 0.3rem; cursor: pointer; font-size: 0.8rem; padding: 0.25rem 0.5rem;">
               <i class="fa-solid fa-camera"></i> Change Picture
             </label>
@@ -391,9 +402,9 @@
           </div>
 
           <div style="display: flex; gap: 0.6rem; align-items: flex-start; background: #ffffff; padding: 0.5rem 0.7rem; border-radius: 6px; border: 1px solid #e2e8f0;">
-            <i class="fa-solid fa-image" style="color: #2563eb; margin-top: 0.2rem; font-size: 0.8rem;"></i>
+            <i class="fa-solid fa-book-open" style="color: #2563eb; margin-top: 0.2rem; font-size: 0.8rem;"></i>
             <div style="font-size: 0.78rem; color: #475569; line-height: 1.35;">
-              <strong style="color: #1e293b;">Profile Picture:</strong> Upload a clear image to update your avatar preview.
+              <strong style="color: #1e293b;">Subject Filtering:</strong> You can only access assessments, notes, and forums for subjects assigned to your account.
             </div>
           </div>
 
@@ -425,7 +436,7 @@
 </div>
       <div class="portal-grid">
         
-        <!-- TEACHER & ADMIN CONTROL PANELS -->
+       <!-- TEACHER & ADMIN CONTROL PANELS -->
         <div id="teacherControls" style="display:none;">
           <div class="card-box">
             <h3><i class="fa-solid fa-user-plus"></i> Register Student(s)</h3>
@@ -440,6 +451,27 @@
                   <option value="S1">S.1</option><option value="S2">S.2</option><option value="S3">S.3</option>
                   <option value="S4" selected>S.4</option><option value="S5">S.5</option><option value="S6">S.6</option>
                 </select>
+              </div>
+              <!-- ENROLLED SUBJECTS CHECKBOX SELECTION FOR SINGLE STUDENT REGISTRATION -->
+              <div class="form-group">
+                <label>Enrolled Subject(s)</label>
+                <div id="regStudentSubjects" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; max-height: 120px; overflow-y: auto; font-size: 0.85rem;">
+                  <label><input type="checkbox" name="studentSubjects" value="ICT" checked> ICT</label>
+                  <label><input type="checkbox" name="studentSubjects" value="Mathematics"> Mathematics</label>
+                  <label><input type="checkbox" name="studentSubjects" value="Physics"> Physics</label>
+                  <label><input type="checkbox" name="studentSubjects" value="Chemistry" checked> Chemistry</label>
+                  <label><input type="checkbox" name="studentSubjects" value="Biology"> Biology</label>
+                  <label><input type="checkbox" name="studentSubjects" value="English"> English</label>
+                  <label><input type="checkbox" name="studentSubjects" value="Geography"> Geography</label>
+                  <label><input type="checkbox" name="studentSubjects" value="History"> History</label>                  
+                  <label><input type="checkbox" name="studentSubjects" value="Entrepreneurship"> Entrepreneurship</label>
+                  <label><input type="checkbox" name="studentSubjects" value="Agriculture"> Agriculture</label>
+                  <label><input type="checkbox" name="studentSubjects" value="Literature"> Literature</label>
+                  <label><input type="checkbox" name="studentSubjects" value="Kiswahili"> Kiswahili</label>
+                  <label><input type="checkbox" name="studentSubjects" value="P.E"> P.E</label>
+                  <label><input type="checkbox" name="studentSubjects" value="Art and Design"> Art and Design</label>
+                  <label><input type="checkbox" name="studentSubjects" value="CRE"> CRE</label>
+                </div>
               </div>
               <div class="form-group">
                 <label for="regUsername">Username</label>
@@ -456,7 +488,7 @@
 
             <div>
               <h4 style="margin-bottom: 0.5rem; color: #1e293b;"><i class="fa-solid fa-file-excel"></i> Bulk Import Class Data</h4>
-              <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.8rem;">Upload an Excel or CSV file containing student names.</p>
+              <p style="font-size: 0.8rem; color: #64748b; margin-bottom: 0.8rem;">Upload an Excel or CSV file containing student names, class, credentials, and comma-separated subjects.</p>
               <div class="form-group">
                 <label for="bulkClass">Target Class for Import</label>
                 <select id="bulkClass" required>
@@ -472,39 +504,60 @@
             </div>
           </div>
 
-         <!-- NEW: REGISTER TEACHER / ADMIN MODULE -->
-<div class="card-box" id="adminStaffRegistrationModule" style="display: none;">
-  <h3><i class="fa-solid fa-user-shield"></i> Register Teacher / Admin</h3>
-  <form id="registerStaffForm">
-    <div class="form-group">
-      <label for="staffFullName">Full Name</label>
-      <input type="text" id="staffFullName" placeholder="e.g. Jane Namubiru" required>
-    </div>
-    <div class="form-group">
-      <label for="staffRole">System Role</label>
-      <select id="staffRole" required>
-        <option value="teacher">Teacher</option>
-        <option value="admin">Administrator</option>
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="staffSchoolSelect">Select Existing School (Optional)</label>
-      <select id="staffSchoolSelect" class="form-control" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; background:#fff; margin-bottom:0.4rem;">
-        <option value="">-- Choose Existing School --</option>
-      </select>
-      <small style="color:#64748b; font-size:0.75rem;">Selecting a school auto-fills the School ID/Username field below.</small>
-    </div>
-    <div class="form-group">
-      <label for="staffUsername">School ID / Username</label>
-      <input type="text" id="staffUsername" placeholder="e.g. STANDARD_NTUNGAMO" required>
-    </div>
-    <div class="form-group">
-      <label for="staffPassword">Password</label>
-      <input type="text" id="staffPassword" placeholder="Assign secure password..." required>
-    </div>
-    <button type="submit" class="btn-submit" style="background: #7c3aed;"><i class="fa-solid fa-user-tie"></i> Register Staff Account</button>
-  </form>
-</div>
+          <!-- REGISTER TEACHER / ADMIN MODULE -->
+          <div class="card-box" id="adminStaffRegistrationModule" style="display: none;">
+            <h3><i class="fa-solid fa-user-shield"></i> Register Teacher / Admin</h3>
+            <form id="registerStaffForm">
+              <div class="form-group">
+                <label for="staffFullName">Full Name</label>
+                <input type="text" id="staffFullName" placeholder="e.g. Jane Namubiru" required>
+              </div>
+              <div class="form-group">
+                <label for="staffRole">System Role</label>
+                <select id="staffRole" required>
+                  <option value="teacher">Teacher</option>
+                  <option value="admin">Administrator</option>
+                </select>
+              </div>
+              <!-- MULTI-SELECT ASSIGNED SUBJECTS FOR TEACHERS -->
+              <div class="form-group">
+                <label>Assigned Teaching Subject(s)</label>
+                <div id="staffAssignedSubjects" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; padding: 0.5rem; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; max-height: 120px; overflow-y: auto; font-size: 0.85rem;">
+                  <label><input type="checkbox" name="teacherSubjects" value="ICT" checked> ICT</label>
+                  <label><input type="checkbox" name="teacherSubjects" value="Mathematics"> Mathematics</label>
+                  <label><input type="checkbox" name="teacherSubjects" value="Physics"> Physics</label>
+                  <label><input type="checkbox" name="teacherSubjects" value="Chemistry"> Chemistry</label>
+                  <label><input type="checkbox" name="teacherSubjects" value="Biology"> Biology</label>
+                  <label><input type="checkbox" name="teacherSubjects" value="English"> English</label>
+                  <label><input type="checkbox" name="teacherSubjects" value="Geography"> Geography</label>
+                  <label><input type="checkbox" name="teacherSubjects" value="History"> History</label>
+                  <label><input type="checkbox" name="teacherSubjects" value="Entrepreneurship"> Entrepreneurship</label>
+                  <label><input type="checkbox" name="teacherSubjects" value="Art and Design"> Art and Design</label>
+                  <label><input type="checkbox" name="teacherSubjects" value="CRE"> CRE</label>
+                  <label><input type="checkbox" name="teacherSubjects" value="Agriculture"> Agriculture</label>
+                  <label><input type="checkbox" name="teacherSubjects" value="P.E"> P.E</label>
+                  <label><input type="checkbox" name="teacherSubjects" value="Literature"> Literature</label>
+                  <label><input type="checkbox" name="teacherSubjects" value="Kiswahili"> Kiswahili</label>
+                </div>
+              </div>
+              <div class="form-group">
+                <label for="staffSchoolSelect">Select Existing School (Optional)</label>
+                <select id="staffSchoolSelect" class="form-control" style="width:100%; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px; background:#fff; margin-bottom:0.4rem;">
+                  <option value="">-- Choose Existing School --</option>
+                </select>
+                <small style="color:#64748b; font-size:0.75rem;">Selecting a school auto-fills the School ID/Username field below.</small>
+              </div>
+              <div class="form-group">
+                <label for="staffUsername">School ID / Username</label>
+                <input type="text" id="staffUsername" placeholder="e.g. STANDARD_NTUNGAMO" required>
+              </div>
+              <div class="form-group">
+                <label for="staffPassword">Password</label>
+                <input type="text" id="staffPassword" placeholder="Assign secure password..." required>
+              </div>
+              <button type="submit" class="btn-submit" style="background: #7c3aed;"><i class="fa-solid fa-user-tie"></i> Register Staff Account</button>
+            </form>
+          </div>
 
           <div class="card-box">
             <h3><i class="fa-solid fa-upload"></i> Publish New Assessment</h3>
@@ -512,6 +565,27 @@
               <div class="form-group">
                 <label for="testTitle">Assessment Title</label>
                 <input type="text" id="testTitle" placeholder="e.g. Wakissha UCE ICT 2 MOCK 2026" required>
+              </div>
+              <!-- SUBJECT SELECTION FOR PUBLISHING ASSESSMENTS -->
+              <div class="form-group">
+                <label for="testSubject">Subject</label>
+                <select id="testSubject" required>
+                  <option value="ICT" selected>ICT</option>
+                  <option value="Mathematics">Mathematics</option>
+                  <option value="Physics">Physics</option>
+                  <option value="Chemistry">Chemistry</option>
+                  <option value="Biology">Biology</option>
+                  <option value="English">English</option>
+                  <option value="Geography">Geography</option>
+                  <option value="History">History</option>
+                  <option value="CRE">CRE</option>
+                  <option value="Entrepreneurship">Entrepreneurship</option>
+                  <option value="P.E">P.E</option>
+                  <option value="Art and Design">Art and Design</option>
+                  <option value="Literature">Literature</option>
+                  <option value="Kiswahili">Kiswahili</option>
+                  <option value="Agriculture">Agriculture</option>
+                </select>
               </div>
               <div class="form-group">
                 <label for="targetClass">Target Class</label>
@@ -541,15 +615,37 @@
         <div class="card-box" id="assessmentsViewPanel">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
             <h3 style="margin: 0;"><i class="fa-solid fa-list-check"></i> Active Assessments</h3>
-            <select id="filterAssessmentClass" onchange="filterAssessmentsByClass()" style="padding: 0.4rem; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem;">
-              <option value="ALL" selected>All Classes</option>
-              <option value="S1">S.1</option>
-              <option value="S2">S.2</option>
-              <option value="S3">S.3</option>
-              <option value="S4">S.4</option>
-              <option value="S5">S.5</option>
-              <option value="S6">S.6</option>
-            </select>
+            <div style="display: flex; gap: 0.5rem;">
+              <!-- SUBJECT FILTER DROPDOWN -->
+              <select id="filterAssessmentSubject" onchange="filterAssessmentsByClassAndSubject()" style="padding: 0.4rem; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem;">
+                <option value="ALL" selected>All Subjects</option>
+                <option value="ICT">ICT</option>
+                <option value="Mathematics">Mathematics</option>
+                <option value="Physics">Physics</option>
+                <option value="Chemistry">Chemistry</option>
+                <option value="Biology">Biology</option>
+                <option value="English">English</option>
+                <option value="Geography">Geography</option>
+                <option value="History">History</option>
+                <option value="CRE">CRE</option>
+                <option value="Entrepreneurship">Entrepreneurship</option>
+                <option value="P.E">P.E</option>
+                <option value="Art and Design">Art and Design</option>
+                <option value="Literature">Literature</option>
+                <option value="Kiswahili">Kiswahili</option>
+                <option value="Agriculture">Agriculture</option>
+              </select>
+              <!-- CLASS FILTER DROPDOWN -->
+              <select id="filterAssessmentClass" onchange="filterAssessmentsByClassAndSubject()" style="padding: 0.4rem; border-radius: 6px; border: 1px solid #cbd5e1; font-size: 0.85rem;">
+                <option value="ALL" selected>All Classes</option>
+                <option value="S1">S.1</option>
+                <option value="S2">S.2</option>
+                <option value="S3">S.3</option>
+                <option value="S4">S.4</option>
+                <option value="S5">S.5</option>
+                <option value="S6">S.6</option>
+              </select>
+            </div>
           </div>
           <div id="assessmentsContainer"></div>
           <div id="assessmentsPagination" class="pagination-container"></div>
@@ -635,6 +731,28 @@
             <option value="S.4">S.4</option><option value="S.5">S.5</option><option value="S.6">S.6</option>
           </select>
         </div>
+        <!-- ADDED: SUBMISSION SUBJECT SELECTION -->
+        <div class="form-group">
+          <label for="submissionSubject">Subject</label>
+          <select id="submissionSubject" required>
+            <option value="">Select Subject</option>
+            <option value="ICT">ICT</option>
+            <option value="Mathematics">Mathematics</option>
+            <option value="Physics">Physics</option>
+            <option value="Chemistry">Chemistry</option>
+            <option value="Biology">Biology</option>
+            <option value="English">English</option>
+            <option value="Geography">Geography</option>
+            <option value="History">History</option>
+            <option value="CRE">CRE</option>
+            <option value="Entrepreneurship">Entrepreneurship</option>
+            <option value="P.E">P.E</option>
+            <option value="Art and Design">Art and Design</option>
+            <option value="Literature">Literature</option>
+            <option value="Kiswahili">Kiswahili</option>
+            <option value="Agriculture">Agriculture</option>
+          </select>
+        </div>
         <div class="form-group">
           <label for="submissionTestTitle">Assignment / Test Title</label>
           <input type="text" id="submissionTestTitle" placeholder="e.g. End of Term 2 ICT Practical" required>
@@ -699,6 +817,8 @@
               <th>#</th>
               <th>Full Name</th>
               <th>Role</th>
+              <!-- ADDED: ASSIGNED SUBJECTS TABLE COLUMN HEADER -->
+              <th>Assigned Subject(s)</th>
               <th>Username</th>
               <th>Password</th>
               <th>Actions</th>
@@ -720,7 +840,28 @@
         <input type="hidden" id="editTestId">
         <div class="form-group">
           <label for="editTestTitle">Assessment Title</label>
-          <input type="type" id="editTestTitle" placeholder="e.g. Wakissha UCE ICT 2 MOCK 2026" required>
+          <input type="text" id="editTestTitle" placeholder="e.g. Wakissha UCE ICT 2 MOCK 2026" required>
+        </div>
+        <!-- ADDED: EDIT ASSESSMENT SUBJECT DROPDOWN -->
+        <div class="form-group">
+          <label for="editTestSubject">Subject</label>
+          <select id="editTestSubject" required>
+            <option value="ICT">ICT</option>
+            <option value="Mathematics">Mathematics</option>
+            <option value="Physics">Physics</option>
+            <option value="Chemistry">Chemistry</option>
+            <option value="Biology">Biology</option>
+            <option value="English">English</option>
+            <option value="Geography">Geography</option>
+            <option value="History">History</option>
+            <option value="CRE">CRE</option>
+            <option value="Entrepreneurship">Entrepreneurship</option>
+            <option value="P.E">P.E</option>
+            <option value="Art and Design">Art and Design</option>
+            <option value="Literature">Literature</option>
+            <option value="Kiswahili">Kiswahili</option>
+            <option value="Agriculture">Agriculture</option>
+          </select>
         </div>
         <div class="form-group">
           <label for="editTargetClass">Target Class</label>
