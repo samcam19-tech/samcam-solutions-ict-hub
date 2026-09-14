@@ -1787,190 +1787,194 @@ window.downloadStudentPDF = async function() {
   });
 };
 
+ // Wrap everything inside a function handler
+function generateCredentialsPDF() {
   // Helper function to capitalize each word in full names
-function formatTitleCase(str) {
-  if (!str) return 'N/A';
-  return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-}
-
-// Sort students: By Class first (if whole school), then Alphabetically by Full Name
-students.sort((a, b) => {
-  const classA = (a.class || '').toLowerCase();
-  const classB = (b.class || '').toLowerCase();
-  
-  if (!selectedClass && classA !== classB) {
-    return classA.localeCompare(classB, undefined, { numeric: true, sensitivity: 'base' });
+  function formatTitleCase(str) {
+    if (!str) return 'N/A';
+    return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   }
-  
-  const nameA = (a.fullName || a.name || '').toLowerCase();
-  const nameB = (b.fullName || b.name || '').toLowerCase();
-  return nameA.localeCompare(nameB);
-});
 
-const printWindow = window.open('', '_blank');
-if (!printWindow) {
-  alert('Please allow popups for this website to download PDF credentials.');
-  return;
-}
+  // Sort students: By Class first (if whole school), then Alphabetically by Full Name
+  students.sort((a, b) => {
+    const classA = (a.class || '').toLowerCase();
+    const classB = (b.class || '').toLowerCase();
+    
+    if (!selectedClass && classA !== classB) {
+      return classA.localeCompare(classB, undefined, { numeric: true, sensitivity: 'base' });
+    }
+    
+    const nameA = (a.fullName || a.name || '').toLowerCase();
+    const nameB = (b.fullName || b.name || '').toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
 
-const reportTitle = selectedClass 
-  ? `Student Credentials Report — Class ${selectedClass}${selectedSubject ? ' (' + selectedSubject + ')' : ''}` 
-  : 'Complete School Student Credentials Report';
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) {
+    alert('Please allow popups for this website to download PDF credentials.');
+    return; // Now legal since it's inside generateCredentialsPDF()
+  }
 
-const currentDate = new Date().toLocaleDateString();
+  const reportTitle = selectedClass 
+    ? `Student Credentials Report — Class ${selectedClass}${selectedSubject ? ' (' + selectedSubject + ')' : ''}` 
+    : 'Complete School Student Credentials Report';
 
-let rowsHTML = '';
-students.forEach((s, index) => {
-  const formattedName = formatTitleCase(s.fullName || s.name);
-  const studentClass = (s.class || 'N/A').toUpperCase();
-  
-  // Extract subjects array cleanly
-  const subjectsArray = s.enrolledSubjects || s.subjects || [];
-  const subjectsStr = Array.isArray(subjectsArray) ? subjectsArray.join(', ') : (subjectsArray || 'None');
+  const currentDate = new Date().toLocaleDateString();
 
-  rowsHTML += `
-    <tr>
-      <td class="center">${index + 1}</td>
-      <td class="nowrap"><strong>${formattedName}</strong></td>
-      <td class="center"><strong>${studentClass}</strong></td>
-      <td class="code user">${s.username || s.schoolId || 'N/A'}</td>
-      <td class="code pass">${s.password || 'N/A'}</td>
-      <td><span class="subj-tag">${subjectsStr}</span></td>
-    </tr>
+  let rowsHTML = '';
+  students.forEach((s, index) => {
+    const formattedName = formatTitleCase(s.fullName || s.name);
+    const studentClass = (s.class || 'N/A').toUpperCase();
+    
+    // Extract subjects array cleanly
+    const subjectsArray = s.enrolledSubjects || s.subjects || [];
+    const subjectsStr = Array.isArray(subjectsArray) ? subjectsArray.join(', ') : (subjectsArray || 'None');
+
+    rowsHTML += `
+      <tr>
+        <td class="center">${index + 1}</td>
+        <td class="nowrap"><strong>${formattedName}</strong></td>
+        <td class="center"><strong>${studentClass}</strong></td>
+        <td class="code user">${s.username || s.schoolId || 'N/A'}</td>
+        <td class="code pass">${s.password || 'N/A'}</td>
+        <td><span class="subj-tag">${subjectsStr}</span></td>
+      </tr>
+    `;
+  });
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>${reportTitle}</title>
+      <style>
+        @page { size: A4; margin: 12mm; }
+        body { 
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+          color: #1e293b; 
+          margin: 0; 
+          padding: 15px 0;
+          background: #ffffff;
+        }
+        .page-wrapper {
+          width: 92%;
+          margin: 0 auto;
+        }
+        .header { 
+          text-align: center; 
+          margin-bottom: 16px; 
+          border-bottom: 2px solid #e2e8f0; 
+          padding-bottom: 10px; 
+        }
+        .logo-container {
+          margin-bottom: 6px;
+        }
+        .logo-container img {
+          max-height: 55px;
+          max-width: 170px;
+          object-fit: contain;
+        }
+        .header h2 { margin: 0 0 4px 0; color: #0f172a; font-size: 19px; letter-spacing: -0.02em; text-transform: uppercase; }
+        .header p { margin: 2px 0; color: #64748b; font-size: 11px; }
+        
+        /* Optimized Table with Subjects Column */
+        table { 
+          width: 100%; 
+          border-collapse: collapse; 
+          table-layout: auto; 
+          font-size: 11px; 
+        }
+        th, td { 
+          padding: 7px 10px; 
+          border: 1px solid #cbd5e1; 
+          text-align: left; 
+          vertical-align: middle;
+        }
+        th { 
+          background: #f1f5f9; 
+          color: #334155; 
+          font-weight: 600; 
+          text-transform: uppercase; 
+          font-size: 10px;
+          letter-spacing: 0.05em;
+        }
+        th.center, td.center { text-align: center; }
+        td.nowrap { white-space: nowrap; }
+        
+        /* Alternating Row Colors */
+        tbody tr:nth-child(even) { background-color: #f8fafc; }
+        tbody tr:hover { background-color: #f1f5f9; }
+
+        .code { font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; font-size: 11px; }
+        .user { color: #0284c7; font-weight: 600; }
+        .pass { color: #dc2626; font-weight: 600; }
+        .subj-tag { color: #475569; font-size: 10.5px; font-weight: 500; }
+
+        .footer { 
+          margin-top: 20px; 
+          display: flex; 
+          justify-content: space-between; 
+          font-size: 10px; 
+          color: #94a3b8; 
+          border-top: 1px solid #e2e8f0;
+          padding-top: 8px;
+        }
+        @media print {
+          button.no-print { display: none; }
+        }
+      </style>
+    </head>
+    <body>
+      <div class="page-wrapper">
+        <div class="header">
+          ${typeof finalSchoolLogo !== 'undefined' && finalSchoolLogo ? `<div class="logo-container"><img src="${finalSchoolLogo}" alt="School Logo"></div>` : ''}
+          <h2>${typeof finalSchoolName !== 'undefined' ? finalSchoolName : 'School'}</h2>
+          <p><strong>${reportTitle}</strong></p>
+          <p>Generated on: ${currentDate} &bull; Total Records: ${students.length}</p>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th class="center" style="width: 35px;">#</th>
+              <th>Full Name</th>
+              <th class="center" style="width: 60px;">Class</th>
+              <th style="width: 120px;">Username</th>
+              <th style="width: 110px;">Password</th>
+              <th>Enrolled Subject(s)</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rowsHTML}
+          </tbody>
+        </table>
+
+        <div class="footer">
+          <span>SAMCAM Solution ICT Hub — Secure Credentials System</span>
+          <span>Page 1 of 1</span>
+        </div>
+
+        <div style="text-align: center; margin-top: 20px;">
+          <button class="no-print" onclick="window.print();" style="padding: 10px 24px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">Print / Save as PDF</button>
+        </div>
+      </div>
+    </body>
+    </html>
   `;
-});
 
-const htmlContent = `
-  <!DOCTYPE html>
-  <html>
-  <head>
-    <meta charset="utf-8">
-    <title>${reportTitle}</title>
-    <style>
-      @page { size: A4; margin: 12mm; }
-      body { 
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-        color: #1e293b; 
-        margin: 0; 
-        padding: 15px 0;
-        background: #ffffff;
-      }
-      .page-wrapper {
-        width: 92%;
-        margin: 0 auto;
-      }
-      .header { 
-        text-align: center; 
-        margin-bottom: 16px; 
-        border-bottom: 2px solid #e2e8f0; 
-        padding-bottom: 10px; 
-      }
-      .logo-container {
-        margin-bottom: 6px;
-      }
-      .logo-container img {
-        max-height: 55px;
-        max-width: 170px;
-        object-fit: contain;
-      }
-      .header h2 { margin: 0 0 4px 0; color: #0f172a; font-size: 19px; letter-spacing: -0.02em; text-transform: uppercase; }
-      .header p { margin: 2px 0; color: #64748b; font-size: 11px; }
-      
-      /* Optimized Table with Subjects Column */
-      table { 
-        width: 100%; 
-        border-collapse: collapse; 
-        table-layout: auto; 
-        font-size: 11px; 
-      }
-      th, td { 
-        padding: 7px 10px; 
-        border: 1px solid #cbd5e1; 
-        text-align: left; 
-        vertical-align: middle;
-      }
-      th { 
-        background: #f1f5f9; 
-        color: #334155; 
-        font-weight: 600; 
-        text-transform: uppercase; 
-        font-size: 10px;
-        letter-spacing: 0.05em;
-      }
-      th.center, td.center { text-align: center; }
-      td.nowrap { white-space: nowrap; }
-      
-      /* Alternating Row Colors */
-      tbody tr:nth-child(even) { background-color: #f8fafc; }
-      tbody tr:hover { background-color: #f1f5f9; }
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
+  printWindow.focus();
 
-      .code { font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; font-size: 11px; }
-      .user { color: #0284c7; font-weight: 600; }
-      .pass { color: #dc2626; font-weight: 600; }
-      .subj-tag { color: #475569; font-size: 10.5px; font-weight: 500; }
-
-      .footer { 
-        margin-top: 20px; 
-        display: flex; 
-        justify-content: space-between; 
-        font-size: 10px; 
-        color: #94a3b8; 
-        border-top: 1px solid #e2e8f0;
-        padding-top: 8px;
-      }
-      @media print {
-        button.no-print { display: none; }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="page-wrapper">
-      <div class="header">
-        ${finalSchoolLogo ? `<div class="logo-container"><img src="${finalSchoolLogo}" alt="School Logo"></div>` : ''}
-        <h2>${finalSchoolName}</h2>
-        <p><strong>${reportTitle}</strong></p>
-        <p>Generated on: ${currentDate} &bull; Total Records: ${students.length}</p>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th class="center" style="width: 35px;">#</th>
-            <th>Full Name</th>
-            <th class="center" style="width: 60px;">Class</th>
-            <th style="width: 120px;">Username</th>
-            <th style="width: 110px;">Password</th>
-            <th>Enrolled Subject(s)</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rowsHTML}
-        </tbody>
-      </table>
-
-      <div class="footer">
-        <span>SAMCAM Solution ICT Hub — Secure Credentials System</span>
-        <span>Page 1 of 1</span>
-      </div>
-
-      <div style="text-align: center; margin-top: 20px;">
-        <button class="no-print" onclick="window.print();" style="padding: 10px 24px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">Print / Save as PDF</button>
-      </div>
-    </div>
-  </body>
-  </html>
-`;
-
-printWindow.document.write(htmlContent);
-printWindow.document.close();
-printWindow.focus();
-
-showCustomModal({
-  title: "PDF Ready",
-  message: `Successfully prepared professional PDF report for ${students.length} student(s) at ${finalSchoolName}.`,
-  type: "success"
-});
-});
+  if (typeof showCustomModal === 'function') {
+    showCustomModal({
+      title: "PDF Ready",
+      message: `Successfully prepared professional PDF report for ${students.length} student(s) at ${typeof finalSchoolName !== 'undefined' ? finalSchoolName : 'School'}.`,
+      type: "success"
+    });
+  }
+}
 
 // ==========================================================================
 // 3. CLEAN EVENT BINDINGS (PREVENTS DOUBLE-CLICK / MULTI-DOWNLOAD ISSUES)
