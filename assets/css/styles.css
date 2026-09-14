@@ -1137,57 +1137,7 @@ body {
         position: relative;
         justify-content: space-between;
       }
-      .portal-grid { 
-        grid-template-columns: 1fr; 
-        gap: 1rem;
-      }
-      .portal-container { 
-        margin: 0.5rem auto; 
-        padding: 0 0.35rem; 
-      }
-      .card-box { 
-        padding: 1rem; 
-      }
-      .modal-card, .manage-students-modal-card { 
-        padding: 1rem; 
-        max-height: 95vh;
-        width: 100%;
-        margin: 0;
-      }
-      .auth-banner { 
-        flex-direction: column; 
-        align-items: stretch; 
-        padding: 1rem;
-      }
-      .auth-banner .btn-logout { 
-        width: 100%; 
-        text-align: center; 
-        margin-top: 0.5rem;
-      }
-      .modal-top-bar { 
-        flex-direction: column; 
-        align-items: stretch; 
-      }
-      .modal-top-bar input { 
-        width: 100% !important; 
-      }
-      .modal-top-bar button {
-        width: 100%;
-      }
-      .test-header {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 0.5rem;
-      }
-      .test-actions {
-        flex-direction: column;
-        width: 100%;
-      }
-      .test-actions .btn-action {
-        width: 100%;
-        justify-content: center;
-      }
-    }
+      
    
  
 
