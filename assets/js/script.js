@@ -2780,15 +2780,7 @@ function updatePortalUI() {
 }
 
 // Filter Event Listeners for Assessments Table / Grid
-window.filterAssessmentsByClass = function() {
-  if (typeof window.renderAssessments === 'function') {
-    window.renderAssessments();
-  } else if (typeof renderAssessments === 'function') {
-    renderAssessments();
-  }
-};
-
-window.filterAssessmentsBySubject = function() {
+window.filterAssessmentsByClassAndSubject = function() {
   if (typeof window.renderAssessments === 'function') {
     window.renderAssessments();
   } else if (typeof renderAssessments === 'function') {
