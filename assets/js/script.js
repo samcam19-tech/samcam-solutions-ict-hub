@@ -1509,7 +1509,7 @@ window.downloadStudentCSV = async function() {
 
   // Helper: Title Case Converter
   const toTitleCase = (str) => {
-    if (!str) return '';
+    if (!str) return 'N/A';
     return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   };
 
@@ -1520,15 +1520,26 @@ window.downloadStudentCSV = async function() {
     return `"${stringField.replace(/"/g, '""')}"`;
   };
 
-  // Sort students alphabetically by full name
-  students.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+  // Sort students: By Class first (if whole school export), then Alphabetically by Full Name
+  students.sort((a, b) => {
+    const classA = (a.class || '').toLowerCase();
+    const classB = (b.class || '').toLowerCase();
+    
+    if (!selectedClass && classA !== classB) {
+      return classA.localeCompare(classB, undefined, { numeric: true, sensitivity: 'base' });
+    }
+    
+    const nameA = (a.fullName || a.name || '').toLowerCase();
+    const nameB = (b.fullName || b.name || '').toLowerCase();
+    return nameA.localeCompare(nameB);
+  });
 
   // Build CSV Header & Rows
   const csvRows = [];
   csvRows.push([escapeCSV("School Name"), escapeCSV("Student Full Name"), escapeCSV("Class"), escapeCSV("School ID / Username"), escapeCSV("Password"), escapeCSV("Enrolled Subjects")].join(","));
 
   students.forEach(s => {
-    const formattedName = toTitleCase(s.fullName || '');
+    const formattedName = toTitleCase(s.fullName || s.name || '');
     const className = (s.class || '').toUpperCase();
     const username = s.username || s.schoolId || '';
     const password = s.password || '';
@@ -1571,54 +1582,6 @@ window.downloadStudentCSV = async function() {
     type: "success"
   });
 };
-
-  // Helper function to capitalize each word in names
-  function formatTitleCase(str) {
-    if (!str) return 'N/A';
-    return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-  }
-
-  // Sort students: By Class first (if whole school), then Alphabetically by Full Name
-  students.sort((a, b) => {
-    const classA = (a.class || '').toLowerCase();
-    const classB = (b.class || '').toLowerCase();
-    
-    if (!selectedClass && classA !== classB) {
-      return classA.localeCompare(classB, undefined, { numeric: true, sensitivity: 'base' });
-    }
-    
-    const nameA = (a.fullName || a.name || '').toLowerCase();
-    const nameB = (b.fullName || b.name || '').toLowerCase();
-    return nameA.localeCompare(nameB);
-  });
-
-  // Build CSV content with School Name header row
-  let csvContent = `data:text/csv;charset=utf-8,`;
-  csvContent += `"${finalSchoolName.replace(/"/g, '""')}"\n`;
-  csvContent += `${selectedClass ? 'Class: ' + selectedClass : 'Complete School Student Credentials Report'}\n`;
-  csvContent += `Full Name,Class,School ID,Username,Password\n`;
-
-  students.forEach(s => {
-    const formattedName = formatTitleCase(s.fullName || s.name);
-    csvContent += `"${formattedName}","${s.class || ''}","${s.schoolId || targetSchoolId || ''}","${s.username || ''}","${s.password || ''}"\n`;
-  });
-
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  const fileLabel = selectedClass ? `Class_${selectedClass}_Credentials` : 'Registered_Students_Credentials';
-  link.setAttribute("download", `${fileLabel}_${new Date().toISOString().slice(0,10)}.csv`);
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-
-  showCustomModal({
-    title: "Export Successful",
-    message: `Successfully downloaded sorted CSV credentials for ${students.length} student(s)${selectedClass ? ' in ' + selectedClass : ''}.`,
-    type: "success"
-  });
-
-
 // ==========================================================================
 // SAAS-GRADE STUDENT PDF EXPORT (OPTIMIZED NAME SPACE, SUBJECTS & CLEAN HEADERS)
 // ==========================================================================
