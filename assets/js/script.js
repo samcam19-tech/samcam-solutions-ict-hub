@@ -343,6 +343,15 @@ window.executeLogin = async function() {
   let foundUser = null;
   let failureReason = 'USERNAME_NOT_FOUND';
 
+  // Helper to extract subjects regardless of whether the user is a student or teacher
+  const extractUserSubjects = (data) => {
+    if (Array.isArray(data.enrolledSubjects)) return data.enrolledSubjects;
+    if (Array.isArray(data.teacherSubjects)) return data.teacherSubjects;
+    if (Array.isArray(data.assignedSubjects)) return data.assignedSubjects;
+    if (Array.isArray(data.subjects)) return data.subjects;
+    return [];
+  };
+
   // 1. Primary Auth: Firebase Firestore querying by username field or direct document ID match
   if (window.db) {
     try {
@@ -352,6 +361,7 @@ window.executeLogin = async function() {
         const snapDoc = snapQuery.docs[0];
         const userData = snapDoc.data();
         if (userData.password === p) {
+          const userSubjects = extractUserSubjects(userData);
           foundUser = {
             id: snapDoc.id,
             username: userData.username || usernameInput,
@@ -360,6 +370,9 @@ window.executeLogin = async function() {
             userClass: userData.class || userData.userClass || '',
             schoolId: userData.schoolId || '',
             profilePic: userData.profilePic || '',
+            subjects: userSubjects,
+            enrolledSubjects: userSubjects,
+            teacherSubjects: userSubjects,
             ...userData
           };
         } else {
@@ -371,6 +384,7 @@ window.executeLogin = async function() {
         if (docSnap.exists) {
           const userData = docSnap.data();
           if (userData.password === p) {
+            const userSubjects = extractUserSubjects(userData);
             foundUser = {
               id: docSnap.id,
               username: userData.username || usernameInput,
@@ -379,6 +393,9 @@ window.executeLogin = async function() {
               userClass: userData.class || userData.userClass || '',
               schoolId: userData.schoolId || '',
               profilePic: userData.profilePic || '',
+              subjects: userSubjects,
+              enrolledSubjects: userSubjects,
+              teacherSubjects: userSubjects,
               ...userData
             };
           } else {
@@ -390,6 +407,7 @@ window.executeLogin = async function() {
           if (docSnapLower.exists) {
             const userData = docSnapLower.data();
             if (userData.password === p) {
+              const userSubjects = extractUserSubjects(userData);
               foundUser = {
                 id: docSnapLower.id,
                 username: userData.username || usernameInput,
@@ -398,6 +416,9 @@ window.executeLogin = async function() {
                 userClass: userData.class || userData.userClass || '',
                 schoolId: userData.schoolId || '',
                 profilePic: userData.profilePic || '',
+                subjects: userSubjects,
+                enrolledSubjects: userSubjects,
+                teacherSubjects: userSubjects,
                 ...userData
               };
             } else {
@@ -421,6 +442,7 @@ window.executeLogin = async function() {
       
       if (match) {
         if (match.password === p) {
+          const userSubjects = extractUserSubjects(match);
           foundUser = {
             id: match.id || match.username || usernameInput,
             username: match.username || usernameInput,
@@ -429,6 +451,9 @@ window.executeLogin = async function() {
             userClass: match.class || match.userClass || '',
             schoolId: match.schoolId || '',
             profilePic: match.profilePic || '',
+            subjects: userSubjects,
+            enrolledSubjects: userSubjects,
+            teacherSubjects: userSubjects,
             ...match
           };
         } else {
@@ -442,7 +467,8 @@ window.executeLogin = async function() {
 
   // 3. Complete Login & Record Audit Trail
   if (foundUser) {
-    await logAuthenticationAttempt('SUCCESS', foundUser.username, '—');
+    const userSubjectsList = foundUser.subjects || [];
+    await logAuthenticationAttempt('SUCCESS', foundUser.username, '—', userSubjectsList);
 
     showToast(`Welcome back, ${foundUser.name || foundUser.username}!`, 'success');
     if (errEl) errEl.style.display = 'none';
@@ -485,7 +511,7 @@ window.executeLogin = async function() {
     // Redirect cleanly to the main dashboard page
     window.location.replace('../e-library/');
   } else {
-    await logAuthenticationAttempt('FAILED', usernameInput, failureReason);
+    await logAuthenticationAttempt('FAILED', usernameInput, failureReason, []);
 
     const errorMessage = failureReason === 'INVALID_PASSWORD' 
       ? 'Incorrect password! Please try again.' 
@@ -607,7 +633,7 @@ window.handleLogout = function() {
    PROFILE PICTURE UPLOAD & UI DISPLAY MODULE
    ========================================================================== */
 
-// 1. Function to update all profile image elements on the page
+// 1. Function to update all profile image & subject details on the page
 window.updateProfileUIImages = function(user) {
   const defaultAvatar = "../images/default-avatar.png";
   const userAvatar = (user && user.profilePic && user.profilePic.trim() !== "") 
@@ -621,6 +647,8 @@ window.updateProfileUIImages = function(user) {
   const usernameDisplay = document.getElementById('profileUsernameDisplay');
   const nameDisplay = document.getElementById('userNameDisplay');
   const roleDisplay = document.getElementById('userRoleDisplay');
+  const subjectsListContainer = document.getElementById('profileSubjectsList');
+  const subjectRoleLabel = document.getElementById('profileSubjectRoleLabel');
 
   if (bannerPic) bannerPic.src = userAvatar;
   if (previewPic) previewPic.src = userAvatar;
@@ -630,16 +658,56 @@ window.updateProfileUIImages = function(user) {
     if (usernameDisplay) usernameDisplay.textContent = "@" + (user.schoolId || user.username || "");
     if (nameDisplay) nameDisplay.textContent = user.fullName || user.schoolId || user.username || "User";
     if (roleDisplay) roleDisplay.textContent = user.role || "User";
+
+    // UPDATED: Dynamic rendering of enrolled/assigned subjects
+    if (subjectsListContainer) {
+      subjectsListContainer.innerHTML = '';
+      
+      const userSubjects = user.subjects || user.enrolledSubjects || user.teacherSubjects || user.assignedSubjects || [];
+      const isTeacherOrAdmin = (user.role || '').toLowerCase() === 'teacher' || (user.role || '').toLowerCase() === 'admin';
+
+      if (subjectRoleLabel) {
+        subjectRoleLabel.textContent = isTeacherOrAdmin ? "Assigned Teaching Subject(s)" : "Enrolled Subject(s)";
+      }
+
+      if (userSubjects.length > 0) {
+        userSubjects.forEach(sub => {
+          const badge = document.createElement('span');
+          badge.className = 'subject-badge';
+          badge.style.cssText = "background: #e0f2fe; color: #0369a1; font-size: 0.72rem; padding: 0.15rem 0.45rem; border-radius: 4px; font-weight: 600;";
+          badge.textContent = sub;
+          subjectsListContainer.appendChild(badge);
+        });
+      } else {
+        subjectsListContainer.innerHTML = '<span style="font-size: 0.75rem; color: #94a3b8;">No subjects assigned</span>';
+      }
+    }
   }
 };
 
 // Hook into session changes to refresh UI components automatically
 window.addEventListener('portalSessionChanged', (e) => {
-  window.updateProfileUIImages(e.detail);
+  const user = e.detail;
+  
+  if (typeof window.updateProfileUIImages === 'function') {
+    window.updateProfileUIImages(user);
+  }
+
+  // Update global subject cache for current user session
+  if (user) {
+    window.currentStudentSubjects = user.subjects || user.enrolledSubjects || user.teacherSubjects || [];
+  } else {
+    window.currentStudentSubjects = [];
+  }
+
   if (typeof window.renderSubmissions === 'function') {
     window.renderSubmissions();
   }
-  if (typeof window.renderAssessments === 'function') {
+
+  // Re-render and filter assessments according to user subjects & selected class
+  if (typeof window.filterAssessmentsByClassAndSubject === 'function') {
+    window.filterAssessmentsByClassAndSubject();
+  } else if (typeof window.renderAssessments === 'function') {
     window.renderAssessments();
   }
 });
@@ -708,7 +776,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const downloadURL = await snapshot.ref.getDownloadURL();
       console.log("🔗 File uploaded successfully. Download URL:", downloadURL);
 
-      // Update session data
+      // Update session data preserving subject arrays
       currentUser.profilePic = downloadURL;
       localStorage.setItem('portal_session', JSON.stringify(currentUser));
       
@@ -725,7 +793,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log("💾 Firestore user profilePic updated for document:", docId);
       }
 
-      // Refresh UI images instantly
+      // Refresh UI images & subject badges instantly
       if (typeof window.updateProfileUIImages === 'function') {
         window.updateProfileUIImages(currentUser);
       }
@@ -753,7 +821,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-
 // ==========================================
 // TEACHER / ADMIN STAFF REGISTRATION & MANAGEMENT MODULE
 // ==========================================
@@ -763,6 +830,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const registerStaffForm = document.getElementById("registerStaffForm");
   if (registerStaffForm) {
     registerStaffForm.addEventListener("submit", handleRegisterStaff);
+  }
+
+  // Bind Staff Role selection change to toggle Assigned Subjects visibility
+  const staffRoleSelect = document.getElementById("staffRole");
+  if (staffRoleSelect) {
+    staffRoleSelect.addEventListener("change", (e) => {
+      const subjectsGroup = document.getElementById("staffAssignedSubjects")?.closest('.form-group');
+      if (subjectsGroup) {
+        // Show subjects selection for Teachers, hide/disable for super Admins if preferred
+        subjectsGroup.style.display = (e.target.value === 'teacher') ? 'block' : 'none';
+      }
+    });
   }
 
   // Bind Staff Management Modal openers and closers
@@ -777,11 +856,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const closeManageStaffModalBtn = document.getElementById("closeManageStaffModalBtn");
   if (closeManageStaffModalBtn) {
     closeManageStaffModalBtn.addEventListener("click", () => {
-      document.getElementById("manageStaffModal").style.display = "none";
+      const modal = document.getElementById("manageStaffModal");
+      if (modal) modal.style.display = "none";
     });
   }
 
-  // Bind Staff Search Input
+  // Bind Staff Search Input (searches by Name, Role, Username, or Assigned Subjects)
   const staffSearchInput = document.getElementById("staffSearchInput");
   if (staffSearchInput) {
     staffSearchInput.addEventListener("input", filterStaffTable);
@@ -872,10 +952,24 @@ async function handleRegisterStaff(e) {
   const schoolId = document.getElementById("staffUsername").value.trim().toUpperCase();
   const password = document.getElementById("staffPassword").value.trim();
 
+  // Extract checked assigned subjects for teachers
+  const selectedSubjectBoxes = document.querySelectorAll('#staffAssignedSubjects input[name="teacherSubjects"]:checked');
+  const assignedSubjects = Array.from(selectedSubjectBoxes).map(cb => cb.value);
+
   if (!fullName || !role || !schoolId || !password) {
     showCustomModal({
       title: "Missing Information",
       message: "Please fill in all required fields for staff registration.",
+      type: "warning"
+    });
+    return;
+  }
+
+  // Require at least one subject selection if registering a teacher
+  if (role === "teacher" && assignedSubjects.length === 0) {
+    showCustomModal({
+      title: "No Subject Selected",
+      message: "Please select at least one teaching subject for this teacher.",
       type: "warning"
     });
     return;
@@ -893,13 +987,16 @@ async function handleRegisterStaff(e) {
       return;
     }
 
-    // Save staff/admin profile to Firestore
+    // Save staff/admin profile to Firestore with assigned subjects
     await db.collection("users").doc(schoolId.toLowerCase()).set({
       fullName: fullName,
       role: role, // 'teacher' or 'admin'
       schoolId: schoolId,
       username: schoolId,
-      password: password, // Note: In production, hash passwords securely. Matches plain text logic of portal.
+      password: password,
+      teacherSubjects: assignedSubjects,
+      assignedSubjects: assignedSubjects,
+      subjects: assignedSubjects,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
@@ -925,6 +1022,7 @@ async function handleRegisterStaff(e) {
     });
   }
 }
+
 // 2. Open Staff Management Modal & Load Data
 let allStaffRecords = [];
 let currentStaffPage = 1;
@@ -937,7 +1035,8 @@ async function openManageStaffModal() {
 
 async function loadStaffTableData() {
   const tableBody = document.getElementById("staffModalTableBody");
-  tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 1rem;">Loading staff records...</td></tr>`;
+  // Updated colspan to 7 to account for the new "Assigned Subject(s)" table header
+  tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 1rem;">Loading staff records...</td></tr>`;
 
   try {
     // Fetch users with roles 'teacher' or 'admin'
@@ -953,7 +1052,7 @@ async function loadStaffTableData() {
     renderStaffTablePage(1);
   } catch (error) {
     console.error("Error loading staff accounts:", error);
-    tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#ef4444;">Failed to load records.</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ef4444;">Failed to load records.</td></tr>`;
   }
 }
 
@@ -967,7 +1066,7 @@ function renderStaffTablePage(page, recordsToRender = allStaffRecords) {
   paginationContainer.innerHTML = "";
 
   if (recordsToRender.length === 0) {
-    tableBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 1rem; color: #64748b;">No staff or administrator accounts found.</td></tr>`;
+    tableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding: 1rem; color: #64748b;">No staff or administrator accounts found.</td></tr>`;
     return;
   }
 
@@ -979,18 +1078,25 @@ function renderStaffTablePage(page, recordsToRender = allStaffRecords) {
     const tr = document.createElement("tr");
     const globalIndex = startIndex + index + 1;
 
+    // Extract subjects array safely
+    const subjectsList = staff.teacherSubjects || staff.assignedSubjects || staff.subjects || [];
+    const subjectsStr = Array.isArray(subjectsList) ? subjectsList.join(", ") : (subjectsList || "None");
+
     tr.innerHTML = `
       <td>${globalIndex}</td>
-      <td><input type="text" id="staff-name-${staff.id}" value="${escapeHtml(staff.fullName || '')}"></td>
+      <td><input type="text" id="staff-name-${staff.id}" value="${escapeHtml(staff.fullName || '')}" style="width:100%; padding:0.3rem;"></td>
       <td>
-        <select id="staff-role-${staff.id}">
+        <select id="staff-role-${staff.id}" style="padding:0.3rem;">
           <option value="teacher" ${staff.role === 'teacher' ? 'selected' : ''}>Teacher</option>
           <option value="admin" ${staff.role === 'admin' ? 'selected' : ''}>Admin</option>
         </select>
       </td>
-      <td><input type="text" id="staff-user-${staff.id}" value="${escapeHtml(staff.schoolId || staff.username || '')}"></td>
-      <td><input type="text" id="staff-pass-${staff.id}" value="${escapeHtml(staff.password || '')}"></td>
       <td>
+        <input type="text" id="staff-subjects-${staff.id}" value="${escapeHtml(subjectsStr)}" placeholder="e.g. ICT, Mathematics" style="width:100%; padding:0.3rem;" title="Comma-separated subjects">
+      </td>
+      <td><input type="text" id="staff-user-${staff.id}" value="${escapeHtml(staff.schoolId || staff.username || '')}" style="width:100%; padding:0.3rem;"></td>
+      <td><input type="text" id="staff-pass-${staff.id}" value="${escapeHtml(staff.password || '')}" style="width:100%; padding:0.3rem;"></td>
+      <td style="text-align:center; white-space:nowrap;">
         <button type="button" class="page-btn" style="background:#0284c7; color:white; padding:0.25rem 0.5rem;" onclick="updateStaffAccount('${staff.id}')"><i class="fa-solid fa-floppy-disk"></i> Save</button>
         <button type="button" class="page-btn" style="background:#dc2626; color:white; padding:0.25rem 0.5rem;" onclick="deleteStaffAccount('${staff.id}')"><i class="fa-solid fa-trash"></i></button>
       </td>
@@ -1007,6 +1113,7 @@ function renderStaffTablePage(page, recordsToRender = allStaffRecords) {
 async function updateStaffAccount(docId) {
   const newName = document.getElementById(`staff-name-${docId}`).value.trim();
   const newRole = document.getElementById(`staff-role-${docId}`).value;
+  const rawSubjects = document.getElementById(`staff-subjects-${docId}`).value.trim();
   const newSchoolId = document.getElementById(`staff-user-${docId}`).value.trim().toUpperCase();
   const newPass = document.getElementById(`staff-pass-${docId}`).value.trim();
 
@@ -1019,10 +1126,18 @@ async function updateStaffAccount(docId) {
     return;
   }
 
+  // Parse comma-separated subject entries into a clean array
+  const updatedSubjects = rawSubjects
+    ? rawSubjects.split(',').map(s => s.trim()).filter(s => s.length > 0)
+    : [];
+
   try {
     await db.collection("users").doc(docId).update({
       fullName: newName,
       role: newRole,
+      teacherSubjects: updatedSubjects,
+      assignedSubjects: updatedSubjects,
+      subjects: updatedSubjects,
       schoolId: newSchoolId,
       username: newSchoolId,
       password: newPass
@@ -1075,20 +1190,29 @@ async function deleteStaffAccount(docId) {
   });
 }
 
-// 6. Filter Staff Table by Search Input
+// 6. Filter Staff Table by Search Input (Updated for Subject Search)
 function filterStaffTable() {
-  const query = document.getElementById("staffSearchInput").value.toLowerCase();
-  const filtered = allStaffRecords.filter(staff => 
-    (staff.fullName || '').toLowerCase().includes(query) ||
-    (staff.schoolId || '').toLowerCase().includes(query) ||
-    (staff.username || '').toLowerCase().includes(query) ||
-    (staff.role || '').toLowerCase().includes(query)
-  );
+  const query = document.getElementById("staffSearchInput").value.toLowerCase().trim();
+  
+  const filtered = allStaffRecords.filter(staff => {
+    // Extract assigned subjects array or string safely
+    const subjectsList = staff.teacherSubjects || staff.assignedSubjects || staff.subjects || [];
+    const subjectsStr = Array.isArray(subjectsList) ? subjectsList.join(", ") : (subjectsList || "");
+
+    return (
+      (staff.fullName || '').toLowerCase().includes(query) ||
+      (staff.schoolId || '').toLowerCase().includes(query) ||
+      (staff.username || '').toLowerCase().includes(query) ||
+      (staff.role || '').toLowerCase().includes(query) ||
+      subjectsStr.toLowerCase().includes(query)
+    );
+  });
+  
   renderStaffTablePage(1, filtered);
 }
 
 // ==========================================================================
-// 2. STUDENT REGISTRATION & BULK IMPORT (SCOPED WITH SCHOOL ID)
+// 2. STUDENT REGISTRATION & BULK IMPORT (SCOPED WITH SCHOOL ID & SUBJECTS)
 // ==========================================================================
 async function saveUserToCloud(userObj) {
   const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
@@ -1105,6 +1229,10 @@ async function saveUserToCloud(userObj) {
   if (window.db) {
     try {
       const activeSchoolId = userObj.schoolId || userObj.schoolID || window.currentSchoolId || 'default_school';
+      const userSubjects = Array.isArray(userObj.enrolledSubjects) 
+        ? userObj.enrolledSubjects 
+        : (Array.isArray(userObj.subjects) ? userObj.subjects : []);
+
       await window.db.collection('users').doc(targetId).set({
         fullName: userObj.fullName,
         class: userObj.class,
@@ -1112,6 +1240,8 @@ async function saveUserToCloud(userObj) {
         username: userObj.schoolId || userObj.username,
         password: userObj.password,
         role: userObj.role || 'Student',
+        enrolledSubjects: userSubjects,
+        subjects: userSubjects,
         createdAt: new Date().toISOString()
       }, { merge: true });
     } catch (err) {
@@ -1122,12 +1252,34 @@ async function saveUserToCloud(userObj) {
 
 window.handleRegisterStudent = async function(e) {
   e.preventDefault();
-  if (!window.currentUser || window.currentUser.role !== 'Teacher') return;
+  if (!window.currentUser || (window.currentUser.role !== 'Teacher' && window.currentUser.role !== 'Admin')) return;
 
   const fullName = document.getElementById('regFullName').value.trim();
   const studentClass = document.getElementById('regClass').value;
   const schoolId = document.getElementById('regUsername').value.trim().toUpperCase();
   const password = document.getElementById('regPassword').value.trim();
+
+  // Extract selected enrolled subjects from checkboxes
+  const selectedSubjectBoxes = document.querySelectorAll('#regStudentSubjects input[name="studentSubjects"]:checked');
+  const enrolledSubjects = Array.from(selectedSubjectBoxes).map(cb => cb.value.trim());
+
+  if (!fullName || !studentClass || !schoolId || !password) {
+    showCustomModal({
+      title: "Missing Information",
+      message: "Please complete all required fields.",
+      type: "warning"
+    });
+    return;
+  }
+
+  if (enrolledSubjects.length === 0) {
+    showCustomModal({
+      title: "No Subject Selected",
+      message: "Please select at least one enrolled subject for this student.",
+      type: "warning"
+    });
+    return;
+  }
 
   const localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
   if (localUsers.some(u => (u.schoolId || u.username || '').toLowerCase() === schoolId.toLowerCase())) {
@@ -1140,12 +1292,22 @@ window.handleRegisterStudent = async function(e) {
   }
 
   const activeSchoolId = window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId || schoolId;
-  const newUser = { fullName, class: studentClass, schoolId: activeSchoolId, username: schoolId, password, role: "Student" };
+  const newUser = { 
+    fullName, 
+    class: studentClass, 
+    schoolId: activeSchoolId, 
+    username: schoolId, 
+    password, 
+    role: "Student",
+    enrolledSubjects: enrolledSubjects,
+    subjects: enrolledSubjects
+  };
+
   await saveUserToCloud(newUser);
 
   showCustomModal({
     title: "Success",
-    message: `Student "${fullName}" registered successfully!`,
+    message: `Student "${fullName}" registered successfully with ${enrolledSubjects.length} subject(s)!`,
     type: "success"
   });
 
@@ -1164,10 +1326,14 @@ function generateStrongPassword() {
 }
 
 window.handleBulkImport = function() {
-  if (!window.currentUser || window.currentUser.role !== 'Teacher') return;
+  if (!window.currentUser || (window.currentUser.role !== 'Teacher' && window.currentUser.role !== 'Admin')) return;
 
   const fileInput = document.getElementById('bulkStudentFile');
   const targetClass = document.getElementById('bulkClass').value;
+
+  // Option to extract subjects checked on UI for bulk auto-enrollment
+  const defaultBulkSubjectBoxes = document.querySelectorAll('#bulkStudentSubjects input[name="bulkSubjects"]:checked');
+  const defaultBulkSubjects = Array.from(defaultBulkSubjectBoxes).map(cb => cb.value.trim());
 
   if (!fileInput || !fileInput.files.length) {
     showCustomModal({
@@ -1212,13 +1378,21 @@ window.handleBulkImport = function() {
             counter++;
           }
 
+          // If Excel has a second/third column with comma-separated subjects, parse it; otherwise use defaultBulkSubjects
+          let parsedRowSubjects = defaultBulkSubjects;
+          if (row[1] && typeof row[1] === 'string' && row[1].trim() !== '' && !row[1].includes('@')) {
+            parsedRowSubjects = row[1].split(',').map(s => s.trim()).filter(s => s.length > 0);
+          }
+
           const newUser = {
             fullName: rawName,
             class: targetClass,
             schoolId: activeSchoolId,
             username: finalSchoolId,
             password: generateStrongPassword(),
-            role: "Student"
+            role: "Student",
+            enrolledSubjects: parsedRowSubjects,
+            subjects: parsedRowSubjects
           };
 
           systemUsers.push(newUser);
@@ -1250,11 +1424,14 @@ window.handleBulkImport = function() {
 };
 
 // ==========================================================================
-// 1. SAAS-GRADE STUDENT CSV EXPORT (WITH SCHOOL NAME, TITLE CASE & SORTING)
+// 1. SAAS-GRADE STUDENT CSV EXPORT (WITH SCHOOL NAME, TITLE CASE, SUBJECTS & SORTING)
 // ==========================================================================
 window.downloadStudentCSV = async function() {
   const classSelect = document.getElementById('exportClassSelect');
+  const subjectSelect = document.getElementById('exportSubjectSelect');
+  
   const selectedClass = classSelect ? classSelect.value.trim() : '';
+  const selectedSubject = subjectSelect ? subjectSelect.value.trim() : '';
 
   let students = [];
   let fetchedSchoolName = null;
@@ -1291,6 +1468,7 @@ window.downloadStudentCSV = async function() {
     }
   }
 
+  // Fallback to localStorage if Firestore returned no records
   if (students.length === 0) {
     const users = JSON.parse(localStorage.getItem('portal_users')) || [];
     
@@ -1299,6 +1477,17 @@ window.downloadStudentCSV = async function() {
       const matchesSchool = !targetSchoolId || (u.schoolId || '').toLowerCase() === targetSchoolId.toLowerCase();
       const matchesClass = !selectedClass || (u.class || '').toUpperCase() === selectedClass.toUpperCase();
       return isStudent && matchesSchool && matchesClass;
+    });
+  }
+
+  // Filter students by selected subject if specified
+  if (selectedSubject) {
+    students = students.filter(s => {
+      const subs = s.enrolledSubjects || s.subjects || [];
+      if (Array.isArray(subs)) {
+        return subs.some(sub => sub.toLowerCase() === selectedSubject.toLowerCase());
+      }
+      return String(subs).toLowerCase().includes(selectedSubject.toLowerCase());
     });
   }
 
@@ -1312,11 +1501,76 @@ window.downloadStudentCSV = async function() {
   if (students.length === 0) {
     showCustomModal({
       title: "No Data Available",
-      message: selectedClass ? `No registered students found for class ${selectedClass}.` : "No registered students found to export.",
+      message: selectedClass ? `No registered students found for class ${selectedClass}${selectedSubject ? ' and subject ' + selectedSubject : ''}.` : "No registered students found to export.",
       type: "info"
     });
     return;
   }
+
+  // Helper: Title Case Converter
+  const toTitleCase = (str) => {
+    if (!str) return '';
+    return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  };
+
+  // Helper: CSV Field Escaper
+  const escapeCSV = (field) => {
+    if (field === null || field === undefined) return '""';
+    const stringField = String(field);
+    return `"${stringField.replace(/"/g, '""')}"`;
+  };
+
+  // Sort students alphabetically by full name
+  students.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
+
+  // Build CSV Header & Rows
+  const csvRows = [];
+  csvRows.push([escapeCSV("School Name"), escapeCSV("Student Full Name"), escapeCSV("Class"), escapeCSV("School ID / Username"), escapeCSV("Password"), escapeCSV("Enrolled Subjects")].join(","));
+
+  students.forEach(s => {
+    const formattedName = toTitleCase(s.fullName || '');
+    const className = (s.class || '').toUpperCase();
+    const username = s.username || s.schoolId || '';
+    const password = s.password || '';
+
+    // Extract subjects array safely
+    const subjectsArray = s.enrolledSubjects || s.subjects || [];
+    const subjectsFormatted = Array.isArray(subjectsArray) ? subjectsArray.join("; ") : (subjectsArray || "None");
+
+    csvRows.push([
+      escapeCSV(finalSchoolName),
+      escapeCSV(formattedName),
+      escapeCSV(className),
+      escapeCSV(username),
+      escapeCSV(password),
+      escapeCSV(subjectsFormatted)
+    ].join(","));
+  });
+
+  // Construct and trigger CSV download
+  const csvString = csvRows.join("\n");
+  const blob = new Blob([csvString], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  
+  const sanitizedSchool = finalSchoolName.replace(/[^a-zA-Z0-9]/g, "_");
+  const classTag = selectedClass ? `_${selectedClass}` : "_All_Classes";
+  const subjectTag = selectedSubject ? `_${selectedSubject}` : "";
+  
+  link.setAttribute("download", `${sanitizedSchool}${classTag}${subjectTag}_Students.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+
+  showCustomModal({
+    title: "Export Complete",
+    message: `Exported ${students.length} student account(s) to CSV!`,
+    type: "success"
+  });
+};
 
   // Helper function to capitalize each word in names
   function formatTitleCase(str) {
@@ -1366,11 +1620,14 @@ window.downloadStudentCSV = async function() {
 };
 
 // ==========================================================================
-// SAAS-GRADE STUDENT PDF EXPORT (OPTIMIZED NAME SPACE & CLEAN HEADERS)
+// SAAS-GRADE STUDENT PDF EXPORT (OPTIMIZED NAME SPACE, SUBJECTS & CLEAN HEADERS)
 // ==========================================================================
 window.downloadStudentPDF = async function() {
   const classSelect = document.getElementById('exportClassSelect');
+  const subjectSelect = document.getElementById('exportSubjectSelect');
+
   const selectedClass = classSelect ? classSelect.value.trim() : '';
+  const selectedSubject = subjectSelect ? subjectSelect.value.trim() : '';
 
   let students = [];
   let fetchedSchoolName = null;
@@ -1419,6 +1676,17 @@ window.downloadStudentPDF = async function() {
     });
   }
 
+  // Filter students by selected subject if specified
+  if (selectedSubject) {
+    students = students.filter(s => {
+      const subs = s.enrolledSubjects || s.subjects || [];
+      if (Array.isArray(subs)) {
+        return subs.some(sub => sub.toLowerCase() === selectedSubject.toLowerCase());
+      }
+      return String(subs).toLowerCase().includes(selectedSubject.toLowerCase());
+    });
+  }
+
   if (!fetchedSchoolName && window.currentUser) {
     fetchedSchoolName = window.currentUser.schoolName || window.currentUser.institutionName;
   }
@@ -1432,182 +1700,314 @@ window.downloadStudentPDF = async function() {
   if (students.length === 0) {
     showCustomModal({
       title: "No Data Available",
-      message: selectedClass ? `No registered students found for class ${selectedClass}.` : "No registered students found to export.",
+      message: selectedClass ? `No registered students found for class ${selectedClass}${selectedSubject ? ' and subject ' + selectedSubject : ''}.` : "No registered students found to export.",
       type: "info"
     });
     return;
   }
 
-  // Helper function to capitalize each word in full names
-  function formatTitleCase(str) {
-    if (!str) return 'N/A';
+  // Helper: Title Case Converter
+  const toTitleCase = (str) => {
+    if (!str) return '';
     return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
-  }
+  };
 
-  // Sort students: By Class first (if whole school), then Alphabetically by Full Name
-  students.sort((a, b) => {
-    const classA = (a.class || '').toLowerCase();
-    const classB = (b.class || '').toLowerCase();
-    
-    if (!selectedClass && classA !== classB) {
-      return classA.localeCompare(classB, undefined, { numeric: true, sensitivity: 'base' });
-    }
-    
-    const nameA = (a.fullName || a.name || '').toLowerCase();
-    const nameB = (b.fullName || b.name || '').toLowerCase();
-    return nameA.localeCompare(nameB);
-  });
+  // Sort students alphabetically by full name
+  students.sort((a, b) => (a.fullName || '').localeCompare(b.fullName || ''));
 
-  const printWindow = window.open('', '_blank');
-  if (!printWindow) {
-    alert('Please allow popups for this website to download PDF credentials.');
+  // Ensure jsPDF and autoTable libraries are available
+  if (!window.jspdf || !window.jspdf.jsPDF) {
+    showCustomModal({
+      title: "PDF Library Missing",
+      message: "jsPDF library is not loaded. Please ensure the library script is included.",
+      type: "error"
+    });
     return;
   }
 
-  const reportTitle = selectedClass ? `Student Credentials Report — Class ${selectedClass}` : 'Complete School Student Credentials Report';
-  const currentDate = new Date().toLocaleDateString();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('p', 'mm', 'a4');
+  const pageWidth = doc.internal.pageSize.getWidth();
 
-  let rowsHTML = '';
-  students.forEach((s, index) => {
-    const formattedName = formatTitleCase(s.fullName || s.name);
-    rowsHTML += `
-      <tr>
-        <td class="center">${index + 1}</td>
-        <td class="nowrap"><strong>${formattedName}</strong></td>
-        <td class="code user">${s.username || 'N/A'}</td>
-        <td class="code pass">${s.password || 'N/A'}</td>
-      </tr>
-    `;
+  // Document Header
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
+  doc.setTextColor(30, 41, 59); // Slate 800
+  doc.text(finalSchoolName.toUpperCase(), pageWidth / 2, 16, { align: 'center' });
+
+  doc.setFontSize(11);
+  doc.setFont("helvetica", "normal");
+  doc.setTextColor(71, 85, 105); // Slate 600
+  
+  const subtitle = `STUDENT REGISTER - ${selectedClass ? 'CLASS ' + selectedClass.toUpperCase() : 'ALL CLASSES'}${selectedSubject ? ' (' + selectedSubject.toUpperCase() + ')' : ''}`;
+  doc.text(subtitle, pageWidth / 2, 22, { align: 'center' });
+
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.5);
+  doc.line(14, 26, pageWidth - 14, 26);
+
+  // Table Data Preparation
+  const tableHeaders = [["#", "Student Full Name", "Class", "School ID", "Password", "Enrolled Subjects"]];
+  const tableData = students.map((s, index) => {
+    const subs = s.enrolledSubjects || s.subjects || [];
+    const subjectsStr = Array.isArray(subs) ? subs.join(", ") : (subs || "None");
+    return [
+      index + 1,
+      toTitleCase(s.fullName || ''),
+      (s.class || '').toUpperCase(),
+      s.username || s.schoolId || '',
+      s.password || '',
+      subjectsStr
+    ];
   });
 
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <title>${reportTitle}</title>
-      <style>
-        @page { size: A4; margin: 15mm; }
-        body { 
-          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-          color: #1e293b; 
-          margin: 0; 
-          padding: 20px 0;
-          background: #ffffff;
-        }
-        .page-wrapper {
-          width: 70%;
-          margin: 0 auto;
-        }
-        .header { 
-          text-align: center; 
-          margin-bottom: 20px; 
-          border-bottom: 2px solid #e2e8f0; 
-          padding-bottom: 12px; 
-        }
-        .logo-container {
-          margin-bottom: 8px;
-        }
-        .logo-container img {
-          max-height: 60px;
-          max-width: 180px;
-          object-fit: contain;
-        }
-        .header h2 { margin: 0 0 4px 0; color: #0f172a; font-size: 20px; letter-spacing: -0.02em; text-transform: uppercase; }
-        .header p { margin: 2px 0; color: #64748b; font-size: 12px; }
-        
-        /* Optimized Autofit Table with Full Space for Names */
-        table { 
-          width: 100%; 
-          border-collapse: collapse; 
-          table-layout: auto; 
-          font-size: 11px; 
-        }
-        th, td { 
-          padding: 8px 12px; 
-          border: 1px solid #cbd5e1; 
-          text-align: left; 
-          vertical-align: middle;
-        }
-        th { 
-          background: #f1f5f9; 
-          color: #334155; 
-          font-weight: 600; 
-          text-transform: uppercase; 
-          font-size: 10px;
-          letter-spacing: 0.05em;
-        }
-        th.center, td.center { text-align: center; }
-        td.nowrap { white-space: nowrap; }
-        
-        /* Alternating Row Colors */
-        tbody tr:nth-child(even) { background-color: #f8fafc; }
-        tbody tr:hover { background-color: #f1f5f9; }
+  // Render Table using autoTable
+  doc.autoTable({
+    startY: 30,
+    head: tableHeaders,
+    body: tableData,
+    theme: 'grid',
+    headStyles: {
+      fillColor: [2, 132, 199], // #0284c7 Primary Theme
+      textColor: [255, 255, 255],
+      fontStyle: 'bold',
+      fontSize: 9,
+      halign: 'left'
+    },
+    bodyStyles: {
+      fontSize: 8.5,
+      textColor: [51, 65, 85],
+      cellPadding: 3
+    },
+    columnStyles: {
+      0: { cellWidth: 10, halign: 'center' },  // Index #
+      1: { cellWidth: 50 },                     // Student Full Name
+      2: { cellWidth: 20, halign: 'center' },  // Class
+      3: { cellWidth: 32 },                     // School ID
+      4: { cellWidth: 28 },                     // Password
+      5: { cellWidth: 'auto' }                  // Enrolled Subjects
+    },
+    alternateRowStyles: {
+      fillColor: [248, 250, 252]
+    },
+    margin: { left: 14, right: 14 },
+    didDrawPage: (data) => {
+      // Footer Page Numbers
+      const pageCount = doc.internal.getNumberOfPages();
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184);
+      doc.text(
+        `Page ${data.pageNumber} of ${pageCount}`,
+        pageWidth - 14,
+        doc.internal.pageSize.getHeight() - 10,
+        { align: 'right' }
+      );
+      doc.text(
+        `Generated on ${new Date().toLocaleDateString()}`,
+        14,
+        doc.internal.pageSize.getHeight() - 10
+      );
+    }
+  });
 
-        .code { font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; font-size: 11px; }
-        .user { color: #0284c7; font-weight: 500; }
-        .pass { color: #dc2626; font-weight: 500; }
+  // Save PDF Document
+  const sanitizedSchool = finalSchoolName.replace(/[^a-zA-Z0-9]/g, "_");
+  const classTag = selectedClass ? `_${selectedClass}` : "_All_Classes";
+  const subjectTag = selectedSubject ? `_${selectedSubject}` : "";
 
-        .footer { 
-          margin-top: 20px; 
-          display: flex; 
-          justify-content: space-between; 
-          font-size: 10px; 
-          color: #94a3b8; 
-          border-top: 1px solid #e2e8f0;
-          padding-top: 8px;
-        }
-        @media print {
-          button.no-print { display: none; }
-        }
-      </style>
-    </head>
-    <body>
-      <div class="page-wrapper">
-        <div class="header">
-          ${finalSchoolLogo ? `<div class="logo-container"><img src="${finalSchoolLogo}" alt="School Logo"></div>` : ''}
-          <h2>${finalSchoolName}</h2>
-          <p><strong>${reportTitle}</strong></p>
-          <p>Generated on: ${currentDate} &bull; Total Records: ${students.length}</p>
-        </div>
-
-        <table>
-          <thead>
-            <tr>
-              <th class="center" style="width: 40px;">#</th>
-              <th>Full Name</th>
-              <th style="width: 140px;">Username</th>
-              <th style="width: 140px;">Password</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${rowsHTML}
-          </tbody>
-        </table>
-
-        <div class="footer">
-          <span>SAMCAM Solutions ICT Hub — Secure Credentials System</span>
-          <span>Page 1 of 1</span>
-        </div>
-
-        <div style="text-align: center; margin-top: 20px;">
-          <button class="no-print" onclick="window.print();" style="padding: 10px 24px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">Print / Save as PDF</button>
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-
-  printWindow.document.write(htmlContent);
-  printWindow.document.close();
-  printWindow.focus();
+  doc.save(`${sanitizedSchool}${classTag}${subjectTag}_Student_Register.pdf`);
 
   showCustomModal({
-    title: "PDF Ready",
-    message: `Successfully prepared professional PDF report for ${students.length} student(s) at ${finalSchoolName}.`,
+    title: "PDF Export Complete",
+    message: `Successfully generated PDF student register for ${students.length} student(s)!`,
     type: "success"
   });
 };
+
+  // Helper function to capitalize each word in full names
+function formatTitleCase(str) {
+  if (!str) return 'N/A';
+  return str.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+}
+
+// Sort students: By Class first (if whole school), then Alphabetically by Full Name
+students.sort((a, b) => {
+  const classA = (a.class || '').toLowerCase();
+  const classB = (b.class || '').toLowerCase();
+  
+  if (!selectedClass && classA !== classB) {
+    return classA.localeCompare(classB, undefined, { numeric: true, sensitivity: 'base' });
+  }
+  
+  const nameA = (a.fullName || a.name || '').toLowerCase();
+  const nameB = (b.fullName || b.name || '').toLowerCase();
+  return nameA.localeCompare(nameB);
+});
+
+const printWindow = window.open('', '_blank');
+if (!printWindow) {
+  alert('Please allow popups for this website to download PDF credentials.');
+  return;
+}
+
+const reportTitle = selectedClass 
+  ? `Student Credentials Report — Class ${selectedClass}${selectedSubject ? ' (' + selectedSubject + ')' : ''}` 
+  : 'Complete School Student Credentials Report';
+
+const currentDate = new Date().toLocaleDateString();
+
+let rowsHTML = '';
+students.forEach((s, index) => {
+  const formattedName = formatTitleCase(s.fullName || s.name);
+  const studentClass = (s.class || 'N/A').toUpperCase();
+  
+  // Extract subjects array cleanly
+  const subjectsArray = s.enrolledSubjects || s.subjects || [];
+  const subjectsStr = Array.isArray(subjectsArray) ? subjectsArray.join(', ') : (subjectsArray || 'None');
+
+  rowsHTML += `
+    <tr>
+      <td class="center">${index + 1}</td>
+      <td class="nowrap"><strong>${formattedName}</strong></td>
+      <td class="center"><strong>${studentClass}</strong></td>
+      <td class="code user">${s.username || s.schoolId || 'N/A'}</td>
+      <td class="code pass">${s.password || 'N/A'}</td>
+      <td><span class="subj-tag">${subjectsStr}</span></td>
+    </tr>
+  `;
+});
+
+const htmlContent = `
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <meta charset="utf-8">
+    <title>${reportTitle}</title>
+    <style>
+      @page { size: A4; margin: 12mm; }
+      body { 
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+        color: #1e293b; 
+        margin: 0; 
+        padding: 15px 0;
+        background: #ffffff;
+      }
+      .page-wrapper {
+        width: 92%;
+        margin: 0 auto;
+      }
+      .header { 
+        text-align: center; 
+        margin-bottom: 16px; 
+        border-bottom: 2px solid #e2e8f0; 
+        padding-bottom: 10px; 
+      }
+      .logo-container {
+        margin-bottom: 6px;
+      }
+      .logo-container img {
+        max-height: 55px;
+        max-width: 170px;
+        object-fit: contain;
+      }
+      .header h2 { margin: 0 0 4px 0; color: #0f172a; font-size: 19px; letter-spacing: -0.02em; text-transform: uppercase; }
+      .header p { margin: 2px 0; color: #64748b; font-size: 11px; }
+      
+      /* Optimized Table with Subjects Column */
+      table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        table-layout: auto; 
+        font-size: 11px; 
+      }
+      th, td { 
+        padding: 7px 10px; 
+        border: 1px solid #cbd5e1; 
+        text-align: left; 
+        vertical-align: middle;
+      }
+      th { 
+        background: #f1f5f9; 
+        color: #334155; 
+        font-weight: 600; 
+        text-transform: uppercase; 
+        font-size: 10px;
+        letter-spacing: 0.05em;
+      }
+      th.center, td.center { text-align: center; }
+      td.nowrap { white-space: nowrap; }
+      
+      /* Alternating Row Colors */
+      tbody tr:nth-child(even) { background-color: #f8fafc; }
+      tbody tr:hover { background-color: #f1f5f9; }
+
+      .code { font-family: SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace; font-size: 11px; }
+      .user { color: #0284c7; font-weight: 600; }
+      .pass { color: #dc2626; font-weight: 600; }
+      .subj-tag { color: #475569; font-size: 10.5px; font-weight: 500; }
+
+      .footer { 
+        margin-top: 20px; 
+        display: flex; 
+        justify-content: space-between; 
+        font-size: 10px; 
+        color: #94a3b8; 
+        border-top: 1px solid #e2e8f0;
+        padding-top: 8px;
+      }
+      @media print {
+        button.no-print { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page-wrapper">
+      <div class="header">
+        ${finalSchoolLogo ? `<div class="logo-container"><img src="${finalSchoolLogo}" alt="School Logo"></div>` : ''}
+        <h2>${finalSchoolName}</h2>
+        <p><strong>${reportTitle}</strong></p>
+        <p>Generated on: ${currentDate} &bull; Total Records: ${students.length}</p>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th class="center" style="width: 35px;">#</th>
+            <th>Full Name</th>
+            <th class="center" style="width: 60px;">Class</th>
+            <th style="width: 120px;">Username</th>
+            <th style="width: 110px;">Password</th>
+            <th>Enrolled Subject(s)</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rowsHTML}
+        </tbody>
+      </table>
+
+      <div class="footer">
+        <span>SAMCAM Solution ICT Hub — Secure Credentials System</span>
+        <span>Page 1 of 1</span>
+      </div>
+
+      <div style="text-align: center; margin-top: 20px;">
+        <button class="no-print" onclick="window.print();" style="padding: 10px 24px; background: #0284c7; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">Print / Save as PDF</button>
+      </div>
+    </div>
+  </body>
+  </html>
+`;
+
+printWindow.document.write(htmlContent);
+printWindow.document.close();
+printWindow.focus();
+
+showCustomModal({
+  title: "PDF Ready",
+  message: `Successfully prepared professional PDF report for ${students.length} student(s) at ${finalSchoolName}.`,
+  type: "success"
+});
+});
 
 // ==========================================================================
 // 3. CLEAN EVENT BINDINGS (PREVENTS DOUBLE-CLICK / MULTI-DOWNLOAD ISSUES)
@@ -1640,7 +2040,7 @@ if (document.readyState === 'loading') {
 }
 
 // ==========================================================================
-// 2. MODAL MANAGEMENT & BULK ACTIONS
+// 2. MODAL MANAGEMENT & BULK ACTIONS (WITH BULK SUBJECT ASSIGNMENT)
 // ==========================================================================
 window.openManageStudentsModal = function() {
   const modal = document.getElementById('manageStudentsModal');
@@ -1649,8 +2049,20 @@ window.openManageStudentsModal = function() {
   } else {
     console.error("Element #manageStudentsModal not found in DOM.");
   }
+  
   window.editingUsername = null;
   window.currentStudentSubmissionsPage = 1;
+
+  // Reset master checkbox state
+  const selectAllMaster = document.getElementById('selectAllStudentsMaster');
+  if (selectAllMaster) {
+    selectAllMaster.checked = false;
+    selectAllMaster.indeterminate = false;
+  }
+
+  // Hide bulk action buttons initially
+  window.updateStudentBulkDeleteState();
+
   renderStudentModalTable();
 };
 
@@ -1678,27 +2090,105 @@ window.toggleSelectAllStudents = function(source) {
 
 window.updateStudentBulkDeleteState = function() {
   const checkboxes = document.querySelectorAll('.student-checkbox:checked');
-  const bulkBtn = document.getElementById('studentBulkDeleteBtn');
+  const bulkDeleteBtn = document.getElementById('studentBulkDeleteBtn');
+  const bulkAssignSubjBtn = document.getElementById('studentBulkAssignSubjBtn');
   const selectAllMaster = document.getElementById('selectAllStudentsMaster');
   const allCheckboxes = document.querySelectorAll('.student-checkbox');
   
-  if (bulkBtn) {
+  // Update Bulk Delete Button State
+  if (bulkDeleteBtn) {
     if (checkboxes.length > 0) {
-      bulkBtn.style.display = 'inline-flex';
-      bulkBtn.innerHTML = `<i class="fa-solid fa-trash-can"></i> Delete (${checkboxes.length})`;
+      bulkDeleteBtn.style.display = 'inline-flex';
+      bulkDeleteBtn.innerHTML = `<i class="fa-solid fa-trash-can"></i> Delete (${checkboxes.length})`;
     } else {
-      bulkBtn.style.display = 'none';
+      bulkDeleteBtn.style.display = 'none';
     }
   }
 
+  // Update Bulk Subject Assignment Button State (if present)
+  if (bulkAssignSubjBtn) {
+    if (checkboxes.length > 0) {
+      bulkAssignSubjBtn.style.display = 'inline-flex';
+      bulkAssignSubjBtn.innerHTML = `<i class="fa-solid fa-book-open"></i> Assign Subjects (${checkboxes.length})`;
+    } else {
+      bulkAssignSubjBtn.style.display = 'none';
+    }
+  }
+
+  // Sync Master Checkbox State
   if (selectAllMaster && allCheckboxes.length > 0) {
     selectAllMaster.checked = checkboxes.length === allCheckboxes.length;
     selectAllMaster.indeterminate = checkboxes.length > 0 && checkboxes.length < allCheckboxes.length;
   }
 };
 
+// Optional Helper: Bulk Assign/Update Subjects for Selected Students
+window.bulkAssignSubjectsToStudents = async function(newSubjectsArray) {
+  const selectedBoxes = document.querySelectorAll('.student-checkbox:checked');
+  const targetUsernames = Array.from(selectedBoxes).map(cb => cb.value.toLowerCase());
+
+  if (targetUsernames.length === 0) {
+    showCustomModal({
+      title: "No Students Selected",
+      message: "Please select at least one student from the table.",
+      type: "warning"
+    });
+    return;
+  }
+
+  if (!newSubjectsArray || newSubjectsArray.length === 0) {
+    showCustomModal({
+      title: "No Subject Selected",
+      message: "Please choose at least one subject to assign.",
+      type: "warning"
+    });
+    return;
+  }
+
+  try {
+    // 1. Update localStorage
+    let localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+    localUsers = localUsers.map(u => {
+      const uId = (u.schoolId || u.username || '').toLowerCase();
+      if (targetUsernames.includes(uId)) {
+        return { ...u, enrolledSubjects: newSubjectsArray, subjects: newSubjectsArray };
+      }
+      return u;
+    });
+    localStorage.setItem('portal_users', JSON.stringify(localUsers));
+
+    // 2. Update Firestore documents
+    if (window.db) {
+      const batch = window.db.batch();
+      targetUsernames.forEach(uId => {
+        const userRef = window.db.collection('users').doc(uId);
+        batch.set(userRef, {
+          enrolledSubjects: newSubjectsArray,
+          subjects: newSubjectsArray
+        }, { merge: true });
+      });
+      await batch.commit();
+    }
+
+    showCustomModal({
+      title: "Subjects Updated",
+      message: `Successfully updated subjects for ${targetUsernames.length} student(s)!`,
+      type: "success"
+    });
+
+    renderStudentModalTable();
+  } catch (err) {
+    console.error("Error bulk updating subjects:", err);
+    showCustomModal({
+      title: "Update Failed",
+      message: "Failed to update student subjects. Check console for details.",
+      type: "error"
+    });
+  }
+};
+
 // ==========================================================================
-// 3. ENHANCED SAAS RENDER TABLE WITH BULK SELECT & MICRO-ICONS
+// 3. ENHANCED SAAS RENDER TABLE WITH BULK SELECT & ENROLLED SUBJECTS DISPLAY
 // ==========================================================================
 window.renderStudentModalTable = async function() {
   const tbody = document.getElementById('studentModalTableBody');
@@ -1728,12 +2218,18 @@ window.renderStudentModalTable = async function() {
     students = localUsers.filter(u => u.role === 'Student' && (!activeSchoolId || (u.schoolId || '').toLowerCase() === activeSchoolId.toLowerCase()));
   }
 
-  const filteredStudents = students.filter(u => (
-    (u.fullName || '').toLowerCase().includes(searchFilter) ||
-    (u.class || '').toLowerCase().includes(searchFilter) ||
-    (u.schoolId || '').toLowerCase().includes(searchFilter) ||
-    (u.username || '').toLowerCase().includes(searchFilter)
-  ));
+  const filteredStudents = students.filter(u => {
+    const subjectsArray = u.enrolledSubjects || u.subjects || [];
+    const subjectsStr = Array.isArray(subjectsArray) ? subjectsArray.join(' ') : String(subjectsArray);
+    
+    return (
+      (u.fullName || '').toLowerCase().includes(searchFilter) ||
+      (u.class || '').toLowerCase().includes(searchFilter) ||
+      (u.schoolId || '').toLowerCase().includes(searchFilter) ||
+      (u.username || '').toLowerCase().includes(searchFilter) ||
+      subjectsStr.toLowerCase().includes(searchFilter)
+    );
+  });
 
   const totalItems = filteredStudents.length;
   const itemsPerPage = window.ITEMS_PER_PAGE || 10;
@@ -1746,7 +2242,7 @@ window.renderStudentModalTable = async function() {
   const paginatedStudents = filteredStudents.slice(startIndex, startIndex + itemsPerPage);
 
   if (paginatedStudents.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 2rem; color:#64748b;"><i class="fa-solid fa-user-slash" style="font-size: 1.5rem; margin-bottom: 0.5rem; display:block;"></i>No matching students found.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding: 2rem; color:#64748b;"><i class="fa-solid fa-user-slash" style="font-size: 1.5rem; margin-bottom: 0.5rem; display:block;"></i>No matching students found.</td></tr>';
     if (typeof window.renderStudentPaginationControls === 'function') {
       window.renderStudentPaginationControls(0, 1);
     }
@@ -1759,7 +2255,18 @@ window.renderStudentModalTable = async function() {
     
     const checkColStyle = 'width: 40px; text-align: center; white-space: nowrap;';
 
+    // Parse enrolled subjects for rendering badges
+    const rawSubjects = s.enrolledSubjects || s.subjects || [];
+    const subjectsList = Array.isArray(rawSubjects) 
+      ? rawSubjects 
+      : (typeof rawSubjects === 'string' && rawSubjects.length > 0 ? rawSubjects.split(',').map(x => x.trim()) : []);
+
+    const subjectBadgesHTML = subjectsList.length > 0
+      ? subjectsList.map(subj => `<span style="background: #f1f5f9; color: #475569; font-size: 0.68rem; padding: 2px 6px; border-radius: 4px; border: 1px solid #cbd5e1; font-weight: 500; display: inline-block; margin: 1px;">${escapeHtml(subj)}</span>`).join(' ')
+      : '<span style="color: #94a3b8; font-size: 0.75rem; font-style: italic;">None</span>';
+
     if (isEditing) {
+      const currentSubjectsJoined = subjectsList.join(', ');
       return `
         <tr>
           <td style="${checkColStyle}"><input type="checkbox" disabled style="opacity: 0.4;"></td>
@@ -1776,6 +2283,7 @@ window.renderStudentModalTable = async function() {
           </td>
           <td><input type="text" id="editSchoolId" value="${escapeHtml(identifier)}" style="width:100%; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px;"></td>
           <td><input type="text" id="editPassword" value="${escapeHtml(s.password || '')}" style="width:100%; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px;"></td>
+          <td><input type="text" id="editEnrolledSubjects" value="${escapeHtml(currentSubjectsJoined)}" placeholder="e.g. ICT, Math" style="width:100%; padding:4px 8px; border:1px solid #cbd5e1; border-radius:4px;"></td>
           <td style="display:flex; gap:0.35rem; align-items:center; justify-content:center;">
             <button onclick="saveStudentEdit('${escapeHtml(identifier)}')" title="Save Changes" style="width: 30px; height: 30px; background: #f0fdf4; color: #16a34a; border: none; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-check" style="font-size: 0.8rem;"></i></button>
             <button onclick="cancelStudentEdit()" title="Cancel" style="width: 30px; height: 30px; background: #f1f5f9; color: #64748b; border: none; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-xmark" style="font-size: 0.8rem;"></i></button>
@@ -1791,6 +2299,7 @@ window.renderStudentModalTable = async function() {
         <td><span style="background: #e0f2fe; color: #0369a1; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600;">${escapeHtml(s.class || 'N/A')}</span></td>
         <td><code>${escapeHtml(identifier)}</code></td>
         <td><code>${escapeHtml(s.password || '')}</code></td>
+        <td>${subjectBadgesHTML}</td>
         <td style="display:flex; gap:0.35rem; align-items:center; justify-content:center;">
           <button onclick="enableStudentEdit('${escapeHtml(identifier)}')" title="Edit Student" style="width: 30px; height: 30px; background: #eff6ff; color: #2563eb; border: none; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-pen-to-square" style="font-size: 0.8rem;"></i></button>
           <button onclick="deleteStudent('${escapeHtml(identifier)}')" title="Delete Student" style="width: 30px; height: 30px; background: #fef2f2; color: #dc2626; border: none; border-radius: 6px; cursor: pointer;"><i class="fa-solid fa-trash-can" style="font-size: 0.8rem;"></i></button>
@@ -1887,35 +2396,133 @@ window.saveStudentEdit = async function(oldIdentifier) {
   renderStudentModalTable();
 };
 
+// ==========================================================================
+// 4. STUDENT DELETION HANDLERS (SINGLE, BULK SELECTED, & ALL)
+// ==========================================================================
+
+// 1. Single Student Deletion
 window.deleteStudent = async function(identifier) {
-  if (!confirm(`Delete student with School ID "${identifier}"?`)) return;
+  if (!identifier) return;
 
-  if (window.db) {
-    await window.db.collection('users').doc(identifier.toLowerCase()).delete();
+  if (!confirm(`Are you sure you want to delete student "${identifier}"?`)) return;
+
+  const targetId = identifier.toLowerCase().trim();
+
+  try {
+    // Firestore Deletion
+    if (window.db) {
+      await window.db.collection('users').doc(targetId).delete();
+    }
+
+    // Local Storage Sync
+    let localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+    localUsers = localUsers.filter(u => {
+      const uSchoolId = (u.schoolId || '').toLowerCase().trim();
+      const uUsername = (u.username || '').toLowerCase().trim();
+      const uId = (u.id || '').toLowerCase().trim();
+      return uSchoolId !== targetId && uUsername !== targetId && uId !== targetId;
+    });
+    localStorage.setItem('portal_users', JSON.stringify(localUsers));
+
+    // Reset selection & refresh UI
+    window.updateStudentBulkDeleteState();
+    renderStudentModalTable();
+  } catch (err) {
+    console.error("Error deleting student:", err);
+    if (typeof showCustomModal === 'function') {
+      showCustomModal({
+        title: "Delete Failed",
+        message: "Failed to delete student. Check console for details.",
+        type: "error"
+      });
+    }
   }
-
-  let localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
-  localUsers = localUsers.filter(u => (u.schoolId || u.username || '').toLowerCase() !== identifier.toLowerCase());
-  localStorage.setItem('portal_users', JSON.stringify(localUsers));
-
-  renderStudentModalTable();
 };
 
-window.deleteAllStudents = async function() {
-  if (confirm('Delete ALL registered students for this school?')) {
-    const activeSchoolId = window.currentUser ? (window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId) : null;
+// 2. Bulk Selected Students Deletion
+window.deleteSelectedStudents = async function() {
+  const selectedBoxes = document.querySelectorAll('.student-checkbox:checked');
+  const targetIdentifiers = Array.from(selectedBoxes).map(cb => cb.value.toLowerCase().trim());
 
+  if (targetIdentifiers.length === 0) {
+    if (typeof showCustomModal === 'function') {
+      showCustomModal({
+        title: "No Students Selected",
+        message: "Please select at least one student to delete.",
+        type: "warning"
+      });
+    }
+    return;
+  }
+
+  if (!confirm(`Are you sure you want to delete the ${targetIdentifiers.length} selected student(s)?`)) return;
+
+  try {
+    // Batch delete in Firestore
+    if (window.db) {
+      const batch = window.db.batch();
+      targetIdentifiers.forEach(id => {
+        const docRef = window.db.collection('users').doc(id);
+        batch.delete(docRef);
+      });
+      await batch.commit();
+    }
+
+    // Local Storage Sync
+    let localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
+    localUsers = localUsers.filter(u => {
+      const uSchoolId = (u.schoolId || '').toLowerCase().trim();
+      const uUsername = (u.username || '').toLowerCase().trim();
+      const uId = (u.id || '').toLowerCase().trim();
+      return !targetIdentifiers.includes(uSchoolId) && 
+             !targetIdentifiers.includes(uUsername) && 
+             !targetIdentifiers.includes(uId);
+    });
+    localStorage.setItem('portal_users', JSON.stringify(localUsers));
+
+    // Reset Master Checkbox & Bulk UI State
+    const masterCb = document.getElementById('selectAllStudentsMaster');
+    if (masterCb) {
+      masterCb.checked = false;
+      masterCb.indeterminate = false;
+    }
+    window.updateStudentBulkDeleteState();
+
+    renderStudentModalTable();
+  } catch (err) {
+    console.error("Error bulk deleting students:", err);
+    if (typeof showCustomModal === 'function') {
+      showCustomModal({
+        title: "Bulk Delete Failed",
+        message: "An error occurred while deleting selected students.",
+        type: "error"
+      });
+    }
+  }
+};
+
+// 3. Delete ALL Students for Active School
+window.deleteAllStudents = async function() {
+  if (!confirm('WARNING: Are you sure you want to delete ALL registered students for this school? This action cannot be undone!')) return;
+
+  const activeSchoolId = window.currentUser ? (window.currentUser.schoolId || window.currentUser.schoolID || window.currentSchoolId) : null;
+
+  try {
+    // Firestore Batch Delete
     if (window.db) {
       let query = window.db.collection('users').where('role', '==', 'Student');
       if (activeSchoolId) {
         query = query.where('schoolId', '==', activeSchoolId);
       }
       const snap = await query.get();
-      const batch = window.db.batch();
-      snap.forEach(doc => batch.delete(doc.ref));
-      await batch.commit();
+      if (!snap.empty) {
+        const batch = window.db.batch();
+        snap.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+      }
     }
 
+    // Local Storage Sync
     let localUsers = JSON.parse(localStorage.getItem('portal_users')) || [];
     localUsers = localUsers.filter(u => {
       const isTargetStudent = u.role === 'Student';
@@ -1927,19 +2534,38 @@ window.deleteAllStudents = async function() {
     });
     localStorage.setItem('portal_users', JSON.stringify(localUsers));
 
+    // Reset Bulk State & Master Checkbox
+    const masterCb = document.getElementById('selectAllStudentsMaster');
+    if (masterCb) {
+      masterCb.checked = false;
+      masterCb.indeterminate = false;
+    }
+    window.updateStudentBulkDeleteState();
+
     renderStudentModalTable();
+  } catch (err) {
+    console.error("Error deleting all students:", err);
+    if (typeof showCustomModal === 'function') {
+      showCustomModal({
+        title: "Delete All Failed",
+        message: "Failed to delete all students. Check console for details.",
+        type: "error"
+      });
+    }
   }
 };
 
 // ==========================================================================
-// ASSESSMENT CREATION & UPLOAD (SCOPED WITH SCHOOL ID)
+// ASSESSMENT CREATION & UPLOAD (SCOPED WITH SCHOOL ID & SUBJECT)
 // ==========================================================================
 window.handleCreateAssessment = async function(e) {
-  e.preventDefault();
+  if (e && e.preventDefault) e.preventDefault();
   console.log("Submit event intercepted!");
 
-  if (!currentUser || currentUser.role !== 'Teacher') {
-    console.warn("Blocked: User is not logged in or not a Teacher.", currentUser);
+  const activeUser = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+
+  if (!activeUser || activeUser.role !== 'Teacher') {
+    console.warn("Blocked: User is not logged in or not a Teacher.", activeUser);
     showCustomModal({
       title: "Access Denied",
       message: "You must be logged in as a Teacher to publish assessments.",
@@ -1948,16 +2574,30 @@ window.handleCreateAssessment = async function(e) {
     return;
   }
 
+  // DOM Input References
   const titleInput = document.getElementById('testTitle');
   const targetClassInput = document.getElementById('targetClass');
+  const targetSubjectInput = document.getElementById('targetSubject') || document.getElementById('subjectSelect');
   const descriptionInput = document.getElementById('testDesc');
   const deadlineInput = document.getElementById('testDeadline');
   const fileInput = document.getElementById('testFile');
+  const submitBtn = document.getElementById('submitAssessmentBtn') || (e && e.submitter);
 
-  const title = titleInput ? titleInput.value : '';
+  // Field Values
+  const title = titleInput ? titleInput.value.trim() : '';
   const targetClass = targetClassInput ? targetClassInput.value : '';
-  const description = descriptionInput ? descriptionInput.value : '';
+  const targetSubject = targetSubjectInput ? targetSubjectInput.value : '';
+  const description = descriptionInput ? descriptionInput.value.trim() : '';
   const deadline = deadlineInput ? deadlineInput.value : '';
+
+  if (!title) {
+    showCustomModal({
+      title: "Missing Title",
+      message: "Please enter a title for the assessment.",
+      type: "warning"
+    });
+    return;
+  }
 
   if (!fileInput || fileInput.files.length === 0) {
     showCustomModal({
@@ -1969,41 +2609,67 @@ window.handleCreateAssessment = async function(e) {
   }
 
   const file = fileInput.files[0];
-  const activeSchoolId = currentUser.schoolId || currentUser.schoolID || window.currentSchoolId || 'default_school';
+  const activeSchoolId = activeUser.schoolId || activeUser.schoolID || window.currentSchoolId || 'default_school';
   
+  // UI Loading State
+  let originalBtnText = '';
+  if (submitBtn) {
+    originalBtnText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Uploading...`;
+  }
+
   try {
     console.log("Uploading file to Firebase Storage...");
 
-    // 1. Create a Storage reference using firebase.storage() (scoped folder path for tenant isolation)
-    const storageRef = firebase.storage().ref();
-    const fileRef = storageRef.child(`assessments/${activeSchoolId}/${Date.now()}_${file.name}`);
-
-    // 2. Upload file bytes
-    const snapshot = await fileRef.put(file);
+    // 1. Storage Reference (Scoped tenant path)
+    const fileExtension = file.name.split('.').pop();
+    const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const storagePath = `assessments/${activeSchoolId}/${Date.now()}_${sanitizedFileName}`;
     
-    // 3. Get the public download URL
-    const downloadUrl = await snapshot.ref.getDownloadURL();
+    let downloadUrl = '';
 
-    // 4. Construct the assessment object with schoolId
+    if (window.firebase && firebase.storage) {
+      const storageRef = firebase.storage().ref();
+      const fileRef = storageRef.child(storagePath);
+      const snapshot = await fileRef.put(file);
+      downloadUrl = await snapshot.ref.getDownloadURL();
+    } else {
+      console.warn("Firebase Storage unavailable. Generating temporary data URL for offline testing.");
+      downloadUrl = await new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // 2. Construct Assessment Object
     const newAssessment = {
-      "id": Date.now(),
+      "id": String(Date.now()),
       "class": targetClass,
+      "subject": targetSubject || 'General',
       "category": "Question Paper",
       "title": title,
       "description": description,
       "fileUrl": downloadUrl,
+      "fileName": file.name,
       "schoolId": activeSchoolId,
+      "createdBy": activeUser.fullName || activeUser.username || 'Teacher',
+      "teacherId": activeUser.schoolId || activeUser.username || '',
       "date": new Date().toISOString().split('T')[0],
       "deadline": deadline,
       "createdAt": new Date().toISOString()
     };
 
-    // 5. Save to Firestore collection using firebase.firestore()
-    await firebase.firestore().collection("portal_resources").add(newAssessment);
+    // 3. Save to Firestore
+    if (window.db || (window.firebase && firebase.firestore)) {
+      const dbRef = window.db || firebase.firestore();
+      await dbRef.collection("portal_resources").doc(newAssessment.id).set(newAssessment);
+    }
 
-    // 6. Keep localStorage in sync (filtered or tagged with schoolId)
+    // 4. Sync to localStorage
     const resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
-    resources.push(newAssessment);
+    resources.unshift(newAssessment);
     localStorage.setItem('portal_resources', JSON.stringify(resources));
 
     showCustomModal({
@@ -2014,7 +2680,12 @@ window.handleCreateAssessment = async function(e) {
 
     const form = document.getElementById('assessmentForm');
     if (form) form.reset();
-    if (typeof renderAssessments === 'function') renderAssessments();
+    
+    if (typeof window.renderAssessments === 'function') {
+      window.renderAssessments();
+    } else if (typeof renderAssessments === 'function') {
+      renderAssessments();
+    }
 
   } catch (error) {
     console.error("Error uploading assessment:", error);
@@ -2023,20 +2694,32 @@ window.handleCreateAssessment = async function(e) {
       message: "Failed to upload assessment. Please check your network or console for details.",
       type: "error"
     });
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnText;
+    }
   }
 };
 
-document.addEventListener('DOMContentLoaded', () => {
+// Robust Form Event Binding
+const initAssessmentFormListener = () => {
   const form = document.getElementById('assessmentForm');
-  console.log("Assessment form found:", form);
-
-  if (form && typeof window.handleCreateAssessment === 'function') {
+  if (form) {
+    form.removeEventListener('submit', window.handleCreateAssessment);
     form.addEventListener('submit', window.handleCreateAssessment);
+    console.log("Assessment form listener successfully bound.");
   }
-});
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initAssessmentFormListener);
+} else {
+  initAssessmentFormListener();
+}
 
 // ==========================================================================
-// 5. PORTAL UI RENDERERS & CLASS FILTER DROPDOWN (SCOPED WITH SCHOOL ID)
+// 5. PORTAL UI RENDERERS & FILTER DROPDOWNS (SCOPED WITH SCHOOL ID & SUBJECTS)
 // ==========================================================================
 function updatePortalUI() {
   const loginSec = document.getElementById('loginSection');
@@ -2044,16 +2727,18 @@ function updatePortalUI() {
   const teacherControls = document.getElementById('teacherControls');
   const teacherReports = document.getElementById('teacherReports');
   
-  // New Admin UI Elements
+  // Admin UI Elements
   const staffRegModule = document.getElementById('adminStaffRegistrationModule');
   const manageStaffBtn = document.getElementById('openManageStaffBtn');
   
-  // Library Manager Navbar Link Element
+  // Library Manager & Extra Navbar Links
   const navLibraryManager = document.getElementById('navLibraryManager');
 
   if (!loginSec || !dashSec) return;
 
-  if (!currentUser) {
+  const activeUser = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+
+  if (!activeUser) {
     loginSec.style.display = 'block';
     dashSec.style.display = 'none';
     if (teacherControls) teacherControls.style.display = 'none';
@@ -2067,34 +2752,51 @@ function updatePortalUI() {
   loginSec.style.display = 'none';
   dashSec.style.display = 'block';
 
+  // Render User Credentials & Header Context
   const nameDisp = document.getElementById('userNameDisplay');
-  if (nameDisp) nameDisp.textContent = currentUser.fullName;
+  if (nameDisp) nameDisp.textContent = activeUser.fullName || activeUser.username || 'User';
 
   const roleBadge = document.getElementById('userRoleDisplay');
   if (roleBadge) {
-    roleBadge.textContent = currentUser.role;
-    roleBadge.className = `role-badge role-${currentUser.role.toLowerCase()}`;
+    const rawRole = activeUser.role || 'Student';
+    roleBadge.textContent = rawRole;
+    roleBadge.className = `role-badge role-${rawRole.toLowerCase()}`;
   }
 
   const classDisp = document.getElementById('userClassDisplay');
-  if (classDisp) classDisp.textContent = currentUser.class ? `(${currentUser.class})` : '';
+  if (classDisp) {
+    classDisp.textContent = activeUser.class ? `(${activeUser.class})` : '';
+  }
 
-  // Normalize role string to handle capitalization variations (e.g. "admin", "Admin", "ADMIN")
-  const roleLower = (currentUser.role || '').toLowerCase();
+  const schoolDisp = document.getElementById('schoolNameDisplay');
+  if (schoolDisp) {
+    schoolDisp.textContent = activeUser.schoolName || activeUser.schoolId || activeUser.schoolID || '';
+  }
 
-  if (roleLower === 'teacher' || roleLower === 'admin' || roleLower === 'administrator') {
+  // Normalize role string for permission evaluation
+  const roleLower = (activeUser.role || '').toLowerCase();
+  const isPrivileged = ['teacher', 'admin', 'administrator', 'tutor'].includes(roleLower);
+  const isAdmin = ['admin', 'administrator'].includes(roleLower);
+
+  // Privileged Staff / Teacher Controls
+  if (isPrivileged) {
     if (teacherControls) teacherControls.style.display = 'block';
     if (teacherReports) teacherReports.style.display = 'grid';
-    if (navLibraryManager) navLibraryManager.style.display = 'inline-flex'; // Reveal for teachers and admins
-    if (typeof renderSubmissions === 'function') renderSubmissions();
+    if (navLibraryManager) navLibraryManager.style.display = 'inline-flex';
+    
+    if (typeof window.renderSubmissions === 'function') {
+      window.renderSubmissions();
+    } else if (typeof renderSubmissions === 'function') {
+      renderSubmissions();
+    }
   } else {
     if (teacherControls) teacherControls.style.display = 'none';
     if (teacherReports) teacherReports.style.display = 'none';
-    if (navLibraryManager) navLibraryManager.style.display = 'none'; // Hide for students/others
+    if (navLibraryManager) navLibraryManager.style.display = 'none';
   }
 
-  // Admin-Specific Privileges (Staff Registration & Management Modal Trigger)
-  if (roleLower === 'admin' || roleLower === 'administrator') {
+  // Admin-Specific Registration & Management Controls
+  if (isAdmin) {
     if (staffRegModule) staffRegModule.style.display = 'block';
     if (manageStaffBtn) manageStaffBtn.style.display = 'inline-flex';
   } else {
@@ -2102,21 +2804,44 @@ function updatePortalUI() {
     if (manageStaffBtn) manageStaffBtn.style.display = 'none';
   }
 
-  renderAssessments();
+  // Trigger Assessment List Render
+  if (typeof window.renderAssessments === 'function') {
+    window.renderAssessments();
+  } else if (typeof renderAssessments === 'function') {
+    renderAssessments();
+  }
 }
 
+// Filter Event Listeners for Assessments Table / Grid
 window.filterAssessmentsByClass = function() {
-  renderAssessments();
+  if (typeof window.renderAssessments === 'function') {
+    window.renderAssessments();
+  } else if (typeof renderAssessments === 'function') {
+    renderAssessments();
+  }
 };
 
-// 1. Render Assessments (Async fetch from Firestore filtered by active schoolId with LocalStorage fallback)
+window.filterAssessmentsBySubject = function() {
+  if (typeof window.renderAssessments === 'function') {
+    window.renderAssessments();
+  } else if (typeof renderAssessments === 'function') {
+    renderAssessments();
+  }
+};
+
+window.updatePortalUI = updatePortalUI;
+
+// ==========================================================================
+// 1. RENDER ASSESSMENTS (ASYNC FETCH WITH SCHOOL ID & SUBJECT FILTERING)
+// ==========================================================================
 async function renderAssessments() {
   const container = document.getElementById('assessmentsContainer');
   if (!container) return;
 
-  const isStudent = currentUser && currentUser.role === 'Student';
+  const activeUser = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+  const isStudent = activeUser && activeUser.role === 'Student';
 
-  // Make the container and its parent wrapper stretch to full width for students, removing the narrow boxed card layout and white space on the right
+  // Make the container stretch to full width for students, removing boxed constraints
   if (isStudent) {
     container.style.width = '100%';
     container.style.maxWidth = '100%';
@@ -2135,18 +2860,24 @@ async function renderAssessments() {
     container.style.margin = '';
   }
 
-  const activeSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || window.currentSchoolId) : null;
+  const activeSchoolId = activeUser ? (activeUser.schoolId || activeUser.schoolID || window.currentSchoolId) : null;
 
   let resources = [];
   try {
-    let query = firebase.firestore().collection("portal_resources");
-    if (activeSchoolId) {
-      query = query.where("schoolId", "==", activeSchoolId);
-    }
-    const snapshot = await query.get();
-    if (!snapshot.empty) {
-      resources = snapshot.docs.map(doc => ({ firebaseDocId: doc.id, ...doc.data() }));
-      localStorage.setItem('portal_resources', JSON.stringify(resources));
+    if (window.db || (window.firebase && firebase.firestore)) {
+      const dbRef = window.db || firebase.firestore();
+      let query = dbRef.collection("portal_resources");
+      if (activeSchoolId) {
+        query = query.where("schoolId", "==", activeSchoolId);
+      }
+      const snapshot = await query.get();
+      if (!snapshot.empty) {
+        resources = snapshot.docs.map(doc => ({ firebaseDocId: doc.id, ...doc.data() }));
+        localStorage.setItem('portal_resources', JSON.stringify(resources));
+      } else {
+        const localResources = JSON.parse(localStorage.getItem('portal_resources')) || [];
+        resources = activeSchoolId ? localResources.filter(r => (r.schoolId || '').toLowerCase() === activeSchoolId.toLowerCase()) : localResources;
+      }
     } else {
       const localResources = JSON.parse(localStorage.getItem('portal_resources')) || [];
       resources = activeSchoolId ? localResources.filter(r => (r.schoolId || '').toLowerCase() === activeSchoolId.toLowerCase()) : localResources;
@@ -2160,25 +2891,36 @@ async function renderAssessments() {
   const submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
   const now = new Date();
 
-  let classFilterEl = document.getElementById('filterAssessmentClass');
-  let selectedClassFilter = classFilterEl ? classFilterEl.value : 'ALL';
+  // Filter UI Elements
+  const classFilterEl = document.getElementById('filterAssessmentClass');
+  const selectedClassFilter = classFilterEl ? classFilterEl.value : 'ALL';
 
-  let assessments = resources.filter(r => r.category === "Question Paper");
-  
-  // Normalized class helper to prevent spacing, casing, or dot mismatch issues (e.g. "S4" vs "S.4")
+  const subjectFilterEl = document.getElementById('filterAssessmentSubject');
+  const selectedSubjectFilter = subjectFilterEl ? subjectFilterEl.value : 'ALL';
+
+  let assessments = resources.filter(r => r.category === "Question Paper" || !r.category);
+
+  // Normalization helpers to prevent casing/whitespace mismatches
   const normalizeClass = (c) => String(c || '').replace(/[\.\s]/g, '').toUpperCase();
+  const normalizeSubject = (s) => String(s || '').trim().toLowerCase();
 
+  // Class Filtering
   if (isStudent) {
-    assessments = assessments.filter(a => normalizeClass(a.class) === normalizeClass(currentUser.class));
+    assessments = assessments.filter(a => normalizeClass(a.class) === normalizeClass(activeUser.class));
   } else if (selectedClassFilter && selectedClassFilter !== 'ALL') {
     assessments = assessments.filter(a => normalizeClass(a.class) === normalizeClass(selectedClassFilter));
+  }
+
+  // Subject Filtering
+  if (selectedSubjectFilter && selectedSubjectFilter !== 'ALL') {
+    assessments = assessments.filter(a => normalizeSubject(a.subject) === normalizeSubject(selectedSubjectFilter));
   }
 
   if (assessments.length === 0) {
     container.innerHTML = `
       <div style="grid-column: 1 / -1; padding: 3rem 1rem; text-align: center; background: #ffffff; border: 1px dashed #cbd5e1; border-radius: 12px;">
         <i class="fa-solid fa-folder-open" style="font-size: 2rem; color: #94a3b8; margin-bottom: 0.75rem;"></i>
-        <p style="color: #64748b; font-size: 0.95rem; font-weight: 500; margin: 0;">No active assessments available.</p>
+        <p style="color: #64748b; font-size: 0.95rem; font-weight: 500; margin: 0;">No active assessments available for the selected filters.</p>
       </div>`;
     return;
   }
@@ -2187,71 +2929,76 @@ async function renderAssessments() {
     const deadlineDate = new Date(a.deadline);
     const isExpired = now > deadlineDate;
     
-    const currentStudentId = currentUser ? (currentUser.schoolId || currentUser.username) : null;
+    const currentStudentId = activeUser ? (activeUser.schoolId || activeUser.username) : null;
     const studentSub = isStudent 
-      ? submissions.find(s => String(s.testId) === String(a.id || a.firebaseDocId) && (String(s.schoolId || s.studentId || s.username || '').toLowerCase() === String(currentStudentId || '').toLowerCase() || s.studentName === currentUser.fullName)) 
+      ? submissions.find(s => String(s.testId) === String(a.id || a.firebaseDocId) && (String(s.schoolId || s.studentId || s.username || '').toLowerCase() === String(currentStudentId || '').toLowerCase() || s.studentName === activeUser.fullName)) 
       : null;
     
     const assessmentIdKey = a.id || a.firebaseDocId;
-    const safeTitle = encodeURIComponent(a.title);
+    const safeTitle = encodeURIComponent(a.title || 'Assessment');
+    const subjectName = a.subject || a.subjectCode || 'General';
 
     let actionHTML = '';
     
-    // Student Actions (Strictly icon-only with tooltips)
+    // Student Actions (Icon-only with tooltips)
     if (isStudent) {
-        if (studentSub) {
-            actionHTML = `
-              <span style="color:#16a34a; font-size:0.85rem; font-weight:600; display:inline-flex; align-items:center; gap:0.35rem;">
-                <i class="fa-solid fa-circle-check"></i> Submitted (${escapeHtml(studentSub.fileName)})
-              </span>
-            `;
-            if (!isExpired) {
-                actionHTML += `
-                    <div style="display:flex; gap:0.35rem; align-items:center;">
-                      <button type="button" onclick="openSubmissionModalWithDetails('${assessmentIdKey}', '${safeTitle}')" class="btn-action btn-icon-only btn-edit" title="Replace Submission"><i class="fa-solid fa-arrows-rotate"></i></button>
-                      <button type="button" onclick="cancelSubmission('${assessmentIdKey}')" class="btn-action btn-icon-only btn-danger" title="Cancel Submission"><i class="fa-solid fa-trash-can"></i></button>
-                    </div>
-                `;
-            } else {
-                actionHTML += `<span style="font-size:0.75rem; color:#94a3b8; font-weight:500;">(Locked)</span>`;
-            }
-        } else {
-            if (isExpired) {
-                actionHTML = `
-                  <button disabled class="btn-action btn-icon-only btn-disabled" title="Deadline Passed" aria-disabled="true">
-                    <i class="fa-solid fa-lock"></i>
-                  </button>
-                `;
-            } else {
-                actionHTML = `
-                  <button type="button" onclick="openSubmissionModalWithDetails('${assessmentIdKey}', '${safeTitle}')" class="btn-action btn-icon-only btn-upload" title="Upload Answer">
-                    <i class="fa-solid fa-file-arrow-up"></i>
-                  </button>
-                `;
-            }
-        }
-    } 
-    // Teacher / Admin Actions (Strictly icon-only with tooltips)
-    else if (currentUser && (currentUser.role === 'Teacher' || currentUser.role === 'Admin' || currentUser.role === 'Administrator')) {
+      if (studentSub) {
         actionHTML = `
-            <div style="display:flex; gap:0.35rem; align-items:center;">
-              <button type="button" onclick="openEditAssessmentModal('${assessmentIdKey}')" class="btn-action btn-icon-only btn-edit" title="Edit Assessment"><i class="fa-solid fa-pen-to-square"></i></button>
-              <button type="button" onclick="handleDeleteAssessment('${assessmentIdKey}')" class="btn-action btn-icon-only btn-danger" title="Delete Assessment"><i class="fa-solid fa-trash-can"></i></button>
-            </div>
+          <span style="color:#16a34a; font-size:0.85rem; font-weight:600; display:inline-flex; align-items:center; gap:0.35rem;">
+            <i class="fa-solid fa-circle-check"></i> Submitted (${escapeHtml(studentSub.fileName || 'File')})
+          </span>
         `;
+        if (!isExpired) {
+          actionHTML += `
+            <div style="display:flex; gap:0.35rem; align-items:center; margin-left: 0.5rem;">
+              <button type="button" onclick="openSubmissionModalWithDetails('${assessmentIdKey}', '${safeTitle}')" class="btn-action btn-icon-only btn-edit" title="Replace Submission"><i class="fa-solid fa-arrows-rotate"></i></button>
+              <button type="button" onclick="cancelSubmission('${assessmentIdKey}')" class="btn-action btn-icon-only btn-danger" title="Cancel Submission"><i class="fa-solid fa-trash-can"></i></button>
+            </div>
+          `;
+        } else {
+          actionHTML += `<span style="font-size:0.75rem; color:#94a3b8; font-weight:500; margin-left:0.35rem;">(Locked)</span>`;
+        }
+      } else {
+        if (isExpired) {
+          actionHTML = `
+            <button disabled class="btn-action btn-icon-only btn-disabled" title="Deadline Passed" aria-disabled="true">
+              <i class="fa-solid fa-lock"></i>
+            </button>
+          `;
+        } else {
+          actionHTML = `
+            <button type="button" onclick="openSubmissionModalWithDetails('${assessmentIdKey}', '${safeTitle}')" class="btn-action btn-icon-only btn-upload" title="Upload Answer">
+              <i class="fa-solid fa-file-arrow-up"></i>
+            </button>
+          `;
+        }
+      }
+    } 
+    // Teacher / Admin Actions
+    else if (activeUser && ['Teacher', 'Admin', 'Administrator'].includes(activeUser.role)) {
+      actionHTML = `
+        <div style="display:flex; gap:0.35rem; align-items:center;">
+          <button type="button" onclick="openEditAssessmentModal('${assessmentIdKey}')" class="btn-action btn-icon-only btn-edit" title="Edit Assessment"><i class="fa-solid fa-pen-to-square"></i></button>
+          <button type="button" onclick="handleDeleteAssessment('${assessmentIdKey}')" class="btn-action btn-icon-only btn-danger" title="Delete Assessment"><i class="fa-solid fa-trash-can"></i></button>
+        </div>
+      `;
     }
 
     return `
-      <div class="test-card" data-assessment-id="${assessmentIdKey}" style="width: 100%; margin-bottom: 1rem;">
-        <div class="test-header">
-          <span class="test-title">${escapeHtml(a.title)} <small style="color:#64748b;">(${escapeHtml(a.class)})</small></span>
-          <span class="deadline-badge ${isExpired ? 'deadline-expired' : 'deadline-active'}" data-deadline="${a.deadline}">
-            ${isExpired ? '<i class="fa-solid fa-clock"></i> Expired' : '<i class="fa-solid fa-hourglass-half"></i> Active until: ' + deadlineDate.toLocaleString()}
+      <div class="test-card" data-assessment-id="${assessmentIdKey}" style="width: 100%; margin-bottom: 1rem; border: 1px solid #e2e8f0; border-radius: 8px; padding: 1rem; background: #ffffff;">
+        <div class="test-header" style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 0.5rem;">
+          <div>
+            <span class="test-title" style="font-weight:700; font-size:1.05rem; color:#0f172a;">${escapeHtml(a.title)}</span>
+            <span style="background: #e0f2fe; color: #0369a1; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-left: 0.35rem;">${escapeHtml(a.class)}</span>
+            <span style="background: #f1f5f9; color: #475569; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; font-weight: 600; margin-left: 0.2rem; border: 1px solid #cbd5e1;">${escapeHtml(subjectName)}</span>
+          </div>
+          <span class="deadline-badge ${isExpired ? 'deadline-expired' : 'deadline-active'}" data-deadline="${a.deadline}" style="font-size:0.75rem; padding:3px 8px; border-radius:4px; font-weight:600; ${isExpired ? 'background:#fef2f2; color:#dc2626;' : 'background:#f0fdf4; color:#16a34a;'}">
+            ${isExpired ? '<i class="fa-solid fa-clock"></i> Expired' : '<i class="fa-solid fa-hourglass-half"></i> Due: ' + (a.deadline ? deadlineDate.toLocaleString() : 'No deadline')}
           </span>
         </div>
         <p style="font-size:0.85rem; color:#475569; margin:0.5rem 0 1rem 0; line-height:1.5;">${escapeHtml(a.description || 'No instructions provided.')}</p>
         <div class="test-actions" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.75rem; border-top:1px solid #f1f5f9; padding-top:0.75rem;">
-          <a href="${a.fileUrl}" download class="btn-action btn-icon-only btn-download" title="Download Paper"><i class="fa-solid fa-file-arrow-down"></i></a>
+          <a href="${a.fileUrl}" download target="_blank" class="btn-action btn-icon-only btn-download" title="Download Paper" style="padding: 6px 12px; background: #f0f9ff; color: #0284c7; border-radius: 6px; text-decoration: none;"><i class="fa-solid fa-file-arrow-down"></i> Download</a>
           <div style="display:flex; align-items:center; gap:0.5rem;">
             ${actionHTML}
           </div>
@@ -2261,31 +3008,47 @@ async function renderAssessments() {
   }).join('');
 }
 
-// 2. Open Edit Modal
+window.renderAssessments = renderAssessments;
+
+// ==========================================================================
+// 2. OPEN EDIT, UPDATE & DELETE ASSESSMENT MODAL HANDLERS
+// ==========================================================================
 function openEditAssessmentModal(assessmentId) {
   const resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
-  const assessment = resources.find(r => String(r.id) === String(assessmentId));
+  const assessment = resources.find(r => String(r.id) === String(assessmentId) || String(r.firebaseDocId) === String(assessmentId));
   
   if (!assessment) {
     showCustomModal({
       title: "Not Found",
-      message: "Assessment not found.",
+      message: "Assessment details could not be located.",
       type: "error"
     });
     return;
   }
 
-  // Fill modal input fields
-  document.getElementById('editTestId').value = assessment.id;
-  document.getElementById('editTestTitle').value = assessment.title || '';
-  document.getElementById('editTargetClass').value = assessment.class || 'S1';
-  document.getElementById('editTestDesc').value = assessment.description || '';
+  // Populate Modal Fields
+  const idInput = document.getElementById('editTestId');
+  const titleInput = document.getElementById('editTestTitle');
+  const classInput = document.getElementById('editTargetClass');
+  const subjectInput = document.getElementById('editTargetSubject') || document.getElementById('editSubjectSelect');
+  const descInput = document.getElementById('editTestDesc');
+  const deadlineInput = document.getElementById('editTestDeadline');
+
+  if (idInput) idInput.value = assessment.id || assessment.firebaseDocId || '';
+  if (titleInput) titleInput.value = assessment.title || '';
+  if (classInput) classInput.value = assessment.class || 'S1';
+  if (subjectInput) subjectInput.value = assessment.subject || assessment.subjectCode || '';
+  if (descInput) descInput.value = assessment.description || '';
   
-  // Format date correctly for datetime-local input (YYYY-MM-DDTHH:mm)
-  if (assessment.deadline) {
-    const d = new Date(assessment.deadline);
-    const isoString = d.toISOString().slice(0, 16);
-    document.getElementById('editTestDeadline').value = isoString;
+  // Format Date String for datetime-local input (YYYY-MM-DDTHH:mm)
+  if (deadlineInput && assessment.deadline) {
+    try {
+      const d = new Date(assessment.deadline);
+      const isoString = d.toISOString().slice(0, 16);
+      deadlineInput.value = isoString;
+    } catch (e) {
+      deadlineInput.value = assessment.deadline;
+    }
   }
 
   const modal = document.getElementById('editAssessmentModal');
@@ -2293,44 +3056,41 @@ function openEditAssessmentModal(assessmentId) {
 }
 
 async function handleDeleteAssessment(assessmentId) {
+  const activeUser = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+
   showCustomModal({
     title: "Delete Assessment",
-    message: "Are you sure you want to delete this assessment? This will also remove associated student submissions permanently.",
+    message: "Are you sure you want to delete this assessment? This will permanently erase the resource and linked student submissions.",
     type: "warning",
     showCancel: true,
     onConfirm: async () => {
       try {
-        const db = firebase.firestore();
-        const activeSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || window.currentSchoolId) : null;
+        const activeSchoolId = activeUser ? (activeUser.schoolId || activeUser.schoolID || window.currentSchoolId) : null;
         
-        // 1. Find and delete the matching document from Firestore scoped by schoolId
-        let query = db.collection("portal_resources").where("id", "==", assessmentId);
-        if (activeSchoolId) {
-          query = query.where("schoolId", "==", activeSchoolId);
-        }
-        const querySnapshot = await query.get();
-        
-        if (!querySnapshot.empty) {
-          const deletePromises = querySnapshot.docs.map(docSnap => docSnap.ref.delete());
-          await Promise.all(deletePromises);
-        } else {
-          const allDocs = await db.collection("portal_resources").get();
-          const deletePromises = [];
-          allDocs.forEach(docSnap => {
-            const data = docSnap.data();
-            if (String(data.id) === String(assessmentId)) {
-              deletePromises.push(docSnap.ref.delete());
-            }
-          });
-          await Promise.all(deletePromises);
+        // 1. Delete matching document from Firestore
+        if (window.db || (window.firebase && firebase.firestore)) {
+          const dbRef = window.db || firebase.firestore();
+          let query = dbRef.collection("portal_resources").where("id", "==", String(assessmentId));
+          if (activeSchoolId) {
+            query = query.where("schoolId", "==", activeSchoolId);
+          }
+          const querySnapshot = await query.get();
+          
+          if (!querySnapshot.empty) {
+            const deletePromises = querySnapshot.docs.map(docSnap => docSnap.ref.delete());
+            await Promise.all(deletePromises);
+          } else {
+            // Fallback match by document ID
+            await dbRef.collection("portal_resources").doc(String(assessmentId)).delete().catch(() => {});
+          }
         }
 
         // 2. Update LocalStorage state
         let resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
-        resources = resources.filter(r => String(r.id) !== String(assessmentId));
+        resources = resources.filter(r => String(r.id) !== String(assessmentId) && String(r.firebaseDocId) !== String(assessmentId));
         localStorage.setItem('portal_resources', JSON.stringify(resources));
 
-        // 3. Clean up submissions tied to this test
+        // 3. Clean up associated student submissions
         let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
         submissions = submissions.filter(s => String(s.testId) !== String(assessmentId));
         localStorage.setItem('portal_submissions', JSON.stringify(submissions));
@@ -2341,12 +3101,16 @@ async function handleDeleteAssessment(assessmentId) {
           type: "success"
         });
         
-        renderAssessments();
+        if (typeof window.renderAssessments === 'function') {
+          window.renderAssessments();
+        } else if (typeof renderAssessments === 'function') {
+          renderAssessments();
+        }
       } catch (error) {
         console.error("Error deleting assessment:", error);
         showCustomModal({
           title: "Error",
-          message: "Failed to delete assessment completely from database. Check console for details.",
+          message: "Failed to remove assessment from database. Check your network or console.",
           type: "error"
         });
       }
@@ -2354,64 +3118,92 @@ async function handleDeleteAssessment(assessmentId) {
   });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+// Form Event Listener Initialization
+const initEditFormListeners = () => {
   const editForm = document.getElementById('editAssessmentForm');
   if (editForm) {
     editForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       
+      const activeUser = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+      const submitBtn = editForm.querySelector('button[type="submit"]') || e.submitter;
+
       const id = document.getElementById('editTestId').value;
-      const title = document.getElementById('editTestTitle').value;
+      const title = document.getElementById('editTestTitle').value.trim();
       const targetClass = document.getElementById('editTargetClass').value;
-      const description = document.getElementById('editTestDesc').value;
+      const targetSubjectInput = document.getElementById('editTargetSubject') || document.getElementById('editSubjectSelect');
+      const targetSubject = targetSubjectInput ? targetSubjectInput.value : '';
+      const description = document.getElementById('editTestDesc').value.trim();
       const deadline = document.getElementById('editTestDeadline').value;
       const fileInput = document.getElementById('editTestFile');
-      const activeSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || window.currentSchoolId) : 'default_school';
+      const activeSchoolId = activeUser ? (activeUser.schoolId || activeUser.schoolID || window.currentSchoolId) : 'default_school';
 
       let resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
-      let index = resources.findIndex(r => String(r.id) === String(id));
+      let index = resources.findIndex(r => String(r.id) === String(id) || String(r.firebaseDocId) === String(id));
 
       if (index !== -1) {
         let fileUrl = resources[index].fileUrl;
+        let fileName = resources[index].fileName;
+
+        let originalBtnText = '';
+        if (submitBtn) {
+          originalBtnText = submitBtn.innerHTML;
+          submitBtn.disabled = true;
+          submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+        }
 
         try {
-          // If a new replacement file is attached, upload it to Firebase Storage with tenant isolation path
+          // Upload new attachment if provided
           if (fileInput && fileInput.files.length > 0) {
             const file = fileInput.files[0];
-            const storageRef = firebase.storage().ref();
-            const fileRef = storageRef.child(`assessments/${activeSchoolId}/${Date.now()}_${file.name}`);
-            const snapshot = await fileRef.put(file);
-            fileUrl = await snapshot.ref.getDownloadURL();
-            resources[index].fileName = file.name;
+            fileName = file.name;
+            const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+            const storagePath = `assessments/${activeSchoolId}/${Date.now()}_${sanitizedFileName}`;
+
+            if (window.firebase && firebase.storage) {
+              const storageRef = firebase.storage().ref();
+              const fileRef = storageRef.child(storagePath);
+              const snapshot = await fileRef.put(file);
+              fileUrl = await snapshot.ref.getDownloadURL();
+            } else {
+              fileUrl = await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result);
+                reader.readAsDataURL(file);
+              });
+            }
           }
 
-          // Update local resource attributes
+          // Update Local Record
           resources[index].title = title;
           resources[index].class = targetClass;
+          resources[index].subject = targetSubject || resources[index].subject || 'General';
           resources[index].description = description;
           resources[index].deadline = deadline;
           resources[index].fileUrl = fileUrl;
+          resources[index].fileName = fileName;
           resources[index].schoolId = activeSchoolId;
 
           localStorage.setItem('portal_resources', JSON.stringify(resources));
 
-          // Sync update to Firestore scoped by schoolId
-          const querySnapshot = await firebase.firestore().collection("portal_resources").get();
-          querySnapshot.forEach(async (docSnap) => {
-            const data = docSnap.data();
-            if (String(data.id) === String(id)) {
-              await firebase.firestore().collection("portal_resources").doc(docSnap.id).update({
-                title: title,
-                class: targetClass,
-                description: description,
-                deadline: deadline,
-                fileUrl: fileUrl,
-                schoolId: activeSchoolId
-              });
-            }
-          });
+          // Sync Update to Firestore
+          if (window.db || (window.firebase && firebase.firestore)) {
+            const dbRef = window.db || firebase.firestore();
+            const docId = resources[index].firebaseDocId || id;
+            
+            await dbRef.collection("portal_resources").doc(docId).set({
+              title: title,
+              class: targetClass,
+              subject: targetSubject || 'General',
+              description: description,
+              deadline: deadline,
+              fileUrl: fileUrl,
+              fileName: fileName,
+              schoolId: activeSchoolId
+            }, { merge: true });
+          }
 
-          // Hide modal
+          // Close Modal
           const modal = document.getElementById('editAssessmentModal');
           if (modal) modal.style.display = 'none';
 
@@ -2421,21 +3213,30 @@ document.addEventListener('DOMContentLoaded', () => {
             type: "success"
           });
           
-          renderAssessments();
+          if (typeof window.renderAssessments === 'function') {
+            window.renderAssessments();
+          } else if (typeof renderAssessments === 'function') {
+            renderAssessments();
+          }
 
         } catch (error) {
           console.error("Error updating assessment:", error);
           showCustomModal({
             title: "Update Failed",
-            message: "Failed to update assessment in Firebase.",
+            message: "Failed to sync updates to the cloud database.",
             type: "error"
           });
+        } finally {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+          }
         }
       }
     });
   }
 
-  // Close modal bindings
+  // Modal Close Action Handlers
   const closeEditBtn = document.getElementById('closeEditAssessmentModalBtn');
   const cancelEditBtn = document.getElementById('cancelEditAssessmentBtn');
   const editModal = document.getElementById('editAssessmentModal');
@@ -2447,7 +3248,16 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
   });
-});
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initEditFormListeners);
+} else {
+  initEditFormListeners();
+}
+
+window.openEditAssessmentModal = openEditAssessmentModal;
+window.handleDeleteAssessment = handleDeleteAssessment;
 
 // Live Countdown Timer Update Helper
 function updateCountdowns() {
@@ -2484,15 +3294,90 @@ function updateCountdowns() {
 }
 
 // ==========================================================================
-// STUDENT SUBMISSION HANDLERS & SUBMISSION HISTORY (SCOPED WITH SCHOOL ID)
+// STUDENT SUBMISSION HANDLERS & SUBMISSION LIFECYCLE (SCOPED WITH SCHOOL ID)
 // ==========================================================================
+
+// Global Modal Opener Helper
+window.openSubmissionModalWithDetails = function(testId, encodedTitle) {
+  const modal = document.getElementById('submissionModal') || document.getElementById('assignmentModal');
+  const testIdEl = document.getElementById('submissionTestId');
+  const titleEl = document.getElementById('submissionTestTitle');
+  const nameEl = document.getElementById('studentName');
+  const classEl = document.getElementById('studentClass');
+  const subjectEl = document.getElementById('submissionSubject');
+
+  const activeUser = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+  const resources = JSON.parse(localStorage.getItem('portal_resources')) || [];
+  const testObj = resources.find(r => String(r.id) === String(testId) || String(r.firebaseDocId) === String(testId));
+
+  if (testIdEl) testIdEl.value = testId;
+  if (titleEl) titleEl.value = decodeURIComponent(encodedTitle || (testObj ? testObj.title : ''));
+  if (nameEl && activeUser) nameEl.value = activeUser.fullName || activeUser.username || '';
+  if (classEl && activeUser) classEl.value = activeUser.class || '';
+  if (subjectEl) subjectEl.value = testObj ? (testObj.subject || testObj.subjectCode || 'General') : '';
+
+  if (modal) modal.style.display = 'flex';
+};
+
+// Global Cancel / Revoke Submission
+window.cancelSubmission = async function(testId) {
+  const activeUser = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+  if (!activeUser) return;
+
+  showCustomModal({
+    title: "Cancel Submission",
+    message: "Are you sure you want to cancel and remove your uploaded answer file?",
+    type: "warning",
+    showCancel: true,
+    onConfirm: async () => {
+      try {
+        const studentId = activeUser.schoolId || activeUser.schoolID || activeUser.username;
+        let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+        
+        // Locate matching submission
+        const targetSub = submissions.find(s => 
+          String(s.testId) === String(testId) && 
+          (String(s.studentUsername || s.studentId || s.username || '').toLowerCase() === String(studentId).toLowerCase() || s.studentName === activeUser.fullName)
+        );
+
+        if (targetSub) {
+          // Remove from Firestore
+          if (window.db || (window.firebase && firebase.firestore)) {
+            const dbRef = window.db || firebase.firestore();
+            await dbRef.collection('submissions').doc(targetSub.id).delete().catch(() => {});
+          }
+
+          // Remove from local cache
+          submissions = submissions.filter(s => s.id !== targetSub.id);
+          localStorage.setItem('portal_submissions', JSON.stringify(submissions));
+
+          showCustomModal({
+            title: "Cancelled",
+            message: "Your submission has been removed.",
+            type: "success"
+          });
+
+          if (typeof window.renderAssessments === 'function') window.renderAssessments();
+        }
+      } catch (err) {
+        console.error("Error cancelling submission:", err);
+      }
+    }
+  });
+};
+
+// Form Handler Implementation
 window.handleFormSubmission = async function(event) {
   event.preventDefault();
+
+  const activeUser = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+  const submitBtn = event.target.querySelector('button[type="submit"]') || event.submitter;
 
   const nameEl = document.getElementById('studentName');
   const classEl = document.getElementById('studentClass');
   const titleEl = document.getElementById('submissionTestTitle');
   const testIdEl = document.getElementById('submissionTestId');
+  const subjectEl = document.getElementById('submissionSubject');
   const fileInput = document.getElementById('assignmentFile');
 
   if (!fileInput || !fileInput.files.length) {
@@ -2505,18 +3390,21 @@ window.handleFormSubmission = async function(event) {
   }
 
   const testIdVal = testIdEl ? testIdEl.value : null;
-  const activeSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || window.currentSchoolId || 'default_school') : 'default_school';
+  const activeSchoolId = activeUser ? (activeUser.schoolId || activeUser.schoolID || window.currentSchoolId || 'default_school') : 'default_school';
 
-  // 1. Deadline Validation Check
+  // 1. Multi-Cache Deadline Check
+  const portalResources = JSON.parse(localStorage.getItem('portal_resources')) || [];
   const cachedQuizzes = JSON.parse(localStorage.getItem('portal_quizzes_cache')) || [];
-  const currentQuiz = cachedQuizzes.find(q => String(q.id) === String(testIdVal));
+  
+  const currentAssessment = portalResources.find(r => String(r.id) === String(testIdVal) || String(r.firebaseDocId) === String(testIdVal)) 
+                          || cachedQuizzes.find(q => String(q.id) === String(testIdVal));
 
-  if (currentQuiz && currentQuiz.deadline) {
-    const deadlineDate = new Date(currentQuiz.deadline);
+  if (currentAssessment && currentAssessment.deadline) {
+    const deadlineDate = new Date(currentAssessment.deadline);
     if (new Date() > deadlineDate) {
       showCustomModal({
         title: "Deadline Passed",
-        message: "The submission deadline for this assessment has passed. You can no longer submit work.",
+        message: "The submission deadline for this assessment has passed.",
         type: "error"
       });
       return;
@@ -2525,8 +3413,8 @@ window.handleFormSubmission = async function(event) {
 
   const file = fileInput.files[0];
   
-  // 2. File Size Validation (Max 20 MB = 20 * 1024 * 1024 bytes)
-  const MAX_FILE_SIZE = 20971520; 
+  // 2. Size Validation (20 MB Limit)
+  const MAX_FILE_SIZE = 20 * 1024 * 1024;
   if (file.size > MAX_FILE_SIZE) {
     showCustomModal({
       title: "File Too Large",
@@ -2536,30 +3424,32 @@ window.handleFormSubmission = async function(event) {
     return;
   }
 
-  const studentNameVal = nameEl ? nameEl.value.trim() : (currentUser ? currentUser.fullName : '');
-  const studentSchoolId = currentUser ? (currentUser.schoolId || currentUser.schoolID || currentUser.username || '') : '';
+  let originalBtnText = '';
+  if (submitBtn) {
+    originalBtnText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Submitting...`;
+  }
+
+  const studentNameVal = nameEl ? nameEl.value.trim() : (activeUser ? activeUser.fullName : 'Student');
+  const studentSchoolId = activeUser ? (activeUser.schoolId || activeUser.schoolID || activeUser.username || '') : '';
   const submissionId = `sub_${testIdVal}_${(studentSchoolId || studentNameVal).toLowerCase().replace(/[^a-z0-9]/g, '')}_${Date.now()}`;
   
   let fileDownloadUrl = '';
 
-  // 3. Upload file to Firebase Storage with tenant isolation folder path
+  // 3. Firebase Storage Tenant Upload
   try {
     if (window.firebase && window.firebase.storage) {
       const storageRef = window.firebase.storage().ref();
-      const fileRef = storageRef.child(`submissions/${activeSchoolId}/${submissionId}_${file.name}`);
+      const fileRef = storageRef.child(`submissions/${activeSchoolId}/${submissionId}_${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`);
       const snapshot = await fileRef.put(file);
       fileDownloadUrl = await snapshot.ref.getDownloadURL();
     }
   } catch (storageErr) {
-    console.error('Firebase Storage upload error:', storageErr);
-    showCustomModal({
-      title: "Upload Warning",
-      message: "Cloud storage upload failed. Falling back to local data encoding.",
-      type: "warning"
-    });
+    console.warn('Firebase Storage upload warning:', storageErr);
   }
 
-  // Fallback if Firebase Storage wasn't used or failed
+  // Base64 Fallback
   if (!fileDownloadUrl) {
     fileDownloadUrl = await new Promise((resolve) => {
       const reader = new FileReader();
@@ -2574,7 +3464,8 @@ window.handleFormSubmission = async function(event) {
     studentName: studentNameVal,
     schoolId: activeSchoolId,
     studentUsername: studentSchoolId,
-    studentClass: classEl ? classEl.value.trim() : '',
+    studentClass: classEl ? classEl.value.trim() : (activeUser ? activeUser.class : ''),
+    subject: subjectEl ? subjectEl.value.trim() : (currentAssessment ? currentAssessment.subject || 'General' : 'General'),
     testTitle: titleEl ? titleEl.value.trim() : '',
     fileName: file.name,
     fileUrl: fileDownloadUrl,
@@ -2583,81 +3474,144 @@ window.handleFormSubmission = async function(event) {
     feedback: null
   };
 
-  // 4. Save submission details to Firestore Database
-  if (window.db) {
-    try {
-      await window.db.collection('submissions').doc(submissionId).set(newSubmission, { merge: true });
-    } catch (err) {
-      console.error('Firestore save error:', err);
+  try {
+    // 4. Save to Firestore
+    const dbRef = window.db || (window.firebase && firebase.firestore ? firebase.firestore() : null);
+    if (dbRef) {
+      await dbRef.collection('submissions').doc(submissionId).set(newSubmission, { merge: true });
+    }
+
+    // 5. Update Local Storage Cache
+    let localSubmissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
+    
+    // Purge previous submission for the same test if replacing
+    localSubmissions = localSubmissions.filter(s => 
+      !(String(s.testId) === String(testIdVal) && 
+        (String(s.studentUsername || s.studentId || s.username || '').toLowerCase() === String(studentSchoolId).toLowerCase() || s.studentName === studentNameVal))
+    );
+
+    localSubmissions.unshift(newSubmission);
+    localStorage.setItem('portal_submissions', JSON.stringify(localSubmissions));
+
+    // 6. Modal Closure & UI Refresh
+    const modal = document.getElementById('submissionModal') || document.getElementById('assignmentModal');
+    const form = document.getElementById('assignmentForm');
+    
+    if (form) form.reset();
+    if (modal) modal.style.display = 'none';
+
+    showCustomModal({
+      title: "Success",
+      message: "Assignment submitted successfully!",
+      type: "success"
+    });
+
+    if (typeof window.renderAssessments === 'function') window.renderAssessments();
+    if (activeUser && ['Teacher', 'Admin', 'Administrator'].includes(activeUser.role) && typeof window.renderSubmissions === 'function') {
+      window.renderSubmissions();
+    }
+
+  } catch (err) {
+    console.error("Error submitting assignment:", err);
+    showCustomModal({
+      title: "Submission Error",
+      message: "An error occurred while saving your submission. Please try again.",
+      type: "error"
+    });
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnText;
     }
   }
-
-  // 5. Cache locally (filtered/synced)
-  let localSubmissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
-  localSubmissions.unshift(newSubmission);
-  localStorage.setItem('portal_submissions', JSON.stringify(localSubmissions));
-
-  // 6. Cleanup & UI Feedback
-  const form = document.getElementById('assignmentForm');
-  if (form) form.reset();
-  if (typeof closeSubmissionModal === 'function') closeSubmissionModal();
-
-  showCustomModal({
-    title: "Success",
-    message: "Assignment submitted successfully!",
-    type: "success"
-  });
-
-  if (typeof renderAssessments === 'function') renderAssessments();
-  if (currentUser && currentUser.role === 'Teacher' && typeof renderSubmissions === 'function') renderSubmissions();
 };
 
+// ==========================================================================
+// CANCEL / REVOKE SUBMISSION HANDLER
+// ==========================================================================
 window.cancelSubmission = async function(testId) {
-  if (!currentUser || currentUser.role !== 'Student') return;
+  const activeUser = window.currentUser || (typeof currentUser !== 'undefined' ? currentUser : null);
+  
+  if (!activeUser) return;
+  const roleLower = (activeUser.role || '').toLowerCase();
+  if (roleLower !== 'student') return;
 
   showCustomModal({
     title: "Cancel Submission",
-    message: "Are you sure you want to cancel your submission?",
+    message: "Are you sure you want to cancel your submission? This will permanently delete your uploaded response.",
     type: "warning",
     showCancel: true,
     onConfirm: async () => {
-      const studentName = currentUser.fullName;
-      const studentSchoolId = currentUser.schoolId || currentUser.schoolID || currentUser.username || '';
+      const studentName = activeUser.fullName || '';
+      const studentSchoolId = activeUser.schoolId || activeUser.schoolID || activeUser.username || '';
+      const activeSchoolId = activeUser.schoolId || activeUser.schoolID || window.currentSchoolId || '';
 
-      if (window.db) {
+      // 1. Cloud Firestore Deletion
+      const dbRef = window.db || (window.firebase && firebase.firestore ? firebase.firestore() : null);
+      if (dbRef) {
         try {
-          let snap = await window.db.collection('submissions').where('testId', '==', String(testId)).where('schoolId', '==', studentSchoolId).get();
-          if (snap.empty) {
-            snap = await window.db.collection('submissions').where('testId', '==', String(testId)).where('studentName', '==', studentName).get();
+          // Attempt 1: Match by testId and studentUsername / student ID
+          let snap = await dbRef.collection('submissions')
+            .where('testId', '==', String(testId))
+            .where('studentUsername', '==', studentSchoolId)
+            .get();
+
+          if (snap.empty && studentSchoolId) {
+            // Attempt 2: Match by testId and studentId field
+            snap = await dbRef.collection('submissions')
+              .where('testId', '==', String(testId))
+              .where('studentId', '==', studentSchoolId)
+              .get();
           }
-          const batch = window.db.batch();
-          snap.forEach(doc => batch.delete(doc.ref));
-          await batch.commit();
+
+          if (snap.empty && studentName) {
+            // Attempt 3: Fallback match by student full name
+            snap = await dbRef.collection('submissions')
+              .where('testId', '==', String(testId))
+              .where('studentName', '==', studentName)
+              .get();
+          }
+
+          if (!snap.empty) {
+            const batch = dbRef.batch();
+            snap.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+          }
         } catch (err) {
-          console.error('Firestore delete error:', err);
+          console.error('Firestore delete error while cancelling submission:', err);
         }
       }
 
+      // 2. LocalStorage Purge
       let submissions = JSON.parse(localStorage.getItem('portal_submissions')) || [];
       submissions = submissions.filter(s => {
         const matchesTest = String(s.testId) === String(testId);
-        const matchesSchoolId = studentSchoolId && (s.schoolId || s.studentUsername || '').toLowerCase() === studentSchoolId.toLowerCase();
-        const matchesName = s.studentName && s.studentName.toLowerCase() === studentName.toLowerCase();
+        const matchesSchoolId = studentSchoolId && (
+          String(s.studentUsername || s.studentId || s.schoolId || '').toLowerCase() === studentSchoolId.toLowerCase()
+        );
+        const matchesName = studentName && (
+          String(s.studentName || '').toLowerCase() === studentName.toLowerCase()
+        );
         return !(matchesTest && (matchesSchoolId || matchesName));
       });
+      
       localStorage.setItem('portal_submissions', JSON.stringify(submissions));
 
+      // 3. UI Confirmation & Refresh
       showCustomModal({
         title: "Cancelled",
         message: "Your submission has been successfully cancelled.",
         type: "success"
       });
 
-      if (typeof renderAssessments === 'function') renderAssessments();
+      if (typeof window.renderAssessments === 'function') {
+        window.renderAssessments();
+      } else if (typeof renderAssessments === 'function') {
+        renderAssessments();
+      }
     }
   });
 };
-
 document.addEventListener('DOMContentLoaded', () => {
   const navHomeLink = document.getElementById('navLibraryLink');
   if (navHomeLink) {
