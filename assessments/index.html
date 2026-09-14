@@ -195,202 +195,302 @@
     </div>
 
 </div>
-      <div class="portal-grid">
-        
-      <!-- TEACHER & ADMIN CONTROL PANELS -->
-<div id="teacherControls" class="control-panel-wrapper" style="display:none;">
-  
-  <!-- LEFT COLUMN: MANAGEMENT & PUBLISHING -->
-  <div class="panel-column">
-    
-    <!-- SINGLE STUDENT REGISTRATION -->
-    <div class="card-box modern-card">
-      <div class="card-header">
-        <h3><i class="fa-solid fa-user-plus"></i> Register Student</h3>
-      </div>
+     <div class="portal-grid">
       
-      <form id="registerStudentForm" class="modern-form">
-        <div class="form-group">
-          <label for="regFullName">Full Name</label>
-          <input type="text" id="regFullName" class="form-control" placeholder="e.g. John Okello" required>
+  <!-- TEACHER & ADMIN CONTROL PANELS -->
+  <div id="teacherControls" class="control-panel-wrapper" style="display:none;">
+  
+    <!-- LEFT COLUMN: MANAGEMENT, PUBLISHING & CONTROLS -->
+    <div class="panel-column">
+      
+      <!-- SINGLE STUDENT REGISTRATION -->
+      <div class="card-box modern-card">
+        <div class="card-header">
+          <h3><i class="fa-solid fa-user-plus"></i> Register Student</h3>
         </div>
+        
+        <form id="registerStudentForm" class="modern-form">
+          <div class="form-group">
+            <label for="regFullName">Full Name</label>
+            <input type="text" id="regFullName" class="form-control" placeholder="e.g. John Okello" required>
+          </div>
 
+          <div class="form-group">
+            <label for="regClass">Class Level</label>
+            <select id="regClass" class="form-control" required>
+              <option value="S1">S.1</option>
+              <option value="S2">S.2</option>
+              <option value="S3">S.3</option>
+              <option value="S4" selected>S.4</option>
+              <option value="S5">S.5</option>
+              <option value="S6">S.6</option>
+            </select>
+          </div>
+
+          <!-- MODERN SUBJECT SELECTOR (PILL TAGS) -->
+          <div class="form-group">
+            <div class="group-header">
+              <label>Enrolled Subjects</label>
+              <div class="quick-actions">
+                <button type="button" class="btn-link" onclick="toggleAllCheckboxes('regStudentSubjects', true)">Select All</button>
+                <span>•</span>
+                <button type="button" class="btn-link" onclick="toggleAllCheckboxes('regStudentSubjects', false)">Clear</button>
+              </div>
+            </div>
+            
+            <div id="regStudentSubjects" class="subject-pill-grid">
+              <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="ICT" checked> <span>ICT</span></label>
+              <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Mathematics"> <span>Mathematics</span></label>
+              <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Physics"> <span>Physics</span></label>
+              <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Chemistry" checked> <span>Chemistry</span></label>
+              <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Biology"> <span>Biology</span></label>
+              <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="English"> <span>English</span></label>
+              <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Geography"> <span>Geography</span></label>
+              <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="History"> <span>History</span></label>
+              <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Entrepreneurship"> <span>Entrepreneurship</span></label>
+              <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Agriculture"> <span>Agriculture</span></label>
+              <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Literature"> <span>Literature</span></label>
+              <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Kiswahili"> <span>Kiswahili</span></label>
+              <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="P.E"> <span>P.E</span></label>
+              <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Art and Design"> <span>Art & Design</span></label>
+              <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="CRE"> <span>CRE</span></label>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="regUsername">Username</label>
+              <input type="text" id="regUsername" class="form-control" placeholder="e.g. okello_s4" required>
+            </div>
+            <div class="form-group">
+              <label for="regPassword">Password</label>
+              <input type="text" id="regPassword" class="form-control" placeholder="Assign password..." required>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-submit btn-primary">
+            <i class="fa-solid fa-user-check"></i> Register Student
+          </button>
+        </form>
+
+        <div class="divider-dashed"></div>
+
+        <!-- BULK IMPORT MODULE -->
+        <div class="bulk-import-section">
+          <h4><i class="fa-solid fa-file-excel"></i> Bulk Class Import</h4>
+          <p class="help-text">Upload an Excel/CSV file with student roster data and comma-separated subjects.</p>
+          
+          <div class="form-group">
+            <label for="bulkClass">Target Class</label>
+            <select id="bulkClass" class="form-control" required>
+              <option value="S1">S.1</option><option value="S2">S.2</option><option value="S3">S.3</option>
+              <option value="S4" selected>S.4</option><option value="S5">S.5</option><option value="S6">S.6</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="bulkStudentFile">Upload Roster File (.xlsx, .csv)</label>
+            <input type="file" id="bulkStudentFile" class="form-control-file" accept=".xlsx, .xls, .csv">
+          </div>
+
+          <button type="button" id="bulkImportBtn" class="btn-submit btn-success">
+            <i class="fa-solid fa-file-import"></i> Import & Generate Credentials
+          </button>
+        </div>
+      </div>
+
+      <!-- REGISTER TEACHER / ADMIN MODULE -->
+      <div class="card-box modern-card" id="adminStaffRegistrationModule" style="display: none;">
+        <div class="card-header">
+          <h3><i class="fa-solid fa-user-shield"></i> Register Staff Account</h3>
+        </div>
+        
+        <form id="registerStaffForm" class="modern-form">
+          <div class="form-group">
+            <label for="staffFullName">Full Name</label>
+            <input type="text" id="staffFullName" class="form-control" placeholder="e.g. Jane Namubiru" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="staffRole">System Role</label>
+            <select id="staffRole" class="form-control" required>
+              <option value="teacher">Teacher</option>
+              <option value="admin">Administrator</option>
+            </select>
+          </div>
+
+          <!-- STAFF SUBJECT ALLOCATION -->
+          <div class="form-group">
+            <div class="group-header">
+              <label>Assigned Teaching Subjects</label>
+              <div class="quick-actions">
+                <button type="button" class="btn-link" onclick="toggleAllCheckboxes('staffAssignedSubjects', true)">Select All</button>
+                <span>•</span>
+                <button type="button" class="btn-link" onclick="toggleAllCheckboxes('staffAssignedSubjects', false)">Clear</button>
+              </div>
+            </div>
+            
+            <div id="staffAssignedSubjects" class="subject-pill-grid">
+              <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="ICT" checked> <span>ICT</span></label>
+              <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Mathematics"> <span>Mathematics</span></label>
+              <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Physics"> <span>Physics</span></label>
+              <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Chemistry"> <span>Chemistry</span></label>
+              <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Biology"> <span>Biology</span></label>
+              <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="English"> <span>English</span></label>
+              <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Geography"> <span>Geography</span></label>
+              <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="History"> <span>History</span></label>
+              <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Entrepreneurship"> <span>Entrepreneurship</span></label>
+              <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Art and Design"> <span>Art & Design</span></label>
+              <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="CRE"> <span>CRE</span></label>
+              <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Agriculture"> <span>Agriculture</span></label>
+              <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="P.E"> <span>P.E</span></label>
+              <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Literature"> <span>Literature</span></label>
+              <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Kiswahili"> <span>Kiswahili</span></label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="staffSchoolSelect">Select Institutional Tenant</label>
+            <select id="staffSchoolSelect" class="form-control">
+              <option value="">-- Choose Existing School --</option>
+            </select>
+            <span class="help-text">Auto-fills the Tenant School ID.</span>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="staffUsername">School ID / Username</label>
+              <input type="text" id="staffUsername" class="form-control" placeholder="e.g. STANDARD_NTUNGAMO" required>
+            </div>
+            <div class="form-group">
+              <label for="staffPassword">Password</label>
+              <input type="text" id="staffPassword" class="form-control" placeholder="Assign password..." required>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-submit btn-purple">
+            <i class="fa-solid fa-user-tie"></i> Register Staff Account
+          </button>
+        </form>
+      </div>
+
+      <!-- PUBLISH ASSESSMENT MODULE -->
+      <div class="card-box modern-card">
+        <div class="card-header">
+          <h3><i class="fa-solid fa-cloud-arrow-up"></i> Publish New Assessment</h3>
+        </div>
+        
+        <form id="assessmentForm" class="modern-form">
+          <div class="form-group">
+            <label for="testTitle">Assessment Title</label>
+            <input type="text" id="testTitle" class="form-control" placeholder="e.g. Wakissha UCE ICT Paper 2 Mock 2026" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="testSubject">Subject</label>
+              <select id="testSubject" class="form-control" required>
+                <option value="ICT" selected>ICT</option>
+                <option value="Mathematics">Mathematics</option>
+                <option value="Physics">Physics</option>
+                <option value="Chemistry">Chemistry</option>
+                <option value="Biology">Biology</option>
+                <option value="English">English</option>
+                <option value="Geography">Geography</option>
+                <option value="History">History</option>
+                <option value="CRE">CRE</option>
+                <option value="Entrepreneurship">Entrepreneurship</option>
+                <option value="P.E">P.E</option>
+                <option value="Art and Design">Art & Design</option>
+                <option value="Literature">Literature</option>
+                <option value="Kiswahili">Kiswahili</option>
+                <option value="Agriculture">Agriculture</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="targetClass">Target Class</label>
+              <select id="targetClass" class="form-control" required>
+                <option value="S1">S.1</option><option value="S2">S.2</option><option value="S3">S.3</option>
+                <option value="S4" selected>S.4</option><option value="S5">S.5</option><option value="S6">S.6</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="testDesc">Instructions / Description</label>
+            <textarea id="testDesc" class="form-control" rows="2" placeholder="Provide guidelines for learners..."></textarea>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="testDeadline">Submission Deadline</label>
+              <input type="datetime-local" id="testDeadline" class="form-control" required>
+            </div>
+            <div class="form-group">
+              <label for="testFile">Assessment Resource File</label>
+              <input type="file" id="testFile" class="form-control-file" required>
+            </div>
+          </div>
+
+          <button type="submit" class="btn-submit btn-primary">
+            <i class="fa-solid fa-paper-plane"></i> Publish Assessment
+          </button>
+        </form>
+      </div>
+
+      <!-- CREDENTIALS & REPORTS CONTROL PANEL (MOVED TO LEFT PANEL) -->
+      <div class="card-box modern-card">
+        <div class="card-header">
+          <h3><i class="fa-solid fa-users-gear"></i> Credentials & Reports Panel</h3>
+        </div>
+        <p class="help-text mb-3">Download class registration records or manage individual student accounts.</p>
+        
         <div class="form-group">
-          <label for="regClass">Class Level</label>
-          <select id="regClass" class="form-control" required>
+          <label for="credentialsClassSelect">Target Class Filter</label>
+          <select id="credentialsClassSelect" class="form-control">
             <option value="S1">S.1</option>
-            <option value="S2">S.2</option>
+            <option value="S2" selected>S.2</option>
             <option value="S3">S.3</option>
-            <option value="S4" selected>S.4</option>
+            <option value="S4">S.4</option>
             <option value="S5">S.5</option>
             <option value="S6">S.6</option>
           </select>
         </div>
 
-        <!-- MODERN SUBJECT SELECTOR (PILL TAGS) -->
-        <div class="form-group">
-          <div class="group-header">
-            <label>Enrolled Subjects</label>
-            <div class="quick-actions">
-              <button type="button" class="btn-link" onclick="toggleAllCheckboxes('regStudentSubjects', true)">Select All</button>
-              <span>•</span>
-              <button type="button" class="btn-link" onclick="toggleAllCheckboxes('regStudentSubjects', false)">Clear</button>
-            </div>
-          </div>
-          
-          <div id="regStudentSubjects" class="subject-pill-grid">
-            <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="ICT" checked> <span>ICT</span></label>
-            <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Mathematics"> <span>Mathematics</span></label>
-            <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Physics"> <span>Physics</span></label>
-            <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Chemistry" checked> <span>Chemistry</span></label>
-            <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Biology"> <span>Biology</span></label>
-            <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="English"> <span>English</span></label>
-            <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Geography"> <span>Geography</span></label>
-            <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="History"> <span>History</span></label>
-            <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Entrepreneurship"> <span>Entrepreneurship</span></label>
-            <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Agriculture"> <span>Agriculture</span></label>
-            <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Literature"> <span>Literature</span></label>
-            <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Kiswahili"> <span>Kiswahili</span></label>
-            <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="P.E"> <span>P.E</span></label>
-            <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="Art and Design"> <span>Art & Design</span></label>
-            <label class="subject-pill"><input type="checkbox" name="studentSubjects" value="CRE"> <span>CRE</span></label>
+        <div class="reports-export-actions mt-3">
+          <span class="section-subtitle">REPORTS & EXPORTS</span>
+          <div class="action-links-stack">
+            <button type="button" class="btn-link-action" onclick="downloadClassCSV()">
+              <i class="fa-solid fa-file-csv text-success"></i> Download CSV
+            </button>
+            <button type="button" class="btn-link-action" onclick="downloadClassPDF()">
+              <i class="fa-solid fa-file-pdf text-danger"></i> Download PDF
+            </button>
           </div>
         </div>
 
-        <div class="form-row">
-          <div class="form-group">
-            <label for="regUsername">Username</label>
-            <input type="text" id="regUsername" class="form-control" placeholder="e.g. okello_s4" required>
-          </div>
-          <div class="form-group">
-            <label for="regPassword">Password</label>
-            <input type="text" id="regPassword" class="form-control" placeholder="Assign password..." required>
-          </div>
+        <div class="divider-dashed"></div>
+
+        <div class="directory-control-actions">
+          <span class="section-subtitle">DIRECTORY CONTROL</span>
+          <button type="button" class="btn-submit btn-outline mt-2" onclick="openManageStudentsModal()">
+            <i class="fa-solid fa-address-book"></i> Manage Students Directory
+          </button>
         </div>
-
-        <button type="submit" class="btn-submit btn-primary">
-          <i class="fa-solid fa-user-check"></i> Register Student
-        </button>
-      </form>
-
-      <div class="divider-dashed"></div>
-
-      <!-- BULK IMPORT MODULE -->
-      <div class="bulk-import-section">
-        <h4><i class="fa-solid fa-file-excel"></i> Bulk Class Import</h4>
-        <p class="help-text">Upload an Excel/CSV file with student roster data and comma-separated subjects.</p>
-        
-        <div class="form-group">
-          <label for="bulkClass">Target Class</label>
-          <select id="bulkClass" class="form-control" required>
-            <option value="S1">S.1</option><option value="S2">S.2</option><option value="S3">S.3</option>
-            <option value="S4" selected>S.4</option><option value="S5">S.5</option><option value="S6">S.6</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label for="bulkStudentFile">Upload Roster File (.xlsx, .csv)</label>
-          <input type="file" id="bulkStudentFile" class="form-control-file" accept=".xlsx, .xls, .csv">
-        </div>
-
-        <button type="button" id="bulkImportBtn" class="btn-submit btn-success">
-          <i class="fa-solid fa-file-import"></i> Import & Generate Credentials
-        </button>
       </div>
+
     </div>
 
-    <!-- REGISTER TEACHER / ADMIN MODULE -->
-    <div class="card-box modern-card" id="adminStaffRegistrationModule" style="display: none;">
-      <div class="card-header">
-        <h3><i class="fa-solid fa-user-shield"></i> Register Staff Account</h3>
-      </div>
-      
-      <form id="registerStaffForm" class="modern-form">
-        <div class="form-group">
-          <label for="staffFullName">Full Name</label>
-          <input type="text" id="staffFullName" class="form-control" placeholder="e.g. Jane Namubiru" required>
-        </div>
-        
-        <div class="form-group">
-          <label for="staffRole">System Role</label>
-          <select id="staffRole" class="form-control" required>
-            <option value="teacher">Teacher</option>
-            <option value="admin">Administrator</option>
-          </select>
-        </div>
-
-        <!-- STAFF SUBJECT ALLOCATION -->
-        <div class="form-group">
-          <div class="group-header">
-            <label>Assigned Teaching Subjects</label>
-            <div class="quick-actions">
-              <button type="button" class="btn-link" onclick="toggleAllCheckboxes('staffAssignedSubjects', true)">Select All</button>
-              <span>•</span>
-              <button type="button" class="btn-link" onclick="toggleAllCheckboxes('staffAssignedSubjects', false)">Clear</button>
-            </div>
-          </div>
+    <!-- RIGHT COLUMN: ASSESSMENTS & SUBMISSIONS VIEW -->
+    <div class="panel-column">
+      <div class="card-box modern-card" id="assessmentsViewPanel">
+        <div class="panel-header-toolbar">
+          <h3><i class="fa-solid fa-list-check"></i> Active Assessments</h3>
           
-          <div id="staffAssignedSubjects" class="subject-pill-grid">
-            <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="ICT" checked> <span>ICT</span></label>
-            <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Mathematics"> <span>Mathematics</span></label>
-            <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Physics"> <span>Physics</span></label>
-            <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Chemistry"> <span>Chemistry</span></label>
-            <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Biology"> <span>Biology</span></label>
-            <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="English"> <span>English</span></label>
-            <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Geography"> <span>Geography</span></label>
-            <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="History"> <span>History</span></label>
-            <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Entrepreneurship"> <span>Entrepreneurship</span></label>
-            <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Art and Design"> <span>Art & Design</span></label>
-            <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="CRE"> <span>CRE</span></label>
-            <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Agriculture"> <span>Agriculture</span></label>
-            <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="P.E"> <span>P.E</span></label>
-            <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Literature"> <span>Literature</span></label>
-            <label class="subject-pill"><input type="checkbox" name="teacherSubjects" value="Kiswahili"> <span>Kiswahili</span></label>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label for="staffSchoolSelect">Select Institutional Tenant</label>
-          <select id="staffSchoolSelect" class="form-control">
-            <option value="">-- Choose Existing School --</option>
-          </select>
-          <span class="help-text">Auto-fills the Tenant School ID.</span>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="staffUsername">School ID / Username</label>
-            <input type="text" id="staffUsername" class="form-control" placeholder="e.g. STANDARD_NTUNGAMO" required>
-          </div>
-          <div class="form-group">
-            <label for="staffPassword">Password</label>
-            <input type="text" id="staffPassword" class="form-control" placeholder="Assign password..." required>
-          </div>
-        </div>
-
-        <button type="submit" class="btn-submit btn-purple">
-          <i class="fa-solid fa-user-tie"></i> Register Staff Account
-        </button>
-      </form>
-    </div>
-
-    <!-- PUBLISH ASSESSMENT MODULE -->
-    <div class="card-box modern-card">
-      <div class="card-header">
-        <h3><i class="fa-solid fa-cloud-arrow-up"></i> Publish New Assessment</h3>
-      </div>
-      
-      <form id="assessmentForm" class="modern-form">
-        <div class="form-group">
-          <label for="testTitle">Assessment Title</label>
-          <input type="text" id="testTitle" class="form-control" placeholder="e.g. Wakissha UCE ICT Paper 2 Mock 2026" required>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="testSubject">Subject</label>
-            <select id="testSubject" class="form-control" required>
-              <option value="ICT" selected>ICT</option>
+          <div class="filter-group">
+            <select id="filterAssessmentSubject" class="form-control-sm" onchange="filterAssessmentsByClassAndSubject()">
+              <option value="ALL" selected>All Subjects</option>
+              <option value="ICT">ICT</option>
               <option value="Mathematics">Mathematics</option>
               <option value="Physics">Physics</option>
               <option value="Chemistry">Chemistry</option>
@@ -406,82 +506,25 @@
               <option value="Kiswahili">Kiswahili</option>
               <option value="Agriculture">Agriculture</option>
             </select>
-          </div>
-          <div class="form-group">
-            <label for="targetClass">Target Class</label>
-            <select id="targetClass" class="form-control" required>
-              <option value="S1">S.1</option><option value="S2">S.2</option><option value="S3">S.3</option>
-              <option value="S4" selected>S.4</option><option value="S5">S.5</option><option value="S6">S.6</option>
+
+            <select id="filterAssessmentClass" class="form-control-sm" onchange="filterAssessmentsByClassAndSubject()">
+              <option value="ALL" selected>All Classes</option>
+              <option value="S1">S.1</option>
+              <option value="S2">S.2</option>
+              <option value="S3">S.3</option>
+              <option value="S4">S.4</option>
+              <option value="S5">S.5</option>
+              <option value="S6">S.6</option>
             </select>
           </div>
         </div>
 
-        <div class="form-group">
-          <label for="testDesc">Instructions / Description</label>
-          <textarea id="testDesc" class="form-control" rows="2" placeholder="Provide guidelines for learners..."></textarea>
-        </div>
-
-        <div class="form-row">
-          <div class="form-group">
-            <label for="testDeadline">Submission Deadline</label>
-            <input type="datetime-local" id="testDeadline" class="form-control" required>
-          </div>
-          <div class="form-group">
-            <label for="testFile">Assessment Resource File</label>
-            <input type="file" id="testFile" class="form-control-file" required>
-          </div>
-        </div>
-
-        <button type="submit" class="btn-submit btn-primary">
-          <i class="fa-solid fa-paper-plane"></i> Publish Assessment
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- RIGHT COLUMN: ASSESSMENTS LIST VIEW -->
-  <div class="panel-column">
-    <div class="card-box modern-card" id="assessmentsViewPanel">
-      <div class="panel-header-toolbar">
-        <h3><i class="fa-solid fa-list-check"></i> Active Assessments</h3>
-        
-        <div class="filter-group">
-          <select id="filterAssessmentSubject" class="form-control-sm" onchange="filterAssessmentsByClassAndSubject()">
-            <option value="ALL" selected>All Subjects</option>
-            <option value="ICT">ICT</option>
-            <option value="Mathematics">Mathematics</option>
-            <option value="Physics">Physics</option>
-            <option value="Chemistry">Chemistry</option>
-            <option value="Biology">Biology</option>
-            <option value="English">English</option>
-            <option value="Geography">Geography</option>
-            <option value="History">History</option>
-            <option value="CRE">CRE</option>
-            <option value="Entrepreneurship">Entrepreneurship</option>
-            <option value="P.E">P.E</option>
-            <option value="Art and Design">Art & Design</option>
-            <option value="Literature">Literature</option>
-            <option value="Kiswahili">Kiswahili</option>
-            <option value="Agriculture">Agriculture</option>
-          </select>
-
-          <select id="filterAssessmentClass" class="form-control-sm" onchange="filterAssessmentsByClassAndSubject()">
-            <option value="ALL" selected>All Classes</option>
-            <option value="S1">S.1</option>
-            <option value="S2">S.2</option>
-            <option value="S3">S.3</option>
-            <option value="S4">S.4</option>
-            <option value="S5">S.5</option>
-            <option value="S6">S.6</option>
-          </select>
-        </div>
+        <div id="assessmentsContainer" class="assessments-grid"></div>
+        <div id="assessmentsPagination" class="pagination-container"></div>
       </div>
-
-      <div id="assessmentsContainer" class="assessments-grid"></div>
-      <div id="assessmentsPagination" class="pagination-container"></div>
     </div>
-  </div>
 
+  </div>
 </div>
 
       <!-- TEACHER REPORTS & SUBMISSIONS -->
