@@ -1617,7 +1617,7 @@ window.downloadStudentCSV = async function() {
     message: `Successfully downloaded sorted CSV credentials for ${students.length} student(s)${selectedClass ? ' in ' + selectedClass : ''}.`,
     type: "success"
   });
-};
+
 
 // ==========================================================================
 // SAAS-GRADE STUDENT PDF EXPORT (OPTIMIZED NAME SPACE, SUBJECTS & CLEAN HEADERS)
