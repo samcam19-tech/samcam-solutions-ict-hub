@@ -2781,6 +2781,16 @@ function updatePortalUI() {
 
 // Filter Event Listeners for Assessments Table / Grid
 window.filterAssessmentsByClassAndSubject = function() {
+  const selectedClass = document.getElementById('classSelect')?.value || '';
+  const selectedSubject = document.getElementById('subjectSelect')?.value || '';
+
+  // Filter your master array so the UI updates correctly
+  window.filteredAssessments = (window.allAssessments || []).filter(item => {
+    const matchClass = !selectedClass || item.class === selectedClass;
+    const matchSubject = !selectedSubject || item.subject === selectedSubject;
+    return matchClass && matchSubject;
+  });
+
   if (typeof window.renderAssessments === 'function') {
     window.renderAssessments();
   } else if (typeof renderAssessments === 'function') {
