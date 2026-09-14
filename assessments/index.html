@@ -195,12 +195,12 @@
     </div>
 
 </div>
-     <div class="portal-grid">
+    <div class="portal-grid">
       
   <!-- TEACHER & ADMIN CONTROL PANELS -->
   <div id="teacherControls" class="control-panel-wrapper" style="display:none;">
   
-    <!-- LEFT COLUMN: MANAGEMENT, PUBLISHING & CONTROLS -->
+    <!-- LEFT COLUMN: REGISTRATION & STAFF -->
     <div class="panel-column">
       
       <!-- SINGLE STUDENT REGISTRATION -->
@@ -374,7 +374,12 @@
         </form>
       </div>
 
-      <!-- PUBLISH ASSESSMENT MODULE -->
+    </div>
+
+    <!-- RIGHT COLUMN: ASSESSMENTS, PUBLISHING & REPORTS -->
+    <div class="panel-column">
+      
+      <!-- PUBLISH ASSESSMENT MODULE (Moved up to top right) -->
       <div class="card-box modern-card">
         <div class="card-header">
           <h3><i class="fa-solid fa-cloud-arrow-up"></i> Publish New Assessment</h3>
@@ -438,7 +443,7 @@
         </form>
       </div>
 
-      <!-- CREDENTIALS & REPORTS CONTROL PANEL (MOVED TO LEFT PANEL) -->
+      <!-- CREDENTIALS & REPORTS CONTROL PANEL -->
       <div class="card-box modern-card">
         <div class="card-header">
           <h3><i class="fa-solid fa-users-gear"></i> Credentials & Reports Panel</h3>
@@ -479,10 +484,7 @@
         </div>
       </div>
 
-    </div>
-
-    <!-- RIGHT COLUMN: ASSESSMENTS & SUBMISSIONS VIEW -->
-    <div class="panel-column">
+      <!-- ACTIVE ASSESSMENTS & SUBMISSIONS -->
       <div class="card-box modern-card" id="assessmentsViewPanel">
         <div class="panel-header-toolbar">
           <h3><i class="fa-solid fa-list-check"></i> Active Assessments</h3>
@@ -522,11 +524,11 @@
         <div id="assessmentsContainer" class="assessments-grid"></div>
         <div id="assessmentsPagination" class="pagination-container"></div>
       </div>
+
     </div>
 
   </div>
 </div>
-
       <!-- TEACHER REPORTS & SUBMISSIONS -->
       <div id="teacherReports" style="display:none;" class="portal-grid">
         <div class="card-box">
