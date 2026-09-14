@@ -4952,3 +4952,10 @@ function showCustomModal({ title, message, type = 'info', showCancel = false, on
 
   modal.style.display = 'flex';
 }
+
+window.toggleAllCheckboxes = function(containerId, checkState) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const checkboxes = container.querySelectorAll('input[type="checkbox"]');
+  checkboxes.forEach(cb => cb.checked = checkState);
+};
