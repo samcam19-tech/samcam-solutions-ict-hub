@@ -642,7 +642,7 @@ window.updateProfileUIImages = function(user) {
 
   // Target banner and preview image elements safely
   const bannerPic = document.getElementById('bannerProfilePic');
-  const previewPic = document.getElementById('profilePicPreview');
+  const previewPic = document.getElementById('settingsProfilePic');
   const fullNameDisplay = document.getElementById('profileFullName');
   const usernameDisplay = document.getElementById('profileUsernameDisplay');
   const nameDisplay = document.getElementById('userNameDisplay');
