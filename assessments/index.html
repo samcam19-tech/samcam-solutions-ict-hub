@@ -444,45 +444,53 @@
       </div>
 
       <!-- CREDENTIALS & REPORTS CONTROL PANEL -->
-      <div class="card-box modern-card">
-        <div class="card-header">
-          <h3><i class="fa-solid fa-users-gear"></i> Credentials & Reports Panel</h3>
-        </div>
-        <p class="help-text mb-3">Download class registration records or manage individual student accounts.</p>
-        
-        <div class="form-group">
-          <label for="credentialsClassSelect">Target Class Filter</label>
-          <select id="credentialsClassSelect" class="form-control">
-            <option value="S1">S.1</option>
-            <option value="S2" selected>S.2</option>
-            <option value="S3">S.3</option>
-            <option value="S4">S.4</option>
-            <option value="S5">S.5</option>
-            <option value="S6">S.6</option>
-          </select>
-        </div>
+<div class="saas-card">
+  <div class="saas-card-header">
+    <div class="saas-header-icon">
+      <i class="fa-solid fa-users-gear"></i>
+    </div>
+    <div>
+      <h3 class="saas-title">Credentials & Reports</h3>
+      <p class="saas-subtitle">Export class registration records or manage student directories.</p>
+    </div>
+  </div>
 
-        <div class="reports-export-actions mt-3">
-          <span class="section-subtitle">REPORTS & EXPORTS</span>
-          <div class="action-links-stack">
-            <button type="button" class="btn-link-action" onclick="downloadClassCSV()">
-              <i class="fa-solid fa-file-csv text-success"></i> Download CSV
-            </button>
-            <button type="button" class="btn-link-action" onclick="downloadClassPDF()">
-              <i class="fa-solid fa-file-pdf text-danger"></i> Download PDF
-            </button>
-          </div>
-        </div>
+  <div class="saas-form-group">
+    <label for="credentialsClassSelect" class="saas-label">Target Class Filter</label>
+    <div class="saas-select-wrapper">
+      <select id="credentialsClassSelect" class="saas-select">
+        <option value="S1">Senior 1 (S.1)</option>
+        <option value="S2" selected>Senior 2 (S.2)</option>
+        <option value="S3">Senior 3 (S.3)</option>
+        <option value="S4">Senior 4 (S.4)</option>
+        <option value="S5">Senior 5 (S.5)</option>
+        <option value="S6">Senior 6 (S.6)</option>
+      </select>
+      <i class="fa-solid fa-chevron-down saas-select-icon"></i>
+    </div>
+  </div>
 
-        <div class="divider-dashed"></div>
+  <div class="saas-section-group">
+    <span class="saas-section-tag">Reports & Exports</span>
+    <div class="saas-actions-grid">
+      <button type="button" class="saas-btn saas-btn-secondary" onclick="downloadClassCSV()">
+        <i class="fa-solid fa-file-csv text-emerald"></i> Download CSV
+      </button>
+      <button type="button" class="saas-btn saas-btn-secondary" onclick="downloadClassPDF()">
+        <i class="fa-solid fa-file-pdf text-rose"></i> Download PDF
+      </button>
+    </div>
+  </div>
 
-        <div class="directory-control-actions">
-          <span class="section-subtitle">DIRECTORY CONTROL</span>
-          <button type="button" class="btn-submit btn-outline mt-2" onclick="openManageStudentsModal()">
-            <i class="fa-solid fa-address-book"></i> Manage Students Directory
-          </button>
-        </div>
-      </div>
+  <div class="saas-divider"></div>
+
+  <div class="saas-section-group">
+    <span class="saas-section-tag">Directory Management</span>
+    <button type="button" class="saas-btn saas-btn-primary" onclick="openManageStudentsModal()">
+      <i class="fa-solid fa-address-book"></i> Manage Students Directory
+    </button>
+  </div>
+</div>
 
     </div>
 
