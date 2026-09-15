@@ -578,6 +578,23 @@ body {
 }
 .btn-link:hover { text-decoration: underline; }
 
+/* ==========================================================================
+   DASHBOARD SECTION SPACING FIX
+   ========================================================================== */
+
+/* Automatically space out any major section or card that follows the control panel */
+.control-panel-wrapper + *,
+.portal-grid > *:not(.control-panel-wrapper) {
+  margin-top: 2rem; /* Matches your portal container spacing rhythm */
+}
+
+/* Specifically target Active Assessments if it follows immediately */
+.card-box:has(.fa-list-check), 
+.card-box:has(.fa-bars-progress),
+.active-assessments-section {
+  margin-top: 2rem !important;
+}
+
 /* Modern Interactive Subject Pills */
 .subject-pill-grid {
   display: flex;
