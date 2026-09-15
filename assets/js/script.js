@@ -4946,3 +4946,34 @@ window.toggleAllCheckboxes = function(containerId, checkState) {
   const checkboxes = container.querySelectorAll('input[type="checkbox"]');
   checkboxes.forEach(cb => cb.checked = checkState);
 };
+
+// ==========================================================================
+// ROLE-BASED ACCESS CONTROL (RBAC) GUARD
+// ==========================================================================
+window.enforceUserRoleSecurity = function() {
+  // Retrieve the current logged-in user object from window or localStorage
+  const currentUser = window.currentUser || JSON.parse(localStorage.getItem('portal_user')) || {};
+  const userRole = (currentUser.role || '').toLowerCase();
+
+  // Define authorized administrative roles
+  const isAuthorizedAdmin = ['teacher', 'admin', 'ict_teacher', 'staff'].includes(userRole);
+
+  // Target the container wrapper
+  const teacherControlsWrapper = document.getElementById('teacherControls');
+
+  if (teacherControlsWrapper) {
+    if (isAuthorizedAdmin) {
+      // Show for teachers and admins
+      teacherControlsWrapper.style.display = 'grid'; // matches your grid layout
+    } else {
+      // Completely hide and remove from layout for students or unauthenticated users
+      teacherControlsWrapper.style.display = 'none';
+      teacherControlsWrapper.innerHTML = ''; // Clears elements entirely for added security
+    }
+  }
+};
+
+// Run on page load
+document.addEventListener('DOMContentLoaded', () => {
+  window.enforceUserRoleSecurity();
+});
