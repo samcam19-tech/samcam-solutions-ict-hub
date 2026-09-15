@@ -1977,6 +1977,35 @@ function generateCredentialsPDF() {
 }
 
 // ==========================================================================
+// PDF & CSV BUTTON BRIDGES (Resolves ID mismatch and missing function errors)
+// ==========================================================================
+
+window.downloadClassCSV = function() {
+  if (typeof window.downloadStudentCSV === 'function') {
+    window.downloadStudentCSV();
+  } else {
+    console.error("downloadStudentCSV function not found.");
+  }
+};
+
+window.downloadClassPDF = function() {
+  // Bridge credentialsClassSelect to the selector expected by downloadStudentPDF
+  const credentialsSelect = document.getElementById('credentialsClassSelect');
+  const exportSelect = document.getElementById('exportClassSelect');
+
+  if (credentialsSelect && !exportSelect) {
+    // Temporarily sync or map the value if exportClassSelect doesn't exist in DOM
+    credentialsSelect.id = 'exportClassSelect';
+  }
+
+  if (typeof window.downloadStudentPDF === 'function') {
+    window.downloadStudentPDF();
+  } else {
+    console.error("downloadStudentPDF function not found.");
+  }
+};
+
+// ==========================================================================
 // 3. CLEAN EVENT BINDINGS (PREVENTS DOUBLE-CLICK / MULTI-DOWNLOAD ISSUES)
 // ==========================================================================
 function initCredentialsControls() {
