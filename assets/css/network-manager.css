@@ -91,8 +91,6 @@ body {
     align-items: center;
     margin-bottom: 1.75rem;
     flex-shrink: 0;
-    flex-wrap: wrap;
-    gap: 1rem;
 }
 
 .breadcrumb h1 {
@@ -130,7 +128,6 @@ body {
 .net-stats-summary {
     display: flex;
     gap: 12px;
-    flex-wrap: wrap;
 }
 
 .stat-pill {
@@ -172,7 +169,7 @@ body {
     background: var(--bg-main);
     border: 1px solid var(--border);
     color: var(--text-main);
-    padding: 0.6rem 1.0rem;
+    padding: 0.6rem 1rem;
     border-radius: 8px;
     font-size: 0.85rem;
     outline: none;
@@ -190,7 +187,6 @@ body {
     display: flex;
     gap: 10px;
     align-items: center;
-    flex-wrap: wrap;
 }
 
 .btn {
@@ -216,7 +212,7 @@ body {
 /* Grid */
 .workstation-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
     gap: 1.5rem;
     padding-bottom: 2.5rem;
 }
@@ -302,14 +298,12 @@ body {
     align-items: center;
     justify-content: center;
     z-index: 2000;
-    padding: 1rem;
 }
 
 .modal-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    width: 100%;
-    max-width: 520px;
+    width: 520px;
     border-radius: 12px;
     overflow: hidden;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
@@ -345,74 +339,4 @@ body {
     display: flex;
     justify-content: flex-end;
     gap: 10px;
-    flex-wrap: wrap;
-}
-
-/* ==========================================================
-   21ST CENTURY SAAS MOBILE RESPONSIVE & SIDEBAR OVERLAYS
-   ========================================================== */
-@media (max-width: 1024px) {
-    .app-layout {
-        display: block !important;
-        position: relative;
-    }
-    .sidebar {
-        position: fixed !important;
-        top: 0;
-        left: -280px;
-        width: 280px;
-        height: 100vh;
-        z-index: 10000;
-        transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 10px 0 25px rgba(0,0,0,0.3);
-    }
-    .sidebar.mobile-open {
-        left: 0;
-    }
-    .main-content {
-        width: 100% !important;
-        height: 100vh !important;
-        padding: 1.25rem 1rem !important;
-    }
-    .search-input {
-        width: 100% !important;
-    }
-    .filter-select {
-        width: 100% !important;
-    }
-    .control-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .global-actions {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .global-actions .btn {
-        width: 100%;
-        justify-content: center;
-    }
-    .single-user-control-panel {
-        flex-direction: column;
-        width: 100%;
-        align-items: stretch !important;
-    }
-    .workstation-grid {
-        grid-template-columns: 1fr;
-    }
-    /* Backdrop overlay when mobile sidebar is open */
-    .sidebar-backdrop {
-        display: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: rgba(15, 23, 42, 0.6);
-        backdrop-filter: blur(3px);
-        z-index: 9999;
-    }
-    .sidebar-backdrop.active {
-        display: block;
-    }
 }
