@@ -131,6 +131,84 @@
     }
 }
 
+        /* Base styles for header elements */
+.mobile-header-flex {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.mobile-menu-btn {
+    display: none; /* Hidden on desktop */
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    cursor: pointer;
+    color: var(--text-main);
+    font-size: 1rem;
+    padding: 0.5rem 0.65rem;
+    border-radius: 8px;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.header-titles {
+    min-width: 0;
+    flex: 1;
+}
+
+.header-titles h1 {
+    font-size: 1.35rem;
+    font-weight: 700;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.header-titles p {
+    font-size: 0.75rem;
+    opacity: 0.75;
+    margin: 0;
+}
+
+/* Mobile Responsiveness for Header */
+@media (max-width: 1024px) {
+    .top-nav {
+        gap: 8px;
+        margin-bottom: 1.25rem !important;
+        padding: 0 0.25rem;
+    }
+
+    .mobile-menu-btn {
+        display: inline-flex !important; /* Reveal hamburger on mobile */
+    }
+
+    .header-titles h1 {
+        font-size: 1rem !important; /* Scale down cleanly */
+    }
+
+    .net-stats-summary {
+        gap: 6px !important;
+    }
+
+    .stat-pill {
+        padding: 0.45rem 0.65rem !important;
+        font-size: 0.75rem !important;
+    }
+
+    /* Simplify online text display if space is tight */
+    .online-text strong {
+        font-size: 0.85rem;
+    }
+
+    .icon-action-btn {
+        padding: 0.45rem 0.55rem !important;
+    }
+}
+
     </style>
 
 </head>
@@ -186,23 +264,32 @@
             <!-- VIEW 1: LIVE LAB GRID -->
             <div id="liveLabGridView" class="network-module-view">
                 <header class="top-nav">
-                    <div class="breadcrumb" style="display: flex; align-items: center; gap: 0.75rem;">
-                        <!-- Mobile Hamburger Trigger Button -->
-                        <button id="mobileSidebarToggle" class="stat-pill" title="Toggle Menu" style="display: none; background: none; border: none; cursor: pointer; color: inherit; font-size: 1.1rem; padding: 0.4rem 0.6rem; align-items: center; justify-content: center;">
-                            <i class="fa-solid fa-bars"></i>
-                        </button>
-                        <div>
-                            <h1 class="dynamic-system-name" style="margin:0;">Computer Lab 1 - Real-Time Monitor</h1>
-                            <p class="dynamic-system-slogan" style="font-size: 0.8rem; opacity: 0.8; margin: 0;">Innovative Insights in Action</p>
-                            <span class="live-badge"><span class="pulse-dot"></span> Live Telemetry Active</span>
-                        </div>
-                    </div>
-                   <div class="net-stats-summary">
-                        <div class="stat-pill"><i class="fa-solid fa-users"></i> Online: <strong id="onlineCount">24</strong></div>
-                        <button class="stat-pill" title="Toggle Grid Layout" onclick="toggleWorkstationLayout()" style="background: none; border: none; cursor: pointer; color: inherit; display: inline-flex; align-items: center; justify-content: center;"><i class="fa-solid fa-grip"></i></button>
-                        <button class="stat-pill" title="Logout Portal" onclick="window.logoutNetOps()" style="background: none; border: none; cursor: pointer; color: #ef4444; display: inline-flex; align-items: center; justify-content: center;"><i class="fa-solid fa-right-from-bracket"></i></button>
-                    </div>
-                </header>
+    <div class="breadcrumb mobile-header-flex">
+        <!-- Mobile Hamburger Trigger Button (Visible on Mobile) -->
+        <button id="mobileSidebarToggle" class="stat-pill mobile-menu-btn" title="Toggle Menu">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+        
+        <div class="header-titles">
+            <h1 class="dynamic-system-name">SAMCAM Hub</h1>
+            <p class="dynamic-system-slogan">Real-Time Monitor</p>
+            <span class="live-badge"><span class="pulse-dot"></span> Live</span>
+        </div>
+    </div>
+    
+    <div class="net-stats-summary">
+        <div class="stat-pill online-pill">
+            <i class="fa-solid fa-users"></i> 
+            <span class="online-text">Online: <strong id="onlineCount">19</strong></span>
+        </div>
+        <button class="stat-pill icon-action-btn" title="Toggle Grid Layout" onclick="toggleWorkstationLayout()">
+            <i class="fa-solid fa-grip"></i>
+        </button>
+        <button class="stat-pill icon-action-btn logout-btn" title="Logout Portal" onclick="window.logoutNetOps()">
+            <i class="fa-solid fa-right-from-bracket"></i>
+        </button>
+    </div>
+</header>
 
                 <!-- Control Toolbar -->
                 <section class="control-toolbar">
