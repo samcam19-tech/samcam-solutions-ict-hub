@@ -52,6 +52,55 @@
                 display: block;
             }
         }
+
+        /* Ensure the inner panels stack cleanly on small devices */
+.single-user-control-panel {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* Mobile Responsiveness for Toolbar Elements */
+@media (max-width: 1024px) {
+    .control-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 1rem;
+        gap: 12px;
+    }
+
+    .search-filter {
+        flex-direction: column;
+        width: 100%;
+        align-items: stretch;
+    }
+
+    .search-input, 
+    .filter-select {
+        width: 100% !important;
+        max-width: none !important;
+    }
+
+    .global-actions {
+        flex-direction: column;
+        width: 100%;
+        align-items: stretch;
+        gap: 10px;
+    }
+
+    .single-user-control-panel {
+        flex-direction: column;
+        width: 100%;
+        align-items: stretch;
+        margin-right: 0 !important;
+    }
+
+    .global-actions .btn,
+    .single-user-control-panel .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
     </style>
 </head>
 <body>
@@ -136,11 +185,11 @@
                         </select>
                     </div>
                     <div class="global-actions">
-                        <div class="single-user-control-panel" style="display: inline-flex; gap: 8px; align-items: center; margin-right: 10px;">
-                            <select id="targetWorkstationSelect" class="filter-select" style="max-width: 200px;">
+                        <div class="single-user-control-panel">
+                            <select id="targetWorkstationSelect" class="filter-select">
                                 <option value="">-- Select Specific Learner --</option>
                             </select>
-                            <button class="btn btn-outline" id="quickToggleLockBtn" style="white-space: nowrap;"><i class="fa-solid fa-lock"></i> Toggle Selected</button>
+                            <button class="btn btn-outline" id="quickToggleLockBtn"><i class="fa-solid fa-lock"></i> Toggle Selected</button>
                         </div>
                         <button class="btn btn-outline" id="lockAllBtn"><i class="fa-solid fa-lock"></i> Lock All Screens</button>
                         <button class="btn btn-primary" id="pushPromptBtn"><i class="fa-solid fa-bullhorn"></i> Push Prompt to Class</button>
