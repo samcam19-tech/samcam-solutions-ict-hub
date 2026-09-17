@@ -10,6 +10,49 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="../assets/css/network-manager.css">
+    <style>
+        /* ==========================================================
+           21ST CENTURY SAAS MOBILE RESPONSIVE SIDEBAR OVERLAYS
+           ========================================================== */
+        @media (max-width: 1024px) {
+            .app-layout {
+                display: block !important;
+                position: relative;
+            }
+            .sidebar {
+                position: fixed !important;
+                top: 0;
+                left: -280px;
+                width: 280px;
+                height: 100vh;
+                z-index: 10000;
+                transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: 10px 0 25px rgba(0,0,0,0.1);
+            }
+            .sidebar.mobile-open {
+                left: 0;
+            }
+            .main-content {
+                width: 100% !important;
+                height: 100vh !important;
+            }
+            /* Backdrop overlay when mobile sidebar is open */
+            .sidebar-backdrop {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(15, 23, 42, 0.6);
+                backdrop-filter: blur(3px);
+                z-index: 9999;
+            }
+            .sidebar-backdrop.active {
+                display: block;
+            }
+        }
+    </style>
 </head>
 <body>
     <div id="masterKeyGate" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.75); backdrop-filter: blur(4px); z-index: 99999; display: flex; align-items: center; justify-content: center; font-family: sans-serif;">
