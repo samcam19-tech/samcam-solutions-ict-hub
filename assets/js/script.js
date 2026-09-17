@@ -3129,8 +3129,9 @@ const initEditFormListeners = () => {
       let index = resources.findIndex(r => String(r.id) === String(id) || String(r.firebaseDocId) === String(id));
 
       if (index !== -1) {
-        let fileUrl = resources[index].fileUrl;
-        let fileName = resources[index].fileName;
+        // Safe fallbacks to prevent undefined values
+        let fileUrl = resources[index].fileUrl || '';
+        let fileName = resources[index].fileName || '';
 
         let originalBtnText = '';
         if (submitBtn) {
@@ -3161,19 +3162,19 @@ const initEditFormListeners = () => {
             }
           }
 
-          // Update Local Record
+          // Update Local Record with fallbacks
           resources[index].title = title;
           resources[index].class = targetClass;
           resources[index].subject = targetSubject || resources[index].subject || 'General';
           resources[index].description = description;
           resources[index].deadline = deadline;
-          resources[index].fileUrl = fileUrl;
-          resources[index].fileName = fileName;
+          resources[index].fileUrl = fileUrl || '';
+          resources[index].fileName = fileName || '';
           resources[index].schoolId = activeSchoolId;
 
           localStorage.setItem('portal_resources', JSON.stringify(resources));
 
-          // Sync Update to Firestore
+          // Sync Update to Firestore with guaranteed valid strings/values
           if (window.db || (window.firebase && firebase.firestore)) {
             const dbRef = window.db || firebase.firestore();
             const docId = resources[index].firebaseDocId || id;
@@ -3184,8 +3185,8 @@ const initEditFormListeners = () => {
               subject: targetSubject || 'General',
               description: description,
               deadline: deadline,
-              fileUrl: fileUrl,
-              fileName: fileName,
+              fileUrl: fileUrl || '',
+              fileName: fileName || '',
               schoolId: activeSchoolId
             }, { merge: true });
           }
