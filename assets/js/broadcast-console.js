@@ -29,8 +29,9 @@ window.initBroadcastConsole = function() {
         };
     }
 
-    // Initialize real-time Firestore listener for live incoming broadcasts from edge nodes
+    // Initialize real-time Firestore listeners for incoming broadcasts and host daemon responses
     initLiveBroadcastListener();
+    initDaemonResponseListener();
 };
 
 function processCliCommand(command) {
@@ -141,7 +142,7 @@ function processCliCommand(command) {
                 terminalOutputBody.scrollTop = terminalOutputBody.scrollHeight;
             });
         }
-        return; // Handled async inside promise
+        return; 
     }
     else if (cleanCommand.startsWith('browse ')) {
         const targetIp = cleanCommand.split(' ')[1];
@@ -250,7 +251,7 @@ function processCliCommand(command) {
                 terminalOutputBody.scrollTop = terminalOutputBody.scrollHeight;
             });
         }
-        return; // Handled async inside promise
+        return; 
     }
     else {
         responseDiv.style.color = "#f43f5e";
@@ -288,6 +289,39 @@ function initLiveBroadcastListener() {
         }, (error) => {
             console.error("Broadcast snapshot listener error:", error);
         });
+}
+
+// Real-time Firestore listener for host daemon file browse & pull responses
+function initDaemonResponseListener() {
+    if (typeof firebase === 'undefined' || !firebase.apps.length) return;
+
+    const db = firebase.firestore();
+    db.collection("server_control").doc("main_server").onSnapshot((doc) => {
+        if (!doc.exists) return;
+        const data = doc.data();
+        const terminalBody = document.querySelector('#broadcastConsoleView div[style*="font-family: monospace'], #broadcastConsoleView div.font-mono, #broadcastConsoleView .bg-slate-900');
+        if (!terminalBody) return;
+
+        // Display browse results returned from the Python daemon
+        if (data.browseResult && data.browseResult !== window._lastBrowseResult) {
+            window._lastBrowseResult = data.browseResult;
+            const resDiv = document.createElement('div');
+            resDiv.style.cssText = "margin-bottom: 0.75rem; color: #38bdf8;";
+            resDiv.innerHTML = `<i class="fa-solid fa-folder-tree"></i> ${escapeHtml(data.browseResult)}`;
+            terminalBody.appendChild(resDiv);
+            terminalBody.scrollTop = terminalBody.scrollHeight;
+        }
+
+        // Display pull results returned from the Python daemon
+        if (data.pullResult && data.pullResult !== window._lastPullResult) {
+            window._lastPullResult = data.pullResult;
+            const resDiv = document.createElement('div');
+            resDiv.style.cssText = "margin-bottom: 0.75rem; color: #10b981;";
+            resDiv.innerHTML = `${escapeHtml(data.pullResult)}`;
+            terminalBody.appendChild(resDiv);
+            terminalBody.scrollTop = terminalBody.scrollHeight;
+        }
+    });
 }
 
 function escapeHtml(text) {
