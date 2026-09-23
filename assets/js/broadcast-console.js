@@ -143,6 +143,56 @@ function processCliCommand(command) {
         }
         return; // Handled async inside promise
     }
+    else if (cleanCommand.startsWith('browse ')) {
+        const targetIp = cleanCommand.split(' ')[1];
+        if (!targetIp) {
+            responseDiv.style.color = "#f43f5e";
+            responseDiv.innerHTML = `[✖] Please provide an IP address. Usage: <code style="color: #38bdf8;">browse &lt;ip-address&gt;</code>`;
+            terminalOutputBody.appendChild(responseDiv);
+            return;
+        }
+
+        responseDiv.style.color = "#38bdf8";
+        responseDiv.innerHTML = `<i class="fa-solid fa-folder-open"></i> [i] Querying desktop file list from workstation node <code style="color: #10b981;">${escapeHtml(targetIp)}</code>...`;
+        
+        if (typeof firebase !== 'undefined' && firebase.apps.length) {
+            firebase.firestore().collection("server_control").doc("main_server").set({
+                browseAction: {
+                    targetIp: targetIp,
+                    path: "Desktop"
+                },
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        }
+        terminalOutputBody.appendChild(responseDiv);
+    }
+    else if (cleanCommand.startsWith('pull ')) {
+        const parts = cleanCommand.split(' ');
+        const targetIp = parts[1];
+        const fileName = parts.slice(2).join(' ');
+
+        if (!targetIp || !fileName) {
+            responseDiv.style.color = "#f43f5e";
+            responseDiv.innerHTML = `[✖] Invalid syntax. Usage: <code style="color: #38bdf8;">pull &lt;ip-address&gt; &lt;filename&gt;</code>`;
+            terminalOutputBody.appendChild(responseDiv);
+            return;
+        }
+
+        responseDiv.style.color = "#38bdf8";
+        responseDiv.innerHTML = `<i class="fa-solid fa-download"></i> [✔] Initiating selective pull of <code style="color: #f43f5e;">${escapeHtml(fileName)}</code> from workstation <code style="color: #10b981;">${escapeHtml(targetIp)}</code>...`;
+
+        if (typeof firebase !== 'undefined' && firebase.apps.length) {
+            firebase.firestore().collection("server_control").doc("main_server").set({
+                pullAction: {
+                    targetIp: targetIp,
+                    filename: fileName,
+                    subfolder: "student_submissions"
+                },
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        }
+        terminalOutputBody.appendChild(responseDiv);
+    }
     else if (cleanCommand === 'clear') {
         terminalOutputBody.innerHTML = `<div style="color: #94a3b8; margin-bottom: 0.5rem;">SAMCAM Solutions Network CLI [Version 2.6.0 - 2026 Enterprise SaaS Standard]</div>`;
         return;
@@ -155,6 +205,8 @@ function processCliCommand(command) {
         - <span style="color: #38bdf8;">server start [path]</span> : Spin up local LAN HTTP server/file repository on host node<br>
         - <span style="color: #38bdf8;">server stop</span> : Gracefully terminate the local LAN file server<br>
         - <span style="color: #38bdf8;">server status</span> : Query live host server binding properties from Firestore<br>
+        - <span style="color: #38bdf8;">browse &lt;ip-address&gt;</span> : Request directory and file list from a student workstation desktop<br>
+        - <span style="color: #38bdf8;">pull &lt;ip-address&gt; &lt;filename&gt;</span> : Manually select and copy a specific file from workstation desktop<br>
         - <span style="color: #38bdf8;">systemctl status &lt;service&gt;</span> : Query backend daemon health and T568A switch socket state<br>
         - <span style="color: #38bdf8;">nodes list</span> : Inspect active subnet IP leases dynamically from database<br>
         - <span style="color: #38bdf8;">clear</span> : Purge terminal output buffer`;
