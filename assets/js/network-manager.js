@@ -412,8 +412,9 @@ function initEventListeners() {
                 return;
             }
 
+            // Checks targetWorkstationSelect from Row 2 to support targeted vs global execution
             const selectedId = targetWorkstationSelect ? targetWorkstationSelect.value : "";
-            const isGlobal = !selectedId; // If specific learner dropdown is unselected, apply lab-wide
+            const isGlobal = !selectedId;
 
             const actionLabels = {
                 shutdown: "Shutdown",
@@ -425,7 +426,7 @@ function initEventListeners() {
             const title = isGlobal ? `Global ${actionLabel}` : `Targeted ${actionLabel} (${selectedId})`;
             const description = isGlobal 
                 ? `Are you sure you want to ${actionType} ALL connected student workstations across the entire lab?`
-                : `Are you sure you want to ${actionType} workstation ${selectedId}?`;
+                : `Are you sure you want to send the ${actionLabel.toLowerCase()} command to workstation ${selectedId}?`;
 
             showCustomConfirm(
                 title,
@@ -451,7 +452,7 @@ function initEventListeners() {
                                 lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
                             });
                         }
-                        showCustomAlert("Command Dispatched", `${actionLabel} command successfully broadcasted to the terminal(s).`);
+                        showCustomAlert("Command Dispatched", `${actionLabel} command successfully sent to ${isGlobal ? "all lab terminals" : "workstation " + selectedId}.`);
                     } catch (err) {
                         console.error(`Error executing power action ${actionType}:`, err);
                         showCustomAlert("Execution Error", `Failed to send ${actionLabel.toLowerCase()} command. Check console logs.`);
@@ -523,6 +524,7 @@ function initEventListeners() {
         };
     }
 }
+
 
 function openNodeModal(pc) {
     const modal = document.getElementById("nodeModal");
