@@ -282,6 +282,53 @@
             opacity: 0.75;
             margin: 0;
         }
+        /* Row 3: Remote Power Management Panel */
+        .power-actions-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+            border-top: 1px solid rgba(30, 41, 59, 0.6);
+            padding-top: 0.85rem;
+        }
+
+        .power-actions-row .filter-select {
+            flex: 1;
+            background: var(--bg-main);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 0.65rem 1rem;
+            border-radius: 9px;
+            font-size: 0.85rem;
+            outline: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .power-actions-row .filter-select:focus {
+            border-color: #ef4444;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.2);
+        }
+
+        .power-actions-row .btn {
+            border-color: #ef4444;
+            color: #ef4444;
+            white-space: nowrap;
+            padding: 0.65rem 1.2rem;
+            font-size: 0.85rem;
+            border-radius: 9px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+            background: transparent;
+            transition: all 0.2s ease;
+        }
+
+        .power-actions-row .btn:hover {
+            background: rgba(239, 68, 68, 0.1);
+        }
         
         /* Mobile Responsiveness for Header */
         @media (max-width: 1024px) {
@@ -399,30 +446,43 @@
 </header>
 
                <!-- Control Toolbar -->
-                <section class="control-toolbar">
-                    <!-- Row 1: 3 Items (Search Input, Status Filter, Push Prompt) -->
-                    <div class="search-filter">
-                        <input type="text" id="nodeSearch" placeholder="Search workstation ID or learner name..." class="search-input">
-                        <select id="statusFilter" class="filter-select">
-                            <option value="ALL">All Stations</option>
-                            <option value="ACTIVE">Active Coding/Task</option>
-                            <option value="IDLE">Idle</option>
-                            <option value="LOCKED">Locked</option>
-                        </select>
-                        <button class="btn btn-primary" id="pushPromptBtn"><i class="fa-solid fa-bullhorn"></i> Push Prompt</button>
-                    </div>
-                
-                    <!-- Row 2: Specific Learner Controls & Lock All -->
-                    <div class="global-actions">
-                        <div class="single-user-control-panel">
-                            <select id="targetWorkstationSelect" class="filter-select">
-                                <option value="">-- Select Specific Learner --</option>
-                            </select>
-                            <button class="btn btn-outline" id="quickToggleLockBtn"><i class="fa-solid fa-lock"></i> Toggle Selected</button>
-                        </div>
-                        <button class="btn btn-outline" id="lockAllBtn"><i class="fa-solid fa-lock"></i> Lock All Screens</button>
-                    </div>
-                </section>
+<section class="control-toolbar">
+    <!-- Row 1: 3 Items (Search Input, Status Filter, Push Prompt) -->
+    <div class="search-filter">
+        <input type="text" id="nodeSearch" placeholder="Search workstation ID or learner name..." class="search-input">
+        <select id="statusFilter" class="filter-select">
+            <option value="ALL">All Stations</option>
+            <option value="ACTIVE">Active Coding/Task</option>
+            <option value="IDLE">Idle</option>
+            <option value="LOCKED">Locked</option>
+        </select>
+        <button class="btn btn-primary" id="pushPromptBtn"><i class="fa-solid fa-bullhorn"></i> Push Prompt</button>
+    </div>
+ 
+    <!-- Row 2: Specific Learner Controls & Lock All -->
+    <div class="global-actions">
+        <div class="single-user-control-panel">
+            <select id="targetWorkstationSelect" class="filter-select">
+                <option value="">-- Select Specific Learner --</option>
+            </select>
+            <button class="btn btn-outline" id="quickToggleLockBtn"><i class="fa-solid fa-lock"></i> Toggle Selected</button>
+        </div>
+        <button class="btn btn-outline" id="lockAllBtn"><i class="fa-solid fa-lock"></i> Lock All Screens</button>
+    </div>
+
+    <!-- Row 3: Remote Power Management Panel -->
+    <div class="power-actions-row" style="display: flex; align-items: center; gap: 10px; width: 100%; border-top: 1px solid rgba(30, 41, 59, 0.6); padding-top: 0.85rem;">
+        <select id="powerActionSelect" class="filter-select" style="flex: 1; background: var(--bg-main, #0f172a); border: 1px solid var(--border, #1e293b); color: var(--text-main, #f8fafc); padding: 0.65rem 1rem; border-radius: 9px; font-size: 0.85rem; outline: none; cursor: pointer;">
+            <option value="">-- Select Power Command (Shutdown, Restart, Sleep) --</option>
+            <option value="shutdown">⚡ Shutdown Workstation(s)</option>
+            <option value="restart">🔄 Restart Workstation(s)</option>
+            <option value="sleep">🌙 Put Workstation(s) to Sleep</option>
+        </select>
+        <button class="btn btn-outline" id="sendPowerActionBtn" style="border-color: #ef4444; color: #ef4444; white-space: nowrap; padding: 0.65rem 1.2rem; font-size: 0.85rem; border-radius: 9px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px;">
+            <i class="fa-solid fa-power-off"></i> Execute Power Command
+        </button>                                      
+    </div>
+</section>
 
                 <!-- Workstation Grid -->
                 <section class="workstation-grid" id="workstationGrid">
