@@ -393,6 +393,78 @@ function initEventListeners() {
         };
     }
 
+    // ==========================================
+    // REMOTE POWER MANAGEMENT ACTIONS (ROW 3)
+    // ==========================================
+    const executePowerCommand = async (actionType, actionLabel, actionDesc, successMsg) => {
+        if (!window.db) {
+            showCustomAlert("Database Error", "Firebase database connection not initialized.");
+            return;
+        }
+
+        const selectedId = targetWorkstationSelect ? targetWorkstationSelect.value : "";
+        const isGlobal = !selectedId; // If dropdown is empty/unselected, apply lab-wide
+
+        const title = isGlobal ? `Global ${actionLabel}` : `Targeted ${actionLabel} (${selectedId})`;
+        const description = isGlobal 
+            ? `Are you sure you want to ${actionDesc.toLowerCase()} ALL connected student workstations across the entire lab?`
+            : `Are you sure you want to ${actionDesc.toLowerCase()} workstation ${selectedId}?`;
+
+        showCustomConfirm(
+            title,
+            description,
+            async () => {
+                try {
+                    if (isGlobal) {
+                        const batch = window.db.batch();
+                        workstationsData.forEach(pc => {
+                            const ref = window.db.collection("workstation_telemetry").doc(pc.id);
+                            batch.update(ref, {
+                                pendingCommand: actionType,
+                                activity: `Remote Command: ${actionLabel}`,
+                                lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                            });
+                        });
+                        await batch.commit();
+                    } else {
+                        const ref = window.db.collection("workstation_telemetry").doc(selectedId);
+                        await ref.update({
+                            pendingCommand: actionType,
+                            activity: `Remote Command: ${actionLabel}`,
+                            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
+                    showCustomAlert("Command Dispatched", successMsg);
+                } catch (err) {
+                    console.error(`Error executing power action ${actionType}:`, err);
+                    showCustomAlert("Execution Error", `Failed to send ${actionLabel.toLowerCase()} command. Check console logs.`);
+                }
+            }
+        );
+    };
+
+    const powerShutdownBtn = document.getElementById("powerShutdownBtn");
+    if (powerShutdownBtn) {
+        powerShutdownBtn.onclick = () => {
+            executePowerCommand("shutdown", "Shutdown Workstation", "shut down", "Shutdown command successfully broadcasted to the terminal(s).");
+        };
+    }
+
+    const powerRebootBtn = document.getElementById("powerRebootBtn");
+    if (powerRebootBtn) {
+        powerRebootBtn.onclick = () => {
+            executePowerCommand("reboot", "Reboot Workstation", "restart", "Reboot command successfully broadcasted to the terminal(s).");
+        };
+    }
+
+    const powerLogoffBtn = document.getElementById("powerLogoffBtn");
+    if (powerLogoffBtn) {
+        powerLogoffBtn.onclick = () => {
+            executePowerCommand("logoff", "Log Off User Session", "log off the current user session on", "Log-off command successfully broadcasted to the terminal(s).");
+        };
+    }
+    // ==========================================
+
     const closeModalBtn = document.getElementById("closeModalBtn");
     if (closeModalBtn) closeModalBtn.onclick = closeModal;
 
