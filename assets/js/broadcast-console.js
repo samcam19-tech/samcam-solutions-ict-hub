@@ -299,7 +299,7 @@ function initDaemonResponseListener() {
     db.collection("server_control").doc("main_server").onSnapshot((doc) => {
         if (!doc.exists) return;
         const data = doc.data();
-        const terminalBody = document.querySelector('#broadcastConsoleView div[style*="font-family: monospace'], #broadcastConsoleView div.font-mono, #broadcastConsoleView .bg-slate-900');
+        const terminalBody = document.querySelector('#broadcastConsoleView div[style*="font-family: monospace"], #broadcastConsoleView div.font-mono, #broadcastConsoleView .bg-slate-900');
         if (!terminalBody) return;
 
         // Display browse results returned from the Python daemon
