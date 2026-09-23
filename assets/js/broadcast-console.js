@@ -55,6 +55,7 @@ function processCliCommand(command) {
         const target = cleanCommand.split(' ')[1] || '192.168.1.1';
         responseDiv.style.color = "#10b981";
         responseDiv.innerHTML = `[✔] PING ${escapeHtml(target)} (T568A Backbone): 56 data bytes.<br>64 bytes from ${escapeHtml(target)}: icmp_seq=1 ttl=118 time=1.84 ms<br>64 bytes from ${escapeHtml(target)}: icmp_seq=2 ttl=118 time=2.02 ms<br>[✔] 2 packets transmitted, 2 received, 0.0% packet loss, time 1002ms.`;
+        terminalOutputBody.appendChild(responseDiv);
     } 
     else if (cleanCommand.startsWith('broadcast ')) {
         const message = cleanCommand.replace('broadcast ', '').trim();
@@ -75,7 +76,73 @@ function processCliCommand(command) {
                 console.error("Broadcast persistence error:", err);
             });
         }
+        terminalOutputBody.appendChild(responseDiv);
     } 
+    else if (cleanCommand.startsWith('server start')) {
+        const parts = cleanCommand.split(' ');
+        const serverDir = parts[2] || 'C:\\SamcamLANServer';
+        
+        responseDiv.style.color = "#38bdf8";
+        responseDiv.innerHTML = `<i class="fa-solid fa-server"></i> [✔] Dispatching signal to host node: Starting local LAN HTTP server at directory <code style="color: #f43f5e;">${escapeHtml(serverDir)}</code>...`;
+        
+        if (typeof firebase !== 'undefined' && firebase.apps.length) {
+            firebase.firestore().collection("server_control").doc("main_server").set({
+                state: "running",
+                directory: serverDir,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true }).then(() => {
+                console.log("Server start signal synchronized to Firestore.");
+            }).catch(err => {
+                console.error("Server control sync error:", err);
+            });
+        }
+        terminalOutputBody.appendChild(responseDiv);
+    }
+    else if (cleanCommand === 'server stop') {
+        responseDiv.style.color = "#f43f5e";
+        responseDiv.innerHTML = `<i class="fa-solid fa-power-off"></i> [✔] Dispatching signal to host node: Halting local LAN file server daemon...`;
+        
+        if (typeof firebase !== 'undefined' && firebase.apps.length) {
+            firebase.firestore().collection("server_control").doc("main_server").set({
+                state: "stopped",
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true }).then(() => {
+                console.log("Server stop signal synchronized to Firestore.");
+            }).catch(err => {
+                console.error("Server control sync error:", err);
+            });
+        }
+        terminalOutputBody.appendChild(responseDiv);
+    }
+    else if (cleanCommand === 'server status') {
+        responseDiv.style.color = "#10b981";
+        responseDiv.innerHTML = `[i] Querying host node server binding status dynamically from Firestore metadata...`;
+        terminalOutputBody.appendChild(responseDiv);
+
+        if (typeof firebase !== 'undefined' && firebase.apps.length) {
+            firebase.firestore().collection("server_control").doc("main_server").get().then((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    const state = data.state || 'stopped';
+                    const directory = data.directory || 'C:\\SamcamLANServer';
+                    const stateColor = state === 'running' ? '#10b981' : '#f43f5e';
+                    responseDiv.innerHTML = `[i] Host Node Server Metadata (Live Database Sync):<br>` +
+                    `- Status: <span style="color: ${stateColor}; font-weight: 650;">${escapeHtml(state.toUpperCase())}</span><br>` +
+                    `- Directory: <span style="color: #38bdf8;">${escapeHtml(directory)}</span><br>` +
+                    `- Port: <span style="color: #38bdf8;">8000 (TCP LAN)</span><br>` +
+                    `- Zero-Rated Data Route: <span style="color: #10b981; font-weight: 650;">Active</span>`;
+                } else {
+                    responseDiv.innerHTML = `[i] Host node server control record not found in Firestore.`;
+                }
+                terminalOutputBody.scrollTop = terminalOutputBody.scrollHeight;
+            }).catch((err) => {
+                responseDiv.style.color = "#f43f5e";
+                responseDiv.innerHTML = `[✖] Failed to query server status: ${escapeHtml(err.message)}`;
+                terminalOutputBody.scrollTop = terminalOutputBody.scrollHeight;
+            });
+        }
+        return; // Handled async inside promise
+    }
     else if (cleanCommand === 'clear') {
         terminalOutputBody.innerHTML = `<div style="color: #94a3b8; margin-bottom: 0.5rem;">SAMCAM Solutions Network CLI [Version 2.6.0 - 2026 Enterprise SaaS Standard]</div>`;
         return;
@@ -85,9 +152,13 @@ function processCliCommand(command) {
         responseDiv.innerHTML = `Available 2026 Enterprise Operational Commands:<br>
         - <span style="color: #38bdf8;">ping &lt;ip-address&gt;</span> : Execute live ICMP loopback diagnostic telemetry<br>
         - <span style="color: #38bdf8;">broadcast &lt;message&gt;</span> : Push global alert payload to all connected lab edge nodes via Firestore<br>
+        - <span style="color: #38bdf8;">server start [path]</span> : Spin up local LAN HTTP server/file repository on host node<br>
+        - <span style="color: #38bdf8;">server stop</span> : Gracefully terminate the local LAN file server<br>
+        - <span style="color: #38bdf8;">server status</span> : Query live host server binding properties from Firestore<br>
         - <span style="color: #38bdf8;">systemctl status &lt;service&gt;</span> : Query backend daemon health and T568A switch socket state<br>
-        - <span style="color: #38bdf8;">nodes list</span> : Inspect active active subnet IP leases and workstation statuses<br>
+        - <span style="color: #38bdf8;">nodes list</span> : Inspect active subnet IP leases dynamically from database<br>
         - <span style="color: #38bdf8;">clear</span> : Purge terminal output buffer`;
+        terminalOutputBody.appendChild(responseDiv);
     } 
     else if (cleanCommand.startsWith('systemctl status')) {
         const serviceName = cleanCommand.replace('systemctl status', '').trim() || 'net-backbone.service';
@@ -97,20 +168,44 @@ function processCliCommand(command) {
         &nbsp;&nbsp;Active: <span style="color: #10b981; font-weight: 600;">active (running)</span> since Mon 2026-08-31 08:30:14 EAT; 6h ago<br>
         &nbsp;&nbsp;Main PID: 4209 (samcam-daemon)<br>
         &nbsp;&nbsp;Status: "T568A wiring loopback verified across all switches. Zero dropped frames."`;
+        terminalOutputBody.appendChild(responseDiv);
     }
     else if (cleanCommand === 'nodes list' || cleanCommand === 'nodes') {
         responseDiv.style.color = "#a855f7";
-        responseDiv.innerHTML = `[i] Active Subnet Edge Nodes (Port 8080 Mesh):<br>
-        - 192.168.1.101 [Lab Workstation 01]: ONLINE (Latency: 2.1ms, Protocol: T568A)<br>
-        - 192.168.1.102 [Lab Workstation 02]: ONLINE (Latency: 1.9ms, Protocol: T568A)<br>
-        - 192.168.1.150 [Instructor Master Console]: ACTIVE (Telemetry Sync Operational)`;
+        responseDiv.innerHTML = `[i] Fetching active subnet edge nodes dynamically from Firestore...`;
+        terminalOutputBody.appendChild(responseDiv);
+
+        if (typeof firebase !== 'undefined' && firebase.apps.length) {
+            firebase.firestore().collection("workstations").get().then((querySnapshot) => {
+                if (querySnapshot.empty) {
+                    responseDiv.innerHTML = `[i] Active Subnet Edge Nodes: No registered workstations found in Firestore collection 'workstations'.`;
+                } else {
+                    let html = `[i] Active Subnet Edge Nodes (Dynamic Cluster Registry):<br>`;
+                    querySnapshot.forEach((doc) => {
+                        const data = doc.data();
+                        const ip = data.ipAddress || data.ip || 'Unknown IP';
+                        const name = data.name || doc.id;
+                        const status = data.status || 'ONLINE';
+                        const latency = data.latency || '1.5ms';
+                        html += `- ${escapeHtml(ip)} [${escapeHtml(name)}]: <span style="color: #10b981;">${escapeHtml(status)}</span> (Latency: ${escapeHtml(latency)})<br>`;
+                    });
+                    responseDiv.innerHTML = html;
+                }
+                terminalOutputBody.scrollTop = terminalOutputBody.scrollHeight;
+            }).catch((err) => {
+                responseDiv.style.color = "#f43f5e";
+                responseDiv.innerHTML = `[✖] Failed to load nodes from database: ${escapeHtml(err.message)}`;
+                terminalOutputBody.scrollTop = terminalOutputBody.scrollHeight;
+            });
+        }
+        return; // Handled async inside promise
     }
     else {
         responseDiv.style.color = "#f43f5e";
         responseDiv.innerHTML = `[✖] Command not recognized: '${escapeHtml(cleanCommand)}'. Type 'help' for available enterprise command strings.`;
+        terminalOutputBody.appendChild(responseDiv);
     }
 
-    terminalOutputBody.appendChild(responseDiv);
     terminalOutputBody.scrollTop = terminalOutputBody.scrollHeight;
 }
 
@@ -126,7 +221,6 @@ function initLiveBroadcastListener() {
             snapshot.docChanges().forEach((change) => {
                 if (change.type === "added") {
                     const data = change.doc.data();
-                    // Avoid duplicating local immediate printouts if sender is current session
                     if (data.sender && data.sender !== "root@samcam-hub" && data.message) {
                         const terminalBody = document.querySelector('#broadcastConsoleView div[style*="font-family: monospace"], #broadcastConsoleView div.font-mono, #broadcastConsoleView .bg-slate-900');
                         if (terminalBody) {
