@@ -1,5 +1,5 @@
 // ==========================================
-// BROADCAST-CONSOLE.JS - 2026 ENTERPRISE SaaS STANDARD
+// BROADCAST-CONSOLE.JS - 2026 ENTERPRISE SaaS STANDARD (Patched)
 // ==========================================
 
 window.initBroadcastConsole = function() {
@@ -63,7 +63,6 @@ function processCliCommand(command) {
         responseDiv.style.color = "#38bdf8";
         responseDiv.innerHTML = `<i class="fa-solid fa-satellite-dish"></i> [✔] Global SaaS telemetry broadcast initiated. Dispatched payload to active cluster edge nodes: "${escapeHtml(message)}"`;
         
-        // Fully functional persistence to Firestore network_broadcasts collection
         if (typeof firebase !== 'undefined' && firebase.apps.length) {
             firebase.firestore().collection("network_broadcasts").add({
                 message: message,
@@ -71,11 +70,7 @@ function processCliCommand(command) {
                 sender: "root@samcam-hub",
                 status: "Dispatched",
                 nodeProtocol: "T568A"
-            }).then(() => {
-                console.log("Broadcast successfully synced to Firestore edge cluster.");
-            }).catch(err => {
-                console.error("Broadcast persistence error:", err);
-            });
+            }).catch(err => console.error("Broadcast persistence error:", err));
         }
         terminalOutputBody.appendChild(responseDiv);
     } 
@@ -91,11 +86,7 @@ function processCliCommand(command) {
                 state: "running",
                 directory: serverDir,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true }).then(() => {
-                console.log("Server start signal synchronized to Firestore.");
-            }).catch(err => {
-                console.error("Server control sync error:", err);
-            });
+            }, { merge: true }).catch(err => console.error("Server control sync error:", err));
         }
         terminalOutputBody.appendChild(responseDiv);
     }
@@ -107,11 +98,7 @@ function processCliCommand(command) {
             firebase.firestore().collection("server_control").doc("main_server").set({
                 state: "stopped",
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true }).then(() => {
-                console.log("Server stop signal synchronized to Firestore.");
-            }).catch(err => {
-                console.error("Server control sync error:", err);
-            });
+            }, { merge: true }).catch(err => console.error("Server control sync error:", err));
         }
         terminalOutputBody.appendChild(responseDiv);
     }
@@ -153,6 +140,9 @@ function processCliCommand(command) {
             return;
         }
 
+        // Reset tracking cache to guarantee fresh snapshot response rendering
+        window._lastBrowseResult = null;
+
         responseDiv.style.color = "#38bdf8";
         responseDiv.innerHTML = `<i class="fa-solid fa-folder-open"></i> [i] Querying desktop file list from workstation node <code style="color: #10b981;">${escapeHtml(targetIp)}</code>...`;
         
@@ -162,6 +152,7 @@ function processCliCommand(command) {
                     targetIp: targetIp,
                     path: "Desktop"
                 },
+                browseResult: null, // Clear previous result payload in DB
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
         }
@@ -179,6 +170,9 @@ function processCliCommand(command) {
             return;
         }
 
+        // Reset tracking cache to guarantee fresh snapshot response rendering
+        window._lastPullResult = null;
+
         responseDiv.style.color = "#38bdf8";
         responseDiv.innerHTML = `<i class="fa-solid fa-download"></i> [✔] Initiating selective pull of <code style="color: #f43f5e;">${escapeHtml(fileName)}</code> from workstation <code style="color: #10b981;">${escapeHtml(targetIp)}</code>...`;
 
@@ -189,6 +183,7 @@ function processCliCommand(command) {
                     filename: fileName,
                     subfolder: "student_submissions"
                 },
+                pullResult: null, // Clear previous result payload in DB
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
         }
