@@ -296,22 +296,23 @@ function processCliCommand(command) {
     }
     else if (cleanCommand === 'nodes list' || cleanCommand === 'nodes') {
         responseDiv.style.color = "#a855f7";
-        responseDiv.innerHTML = `[i] Fetching active subnet edge nodes dynamically from Firestore...`;
+        responseDiv.innerHTML = `[i] Fetching active subnet edge nodes dynamically from Firestore (workstation_telemetry)...`;
         terminalOutputBody.appendChild(responseDiv);
 
         if (typeof firebase !== 'undefined' && firebase.apps.length) {
-            firebase.firestore().collection("workstations").get().then((querySnapshot) => {
+            firebase.firestore().collection("workstation_telemetry").get().then((querySnapshot) => {
                 if (querySnapshot.empty) {
-                    responseDiv.innerHTML = `[i] Active Subnet Edge Nodes: No registered workstations found in Firestore collection 'workstations'.`;
+                    responseDiv.innerHTML = `[i] Active Subnet Edge Nodes: No registered workstations found in Firestore collection 'workstation_telemetry'.`;
                 } else {
-                    let html = `[i] Active Subnet Edge Nodes (Dynamic Cluster Registry):<br>`;
+                    let html = `[i] Active Subnet Edge Nodes (Dynamic Cluster Registry - workstation_telemetry):<br>`;
                     querySnapshot.forEach((doc) => {
                         const data = doc.data();
-                        const ip = data.ipAddress || data.ip || 'Unknown IP';
-                        const name = data.name || doc.id;
+                        const ip = data.ip || data.ipAddress || 'Unknown IP';
+                        const name = data.workstationId || data.name || doc.id;
                         const status = data.status || 'ONLINE';
-                        const latency = data.latency || 'N/A';
-                        html += `- ${escapeHtml(ip)} [${escapeHtml(name)}]: <span style="color: #10b981;">${escapeHtml(status)}</span> (Latency: ${escapeHtml(latency)})<br>`;
+                        const cpu = data.cpu || 'N/A';
+                        const ram = data.ram || 'N/A';
+                        html += `- <span style="color: #38bdf8;">${escapeHtml(ip)}</span> [${escapeHtml(name)}]: <span style="color: #10b981;">${escapeHtml(status.toUpperCase())}</span> (CPU: ${escapeHtml(cpu)}, RAM: ${escapeHtml(ram)})<br>`;
                     });
                     responseDiv.innerHTML = html;
                 }
