@@ -189,6 +189,37 @@ function processCliCommand(command) {
         }
         terminalOutputBody.appendChild(responseDiv);
     }
+    else if (cleanCommand.startsWith('push ')) {
+        const parts = cleanCommand.split(' ');
+        const targetIp = parts[1];
+        const fileName = parts.slice(2).join(' ');
+
+        if (!targetIp || !fileName) {
+            responseDiv.style.color = "#f43f5e";
+            responseDiv.innerHTML = `[✖] Invalid syntax. Usage: <code style="color: #38bdf8;">push &lt;ip-address&gt; &lt;filename&gt;</code>`;
+            terminalOutputBody.appendChild(responseDiv);
+            return;
+        }
+
+        // Reset tracking cache to guarantee fresh snapshot response rendering
+        window._lastPushResult = null;
+
+        responseDiv.style.color = "#38bdf8";
+        responseDiv.innerHTML = `<i class="fa-solid fa-upload"></i> [✔] Initiating selective push of <code style="color: #f43f5e;">${escapeHtml(fileName)}</code> to workstation <code style="color: #10b981;">${escapeHtml(targetIp)}</code>...`;
+
+        if (typeof firebase !== 'undefined' && firebase.apps.length) {
+            firebase.firestore().collection("server_control").doc("main_server").set({
+                pushAction: {
+                    targetIp: targetIp,
+                    filename: fileName,
+                    subfolder: "repository"
+                },
+                pushResult: null, // Clear previous result payload in DB
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        }
+        terminalOutputBody.appendChild(responseDiv);
+    }
     else if (cleanCommand === 'clear') {
         terminalOutputBody.innerHTML = `<div style="color: #94a3b8; margin-bottom: 0.5rem;">SAMCAM Solutions Network CLI [Version 2.6.0 - 2026 Enterprise SaaS Standard]</div>`;
         return;
@@ -203,6 +234,7 @@ function processCliCommand(command) {
         - <span style="color: #38bdf8;">server status</span> : Query live host server binding properties from Firestore<br>
         - <span style="color: #38bdf8;">browse &lt;ip-address&gt;</span> : Request directory and file list from a student workstation desktop<br>
         - <span style="color: #38bdf8;">pull &lt;ip-address&gt; &lt;filename&gt;</span> : Manually select and copy a specific file from workstation desktop<br>
+        - <span style="color: #38bdf8;">push &lt;ip-address&gt; &lt;filename&gt;</span> : Push a file from the server repository down to a student workstation<br>
         - <span style="color: #38bdf8;">systemctl status &lt;service&gt;</span> : Query backend daemon health and T568A switch socket state<br>
         - <span style="color: #38bdf8;">nodes list</span> : Inspect active subnet IP leases dynamically from database<br>
         - <span style="color: #38bdf8;">clear</span> : Purge terminal output buffer`;
@@ -286,7 +318,7 @@ function initLiveBroadcastListener() {
         });
 }
 
-// Real-time Firestore listener for host daemon file browse & pull responses
+// Real-time Firestore listener for host daemon file browse, pull, & push responses
 function initDaemonResponseListener() {
     if (typeof firebase === 'undefined' || !firebase.apps.length) return;
 
@@ -313,6 +345,16 @@ function initDaemonResponseListener() {
             const resDiv = document.createElement('div');
             resDiv.style.cssText = "margin-bottom: 0.75rem; color: #10b981;";
             resDiv.innerHTML = `${escapeHtml(data.pullResult)}`;
+            terminalBody.appendChild(resDiv);
+            terminalBody.scrollTop = terminalBody.scrollHeight;
+        }
+
+        // Display push results returned from the Python daemon
+        if (data.pushResult && data.pushResult !== window._lastPushResult) {
+            window._lastPushResult = data.pushResult;
+            const resDiv = document.createElement('div');
+            resDiv.style.cssText = "margin-bottom: 0.75rem; color: #10b981;";
+            resDiv.innerHTML = `${escapeHtml(data.pushResult)}`;
             terminalBody.appendChild(resDiv);
             terminalBody.scrollTop = terminalBody.scrollHeight;
         }
