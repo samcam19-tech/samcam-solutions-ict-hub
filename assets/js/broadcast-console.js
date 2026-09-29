@@ -1,5 +1,5 @@
 // ==========================================
-// BROADCAST-CONSOLE.JS - 2026 ENTERPRISE SaaS STANDARD (Patched)
+// BROADCAST-CONSOLE.JS - 2026 ENTERPRISE SaaS STANDARD (Fully Dynamic Refactor)
 // ==========================================
 
 window.initBroadcastConsole = function() {
@@ -53,13 +53,39 @@ function processCliCommand(command) {
 
     // Enterprise Command Parsing Router
     if (cleanCommand.startsWith('ping ')) {
-        const target = cleanCommand.split(' ')[1] || '192.168.1.1';
+        const target = cleanCommand.split(' ')[1];
+        if (!target) {
+            responseDiv.style.color = "#f43f5e";
+            responseDiv.innerHTML = `[✖] Usage: <code style="color: #38bdf8;">ping &lt;ip-address&gt;</code>`;
+            terminalOutputBody.appendChild(responseDiv);
+            return;
+        }
+
         responseDiv.style.color = "#10b981";
-        responseDiv.innerHTML = `[✔] PING ${escapeHtml(target)} (T568A Backbone): 56 data bytes.<br>64 bytes from ${escapeHtml(target)}: icmp_seq=1 ttl=118 time=1.84 ms<br>64 bytes from ${escapeHtml(target)}: icmp_seq=2 ttl=118 time=2.02 ms<br>[✔] 2 packets transmitted, 2 received, 0.0% packet loss, time 1002ms.`;
+        responseDiv.innerHTML = `[i] Dispatching ICMP ping probe to target node <code style="color: #38bdf8;">${escapeHtml(target)}</code> via Firestore telemetry...`;
         terminalOutputBody.appendChild(responseDiv);
+
+        if (typeof firebase !== 'undefined' && firebase.apps.length) {
+            // Write a ping request to Firestore so the Python host daemon or edge node can process it live
+            firebase.firestore().collection("server_control").doc("main_server").set({
+                pingAction: {
+                    targetIp: target,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                },
+                pingResult: null,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true }).catch(err => console.error("Ping dispatch error:", err));
+        }
     } 
     else if (cleanCommand.startsWith('broadcast ')) {
         const message = cleanCommand.replace('broadcast ', '').trim();
+        if (!message) {
+            responseDiv.style.color = "#f43f5e";
+            responseDiv.innerHTML = `[✖] Usage: <code style="color: #38bdf8;">broadcast &lt;message&gt;</code>`;
+            terminalOutputBody.appendChild(responseDiv);
+            return;
+        }
+
         responseDiv.style.color = "#38bdf8";
         responseDiv.innerHTML = `<i class="fa-solid fa-satellite-dish"></i> [✔] Global SaaS telemetry broadcast initiated. Dispatched payload to active cluster edge nodes: "${escapeHtml(message)}"`;
         
@@ -68,25 +94,29 @@ function processCliCommand(command) {
                 message: message,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp(),
                 sender: "root@samcam-hub",
-                status: "Dispatched",
-                nodeProtocol: "T568A"
+                status: "Dispatched"
             }).catch(err => console.error("Broadcast persistence error:", err));
         }
         terminalOutputBody.appendChild(responseDiv);
     } 
     else if (cleanCommand.startsWith('server start')) {
         const parts = cleanCommand.split(' ');
-        const serverDir = parts[2] || 'C:\\SamcamLANServer';
+        const serverDir = parts.slice(2).join(' ') || '';
         
         responseDiv.style.color = "#38bdf8";
-        responseDiv.innerHTML = `<i class="fa-solid fa-server"></i> [✔] Dispatching signal to host node: Starting local LAN HTTP server at directory <code style="color: #f43f5e;">${escapeHtml(serverDir)}</code>...`;
+        responseDiv.innerHTML = serverDir 
+            ? `<i class="fa-solid fa-server"></i> [✔] Dispatching signal to host node: Starting local LAN HTTP server at directory <code style="color: #f43f5e;">${escapeHtml(serverDir)}</code>...`
+            : `<i class="fa-solid fa-server"></i> [✔] Dispatching signal to host node: Starting local LAN HTTP server at default workspace root...`;
         
+        const payload = {
+            state: "running",
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        if (serverDir) payload.directory = serverDir;
+
         if (typeof firebase !== 'undefined' && firebase.apps.length) {
-            firebase.firestore().collection("server_control").doc("main_server").set({
-                state: "running",
-                directory: serverDir,
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            }, { merge: true }).catch(err => console.error("Server control sync error:", err));
+            firebase.firestore().collection("server_control").doc("main_server").set(payload, { merge: true })
+                .catch(err => console.error("Server control sync error:", err));
         }
         terminalOutputBody.appendChild(responseDiv);
     }
@@ -112,13 +142,14 @@ function processCliCommand(command) {
                 if (doc.exists) {
                     const data = doc.data();
                     const state = data.state || 'stopped';
-                    const directory = data.directory || 'C:\\SamcamLANServer';
+                    const directory = data.directory || 'Not explicitly bound (Default)';
                     const stateColor = state === 'running' ? '#10b981' : '#f43f5e';
+                    const lastUpdated = data.updatedAt && data.updatedAt.toDate ? data.updatedAt.toDate().toLocaleTimeString() : 'Live';
+                    
                     responseDiv.innerHTML = `[i] Host Node Server Metadata (Live Database Sync):<br>` +
                     `- Status: <span style="color: ${stateColor}; font-weight: 650;">${escapeHtml(state.toUpperCase())}</span><br>` +
                     `- Directory: <span style="color: #38bdf8;">${escapeHtml(directory)}</span><br>` +
-                    `- Port: <span style="color: #38bdf8;">8000 (TCP LAN)</span><br>` +
-                    `- Zero-Rated Data Route: <span style="color: #10b981; font-weight: 650;">Active</span>`;
+                    `- Last State Transition: <span style="color: #cbd5e1;">${escapeHtml(lastUpdated)}</span>`;
                 } else {
                     responseDiv.innerHTML = `[i] Host node server control record not found in Firestore.`;
                 }
@@ -140,11 +171,10 @@ function processCliCommand(command) {
             return;
         }
 
-        // Reset tracking cache to guarantee fresh snapshot response rendering
         window._lastBrowseResult = null;
 
         responseDiv.style.color = "#38bdf8";
-        responseDiv.innerHTML = `<i class="fa-solid fa-folder-open"></i> [i] Querying desktop file list from workstation node <code style="color: #10b981;">${escapeHtml(targetIp)}</code>...`;
+        responseDiv.innerHTML = `<i class="fa-solid fa-folder-open"></i> [i] Querying directory structure from workstation node <code style="color: #10b981;">${escapeHtml(targetIp)}</code>...`;
         
         if (typeof firebase !== 'undefined' && firebase.apps.length) {
             firebase.firestore().collection("server_control").doc("main_server").set({
@@ -152,7 +182,7 @@ function processCliCommand(command) {
                     targetIp: targetIp,
                     path: "Desktop"
                 },
-                browseResult: null, // Clear previous result payload in DB
+                browseResult: null,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
         }
@@ -170,7 +200,6 @@ function processCliCommand(command) {
             return;
         }
 
-        // Reset tracking cache to guarantee fresh snapshot response rendering
         window._lastPullResult = null;
 
         responseDiv.style.color = "#38bdf8";
@@ -183,7 +212,7 @@ function processCliCommand(command) {
                     filename: fileName,
                     subfolder: "student_submissions"
                 },
-                pullResult: null, // Clear previous result payload in DB
+                pullResult: null,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
         }
@@ -201,7 +230,6 @@ function processCliCommand(command) {
             return;
         }
 
-        // Reset tracking cache to guarantee fresh snapshot response rendering
         window._lastPushResult = null;
 
         responseDiv.style.color = "#38bdf8";
@@ -214,41 +242,57 @@ function processCliCommand(command) {
                     filename: fileName,
                     subfolder: "repository"
                 },
-                pushResult: null, // Clear previous result payload in DB
+                pushResult: null,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             }, { merge: true });
         }
         terminalOutputBody.appendChild(responseDiv);
     }
     else if (cleanCommand === 'clear') {
-        terminalOutputBody.innerHTML = `<div style="color: #94a3b8; margin-bottom: 0.5rem;">SAMCAM Solutions Network CLI [Version 2.6.0 - 2026 Enterprise SaaS Standard]</div>`;
+        terminalOutputBody.innerHTML = `<div style="color: #94a3b8; margin-bottom: 0.5rem;">SAMCAM Solutions Network CLI [Version 2.6.0 - Dynamic SaaS Standard]</div>`;
         return;
     } 
     else if (cleanCommand === 'help') {
         responseDiv.style.color = "#fbbf24";
-        responseDiv.innerHTML = `Available 2026 Enterprise Operational Commands:<br>
-        - <span style="color: #38bdf8;">ping &lt;ip-address&gt;</span> : Execute live ICMP loopback diagnostic telemetry<br>
-        - <span style="color: #38bdf8;">broadcast &lt;message&gt;</span> : Push global alert payload to all connected lab edge nodes via Firestore<br>
-        - <span style="color: #38bdf8;">server start [path]</span> : Spin up local LAN HTTP server/file repository on host node<br>
-        - <span style="color: #38bdf8;">server stop</span> : Gracefully terminate the local LAN file server<br>
+        responseDiv.innerHTML = `Available Dynamic Enterprise Commands:<br>
+        - <span style="color: #38bdf8;">ping &lt;ip-address&gt;</span> : Trigger dynamic ICMP loopback probe via database daemon<br>
+        - <span style="color: #38bdf8;">broadcast &lt;message&gt;</span> : Push global alert payload to active cluster edge nodes via Firestore<br>
+        - <span style="color: #38bdf8;">server start [path]</span> : Spin up local LAN HTTP server / repository on host node<br>
+        - <span style="color: #38bdf8;">server stop</span> : Gracefully terminate the local LAN file server daemon<br>
         - <span style="color: #38bdf8;">server status</span> : Query live host server binding properties from Firestore<br>
-        - <span style="color: #38bdf8;">browse &lt;ip-address&gt;</span> : Request directory and file list from a student workstation desktop<br>
-        - <span style="color: #38bdf8;">pull &lt;ip-address&gt; &lt;filename&gt;</span> : Manually select and copy a specific file from workstation desktop<br>
-        - <span style="color: #38bdf8;">push &lt;ip-address&gt; &lt;filename&gt;</span> : Push a file from the server repository down to a student workstation<br>
-        - <span style="color: #38bdf8;">systemctl status &lt;service&gt;</span> : Query backend daemon health and T568A switch socket state<br>
-        - <span style="color: #38bdf8;">nodes list</span> : Inspect active subnet IP leases dynamically from database<br>
+        - <span style="color: #38bdf8;">browse &lt;ip-address&gt;</span> : Request directory and file listing from a workstation node<br>
+        - <span style="color: #38bdf8;">pull &lt;ip-address&gt; &lt;filename&gt;</span> : Select and copy a specific file from a workstation node<br>
+        - <span style="color: #38bdf8;">push &lt;ip-address&gt; &lt;filename&gt;</span> : Push repository file down to a target workstation node<br>
+        - <span style="color: #38bdf8;">systemctl status &lt;service&gt;</span> : Query backend daemon health dynamically from database registry<br>
+        - <span style="color: #38bdf8;">nodes list</span> : Inspect active subnet IP leases and nodes dynamically from Firestore<br>
         - <span style="color: #38bdf8;">clear</span> : Purge terminal output buffer`;
         terminalOutputBody.appendChild(responseDiv);
     } 
     else if (cleanCommand.startsWith('systemctl status')) {
         const serviceName = cleanCommand.replace('systemctl status', '').trim() || 'net-backbone.service';
         responseDiv.style.color = "#10b981";
-        responseDiv.innerHTML = `● ${escapeHtml(serviceName)} - SAMCAM Cloud Infrastructure Daemon<br>
-        &nbsp;&nbsp;Loaded: loaded (/lib/systemd/system/${escapeHtml(serviceName)}; enabled; vendor preset: enabled)<br>
-        &nbsp;&nbsp;Active: <span style="color: #10b981; font-weight: 600;">active (running)</span> since Mon 2026-08-31 08:30:14 EAT; 6h ago<br>
-        &nbsp;&nbsp;Main PID: 4209 (samcam-daemon)<br>
-        &nbsp;&nbsp;Status: "T568A wiring loopback verified across all switches. Zero dropped frames."`;
+        responseDiv.innerHTML = `[i] Querying live service status for <code style="color: #38bdf8;">${escapeHtml(serviceName)}</code> from Firestore...`;
         terminalOutputBody.appendChild(responseDiv);
+
+        if (typeof firebase !== 'undefined' && firebase.apps.length) {
+            firebase.firestore().collection("services").doc(serviceName.replace(/[\/\.]/g, '_')).get().then((doc) => {
+                if (doc.exists) {
+                    const data = doc.data();
+                    responseDiv.innerHTML = `● ${escapeHtml(serviceName)} - ${escapeHtml(data.description || 'Cloud Infrastructure Daemon')}<br>` +
+                    `&nbsp;&nbsp;Active: <span style="color: #10b981; font-weight: 600;">${escapeHtml(data.status || 'active (running)')}</span><br>` +
+                    `&nbsp;&nbsp;Main PID: ${escapeHtml(String(data.pid || 'N/A'))}<br>` +
+                    `&nbsp;&nbsp;Diagnostic Status: "${escapeHtml(data.message || 'Operational')}"`;
+                } else {
+                    responseDiv.innerHTML = `● ${escapeHtml(serviceName)}<br>&nbsp;&nbsp;Status: <span style="color: #fbbf24;">Active (Dynamic Mock Registry)</span><br>&nbsp;&nbsp;Note: No explicit database record found for '${escapeHtml(serviceName)}', returning live fallback state.`;
+                }
+                terminalOutputBody.scrollTop = terminalOutputBody.scrollHeight;
+            }).catch((err) => {
+                responseDiv.style.color = "#f43f5e";
+                responseDiv.innerHTML = `[✖] Failed to query service status: ${escapeHtml(err.message)}`;
+                terminalOutputBody.scrollTop = terminalOutputBody.scrollHeight;
+            });
+        }
+        return;
     }
     else if (cleanCommand === 'nodes list' || cleanCommand === 'nodes') {
         responseDiv.style.color = "#a855f7";
@@ -266,7 +310,7 @@ function processCliCommand(command) {
                         const ip = data.ipAddress || data.ip || 'Unknown IP';
                         const name = data.name || doc.id;
                         const status = data.status || 'ONLINE';
-                        const latency = data.latency || '1.5ms';
+                        const latency = data.latency || 'N/A';
                         html += `- ${escapeHtml(ip)} [${escapeHtml(name)}]: <span style="color: #10b981;">${escapeHtml(status)}</span> (Latency: ${escapeHtml(latency)})<br>`;
                     });
                     responseDiv.innerHTML = html;
@@ -282,7 +326,7 @@ function processCliCommand(command) {
     }
     else {
         responseDiv.style.color = "#f43f5e";
-        responseDiv.innerHTML = `[✖] Command not recognized: '${escapeHtml(cleanCommand)}'. Type 'help' for available enterprise command strings.`;
+        responseDiv.innerHTML = `[✖] Command not recognized: '${escapeHtml(cleanCommand)}'. Type 'help' for available dynamic enterprise command strings.`;
         terminalOutputBody.appendChild(responseDiv);
     }
 
@@ -306,7 +350,7 @@ function initLiveBroadcastListener() {
                         if (terminalBody) {
                             const liveAlertDiv = document.createElement('div');
                             liveAlertDiv.style.cssText = "margin-bottom: 0.75rem; color: #38bdf8; background: rgba(56, 189, 248, 0.08); padding: 6px 10px; border-left: 3px solid #38bdf8; border-radius: 4px;";
-                            liveAlertDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <strong>CLUSTER BROADCAST [${data.sender}]:</strong> ${escapeHtml(data.message)}`;
+                            liveAlertDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <strong>CLUSTER BROADCAST [${escapeHtml(data.sender)}]:</strong> ${escapeHtml(data.message)}`;
                             terminalBody.appendChild(liveAlertDiv);
                             terminalBody.scrollTop = terminalBody.scrollHeight;
                         }
@@ -318,7 +362,7 @@ function initLiveBroadcastListener() {
         });
 }
 
-// Real-time Firestore listener for host daemon file browse, pull, & push responses
+// Real-time Firestore listener for host daemon file operations and ping responses
 function initDaemonResponseListener() {
     if (typeof firebase === 'undefined' || !firebase.apps.length) return;
 
@@ -328,6 +372,16 @@ function initDaemonResponseListener() {
         const data = doc.data();
         const terminalBody = document.querySelector('#broadcastConsoleView div[style*="font-family: monospace"], #broadcastConsoleView div.font-mono, #broadcastConsoleView .bg-slate-900');
         if (!terminalBody) return;
+
+        // Display ping results returned from the Python daemon/node
+        if (data.pingResult && data.pingResult !== window._lastPingResult) {
+            window._lastPingResult = data.pingResult;
+            const resDiv = document.createElement('div');
+            resDiv.style.cssText = "margin-bottom: 0.75rem; color: #10b981;";
+            resDiv.innerHTML = `${escapeHtml(data.pingResult)}`;
+            terminalBody.appendChild(resDiv);
+            terminalBody.scrollTop = terminalBody.scrollHeight;
+        }
 
         // Display browse results returned from the Python daemon
         if (data.browseResult && data.browseResult !== window._lastBrowseResult) {
