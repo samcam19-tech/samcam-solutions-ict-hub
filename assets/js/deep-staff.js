@@ -418,6 +418,114 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    // --- BULK ACTION 3: PROMOTE ALL LEARNERS (S1->S4 & S5->S6) ---
+    const CLASS_PROMOTION_MAP = {
+        S1: "S2",
+        S2: "S3",
+        S3: "S4",
+        S4: "Graduated O-Level", // Change or remove if S4 learners are placed separately
+        S5: "S6",
+        S6: "Graduated A-Level"  // Change or remove if S6 learners are placed separately
+    };
+
+    const bulkActionsCardEl = document.getElementById('bulkActionsCard');
+    const bulkBtnGroup = bulkActionsCardEl?.querySelector('div:last-child');
+    let bulkPromoteBtn = document.getElementById('bulkPromoteLearnersBtn');
+
+    if (bulkBtnGroup && !bulkPromoteBtn) {
+        bulkPromoteBtn = document.createElement('button');
+        bulkPromoteBtn.id = 'bulkPromoteLearnersBtn';
+        bulkPromoteBtn.className = 'btn btn-sm btn-primary';
+        bulkPromoteBtn.style.background = 'var(--success, #10b981)';
+        bulkPromoteBtn.style.borderColor = 'var(--success, #10b981)';
+        bulkPromoteBtn.style.color = '#ffffff';
+        bulkPromoteBtn.innerHTML = `<i class="fa-solid fa-graduation-cap"></i> Promote All (S1–S6)`;
+        bulkBtnGroup.appendChild(bulkPromoteBtn);
+    }
+
+    if (bulkPromoteBtn) {
+        bulkPromoteBtn.addEventListener('click', async () => {
+            const schoolFilterInput = prompt(
+                "Enter a specific schoolId to promote (e.g., stacon), or leave blank to promote matching Students across all schools:",
+                ""
+            );
+            if (schoolFilterInput === null) return; // Cancelled
+            const targetSchoolId = schoolFilterInput.trim();
+
+            const scopeLabel = targetSchoolId ? `schoolId "${targetSchoolId}"` : "ALL schools";
+            const confirmed = confirm(
+                `Promote all Students (S1->S2->S3->S4 and S5->S6) for ${scopeLabel}? This will update 'class' and save 'previousClass'.`
+            );
+            if (!confirmed) return;
+
+            bulkPromoteBtn.disabled = true;
+            bulkPromoteBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Promoting Learners...`;
+            appendTerminalLog('info', `Starting bulk learner promotion (S1–S6) for ${scopeLabel}...`);
+
+            try {
+                let allUsers = [];
+                let pageToken = '';
+
+                do {
+                    let url = `${FIRESTORE_BASE_URL}/users?pageSize=300`;
+                    if (pageToken) url += `&pageToken=${encodeURIComponent(pageToken)}`;
+                    const res = await fetch(url);
+                    if (!res.ok) throw new Error(`Failed to fetch users page: ${res.status}`);
+                    const data = await res.json();
+                    if (data.documents) allUsers = allUsers.concat(data.documents);
+                    pageToken = data.nextPageToken;
+                } while (pageToken);
+
+                let promotedCount = 0;
+
+                for (const doc of allUsers) {
+                    const fields = doc.fields || {};
+                    const role = fields.role?.stringValue;
+                    const docSchoolId = fields.schoolId?.stringValue || "";
+                    const currentClass = fields.class?.stringValue?.trim();
+
+                    if (role !== "Student") continue;
+                    if (targetSchoolId && docSchoolId !== targetSchoolId) continue;
+                    if (!currentClass || !CLASS_PROMOTION_MAP[currentClass]) continue;
+
+                    const nextClass = CLASS_PROMOTION_MAP[currentClass];
+                    const patchUrl = `https://firestore.googleapis.com/v1/${doc.name}?updateMask.fieldPaths=class&updateMask.fieldPaths=previousClass`;
+
+                    const patchRes = await fetch(patchUrl, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            fields: {
+                                class: { stringValue: nextClass },
+                                previousClass: { stringValue: currentClass }
+                            }
+                        })
+                    });
+
+                    if (patchRes.ok) {
+                        promotedCount++;
+                    } else {
+                        appendTerminalLog('error', `Failed to promote ${fields.fullName?.stringValue || doc.name} (${currentClass} -> ${nextClass}).`);
+                    }
+                }
+
+                appendTerminalLog('success', `Bulk promotion finished. Promoted ${promotedCount} student(s) for ${scopeLabel}.`);
+                alert(`Successfully promoted ${promotedCount} student(s) for ${scopeLabel}.`);
+                if (collectionSelect && collectionSelect.value === 'users') {
+                    fetchCollectionData('users');
+                }
+
+            } catch (err) {
+                console.error("Bulk Promotion Error:", err);
+                appendTerminalLog('error', `Bulk promotion failed: ${err.message}`);
+                alert(`Error: ${err.message}`);
+            } finally {
+                bulkPromoteBtn.disabled = false;
+                bulkPromoteBtn.innerHTML = `<i class="fa-solid fa-graduation-cap"></i> Promote All (S1–S6)`;
+            }
+        });
+    }
+
 
 
     // --- DYNAMIC MODAL FORM GENERATOR & PATCH HANDLER ---
