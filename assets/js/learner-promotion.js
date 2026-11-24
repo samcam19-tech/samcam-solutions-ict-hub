@@ -22,11 +22,11 @@
   };
 
   function getFirestoreDb() {
-    if (window.db) return window.db;
+    if (window.db && typeof window.db.collection === "function") return window.db;
     if (typeof firebase !== "undefined" && firebase.apps && firebase.apps.length) {
       return firebase.firestore();
     }
-    throw new Error("Firestore SDK is not initialized.");
+    throw new Error("Firestore SDK is not initialized. Check firebase-config.js.");
   }
 
   function syncSchoolDropdown(promoteSelect) {
@@ -44,47 +44,6 @@
         cloned.textContent = `${opt.textContent} (${opt.value})`;
         promoteSelect.appendChild(cloned);
       }
-    });
-  }
-
-  function confirmPromotion(summaryText) {
-    const modal = document.getElementById("customModal");
-    const modalTitle = document.getElementById("modalTitle");
-    const modalMessage = document.getElementById("modalMessage");
-    const confirmBtn = document.getElementById("modalConfirmBtn");
-    const cancelBtn = document.getElementById("modalCancelBtn");
-    const inputContainer = document.getElementById("modalInputContainer");
-
-    if (!modal || !confirmBtn || !cancelBtn) {
-      return Promise.resolve(window.confirm(summaryText));
-    }
-
-    return new Promise((resolve) => {
-      if (inputContainer) inputContainer.classList.add("modal-hidden");
-      if (modalTitle) modalTitle.textContent = "Confirm Learner Promotion";
-      if (modalMessage) modalMessage.textContent = summaryText;
-
-      cancelBtn.classList.remove("modal-hidden");
-      modal.classList.add("active");
-
-      const cleanup = () => {
-        modal.classList.remove("active");
-        confirmBtn.removeEventListener("click", onConfirm);
-        cancelBtn.removeEventListener("click", onCancel);
-      };
-
-      const onConfirm = () => {
-        cleanup();
-        resolve(true);
-      };
-
-      const onCancel = () => {
-        cleanup();
-        resolve(false);
-      };
-
-      confirmBtn.addEventListener("click", onConfirm);
-      cancelBtn.addEventListener("click", onCancel);
     });
   }
 
@@ -132,15 +91,20 @@
     };
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
+  function initLearnerPromotion() {
     const promoteBtn = document.getElementById("executePromotionBtn");
     const schoolSelect = document.getElementById("promoteSchoolSelect");
     const modeSelect = document.getElementById("promoteTrackMode");
     const statusLog = document.getElementById("promotionStatusLog");
 
-    if (!promoteBtn) return;
+    if (!promoteBtn) {
+      console.warn("[LearnerPromotion] Button #executePromotionBtn not found.");
+      return;
+    }
 
-    // Populate school options once legacy migration populates #targetSchoolSelect
+    if (promoteBtn.dataset.promotionBound === "true") return;
+    promoteBtn.dataset.promotionBound = "true";
+
     syncSchoolDropdown(schoolSelect);
     const targetSchoolSelect = document.getElementById("targetSchoolSelect");
     if (targetSchoolSelect) {
@@ -148,21 +112,28 @@
       observer.observe(targetSchoolSelect, { childList: true });
     }
 
-    promoteBtn.addEventListener("click", async () => {
+    promoteBtn.addEventListener("click", async (event) => {
+      event.preventDefault();
+      console.log("[LearnerPromotion] Promote button clicked.");
+
       const selectedSchool = schoolSelect ? schoolSelect.value.trim() : "";
       const selectedMode = modeSelect ? modeSelect.value : "all";
       const scopeLabel = selectedSchool ? `school "${selectedSchool}"` : "all schools";
 
-      const approved = await confirmPromotion(
+      const approved = window.confirm(
         `Promote matching Students (${selectedMode.toUpperCase()}) for ${scopeLabel}? This updates "class" and records "previousClass".`
       );
-      if (!approved) return;
+      if (!approved) {
+        if (statusLog) statusLog.textContent = "Promotion cancelled.";
+        return;
+      }
 
       promoteBtn.disabled = true;
       const originalHtml = promoteBtn.innerHTML;
       promoteBtn.innerHTML = `<i class="fa-solid fa-spinner fa-spin" style="margin-right: 6px;"></i> Promoting...`;
 
       if (statusLog) {
+        statusLog.style.color = "#0284c7";
         statusLog.textContent = `Running promotion (${selectedMode}) for ${scopeLabel}...`;
       }
 
@@ -173,21 +144,35 @@
         });
 
         const msg = `Completed: Promoted ${promotedCount} of ${totalScanned} student record(s) for ${scopeLabel}.`;
-        if (statusLog) statusLog.textContent = msg;
+        if (statusLog) {
+          statusLog.style.color = "#16a34a";
+          statusLog.textContent = msg;
+        }
+        window.alert(msg);
       } catch (err) {
-        console.error("Learner promotion error:", err);
+        console.error("[LearnerPromotion] Error:", err);
         const errMsg = `Promotion failed: ${err.message}`;
-        if (statusLog) statusLog.textContent = errMsg;
+        if (statusLog) {
+          statusLog.style.color = "#dc2626";
+          statusLog.textContent = errMsg;
+        }
+        window.alert(errMsg);
       } finally {
         promoteBtn.disabled = false;
         promoteBtn.innerHTML = originalHtml;
       }
     });
-  });
+  }
 
-  // Expose helper globally in case you call it from console or another script
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initLearnerPromotion);
+  } else {
+    initLearnerPromotion();
+  }
+
   window.LearnerPromotionModule = {
     promoteLearners,
-    PROMOTION_MAPS
+    PROMOTION_MAPS,
+    init: initLearnerPromotion
   };
 })();
