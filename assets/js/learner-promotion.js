@@ -21,12 +21,25 @@
     }
   };
 
-  function getFirestoreDb() {
-    if (window.db && typeof window.db.collection === "function") return window.db;
-    if (typeof firebase !== "undefined" && firebase.apps && firebase.apps.length) {
-      return firebase.firestore();
+  async function getFirestoreDbAsync(retries = 20, delayMs = 100) {
+    for (let i = 0; i <= retries; i++) {
+      if (window.db && typeof window.db.collection === "function") {
+        return window.db;
+      }
+      if (typeof firebase !== "undefined" && firebase.apps && firebase.apps.length) {
+        window.db = firebase.firestore();
+        return window.db;
+      }
+      if (i < retries) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
     }
     throw new Error("Firestore SDK is not initialized. Check firebase-config.js.");
+  }
+
+  function normalizeClassKey(rawClass) {
+    if (!rawClass || typeof rawClass !== "string") return "";
+    return rawClass.trim().toUpperCase().replace(/\./g, "");
   }
 
   function syncSchoolDropdown(promoteSelect) {
@@ -48,7 +61,7 @@
   }
 
   async function promoteLearners({ schoolId = "", mode = "all" } = {}) {
-    const db = getFirestoreDb();
+    const db = await getFirestoreDbAsync();
     const map = PROMOTION_MAPS[mode] || PROMOTION_MAPS.all;
 
     let queryRef = db.collection("users").where("role", "==", "Student");
@@ -62,8 +75,8 @@
     }
 
     const promotableDocs = snapshot.docs.filter((doc) => {
-      const currentClass = (doc.data().class || "").trim();
-      return Boolean(currentClass && map[currentClass]);
+      const normalizedClass = normalizeClassKey(doc.data().class);
+      return Boolean(normalizedClass && map[normalizedClass]);
     });
 
     const batchSize = 500;
@@ -72,12 +85,13 @@
       const chunk = promotableDocs.slice(i, i + batchSize);
 
       chunk.forEach((doc) => {
-        const currentClass = doc.data().class.trim();
-        const nextClass = map[currentClass];
+        const rawClass = (doc.data().class || "").trim();
+        const normalizedClass = normalizeClassKey(rawClass);
+        const nextClass = map[normalizedClass];
 
         batch.update(doc.ref, {
           class: nextClass,
-          previousClass: currentClass,
+          previousClass: rawClass,
           promotedAt: new Date().toISOString()
         });
       });
